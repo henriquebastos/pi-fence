@@ -34,6 +34,17 @@ Scaffold only — no processors, no hooks, no rendering yet. This repo currently
 - **[Principles](docs/product/principles.md)** — how we build and test
 - **[Worklog](docs/process/worklog.md)** — what was done, what's next
 
+## Development
+
+This project uses [pnpm](https://pnpm.io). The `packageManager` field in `package.json` pins the version; use corepack to avoid global installs:
+
+```bash
+corepack enable          # one time, once per machine
+pnpm install
+```
+
+Without corepack, `pnpm install` works as long as you have pnpm 10.x available on PATH.
+
 ## License
 
 MIT © 2026 Henrique Bastos
