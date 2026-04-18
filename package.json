@@ -1,0 +1,46 @@
+{
+  "name": "pi-fence",
+  "version": "0.0.0",
+  "description": "pi extension that processes fenced code blocks — renders diagrams, formats data, and more, via a pluggable processor registry.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Henrique Bastos <henrique@bastos.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/henriquebastos/pi-fence.git"
+  },
+  "bugs": {
+    "url": "https://github.com/henriquebastos/pi-fence/issues"
+  },
+  "homepage": "https://github.com/henriquebastos/pi-fence#readme",
+  "keywords": [
+    "pi",
+    "pi-package",
+    "pi-extension",
+    "pi-coding-agent",
+    "fenced-code-block",
+    "mermaid",
+    "graphviz",
+    "plantuml",
+    "d2",
+    "kroki",
+    "diagrams",
+    "visualization"
+  ],
+  "files": [
+    "extensions",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/pi-fence/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@sinclair/typebox": "*"
+  }
+}
