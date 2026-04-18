@@ -14,7 +14,7 @@
 |------|-----------|
 | **Legibility** | What I read in the terminal is more intelligible than raw source |
 | **Extensibility** | Others can add processors without touching the core |
-| **Control** | The user decides what is processed, how, at what priority |
+| **Control** | The user decides what is processed and how |
 | **Portability** | Works online, offline, self-hosted — no backend lock-in |
 
 ---
@@ -42,7 +42,7 @@
 | Code | Story | Status |
 |------|-------|--------|
 | `CV0.E2.S1` | **I use local graphviz when I want privacy and offline** | Planned |
-| `CV0.E2.S2` | **I configure processor priority in settings** | Planned |
+| `CV0.E2.S2` | **I bind a tag to a specific processor in settings** | Planned |
 
 ---
 

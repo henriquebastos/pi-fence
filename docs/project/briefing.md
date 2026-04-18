@@ -24,7 +24,7 @@ Each delivery generates concrete value in one or more of these dimensions.
 |------|-----------|
 | **Legibility** | What I read in the terminal is more intelligible than raw source |
 | **Extensibility** | Other extensions or users can add new processors without touching the core |
-| **Control** | The user decides what is processed, how, and at what priority |
+| **Control** | The user decides what is processed and how |
 | **Portability** | Works online, offline, self-hosted — no lock-in to a single backend |
 
 ## Hierarchy
@@ -81,7 +81,7 @@ Both modes are enabled by default. The user can disable either.
 
 **Privacy caveat:** the public endpoint sends diagram source to `kroki.io`. Surface a warning on first use per session. Make the endpoint trivially configurable (public → Docker → self-hosted).
 
-**Fallback path:** local processors (graphviz binary, mmdc, …) can be registered with higher priority to override Kroki for specific languages.
+**Overriding Kroki per tag:** when a user prefers a local processor for a specific language (say, `dot` handled by a local Graphviz binary instead of a Kroki round-trip), they bind the tag to that processor explicitly in settings. Kroki remains the fallback for every other tag.
 
 ### D4 — Lazy-loaded processors with capability detection
 
@@ -101,7 +101,7 @@ Third-party extensions register their own processors through `pi.events`. They d
 
 - No hard coupling between extensions.
 - Third parties version independently.
-- Two extensions can register processors for the same tag; the registry resolves by priority + availability.
+- Two extensions can register processors for the same tag. Resolution is explicit in user settings: the user binds a tag to a named processor. Without a binding, the first registered and available processor for that tag wins.
 
 **Trade-off:** event-bus contracts are weaker than typed APIs. Mitigated by a published TypeScript interface that third-party authors can import as a peer type (not a runtime dependency).
 
@@ -110,7 +110,7 @@ Third-party extensions register their own processors through `pi.events`. They d
 Everything about the registry is configurable in `settings.json` (global) and `.pi/settings.json` (per project).
 
 - Enable/disable any processor.
-- Set priority for tag-conflict resolution.
+- Bind a tag to a specific named processor when more than one is registered for it.
 - Configure endpoint, timeout, credentials per processor.
 - Override with meta info string on individual fences (`​`​`​`​mermaid processor=kroki`) for ad-hoc control.
 
@@ -129,7 +129,7 @@ The unit of extensibility is a `FenceProcessor`, not a `Renderer`. A processor r
 **Why:**
 
 - Anchoring on "render" would assume image output; CSV-as-table and SQL-highlight need text output.
-- `passthrough` lets a processor inspect the input and decline without blocking lower-priority processors.
+- `passthrough` lets a processor inspect the input and decline, letting the next registered processor for the tag handle it.
 - `error` with structured parse issues feeds the tool-mode feedback loop and the interception-mode warnings uniformly.
 
 ### D8 — English as the internal language

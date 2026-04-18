@@ -10,7 +10,7 @@ Guidelines for building pi-fence. Read before contributing code.
 
 **Interception should feel invisible.** When a fenced block renders well, the user shouldn't have to think about pi-fence. No extra commands, no mode switching, no ceremony. The LLM writes markdown, the terminal shows the visualization.
 
-**Control stays with the user.** Every behavior pi-fence adds is configurable: enable/disable per processor, priority between processors, per-project overrides, global off-switch. A user who wants the raw fenced text should be able to get it back without a fork.
+**Control stays with the user.** Every behavior pi-fence adds is configurable: enable/disable per processor, explicit per-tag processor binding, per-project overrides, global off-switch. A user who wants the raw fenced text should be able to get it back without a fork.
 
 **Fenced blocks are a platform, not just diagrams.** Diagrams are the motivating use case, but the abstraction serves anything text-to-visual: tables, highlighted code, QR codes, math, music. Keep the core agnostic to what the processor does with the block.
 
