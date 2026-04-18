@@ -46,7 +46,7 @@ Two kinds of automated tests, each with a clear purpose.
 
 **Every commit leaves tests passing.**
 
-**Docs are checked too.** Link integrity is verified by `pnpm run check:links`, which walks the `docs/` tree and validates that every relative markdown link resolves to a real file and every `#fragment` points to a real heading. Run it before committing doc changes. `pnpm run check` is the umbrella that includes links and anything else we add later.
+**Docs are checked too.** Link integrity is verified by `pnpm run check:links`, which walks the `docs/` tree and validates that every relative markdown link resolves to a real file and every `#fragment` points to a real heading. Structural linting — list numbering, blank-line rules, heading increments, duplicate headings — is handled by `markdownlint-cli2` via `pnpm run check:markdown`. Auto-fix most issues with `pnpm run fix:markdown`. `pnpm run check` is the umbrella that runs both.
 
 ---
 

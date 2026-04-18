@@ -24,6 +24,7 @@ export function extractFencedBlocks(markdown: string, tags: string[]): FencedBlo
 ```
 
 Requirements:
+
 - Recognize both ```` ``` ```` and `~~~` fences.
 - Respect fence length (a fence of 4 backticks only closes on 4+ backticks).
 - Return empty array when no matches.
@@ -44,6 +45,7 @@ export async function renderViaKroki(
 ```
 
 Behavior:
+
 - `POST https://kroki.io/{tag}/png` with `Content-Type: text/plain`, body = source.
 - 15-second timeout via `AbortSignal.timeout(15000)`. Merge with the caller's `signal` if provided.
 - On non-2xx, return `{ ok: false, error: <truncated response text, max 500 chars> }`.
@@ -56,6 +58,7 @@ No tag aliasing in this Story — we pass `mermaid` only. Aliasing arrives in S2
 Registers a renderer for `customType: "pi-fence:output"`.
 
 Responsibilities:
+
 - Display the image inline using pi's existing image content handling.
 - Show a small label (e.g., `Rendered mermaid via kroki`).
 - On expand (ctrl+o), also show the original fenced source (syntax-highlighted).
@@ -79,6 +82,7 @@ Limit: max 5 rendered blocks per `agent_end` event (hardcoded). More than that a
 ### 5. `tests/parser.test.ts` — Unit tests for the parser
 
 Using vitest. Cases:
+
 - Single mermaid block, trivial body → one result.
 - Multiple blocks (two mermaid, one unrelated tag) → two results, correct order.
 - Block with `~~~` fences → recognized.
@@ -142,6 +146,7 @@ Failure-mode checks:
 - `/Users/henrique/me/oss/pi-fence/CHANGELOG.md` (add entry)
 
 Reference implementations to read before starting (not to copy blindly):
+
 - [`pi-mermaid/index.ts`](https://github.com/Gurpartap/pi-mermaid/blob/main/index.ts) — how it hooks `agent_end` and structures custom messages.
 - [`@walterra/pi-graphviz/extensions/graphviz-chart/index.ts`](https://github.com/walterra/agent-tools/blob/main/packages/pi-graphviz/extensions/graphviz-chart/index.ts) — how it returns an inline image content item.
 

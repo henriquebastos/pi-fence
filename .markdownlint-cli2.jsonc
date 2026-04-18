@@ -29,6 +29,16 @@
     "MD029": { "style": "ordered" },
 
     // MD046 code block style: fenced only. Our docs never use indented.
-    "MD046": { "style": "fenced" }
+    "MD046": { "style": "fenced" },
+
+    // MD041 first-line-heading: we open every doc with a breadcrumb link
+    // like '[< Parent](../README.md)' before the H1, as an explicit
+    // navigation convention. GitHub renders this cleanly above the title.
+    "MD041": false,
+
+    // MD060 table-column-style: our tables are readable in source without
+    // being column-aligned. Auto-formatting would bloat table widths for
+    // no reader benefit. Consistency is achieved per-table, not globally.
+    "MD060": false
   }
 }

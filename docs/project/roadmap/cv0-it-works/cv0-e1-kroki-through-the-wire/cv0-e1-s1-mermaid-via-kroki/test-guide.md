@@ -58,6 +58,7 @@ Start pi in any directory. Ask:
 > Draw me a simple mermaid flowchart of A going to B going to C.
 
 Expect:
+
 - The assistant answers with a ```` ```mermaid ```` fenced block (natural LLM behavior).
 - Immediately below the assistant's text, a PNG appears showing three nodes and arrows.
 - A small label near the image indicates `Rendered mermaid via kroki`.
@@ -73,12 +74,14 @@ Expect: the original mermaid source is shown below the image, syntax-highlighted
 Ask:
 
 > Show me this exact mermaid block, verbatim:
+>
 > ```mermaid
 > flowchart
 >   A -->>> B
 > ```
 
 Expect:
+
 - A pi-fence output message appears with an error from Kroki.
 - The error text is readable (not a raw stack trace).
 - The source is still visible when expanded.
@@ -88,6 +91,7 @@ Expect:
 Disconnect network. Ask for any mermaid diagram.
 
 Expect:
+
 - A pi-fence output message with a network-related error.
 - pi remains responsive. The error doesn't crash the session.
 
@@ -106,6 +110,7 @@ Ask for six diagrams in one answer (contrived, but forces the limit):
 > Give me six tiny mermaid flowcharts, each with two nodes.
 
 Expect:
+
 - Five rendered PNGs.
 - A single notify-level warning indicating additional blocks were skipped.
 
@@ -116,6 +121,7 @@ Ask:
 > Show me a `dot` graph of A → B.
 
 Expect:
+
 - Assistant produces a ```` ```dot ```` block.
 - **No** pi-fence output message. The block is still visible as raw source (S2 adds support).
 

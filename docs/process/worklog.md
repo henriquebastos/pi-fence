@@ -44,3 +44,17 @@ First run caught a latent bug: several `#fragment` links in the roadmap and Epic
 Updated `docs/product/principles.md`, S1's plan and test-guide to use `pnpm` commands. The `pnpm run check` step is now part of S1's verification list.
 
 Commits: `wip(agent): adopt pnpm as package manager`, `wip(agent): add link checker script and wire pnpm run check`.
+
+### 2026-04-18 — markdownlint-cli2
+
+Added markdownlint-cli2 for structural markdown linting (complements our link checker, doesn't replace it). Config philosophy: start from defaults, disable only rules we actively fight.
+
+Disabled: MD013 (line length), MD033 (inline HTML), MD034 (bare URLs), MD041 (first-line heading — our breadcrumb convention puts a link before the H1), MD060 (table column style — our tables are readable in source without column alignment).
+
+Configured: MD029 (`ordered` sequential numbering, not all-ones), MD046 (`fenced` only).
+
+First run surfaced 127 issues across all files. Auto-fix handled most (blank lines around lists and fences). Two MD040 violations (fenced blocks without a language tag) were ASCII-art diagrams in the Epic spec; tagged them as `text`. Final state: 0 violations, `pnpm run check` green.
+
+Also updated `docs/product/principles.md` to reference the new check script.
+
+Commits: `wip(agent): add markdownlint-cli2 with minimal config`, `wip(agent): fix markdown lint violations surfaced by initial run`.

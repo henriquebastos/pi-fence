@@ -21,12 +21,14 @@ Ask the assistant for a diagram:
 The assistant will answer with a fenced mermaid block. pi-fence should intercept it and render a PNG inline, below the assistant's text, in any terminal that supports inline images (Ghostty, Kitty, iTerm2, WezTerm).
 
 If you don't see an image, check:
+
 - Your terminal supports inline images.
 - You have network access (the default processor uses [kroki.io](https://kroki.io)).
 
 ## Next
 
 Once S1 ships this page expands with:
+
 - Configuration examples (`pi-fence` block in `settings.json`)
 - Offline setup via Docker Kroki
 - Adding/removing processors

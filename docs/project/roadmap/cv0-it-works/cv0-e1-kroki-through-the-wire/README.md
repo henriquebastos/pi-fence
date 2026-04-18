@@ -33,7 +33,7 @@ Then I ask: *"Same thing as a graphviz DOT graph."* — and the same mechanism h
 
 Narrow slice. One hook, one processor, one renderer.
 
-```
+```text
 assistant writes markdown
         │
         ▼
@@ -90,6 +90,7 @@ Only `agent_end`, not `input` and not `message_update`. Rationale:
 ### Render output shape
 
 `content` array with two items:
+
 1. `{ type: "image", data: <base64>, mimeType: "image/png" }` — inline image for the terminal.
 2. `{ type: "text", text: "Rendered <tag> via kroki" }` — fallback when inline images aren't supported.
 
@@ -128,7 +129,7 @@ Only `agent_end`, not `input` and not `message_update`. Rationale:
 
 ## Repository layout after this Epic
 
-```
+```text
 pi-fence/
 ├── extensions/
 │   └── pi-fence/

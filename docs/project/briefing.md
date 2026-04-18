@@ -46,6 +46,7 @@ Same shape as [Alisson Vale's mirror-mind](https://github.com/alissonvale/mirror
 Each language (mermaid, graphviz, plantuml, d2…) shares the same plumbing: detect fenced blocks, resolve what to do, render, emit a custom message. A single extension owns that plumbing. Language-specific code is a **processor** implementing a small interface and registered against a **registry**.
 
 **Why:**
+
 - Eliminates duplication (one parser, one cache, one message renderer).
 - Uniform UX (same header, same expansion behavior, same commands).
 - Install one package to get ten languages instead of ten packages.
@@ -63,6 +64,7 @@ Two activation modes coexist.
 Both modes are enabled by default. The user can disable either.
 
 **Why:**
+
 - Interception captures the zero-friction happy path that matches existing LLM behavior.
 - Tool captures the feedback-loop and parametrization cases interception can't serve well.
 - Sharing the pipeline means the two modes stay consistent.
@@ -72,6 +74,7 @@ Both modes are enabled by default. The user can disable either.
 [Kroki](https://kroki.io) is an HTTP service that converts 30+ text diagram languages into PNG/SVG (mermaid, graphviz, plantuml, d2, bpmn, wavedrom, vega-lite, nomnoml, structurizr, excalidraw, tikz, …). Self-hostable via Docker.
 
 **Why default:**
+
 - One processor covers most diagram languages out of the box.
 - Zero local dependencies — works on first install.
 - Self-hostable when privacy matters.
@@ -85,6 +88,7 @@ Both modes are enabled by default. The user can disable either.
 Processors are registered but their dependencies load only when the processor is activated. Each processor exposes an `available()` check that returns `{ok: true}` or `{ok: false, reason, installHint, autoFixCommand?}`.
 
 **Why:**
+
 - A user who only uses Kroki never pays the cost of loading mermaid's 40 MB npm package or checking for a Graphviz binary.
 - Missing dependencies yield actionable install hints instead of silent failure.
 - `/fence doctor` can diagnose the whole registry without forcing loads.
@@ -94,6 +98,7 @@ Processors are registered but their dependencies load only when the processor is
 Third-party extensions register their own processors through `pi.events`. They don't import `pi-fence` directly; they emit a register event with a processor object. pi-fence listens and adds it to the registry.
 
 **Why:**
+
 - No hard coupling between extensions.
 - Third parties version independently.
 - Two extensions can register processors for the same tag; the registry resolves by priority + availability.
@@ -122,6 +127,7 @@ The unit of extensibility is a `FenceProcessor`, not a `Renderer`. A processor r
 - `error` (structured, with parse issues)
 
 **Why:**
+
 - Anchoring on "render" would assume image output; CSV-as-table and SQL-highlight need text output.
 - `passthrough` lets a processor inspect the input and decline without blocking lower-priority processors.
 - `error` with structured parse issues feeds the tool-mode feedback loop and the interception-mode warnings uniformly.
