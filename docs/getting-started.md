@@ -23,7 +23,6 @@ The assistant will answer with a fenced mermaid block. pi-fence should intercept
 If you don't see an image, check:
 - Your terminal supports inline images.
 - You have network access (the default processor uses [kroki.io](https://kroki.io)).
-- `/fence list` shows the `kroki` processor as `ready`.
 
 ## Next
 
