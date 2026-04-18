@@ -1,0 +1,34 @@
+// markdownlint-cli2 configuration.
+// Rule reference: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+//
+// Philosophy: start from defaults, disable only rules we actively fight.
+{
+  "globs": ["**/*.md"],
+  "ignores": [
+    "node_modules",
+    ".git",
+    "CHANGELOG.md"
+  ],
+  "config": {
+    "default": true,
+
+    // MD013 line-length: docs have long sentences, URLs, and tables.
+    // Enforcing any specific limit causes more contortion than it prevents.
+    "MD013": false,
+
+    // MD033 inline HTML: we use <details>, <sup>, and similar sparingly
+    // in doc content. GitHub renders them fine.
+    "MD033": false,
+
+    // MD034 bare URLs: we reference kroki.io, pi.dev etc. as plain URLs
+    // in body prose. Wrapping every one in <> is noise.
+    "MD034": false,
+
+    // MD029 ordered list numbering: enforce sequential (1. 2. 3.) rather
+    // than all-ones. Sequential reads well in the raw source too.
+    "MD029": { "style": "ordered" },
+
+    // MD046 code block style: fenced only. Our docs never use indented.
+    "MD046": { "style": "fenced" }
+  }
+}

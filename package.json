@@ -40,8 +40,10 @@
     ]
   },
   "scripts": {
-    "check": "pnpm run check:links",
-    "check:links": "tsx scripts/check-links.ts"
+    "check": "pnpm run check:links && pnpm run check:markdown",
+    "check:links": "tsx scripts/check-links.ts",
+    "check:markdown": "markdownlint-cli2",
+    "fix:markdown": "markdownlint-cli2 --fix"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
@@ -50,6 +52,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "markdownlint-cli2": "^0.22.0",
     "tsx": "^4.21.0"
   }
 }
