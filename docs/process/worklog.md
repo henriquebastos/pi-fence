@@ -25,7 +25,7 @@ Created `~/me/oss/pi-fence/` with:
 - Top-level project files: `README.md`, `CHANGELOG.md`, `LICENSE` (MIT), `package.json`, `tsconfig.json`, `.gitignore`.
 - Extension stub at `extensions/pi-fence/index.ts` (exports default function, no logic — logic lands in S1).
 - Docs tree inspired by Alisson Vale's [mirror-mind](https://github.com/alissonvale/mirror-mind) convention: Community Value → Epic → Story, with breadcrumbs and `README.md` as folder index. Dated logs (worklog, decisions) are chronological ascending so every update is an append at the end of the file.
-- Foundational decisions captured in [briefing.md](../project/briefing.md): D1–D8 covering registry-based architecture, hybrid activation (interception + tool), Kroki as default engine, lazy loading, plugin surface via event bus, user ownership of the registry, `FenceProcessor` as the core abstraction, English as the internal language.
+- Foundational decisions captured in [briefing.md](../project/briefing.md): D1–D8 covering registry-based architecture, activation strategy, Kroki as default engine, lazy loading, plugin surface via event bus, user ownership of the registry, `FenceProcessor` as the core abstraction, English as the internal language. (D2 was later revised from hybrid to interception-only — see the 2026-04-18 decision entry.)
 - Full roadmap drafted: CV0 (It Works) → CV1 (Take Control) → CV2 (Work Offline) → CV3 (Beyond Diagrams) → CV4 (Platform). Only CV0.E1.S1 is fully specced. The rest are named and sequenced.
 - Design principles in [principles.md](../product/principles.md).
 

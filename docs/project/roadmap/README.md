@@ -58,12 +58,12 @@
 | `CV1.E1.S2` | **I configure the Kroki endpoint (public, local Docker, self-hosted)** | Planned |
 | `CV1.E1.S3` | **I run `/fence doctor` and see what's available and what's missing** | Planned |
 
-### CV1.E2 — Hybrid Mode
+### CV1.E2 — Error Feedback Loop
 
 | Code | Story | Status |
 |------|-------|--------|
-| `CV1.E2.S1` | **The LLM can call `render_fence` when it wants parse feedback** | Planned |
-| `CV1.E2.S2` | **Interception and tool share config and pipeline** | Planned |
+| `CV1.E2.S1` | **I see readable errors in place of broken diagrams** | Planned |
+| `CV1.E2.S2` | **The LLM receives render errors as follow-ups and corrects in the same turn** | Planned |
 
 ---
 

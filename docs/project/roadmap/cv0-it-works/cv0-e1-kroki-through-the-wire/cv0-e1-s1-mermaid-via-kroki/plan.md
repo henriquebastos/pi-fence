@@ -158,7 +158,7 @@ Reference implementations to read before starting (not to copy blindly):
 - `/fence list` command (S3).
 - Any `FenceProcessor` abstraction (CV0.E2).
 - Settings, config, endpoint override (CV1.E1).
-- Tool `render_fence` (CV1.E2).
+- Error feedback surface / follow-up injection (CV1.E2).
 - Cache of rendered images.
 - User-input blocks (only assistant).
 - Streaming/partial rendering.

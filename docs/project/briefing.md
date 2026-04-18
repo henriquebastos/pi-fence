@@ -54,20 +54,25 @@ Each language (mermaid, graphviz, plantuml, d2…) shares the same plumbing: det
 
 **Trade-off accepted:** one package can grow large. Mitigated by D4 (lazy loading).
 
-### D2 — Hybrid activation: interception by default + optional explicit tool
+### D2 — Interception-only, with errors fed back as follow-up messages
 
-Two activation modes coexist.
+Activation is interception. The extension hooks `agent_end` (and optionally `input`), finds fenced blocks, and runs them through the registry. No `render_fence` tool is exposed to the LLM.
 
-- **Interception (default):** the extension hooks `agent_end` and `input`, finds fenced blocks, and renders them. Zero cognitive overhead for the user. Zero extra turns. The LLM writes mermaid the way it already does.
-- **Tool (opt-in):** a `render_fence` tool is registered for cases where the LLM benefits from feedback (parse errors it can fix, explicit parameters like theme/size). The tool uses the same registry and pipeline.
+**Error feedback.** When a processor returns an error (parse failure, renderer crash, Kroki 4xx), the extension:
 
-Both modes are enabled by default. The user can disable either.
+1. Emits a readable error message in place of the image, so the user sees *what went wrong* rather than a broken output.
+2. Injects the error as a follow-up message delivered to the agent via `pi.sendMessage(..., { deliverAs: "followUp" })`. The LLM sees the error **in the same turn** it wrote the broken block and can correct immediately, without waiting for the next user prompt.
 
-**Why:**
+**Parameters.** The LLM passes theme, size, layout and similar options via the fenced info string: ```` ```mermaid theme=dark width=800 ````. The processor reads `meta` from the fence, not from a tool argument.
 
-- Interception captures the zero-friction happy path that matches existing LLM behavior.
-- Tool captures the feedback-loop and parametrization cases interception can't serve well.
-- Sharing the pipeline means the two modes stay consistent.
+**Why interception-only beats hybrid:**
+
+- Matches existing LLM behavior. Any model trained on GitHub-flavored Markdown already emits ```` ```mermaid ```` blocks unprompted. No prompt engineering needed.
+- One mental model. The LLM doesn’t have to choose between “inline block” and “tool call” for the same act. Users never wonder why a diagram appeared via two different mechanisms.
+- Smaller surface. No tool description to ship in the system prompt, no tool-call-vs-content ambiguity in the session tree, no renderer-in-two-places code path.
+- Error feedback still works. The follow-up message path gives the LLM the same signal a tool result would, delivered in-turn.
+
+**Trade-off accepted.** The LLM cannot pre-validate a diagram before emitting it. A broken block reaches the user first (as an error panel, not garbled output), then the LLM corrects on the follow-up. Worst case: one or two self-correction turns per bad block. Observed rate of bad blocks from current models on common diagram types is low enough that this is acceptable.
 
 ### D3 — Kroki as the default engine
 

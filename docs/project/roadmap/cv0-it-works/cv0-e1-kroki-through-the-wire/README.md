@@ -112,7 +112,7 @@ Only `agent_end`, not `input` and not `message_update`. Rationale:
 
 - Any concept of a `FenceProcessor` interface — the Kroki logic is inline, not a plugin yet. (Abstraction arrives in CV0.E2 when a second processor appears.)
 - User settings (endpoint, enable/disable, per-tag processor binding) — [CV1.E1](../../README.md#cv1--take-control-control)
-- Tool `render_fence` — [CV1.E2](../../README.md#cv1--take-control-control)
+- Error feedback surface — [CV1.E2](../../README.md#cv1--take-control-control)
 - Local renderers (graphviz binary, mmdc) — [CV0.E2](../../README.md#cv0e2--graphviz-local) and [CV2.E1](../../README.md#cv2--work-offline-portability)
 - Docker Kroki — [CV2.E2](../../README.md#cv2e2--kroki-via-docker)
 - Cache, render limits, deduplication — decide with real usage
