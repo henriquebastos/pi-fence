@@ -39,9 +39,17 @@
       "./extensions/pi-fence/index.ts"
     ]
   },
+  "scripts": {
+    "check": "pnpm run check:links",
+    "check:links": "tsx scripts/check-links.ts"
+  },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
     "@mariozechner/pi-tui": "*",
     "@sinclair/typebox": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "tsx": "^4.21.0"
   }
 }

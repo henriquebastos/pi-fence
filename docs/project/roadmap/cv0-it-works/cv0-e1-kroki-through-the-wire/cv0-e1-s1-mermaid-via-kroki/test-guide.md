@@ -22,8 +22,9 @@
 Run from the repo root.
 
 ```bash
-npm install
-npm test
+pnpm install
+pnpm run check   # docs link check
+pnpm test        # unit tests
 ```
 
 Expect: parser tests pass. No smoke test in this Story.

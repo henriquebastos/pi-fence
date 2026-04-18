@@ -9,3 +9,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Repository scaffold: docs structure, package metadata, extension entry point stub.
+- pnpm as the package manager, pinned via `packageManager` field.
+- `scripts/check-links.ts`: validates internal markdown links and heading fragments. Runs via `pnpm run check`.

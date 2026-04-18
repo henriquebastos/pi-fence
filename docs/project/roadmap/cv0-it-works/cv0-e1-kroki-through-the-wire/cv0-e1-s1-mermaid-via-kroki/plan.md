@@ -90,7 +90,7 @@ No tests for the Kroki HTTP call in this Story (no mock infrastructure in place 
 
 ### 6. Test dependency setup
 
-Add vitest as a dev dependency. `npm test` runs `vitest run`. `npm run test:watch` runs `vitest`.
+Add vitest as a dev dependency. `pnpm test` runs `vitest run`. `pnpm run test:watch` runs `vitest`.
 
 ### 7. README + CHANGELOG updates
 
@@ -116,16 +116,17 @@ Each commit leaves tests passing.
 
 ## Verification
 
-1. `npm test` — parser tests pass.
-2. Install the extension locally: `pi install /absolute/path/to/pi-fence` (or symlink into `~/.pi/agent/extensions/pi-fence/`); `/reload`.
-3. In pi, ask: *"Draw a mermaid flowchart of A → B → C."*
-4. Assistant responds with a ```` ```mermaid ```` block.
-5. Below the assistant text, a PNG appears showing the three nodes and arrows.
-6. Terminal tested: Ghostty (primary target).
+1. `pnpm run check` — docs links pass.
+2. `pnpm test` — parser tests pass.
+3. Install the extension locally: `pi install /absolute/path/to/pi-fence` (or symlink into `~/.pi/agent/extensions/pi-fence/`); `/reload`.
+4. In pi, ask: *"Draw a mermaid flowchart of A → B → C."*
+5. Assistant responds with a ```` ```mermaid ```` block.
+6. Below the assistant text, a PNG appears showing the three nodes and arrows.
+7. Terminal tested: Ghostty (primary target).
 
 Failure-mode checks:
-7. Ask for an intentionally broken diagram: *"Write this exact mermaid with a syntax error: ```mermaid\nflowchart\n  A -->>> B\n``` "*. Expect the error message to surface as a pi-fence output message, not a silent failure.
-8. Disconnect network, ask for a diagram. Expect a clear error about network failure.
+8. Ask for an intentionally broken diagram: *"Write this exact mermaid with a syntax error: ```mermaid\nflowchart\n  A -->>> B\n``` "*. Expect the error message to surface as a pi-fence output message, not a silent failure.
+9. Disconnect network, ask for a diagram. Expect a clear error about network failure.
 
 ---
 

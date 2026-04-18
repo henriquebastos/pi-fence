@@ -42,9 +42,11 @@ Two kinds of automated tests, each with a clear purpose.
 
 **Smoke tests** — end-to-end against a real processor (Kroki public, or a local binary when available). Slower, can be gated behind an env var. Catch integration regressions.
 
-**Skip a smoke test cleanly when its dependency isn't available.** A developer on a machine without Docker or Graphviz should still be able to run `npm test` and see green.
+**Skip a smoke test cleanly when its dependency isn't available.** A developer on a machine without Docker or Graphviz should still be able to run `pnpm test` and see green.
 
 **Every commit leaves tests passing.**
+
+**Docs are checked too.** Link integrity is verified by `pnpm run check:links`, which walks the `docs/` tree and validates that every relative markdown link resolves to a real file and every `#fragment` points to a real heading. Run it before committing doc changes. `pnpm run check` is the umbrella that includes links and anything else we add later.
 
 ---
 

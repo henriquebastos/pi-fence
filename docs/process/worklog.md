@@ -32,3 +32,15 @@ Created `~/me/oss/pi-fence/` with:
 No code yet beyond the extension stub. Implementation starts with S1.
 
 Commit: `chore: scaffold repository with docs structure`.
+
+### 2026-04-18 — pnpm + link checker
+
+Adopted pnpm as the package manager (matching the sibling agent-tools monorepo where pi-graphviz and pi-charts live). Pinned via `packageManager: pnpm@10.33.0`.
+
+Added `scripts/check-links.ts` — validates internal markdown links and heading fragments across the docs tree. Runs via `pnpm run check` (umbrella) or `pnpm run check:links` (specific).
+
+First run caught a latent bug: several `#fragment` links in the roadmap and Epic docs were pointing to valid slugs, but my earlier inline Python validator had a path-normalization bug (keys prefixed with `./`) that silently skipped fragment checks. The TypeScript script is stricter and uses absolute paths throughout. Its slugifier also matches GitHub's real behavior (per-space hyphen, not collapsed whitespace), so double-hyphen slugs like `cv1--take-control-control` resolve correctly.
+
+Updated `docs/product/principles.md`, S1's plan and test-guide to use `pnpm` commands. The `pnpm run check` step is now part of S1's verification list.
+
+Commits: `wip(agent): adopt pnpm as package manager`, `wip(agent): add link checker script and wire pnpm run check`.
