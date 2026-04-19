@@ -12,7 +12,7 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 Implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
 
-Before S1 feature work begins, a Docker-capable machine must verify the live path end-to-end: `pnpm live:build`, `pnpm live:up`, `pnpm test:live` should turn 7 currently-skipped integration tests green. This has not yet been done on any machine — the development host used during S0 does not have Docker installed.
+The live Docker path is verified end-to-end as of 2026-04-18: `pnpm live:build`, `pnpm live:up`, `pnpm test:live` turns all 7 integration tests green on macOS arm64 with Colima. Two live-container bugs were caught and fixed during that verification (see the closing worklog entry below).
 
 Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -114,7 +114,6 @@ Commits landed in five sub-drafts:
 
 Honest caveats carried forward into S1:
 
-- Docker path was never exercised end-to-end during S0 — the dev host has no Docker. All 7 integration tests report as skipped. The S1 kick-off must verify `pnpm live:up && pnpm test:live` on a Docker-capable host.
 - `HttpClient` still lives under `tests/utilities/`. S1's `kroki.ts` will import from that path. A later story promotes the three I/O seams to `extensions/pi-fence/io/`.
 - The three exemplar tests (`tests/unit/example.test.ts`, `tests/extension/example.test.ts`, `tests/integration/example.live.test.ts`) are placeholders. S1 deletes them as its real tests take over.
 - `PI_FENCE_LOG_LEVEL` env var is documented in `NodeLogger` but no `/fence trace` command exists yet. The command and its session-storage integration land with S1.
@@ -138,3 +137,31 @@ Commits for Draft 3 (11 total):
 - `5be50a9` document testing workflow in getting-started
 
 S0 status in the Epic: ✅.
+
+### 2026-04-18 — S0 live path verified end-to-end ✅
+
+The two Docker-path items flagged at S0 close are now met on macOS arm64 with Colima as the Docker provider.
+
+Full lifecycle verified:
+
+- `pnpm live:build` → image built from `docker/Dockerfile` with graphviz installed.
+- `pnpm live:up` → container `pi-fence-live-deps` started from the local image (doesn't need the ghcr pull to succeed, which is correct: the image isn't published yet).
+- `pnpm live:status` → `running`.
+- `pnpm live:exec dot -V` → graphviz 2.43.0 reachable inside the container.
+- `pnpm live:exec -- dot -V` → same, after the `--` separator fix below.
+- `pnpm test:live` → 7/7 green (2 files, integration layer).
+- `pnpm test:all` → 72/72 green.
+- `pnpm live:down` → container stopped and removed.
+- `pnpm live:status` → `absent`.
+- `pnpm test:live` with no container → 7/7 skipped cleanly, exit 0.
+
+Two real bugs caught and fixed during verification:
+
+1. `live:up` forced a `docker pull` even when the image was locally built, and the pull failed with `denied` because the image isn't published to ghcr yet. Fixed by adding a `hasLocalImage()` check that skips the pull when a local image is present; logs `started (from local image)` when that path is taken.
+2. `pnpm live:exec -- dot -V` (the form documented in the test guide) failed because the `--` separator was passed through as the literal first arg to `docker exec`. Fixed in `cmdExec` by stripping a leading `--`; both forms work now.
+
+Both fixes committed as `4c36bc1 wip(agent): fix two live-container bugs surfaced by end-to-end verification`.
+
+The verification also incidentally caught that `@zenobius/pi-extension-config`, `markdownlint-cli2`, the whole `tests/` tree, and the four workflow scripts all compose cleanly from a clean container start on Colima. Nothing host-specific leaked into the test harness.
+
+S0 status: fully done, verified on a real Docker host.
