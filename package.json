@@ -45,7 +45,13 @@
     "check:markdown": "markdownlint-cli2",
     "fix:markdown": "markdownlint-cli2 --fix",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:live": "vitest run tests/integration",
+    "live:up": "tsx scripts/live-container.ts up",
+    "live:down": "tsx scripts/live-container.ts down",
+    "live:status": "tsx scripts/live-container.ts status",
+    "live:exec": "tsx scripts/live-container.ts exec",
+    "live:build": "tsx scripts/live-container.ts build"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
