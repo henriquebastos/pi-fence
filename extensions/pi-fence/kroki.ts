@@ -30,6 +30,21 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const ERROR_BODY_MAX_CHARS = 500;
 
 /**
+ * Canonical tags the Kroki processor handles. Matches the Kroki public
+ * endpoint's naming. Aliases that users/LLMs actually write live in
+ * `KROKI_ALIASES` below and resolve to one of these at request time.
+ *
+ * Exported so the extension's `/fence list` command can advertise the
+ * processor's accepted tags without duplicating the list.
+ */
+export const KROKI_CANONICAL_TAGS: readonly string[] = [
+	"mermaid",
+	"graphviz",
+	"plantuml",
+	"d2",
+];
+
+/**
  * Map colloquial tag names to Kroki's canonical endpoint names. Extend when
  * a user or LLM writes a tag Kroki doesn't recognise directly.
  *
@@ -37,8 +52,12 @@ const ERROR_BODY_MAX_CHARS = 500;
  * second processor (graphviz-local in CV0.E2) calls `dot` directly, so
  * this map doesn't apply there. Extract to a shared module only when a
  * second alias map earns its place.
+ *
+ * Exported so `/fence list` can surface the aliases in its output. Every
+ * value in this map must appear in `KROKI_CANONICAL_TAGS` — the
+ * `FenceProcessor` contract enforces that, the contract test asserts it.
  */
-const KROKI_TAG_ALIASES: Record<string, string> = {
+export const KROKI_ALIASES: Readonly<Record<string, string>> = {
 	dot: "graphviz",
 	puml: "plantuml",
 };
@@ -60,6 +79,8 @@ export function createKrokiRenderer(
 
 	return {
 		id: "kroki",
+		tags: KROKI_CANONICAL_TAGS,
+		aliases: KROKI_ALIASES,
 
 		async render(tag, source, signal): Promise<FenceResult> {
 			if (signal?.aborted) {
@@ -67,7 +88,7 @@ export function createKrokiRenderer(
 			}
 
 			const combinedSignal = mergeSignals([signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)]);
-			const krokiTag = KROKI_TAG_ALIASES[tag] ?? tag;
+			const krokiTag = KROKI_ALIASES[tag] ?? tag;
 
 			let response;
 			try {

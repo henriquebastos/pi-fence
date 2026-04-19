@@ -22,6 +22,21 @@ export interface FenceProcessor {
 	/** Stable id used for logs, settings, and future registry lookups. */
 	readonly id: string;
 
+	/**
+	 * Canonical tag names this processor handles. Non-empty. Used by the
+	 * extension to build its fenced-block allowlist and by `/fence list`
+	 * to advertise what the processor accepts.
+	 */
+	readonly tags: readonly string[];
+
+	/**
+	 * Map from alias tag → canonical tag. Every value must appear in `tags`.
+	 * Empty object for processors that do not declare aliases. Readonly so
+	 * callers of `/fence list` cannot mutate a processor's advertised
+	 * configuration.
+	 */
+	readonly aliases: Readonly<Record<string, string>>;
+
 	/** Render the source for the given tag. Returns data on both success and failure paths. */
 	render(tag: string, source: string, signal?: AbortSignal): Promise<FenceResult>;
 }

@@ -56,6 +56,29 @@ export function runFenceProcessorContract(
 			expect(processor.id.length).toBeGreaterThan(0);
 		});
 
+		it("exposes a non-empty tags array of strings", () => {
+			const processor = factory();
+			expect(Array.isArray(processor.tags)).toBe(true);
+			expect(processor.tags.length).toBeGreaterThan(0);
+			for (const tag of processor.tags) {
+				expect(typeof tag).toBe("string");
+				expect(tag.length).toBeGreaterThan(0);
+			}
+		});
+
+		it("exposes an aliases record whose values are canonical tags", () => {
+			const processor = factory();
+			expect(processor.aliases).toBeTypeOf("object");
+			expect(processor.aliases).not.toBeNull();
+			const canonical = new Set(processor.tags);
+			for (const [alias, target] of Object.entries(processor.aliases)) {
+				expect(typeof alias).toBe("string");
+				expect(alias.length).toBeGreaterThan(0);
+				expect(typeof target).toBe("string");
+				expect(canonical.has(target)).toBe(true);
+			}
+		});
+
 		it("returns a Promise from render()", () => {
 			const processor = factory();
 			const promise = processor.render(cases.tag, cases.goodSource);
