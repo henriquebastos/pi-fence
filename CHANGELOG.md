@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV0.E1.S1 — Mermaid via Kroki)
+
+- `extensions/pi-fence/parser.ts` — pure `extractFencedBlocks(markdown, tags)`. CommonMark-narrowed: backtick and tilde fences, fence-length respect, up to 3 spaces leading indent, case-sensitive tag matching, info-string suffix preserved verbatim, CRLF normalised, unclosed fences ignored.
+- `extensions/pi-fence/kroki.ts` — `createKrokiRenderer(http, endpoint?)` returning a `FenceProcessor`. HttpClient DI; 15-second internal timeout merged with caller's signal; 4xx/5xx bodies truncated to 500 chars in the error message; `AbortSignal.any` to merge signals.
+- `extensions/pi-fence/renderer.ts` — custom message renderer for `customType: "pi-fence:output"`. Pure helpers (`formatLabel`, `hasSourceOverflow`, `clipSourceLines`) unit-tested; `createPiFenceMessageRenderer(tui)` composes pi-tui primitives around the image/error content pi already renders.
+- `extensions/pi-fence/processor.ts` — `FenceProcessor` interface and `FenceResult` union. The first contract the project organises around. The registry arrives with CV0.E2 when a second processor lands.
+- `extensions/pi-fence/index.ts` — default factory: production wiring with `NodeHttpClient` + `NodeLogger`. Exports `createPiFenceExtension(pi, deps)` as the test seam. Hooks `agent_end`, parses the assistant's text, renders up to 5 mermaid blocks per turn, emits `pi-fence:output` custom messages.
+- `tests/contract/fence-processor.ts` — shareable contract helper `runFenceProcessorContract(label, factory, cases)`. Asserts id shape, Promise return, good-source success, bad-source structured error, pre-aborted signal safety.
+- `tests/contract/kroki.contract.test.ts` — Kroki's conformance to the FenceProcessor contract via `FakeHttpClient`.
+- `tests/extension/pi-fence.test.ts` — real-SDK pipeline test: `AgentSession` + `cannedAssistantStream` emits a mermaid block; asserts `pi-fence:output` is emitted with an image content item whose base64 decodes to the fixture PNG.
+- `tests/integration/kroki.live.test.ts` — live integration against `https://kroki.io` via `NodeHttpClient`. PNG magic + size floor; error shape for malformed mermaid; AbortSignal safety mid-flight.
+- `tests/unit/parser.test.ts`, `tests/unit/kroki.test.ts`, `tests/unit/renderer.test.ts` — unit suites for the three production modules.
+- Three S0 exemplar tests removed as real S1 tests replaced them: `tests/unit/example.test.ts`, `tests/extension/example.test.ts`, `tests/integration/example.live.test.ts`.
+- README and getting-started updated to describe the working happy path.
+
+
 ### Added
 - Repository scaffold: docs structure, package metadata, extension entry point stub.
 - pnpm as the package manager, pinned via `packageManager` field.
