@@ -94,6 +94,45 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 	);
 });
 
+describe("pi-fence extension — /fence list command through AgentSession", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"emits a pi-fence:list custom message describing the Kroki processor",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithCommand(http, "/fence list");
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(m) => m.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+
+			expect(listMessages[0].details).toMatchObject({
+				listings: [
+					{
+						id: "kroki",
+						status: "registered",
+						tags: ["mermaid", "graphviz", "plantuml", "d2"],
+						aliases: { dot: "graphviz", puml: "plantuml" },
+					},
+				],
+				lines: ["kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2"],
+			});
+
+			// No HTTP calls — `/fence list` is offline.
+			expect(http.requests).toHaveLength(0);
+			// No pi-fence:output leaked into the command path.
+			expect(
+				captured.sentCustomMessages.filter((m) => m.customType === "pi-fence:output"),
+			).toHaveLength(0);
+		},
+		20_000,
+	);
+});
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -137,14 +176,20 @@ function expectImageBytes(content: unknown, expectedBytes: Buffer): void {
 }
 
 /**
- * Stand up a real AgentSession with pi-fence loaded as an inline factory,
- * run `assistantText` through a canned stream, and return captured custom
- * messages.
+ * Stand up a real AgentSession with pi-fence loaded as an inline factory.
+ * Returns the session, the captured custom messages array, and the model
+ * for any caller that needs to wire `streamFn` before calling
+ * `session.prompt(...)`.
+ *
+ * Shared between `runExtensionWithAssistantText` (which fires the full
+ * agent_end pipeline through a canned stream) and `runExtensionWithCommand`
+ * (which dispatches a slash command, bypassing streamFn entirely).
  */
-async function runExtensionWithAssistantText(
-	http: FakeHttpClient,
-	assistantText: string,
-): Promise<Captured> {
+async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
+	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
+	sentCustomMessages: CapturedCustomMessage[];
+	model: NonNullable<ReturnType<typeof getModel>>;
+}> {
 	const logger = new FakeLogger();
 	const sentCustomMessages: CapturedCustomMessage[] = [];
 
@@ -191,8 +236,23 @@ async function runExtensionWithAssistantText(
 		resourceLoader,
 	});
 
-	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 	session.subscribe(() => {});
+
+	return { session, sentCustomMessages, model };
+}
+
+/**
+ * Stand up a real AgentSession with pi-fence loaded as an inline factory,
+ * run `assistantText` through a canned stream, and return captured custom
+ * messages.
+ */
+async function runExtensionWithAssistantText(
+	http: FakeHttpClient,
+	assistantText: string,
+): Promise<Captured> {
+	const { session, sentCustomMessages, model } = await buildSessionWithExtension(http);
+
+	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
 	try {
 		await session.prompt("render it");
@@ -202,6 +262,26 @@ async function runExtensionWithAssistantText(
 
 	// Wait a tick for any deferred sendMessage calls triggered by agent_end
 	// to settle.
+	await new Promise((r) => setTimeout(r, 50));
+
+	return { sentCustomMessages };
+}
+
+/**
+ * Stand up a real AgentSession with pi-fence loaded and dispatch a slash
+ * command through `session.prompt("/...")`. AgentSession routes commands
+ * straight to the registered handler without involving the LLM, so no
+ * stream is needed.
+ */
+async function runExtensionWithCommand(http: FakeHttpClient, command: string): Promise<Captured> {
+	const { session, sentCustomMessages } = await buildSessionWithExtension(http);
+
+	try {
+		await session.prompt(command);
+	} finally {
+		session.dispose();
+	}
+
 	await new Promise((r) => setTimeout(r, 50));
 
 	return { sentCustomMessages };
