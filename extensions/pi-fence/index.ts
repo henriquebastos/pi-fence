@@ -25,10 +25,21 @@ import { NodeLogger } from "../../tests/utilities/logger.ts";
 
 import { extractFencedBlocks } from "./parser.ts";
 import { createKrokiRenderer } from "./kroki.ts";
+import { formatProcessorLines, listProcessors, type ProcessorListing } from "./list.ts";
 import type { FenceProcessor, FenceResult } from "./processor.ts";
-import { createPiFenceMessageRenderer, type PiFenceOutputDetails } from "./renderer.ts";
+import {
+	createPiFenceListRenderer,
+	createPiFenceMessageRenderer,
+	type PiFenceListDetails,
+	type PiFenceOutputDetails,
+} from "./renderer.ts";
 
 const CUSTOM_MESSAGE_TYPE = "pi-fence:output";
+const LIST_MESSAGE_TYPE = "pi-fence:list";
+
+// Subcommands pi-fence's `/fence` command accepts today. Widened by
+// future stories (`/fence doctor`, `/fence trace`).
+const FENCE_SUBCOMMANDS = ["list"] as const;
 
 // Tags pi-fence claims on fenced blocks in the assistant's output. Order
 // is for readability; matching is by exact string membership.
@@ -59,16 +70,39 @@ export interface PiFenceDeps {
  */
 export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): void {
 	const processor = deps.processor ?? createKrokiRenderer(deps.http);
+	const processors: FenceProcessor[] = [processor];
 
-	// Custom message renderer — composes pi-tui primitives around the
+	// Custom message renderers — compose pi-tui primitives around the
 	// image/error content pi's runtime draws.
-	const messageRenderer = createPiFenceMessageRenderer({
+	const tuiPrimitives = {
 		Box: Box as never,
 		Text: Text as never,
 		Spacer: Spacer as never,
 		truncateToWidth,
+	};
+	pi.registerMessageRenderer(
+		CUSTOM_MESSAGE_TYPE,
+		createPiFenceMessageRenderer(tuiPrimitives) as never,
+	);
+	pi.registerMessageRenderer(
+		LIST_MESSAGE_TYPE,
+		createPiFenceListRenderer(tuiPrimitives) as never,
+	);
+
+	// Slash command: `/fence <subcommand>`. Today the only subcommand is
+	// `list`. Unknown or empty subcommands surface a warning naming the
+	// available ones — help text grows when more subcommands exist.
+	pi.registerCommand("fence", {
+		description: "List or inspect pi-fence processors (usage: /fence list)",
+		handler: async (args, ctx) => {
+			const subcommand = args.trim().split(/\s+/)[0] ?? "";
+			if (subcommand === "list") {
+				sendListMessage(pi, processors);
+				return;
+			}
+			notifyUnknownSubcommand(ctx, subcommand);
+		},
 	});
-	pi.registerMessageRenderer(CUSTOM_MESSAGE_TYPE, messageRenderer as never);
 
 	// Hook the assistant's turn — parse fenced blocks, render each via the
 	// processor, emit a custom message per block.
@@ -92,6 +126,41 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 			pi.sendMessage(buildCustomMessage(block.tag, block.source, processor.id, result));
 		}
 	});
+}
+
+// ---------------------------------------------------------------------------
+// /fence command helpers
+// ---------------------------------------------------------------------------
+
+function sendListMessage(pi: ExtensionAPI, processors: readonly FenceProcessor[]): void {
+	const listings: ProcessorListing[] = listProcessors(processors);
+	const lines = formatProcessorLines(listings);
+	const details: PiFenceListDetails & { listings: ProcessorListing[] } = {
+		lines,
+		listings,
+	};
+	pi.sendMessage({
+		customType: LIST_MESSAGE_TYPE,
+		content: [{ type: "text", text: lines.join("\n") }] as never,
+		details: details as never,
+		display: true,
+	});
+}
+
+/**
+ * Shape of the minimal bit of `ExtensionCommandContext` pi-fence uses. We
+ * only ever call `ctx.ui.notify`, so typing it as this narrow slice keeps
+ * the unit test's fake context compatible without pulling in the full
+ * pi-coding-agent ctx type.
+ */
+interface NotifyContext {
+	ui: { notify(message: string, type?: "info" | "warning" | "error"): void };
+}
+
+function notifyUnknownSubcommand(ctx: NotifyContext, subcommand: string): void {
+	const available = FENCE_SUBCOMMANDS.join(", ");
+	const prefix = subcommand === "" ? "No subcommand given" : `Unknown subcommand '${subcommand}'`;
+	ctx.ui.notify(`${prefix}. Available: ${available}`, "warning");
 }
 
 // ---------------------------------------------------------------------------

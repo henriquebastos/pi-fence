@@ -21,12 +21,46 @@
 
 export type ExtensionEventHandler = (event: unknown, ctx: FakeExtensionContext) => Promise<void> | void;
 
+export interface CapturedNotification {
+	message: string;
+	type: "info" | "warning" | "error";
+}
+
+/**
+ * Minimal stand-in for the real `ExtensionUIContext`. Only implements
+ * `notify` today; `select` / `confirm` throw loudly so the moment a
+ * consumer reaches for them we get a clear signal to add coverage.
+ */
+export interface FakeExtensionUIContext {
+	readonly notifications: CapturedNotification[];
+	notify(message: string, type?: "info" | "warning" | "error"): void;
+	select(title: string, options: string[]): Promise<string | undefined>;
+	confirm(title: string, message: string): Promise<boolean>;
+}
+
 export interface FakeExtensionContext {
 	cwd: string;
 	hasUI: boolean;
+	ui: FakeExtensionUIContext;
 	// Minimal ctx surface. Real ExtensionContext has many more fields
 	// (sessionManager, modelRegistry, signal, …). Add them here as the
 	// tests that need them arrive.
+}
+
+function makeFakeUI(): FakeExtensionUIContext {
+	const notifications: CapturedNotification[] = [];
+	return {
+		notifications,
+		notify(message, type = "info") {
+			notifications.push({ message, type });
+		},
+		async select() {
+			throw new Error(NOT_IMPLEMENTED);
+		},
+		async confirm() {
+			throw new Error(NOT_IMPLEMENTED);
+		},
+	};
 }
 
 export interface SentMessage {
@@ -62,9 +96,12 @@ export class FakeExtensionAPI {
 	readonly registeredCommands = new Map<string, unknown>();
 	readonly registeredTools = new Map<string, unknown>();
 
+	readonly ui: FakeExtensionUIContext = makeFakeUI();
+
 	private defaultCtx: FakeExtensionContext = {
 		cwd: process.cwd(),
 		hasUI: false,
+		ui: this.ui,
 	};
 
 	// -------------------------------------------------------------------
@@ -88,6 +125,32 @@ export class FakeExtensionAPI {
 		for (const handler of list) {
 			await handler(payload, ctx);
 		}
+	}
+
+	/**
+	 * Invoke a registered command by name, passing `args` and a fake
+	 * command context. Throws if the command isn't registered — same
+	 * "fail loudly" rule the rest of the fake follows.
+	 *
+	 * The fake context offers `cwd`, `hasUI`, and `ui`; other fields real
+	 * `ExtensionCommandContext` exposes (waitForIdle, newSession, ...) are
+	 * not wired because no pi-fence consumer needs them yet.
+	 */
+	async invokeCommand(
+		name: string,
+		args: string,
+		ctxOverride?: Partial<FakeExtensionContext>,
+	): Promise<void> {
+		const entry = this.registeredCommands.get(name);
+		if (!entry) {
+			throw new Error(`Command '${name}' is not registered`);
+		}
+		const handler = (entry as { handler?: (args: string, ctx: unknown) => Promise<void> }).handler;
+		if (!handler) {
+			throw new Error(`Command '${name}' has no handler`);
+		}
+		const ctx: FakeExtensionContext = { ...this.defaultCtx, ...ctxOverride };
+		await handler(args, ctx);
 	}
 
 	// -------------------------------------------------------------------

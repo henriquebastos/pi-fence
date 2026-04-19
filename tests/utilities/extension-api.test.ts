@@ -150,6 +150,69 @@ describe("FakeExtensionAPI — registrations", () => {
 	});
 });
 
+describe("FakeExtensionAPI — ui capture", () => {
+	it("captures ctx.ui.notify calls during dispatch", async () => {
+		const api = new FakeExtensionAPI();
+		api.on("agent_end", (_event, ctx) => {
+			ctx.ui.notify("hello", "warning");
+		});
+
+		await api.dispatch("agent_end", { type: "agent_end", messages: [] });
+
+		expect(api.ui.notifications).toEqual([{ message: "hello", type: "warning" }]);
+	});
+
+	it("defaults notify type to 'info' when not given", () => {
+		const api = new FakeExtensionAPI();
+		api.ui.notify("just an FYI");
+		expect(api.ui.notifications).toEqual([{ message: "just an FYI", type: "info" }]);
+	});
+
+	it("throws loudly on unimplemented ui methods", async () => {
+		const api = new FakeExtensionAPI();
+		await expect(api.ui.select("title", ["a", "b"])).rejects.toThrow(
+			/not implemented in FakeExtensionAPI/i,
+		);
+		await expect(api.ui.confirm("title", "sure?")).rejects.toThrow(
+			/not implemented in FakeExtensionAPI/i,
+		);
+	});
+});
+
+describe("FakeExtensionAPI — invokeCommand", () => {
+	it("runs a registered command handler with the given args", async () => {
+		const api = new FakeExtensionAPI();
+		let received = "";
+		api.registerCommand("hello", {
+			handler: async (args: string) => {
+				received = args;
+			},
+		});
+
+		await api.invokeCommand("hello", "world");
+
+		expect(received).toBe("world");
+	});
+
+	it("passes a fake command context with ui attached", async () => {
+		const api = new FakeExtensionAPI();
+		api.registerCommand("noisy", {
+			handler: async (_args: string, ctx: { ui: { notify: (m: string) => void } }) => {
+				ctx.ui.notify("invoked");
+			},
+		});
+
+		await api.invokeCommand("noisy", "");
+
+		expect(api.ui.notifications).toEqual([{ message: "invoked", type: "info" }]);
+	});
+
+	it("throws when invoking an unregistered command", async () => {
+		const api = new FakeExtensionAPI();
+		await expect(api.invokeCommand("nope", "")).rejects.toThrow(/not registered/);
+	});
+});
+
 describe("FakeExtensionAPI — unimplemented methods throw loudly", () => {
 	it("throws on appendEntry with a clear message", () => {
 		const api = new FakeExtensionAPI();
