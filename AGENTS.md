@@ -48,14 +48,15 @@ SHAs are hex — unstructured, error-prone to retype. Never type a SHA from memo
 
 ## Worklog and CHANGELOG ordering
 
-The worklog and CHANGELOG record history; they must not predict it. Both are edited *after* the commits they describe exist.
+The worklog and CHANGELOG record history; they must not predict it. Both are edited *after* the commits they describe exist, and the docs commit follows its feature commit *immediately* — not at some later natural breakpoint.
 
-1. During implementation, commit the code. Do not touch `docs/process/worklog.md` or `CHANGELOG.md` in the same commit as the feature.
-2. At story close (or at any history catch-up), once all feature commits exist and their SHAs are stable, create one final commit that edits the worklog + CHANGELOG together. Copy SHAs from `git log --oneline`, never from memory.
-3. This final commit's message starts with `docs:` (or `close <CODE>` for a story close that also flips roadmap statuses). It touches only documentation.
-4. Never write a SHA into the worklog before the commit it refers to exists. If a draft needs to reference a not-yet-existing commit, use a verbal placeholder (e.g. "the spec commit for S3") and replace it with the SHA in the final docs commit.
+1. Commit the feature (code, rules, spec, whatever produces stable SHAs). Do not touch `docs/process/worklog.md` or `CHANGELOG.md` in that commit.
+2. The **next** commit is the docs catch-up for the feature commit you just made. Copy the SHA from `git log --oneline` and write the worklog entry (and CHANGELOG entry if user-visible). One feature commit → one docs commit, in that order, back-to-back. Never defer the docs commit to a "future session" or a "future natural catch-up point" — that's how prose drifts from history.
+3. This docs commit's message starts with `docs:` (or `close <CODE>` for a story close that also flips roadmap statuses). It touches only documentation.
+4. Never write a SHA into the worklog before the commit it refers to exists. If a draft needs to reference a not-yet-existing commit, use a verbal placeholder (e.g. "the spec commit for S3") and replace it with the SHA in the docs commit that follows.
+5. Batching is allowed **only retroactively**, to catch up on past feature commits that never got their docs commit — see `042acb8` as the canonical example. Going forward, the default is one-feature-one-docs, adjacent.
 
-Exception: a `worklog: placeholder for <story>` entry with no SHAs is fine as a scaffold; it just cannot claim commits that do not exist yet.
+Exception: a `worklog: placeholder for <story>` entry with no SHAs is fine as a scaffold inside a feature commit; it just cannot claim commits that do not exist yet.
 
 ## I/O seams and fakes
 
