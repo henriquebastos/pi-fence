@@ -33,6 +33,23 @@ describe.skipIf(!networkUp)("kroki renderer — live", () => {
 	const kroki = createKrokiRenderer(new NodeHttpClient(), KROKI_ENDPOINT);
 
 	it(
+		"renders a simple graphviz DOT graph as a real PNG (covers alias resolution)",
+		async () => {
+			// Caller writes `dot`; kroki.ts maps to the /graphviz/png endpoint
+			// at request time. A successful PNG here proves both the alias
+			// path and the live wiring work against real Kroki.
+			const result = await kroki.render("dot", "digraph { A -> B; B -> C }");
+
+			expect(result.ok).toBe(true);
+			if (!result.ok) return;
+
+			expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+			expect(result.png.length).toBeGreaterThan(200);
+		},
+		20_000,
+	);
+
+	it(
 		"renders a simple mermaid flowchart as a real PNG",
 		async () => {
 			const result = await kroki.render("mermaid", SIMPLE_MERMAID);
