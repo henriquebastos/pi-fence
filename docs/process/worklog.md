@@ -399,3 +399,19 @@ The previous entry resolved two process gaps with rules in `AGENTS.md`. The rule
 **Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 73 lines.
 
 **Meta-observation worth keeping:** the pair `6a0a625` → *this entry* is itself the rule operating on itself. The feature commit sharpens a rule about how to follow feature commits; this docs commit is the immediate follow-up the new text requires. If the rule had not been internalized, this entry would not exist yet.
+
+### 2026-04-19 — shipped stories named as the spec template
+
+During the session the user asked why each story needs three files (`README.md` + `plan.md` + `test-guide.md`). Initial answer (based on reading S3 alone) defended the split on separation-of-concerns grounds. Second-pass answer (reading all six stories S0–S5) confirmed: the three-file split is a real template applied consistently, section headings are near-identical across all six, and each file serves a distinct reader at a distinct moment.
+
+The natural follow-up question — *do we need template files then?* — flipped the earlier ranking. With six shipped stories in the repo and every future story built agent-assisted (full repo in context), extracting `_readme-template.md` / `_plan-template.md` / `_test-guide-template.md` would add three files that rot faster than the examples they mimic. Templates invite syntactic imitation; examples teach semantic shape. The repo already has what it needs.
+
+**The resolution:** one sentence added to `AGENTS.md` → Story workflow step 1, naming the shipped stories as the template. No template files created; none planned.
+
+**Commit:**
+
+- `e99a803` docs: name the shipped stories as the spec template.
+
+**Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 73 lines.
+
+**Follow-ups this supersedes:** the earlier ranked follow-up list included `docs/process/story-workflow.md` and `docs/project/roadmap/_plan-template.md`. Both drop off the list for the same reason — shipped stories and `principles.md` already teach what they would teach, and a separate doc would drift. Remaining open follow-ups: `CONTRIBUTING.md` (thin, GitHub PR surface) and a release checklist (defer until first release).
