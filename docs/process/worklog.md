@@ -385,3 +385,17 @@ Two process gaps surfaced during the session and earned written rules.
 **Clarified during the conversation, worth recording:**
 
 1. The "catch up" pattern is not "defer until a future session." It is "the very next commit after feature work is the docs commit covering it." Applies whether the feature work is code, docs-as-rules, or anything else that produces stable SHAs worth recording.
+
+### 2026-04-19 — docs-follows-feature rule made explicit
+
+The previous entry resolved two process gaps with rules in `AGENTS.md`. The rules worked — but the *language* of rule 2 was vague: "at story close (or at any history catch-up), once all feature commits exist and their SHAs are stable, create one final commit." Reading that, I deferred the worklog entry for `1be7d46` to a "future catch-up." The user caught it: the intent was *immediately*, not eventually.
+
+**The sharpened rule:** one feature commit is followed immediately by one docs commit that records it. Back-to-back. Never batched across a session, never deferred to a later story close. Batching is allowed *only retroactively* — to catch up on past feature commits that missed their docs commit (see `042acb8` as the canonical example). Going forward the default is 1:1, adjacent.
+
+**Commit:**
+
+- `6a0a625` docs: make the docs-follows-feature rule explicit.
+
+**Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 73 lines.
+
+**Meta-observation worth keeping:** the pair `6a0a625` → *this entry* is itself the rule operating on itself. The feature commit sharpens a rule about how to follow feature commits; this docs commit is the immediate follow-up the new text requires. If the rule had not been internalized, this entry would not exist yet.
