@@ -112,14 +112,16 @@ Third-party extensions register their own processors through `pi.events`. They d
 
 ### D6 — The user owns the registry via settings
 
-Everything about the registry is configurable in `settings.json` (global) and `.pi/settings.json` (per project).
+Configuration lives under a single `"pi-fence"` key in pi's own settings files: `~/.pi/agent/settings.json` (global) and `.pi/settings.json` (project). Project overrides global. The user edits these files directly — the same files they already curate for pi itself.
 
 - Enable/disable any processor.
 - Bind a tag to a specific named processor when more than one is registered for it.
 - Configure endpoint, timeout, credentials per processor.
 - Override with meta info string on individual fences (`​`​`​`​mermaid processor=kroki`) for ad-hoc control.
 
-**Why:** the default should be safe and useful, but the power user should never have to fork to get what they want.
+**Why `settings.json`.** Pi does not ship a general-purpose “extension-scoped config” API — its `SettingsManager` has typed getters for pi's known fields only. Extensions that want hand-edited user config either read `settings.json` directly or invent their own file. We pick `settings.json` because the user already curates it, and because pi-fence config naturally composes with the rest of pi's config (global vs project override rules, packages declared alongside, etc.). We read and merge the two files ourselves; the `"pi-fence"` namespace keeps our keys from colliding with pi-core or other extensions.
+
+**Defaults in code, file-as-override.** The extension works out of the box with no settings file and no `"pi-fence"` block. All defaults live in code; the file only needs the keys the user wants to change. Missing file, missing keys, malformed values all fall back gracefully, with a single warning on bad values rather than a crash. The user never has to create a file for pi-fence to function.
 
 ### D7 — `FenceProcessor` as the core abstraction
 

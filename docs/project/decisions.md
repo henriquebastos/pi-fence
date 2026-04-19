@@ -48,3 +48,31 @@ Parameters are carried by the fenced info string (```` ```mermaid theme=dark wid
 - CV1.E2 was renamed from *Hybrid Mode* to *Error Feedback Loop*. Its stories are now: S1 “I see readable errors in place of broken diagrams”, S2 “The LLM receives render errors as follow-ups and corrects in the same turn”.
 - CV0.E1 epic spec deferred-list entry and CV0.E1.S1 out-of-scope list updated: “Tool `render_fence`” became “Error feedback surface / follow-up injection”.
 - No code impact on S1. The follow-up injection lands when CV1.E2 is implemented. Until then, S1 can surface errors as text content in the custom message and the LLM simply won't see them until the next user prompt — acceptable for the first happy-path release.
+
+### 2026-04-18 — Config lives in `settings.json` under `"pi-fence"`; defaults in code
+
+**Context.** D6 originally said “everything about the registry is configurable in `settings.json` and `.pi/settings.json`” without saying what that meant concretely. During a file-first-loop review the user asked four sharp questions: why `settings.json` rather than a dedicated file, how other extensions handle this, whether pi offers a good abstraction, and whether we require the user to create config data or ship sensible defaults.
+
+Investigation of pi's source (`dist/core/settings-manager.d.ts`) confirmed that pi's `SettingsManager` has typed getters for pi-core’s own fields only. There is no general-purpose API for extensions to read arbitrary user-edited config. Extensions in the ecosystem either read `settings.json` directly themselves, use `pi.appendEntry` for internal state, or invent their own config file.
+
+**Rule.**
+
+1. Configuration lives under a single `"pi-fence"` key in pi's `settings.json` (global) and `.pi/settings.json` (project). Project overrides global.
+2. Pi-fence reads and merges both files itself, on startup and on `/fence reload`.
+3. All defaults live in code. The settings file is optional. Missing file, missing keys, and malformed values fall back to defaults gracefully, with at most a single warning on bad values.
+4. The user never has to create a file, a directory, or declare anything for pi-fence to function on first install.
+
+**Why.**
+
+- Pi users already curate `settings.json`. Adding a second config file forces them to learn another surface for no benefit.
+- Pi's global-vs-project-override rules are already correct for what we want; reusing them avoids reinventing the merge.
+- A namespaced key (`"pi-fence"`) prevents collisions with pi-core and other extensions.
+- Defaults in code keeps the first-install experience zero-friction — ```mermaid renders without any setup.
+- Pi’s lack of an extension-scoped settings API is real but small: reading two JSON files and merging them is ~30 lines of code. Not worth building a separate mechanism around.
+
+**Consequences.**
+
+- Pi-fence ships a `config.ts` module that defines defaults, reads the two files, validates, merges, and exposes a typed `getConfig()` function to the rest of the extension.
+- A `/fence reload` command re-reads the files at runtime, so users can edit settings without restarting pi.
+- Documentation for configuration lives in `docs/getting-started.md` under an “Advanced” section — the main path assumes defaults.
+- Schema of the `"pi-fence"` key is versioned in code and documented in getting-started, not in `briefing.md` (briefing is for rationale; schema is a product detail).
