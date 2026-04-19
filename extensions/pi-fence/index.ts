@@ -24,7 +24,7 @@ import type { Logger } from "../../tests/utilities/logger.ts";
 import { NodeLogger } from "../../tests/utilities/logger.ts";
 
 import { extractFencedBlocks } from "./parser.ts";
-import { createKrokiRenderer } from "./kroki.ts";
+import { createKrokiRenderer, isDarkThemeName } from "./kroki.ts";
 import { formatProcessorLines, listProcessors, type ProcessorListing } from "./list.ts";
 import type { FenceProcessor, FenceResult } from "./processor.ts";
 import {
@@ -69,7 +69,19 @@ export interface PiFenceDeps {
  * default export below wires production deps and calls through.
  */
 export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): void {
-	const processor = deps.processor ?? createKrokiRenderer(deps.http, undefined, deps.logger);
+	// Latest pi theme name captured from event-handler contexts. Read at
+	// render time by the Kroki appearance resolver so live theme changes
+	// take effect without reconstructing the processor. Defaults to
+	// undefined (treated as dark by `isDarkThemeName`) until the first
+	// event fires — safe because pi's agent_end always fires before the
+	// extension renders anything.
+	let currentThemeName: string | undefined;
+
+	const processor =
+		deps.processor ??
+		createKrokiRenderer(deps.http, undefined, deps.logger, () =>
+			isDarkThemeName(currentThemeName) ? "dark" : "light",
+		);
 	const processors: FenceProcessor[] = [processor];
 
 	// Custom message renderers — compose pi-tui primitives around the
@@ -109,7 +121,23 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 
 	// Hook the assistant's turn — parse fenced blocks, render each via the
 	// processor, emit a custom message per block.
-	pi.on("agent_end", async (event, _ctx) => {
+	pi.on("agent_end", async (event, ctx) => {
+		// Capture the current pi theme so the Kroki renderer can pick the
+		// matching appearance. Reading `ctx.ui.theme.name` is safe in
+		// production but throws in test environments that don't initialise
+		// pi's global theme singleton. Swallow and fall back to the default
+		// (dark) appearance.
+		try {
+			const themeName = (ctx as { ui?: { theme?: { name?: string } } })?.ui?.theme?.name;
+			if (typeof themeName === "string" && themeName.length > 0) {
+				currentThemeName = themeName;
+			}
+		} catch (err) {
+			deps.logger.debug("pi-fence", "theme read failed", {
+				error: err instanceof Error ? err.message : String(err),
+			});
+		}
+
 		const assistantText = extractAssistantText(event.messages);
 		if (!assistantText) return;
 

@@ -43,7 +43,10 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 	it(
 		"emits a pi-fence:output custom message for a mermaid block",
 		async () => {
-			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png": TINY_PNG });
+			// pi-fence defaults to dark appearance when pi's theme is not
+			// initialised (as in this test) — Kroki's request URL carries
+			// `?theme=dark`. See kroki.ts `isDarkThemeName` for the heuristic.
+			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png?theme=dark": TINY_PNG });
 			const captured = await runExtensionWithAssistantText(
 				http,
 				"Here's your diagram:\n\n```mermaid\nflowchart LR\nA --> B\n```\n\nDone.",
@@ -59,7 +62,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expectImageBytes(outputs[0].content, TINY_PNG);
 
 			expect(http.requests).toHaveLength(1);
-			expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png");
+			expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png?theme=dark");
 			expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
 		},
 		20_000,
@@ -68,7 +71,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 	it(
 		"renders a dot block via Kroki's /graphviz/png endpoint while keeping the user's tag in details",
 		async () => {
-			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png": TINY_PNG });
+			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
 			const captured = await runExtensionWithAssistantText(
 				http,
 				"Architecture:\n\n```dot\ndigraph { web -> api; api -> db }\n```",
@@ -87,7 +90,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expectImageBytes(outputs[0].content, TINY_PNG);
 
 			expect(http.requests).toHaveLength(1);
-			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png");
+			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png?theme=dark");
 			expect(http.requests[0].body).toBe("digraph { web -> api; api -> db }");
 		},
 		20_000,
@@ -96,7 +99,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 	it(
 		"emits debug+info log entries through the full render pipeline",
 		async () => {
-			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png": TINY_PNG });
+			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png?theme=dark": TINY_PNG });
 			const captured = await runExtensionWithAssistantText(
 				http,
 				"```mermaid\nflowchart LR\nA --> B\n```",

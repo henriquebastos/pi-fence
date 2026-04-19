@@ -34,6 +34,8 @@ After installing pi-fence into pi:
 
 On expansion (ctrl+o on the rendered message) pi-fence also shows the original mermaid source in a code block for copy-paste.
 
+**Theme tracking:** pi-fence requests `?theme=dark` from Kroki when pi's current theme is a dark one (any theme whose name does not contain `light`, `latte`, or `day` — including defaults like `dark`, `tokyo-night`, `catppuccin-mocha`, `gruvbox-dark`). On light pi themes the diagram is rendered in Kroki's default light style. The theme is re-read every turn, so switching pi themes mid-session takes effect on the next rendered block.
+
 **Slash commands**:
 
 - `/fence list` — prints the registered processors and the tags each accepts. Offline, read-only. Today it shows one row (`kroki`); future Epics add more processors.

@@ -75,6 +75,43 @@ export const KROKI_ALIASES: Readonly<Record<string, string>> = {
 	puml: "plantuml",
 };
 
+/**
+ * Resolver the Kroki factory calls at render time to decide whether to
+ * pass `?theme=dark` on the URL. The extension wiring reads pi's current
+ * theme from `ctx.ui.theme` and returns `"dark"` or `"light"` by mapping
+ * the theme name via `isDarkThemeName`. Called fresh on every render so
+ * live theme changes take effect without reconstruction.
+ */
+export type KrokiAppearanceResolver = () => "light" | "dark";
+
+/**
+ * Name substrings that indicate a light theme. Pi's built-in `light`,
+ * `solarized-light`, `github-light`, `catppuccin-latte`, plain `day`.
+ * Case-insensitive match.
+ */
+const LIGHT_NAME_MARKERS = ["light", "latte", "day"];
+
+/**
+ * Heuristic: is this pi theme name dark? Returns `true` when the name
+ * contains a dark-theme marker or none of the light markers; defaults to
+ * `true` for undefined/unknown names because the failure mode (pale
+ * diagrams on a dark terminal) is worse than its mirror.
+ *
+ * Exported for the extension wiring and tested directly in
+ * `tests/unit/kroki.test.ts`. Name-based heuristic chosen over parsing
+ * theme background ANSI because pi's exported `Theme` surface gives us
+ * `name` for free; any deeper integration would require reaching into
+ * `@mariozechner/pi-coding-agent`'s private submodule paths.
+ */
+export function isDarkThemeName(name: string | undefined): boolean {
+	if (!name) return true;
+	const lower = name.toLowerCase();
+	for (const marker of LIGHT_NAME_MARKERS) {
+		if (lower.includes(marker)) return false;
+	}
+	return true;
+}
+
 // Back-compat alias for kroki-specific code that imported KrokiResult
 // directly. New code should prefer `FenceResult` from `./processor.ts`.
 export type KrokiResult = FenceResult;
@@ -88,6 +125,7 @@ export function createKrokiRenderer(
 	http: HttpClient,
 	endpoint: string = DEFAULT_ENDPOINT,
 	logger: Logger = NULL_LOGGER,
+	appearance?: KrokiAppearanceResolver,
 ): FenceProcessor {
 	const base = endpoint.replace(/\/+$/, "");
 
@@ -104,12 +142,15 @@ export function createKrokiRenderer(
 
 			const combinedSignal = mergeSignals([signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)]);
 			const krokiTag = KROKI_ALIASES[tag] ?? tag;
-			const url = `${base}/${krokiTag}/png`;
+			const mode = appearance?.();
+			const query = mode === "dark" ? "?theme=dark" : "";
+			const url = `${base}/${krokiTag}/png${query}`;
 
 			logger.debug("kroki", "request", {
 				tag,
 				krokiTag,
 				url,
+				appearance: mode ?? "default",
 				sourceBytes: Buffer.byteLength(source, "utf8"),
 			});
 

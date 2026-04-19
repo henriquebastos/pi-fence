@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
-import { createKrokiRenderer } from "../../extensions/pi-fence/kroki.ts";
+import { createKrokiRenderer, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
 	return {
@@ -117,6 +117,121 @@ describe("createKrokiRenderer — logging", () => {
 		const result = await kroki.render("mermaid", "x");
 
 		expect(result.ok).toBe(true);
+	});
+});
+
+describe("isDarkThemeName", () => {
+	it("classifies pi's built-in `dark` as dark", () => {
+		expect(isDarkThemeName("dark")).toBe(true);
+	});
+
+	it("classifies pi's built-in `light` as light", () => {
+		expect(isDarkThemeName("light")).toBe(false);
+	});
+
+	it("classifies popular dark-theme names as dark", () => {
+		expect(isDarkThemeName("tokyo-night")).toBe(true);
+		expect(isDarkThemeName("gruvbox-dark")).toBe(true);
+		expect(isDarkThemeName("catppuccin-mocha")).toBe(true);
+		expect(isDarkThemeName("dracula")).toBe(true);
+		expect(isDarkThemeName("nord")).toBe(true);
+		expect(isDarkThemeName("one-dark")).toBe(true);
+	});
+
+	it("classifies popular light-theme names as light", () => {
+		expect(isDarkThemeName("github-light")).toBe(false);
+		expect(isDarkThemeName("solarized-light")).toBe(false);
+		expect(isDarkThemeName("catppuccin-latte")).toBe(false);
+		expect(isDarkThemeName("day")).toBe(false);
+	});
+
+	it("is case-insensitive", () => {
+		expect(isDarkThemeName("Tokyo-Night")).toBe(true);
+		expect(isDarkThemeName("GITHUB-LIGHT")).toBe(false);
+	});
+
+	it("defaults to dark when the name is undefined or empty", () => {
+		// We err on the side of dark: more pi sessions run in dark terminals
+		// than light ones, and the failure mode (pale lines on dark bg) is
+		// worse than its mirror.
+		expect(isDarkThemeName(undefined)).toBe(true);
+		expect(isDarkThemeName("")).toBe(true);
+	});
+
+	it("defaults to dark for unknown theme names that mention neither light nor dark", () => {
+		expect(isDarkThemeName("custom-theme")).toBe(true);
+	});
+});
+
+describe("createKrokiRenderer — appearance/theme", () => {
+	it("appends ?theme=dark when the appearance resolver returns dark", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png?theme=dark",
+			pngResponse(Buffer.from([0x89, 0x50])),
+		);
+		const kroki = createKrokiRenderer(http, undefined, undefined, () => "dark");
+
+		const result = await kroki.render("mermaid", "x");
+
+		expect(result.ok).toBe(true);
+		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png?theme=dark");
+	});
+
+	it("omits the theme parameter when the appearance resolver returns light", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png",
+			pngResponse(Buffer.from([0x89, 0x50])),
+		);
+		const kroki = createKrokiRenderer(http, undefined, undefined, () => "light");
+
+		await kroki.render("mermaid", "x");
+
+		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png");
+	});
+
+	it("reads the resolver at request time so live theme changes take effect", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png",
+			pngResponse(Buffer.from([0x89])),
+		);
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png?theme=dark",
+			pngResponse(Buffer.from([0x89])),
+		);
+
+		let appearance: "light" | "dark" = "light";
+		const kroki = createKrokiRenderer(http, undefined, undefined, () => appearance);
+
+		await kroki.render("mermaid", "first");
+		appearance = "dark";
+		await kroki.render("mermaid", "second");
+
+		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png");
+		expect(http.requests[1].url).toBe("https://kroki.io/mermaid/png?theme=dark");
+	});
+
+	it("defaults to no theme parameter when no resolver is provided (back-compat)", async () => {
+		// Keeps the factory's two/three-arg callers (tests, contract helper)
+		// producing the original URLs. The extension wiring in `index.ts`
+		// passes the resolver; plain factory consumers opt in explicitly.
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png",
+			pngResponse(Buffer.from([0x89])),
+		);
+		const kroki = createKrokiRenderer(http);
+
+		await kroki.render("mermaid", "x");
+
+		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png");
 	});
 });
 
