@@ -23,27 +23,31 @@
  */
 
 import type { HttpClient } from "../../tests/utilities/http-client.ts";
+import type { FenceProcessor, FenceResult } from "./processor.ts";
 
 const DEFAULT_ENDPOINT = "https://kroki.io";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ERROR_BODY_MAX_CHARS = 500;
 
-export type KrokiResult =
-	| { ok: true; png: Buffer }
-	| { ok: false; error: string };
+// Back-compat alias for kroki-specific code that imported KrokiResult
+// directly. New code should prefer `FenceResult` from `./processor.ts`.
+export type KrokiResult = FenceResult;
 
-export interface KrokiRenderer {
-	render(tag: string, source: string, signal?: AbortSignal): Promise<KrokiResult>;
-}
+// Retained as a narrower alias over the shared FenceProcessor. Not strictly
+// necessary but keeps existing call sites typed as "a kroki renderer" when
+// they care about provenance.
+export type KrokiRenderer = FenceProcessor;
 
 export function createKrokiRenderer(
 	http: HttpClient,
 	endpoint: string = DEFAULT_ENDPOINT,
-): KrokiRenderer {
+): FenceProcessor {
 	const base = endpoint.replace(/\/+$/, "");
 
 	return {
-		async render(tag, source, signal): Promise<KrokiResult> {
+		id: "kroki",
+
+		async render(tag, source, signal): Promise<FenceResult> {
 			if (signal?.aborted) {
 				return { ok: false, error: "Aborted before request" };
 			}
