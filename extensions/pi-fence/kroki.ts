@@ -29,6 +29,20 @@ const DEFAULT_ENDPOINT = "https://kroki.io";
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ERROR_BODY_MAX_CHARS = 500;
 
+/**
+ * Map colloquial tag names to Kroki's canonical endpoint names. Extend when
+ * a user or LLM writes a tag Kroki doesn't recognise directly.
+ *
+ * Kept inline in this module because Kroki is the only consumer today. A
+ * second processor (graphviz-local in CV0.E2) calls `dot` directly, so
+ * this map doesn't apply there. Extract to a shared module only when a
+ * second alias map earns its place.
+ */
+const KROKI_TAG_ALIASES: Record<string, string> = {
+	dot: "graphviz",
+	puml: "plantuml",
+};
+
 // Back-compat alias for kroki-specific code that imported KrokiResult
 // directly. New code should prefer `FenceResult` from `./processor.ts`.
 export type KrokiResult = FenceResult;
@@ -53,12 +67,13 @@ export function createKrokiRenderer(
 			}
 
 			const combinedSignal = mergeSignals([signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)]);
+			const krokiTag = KROKI_TAG_ALIASES[tag] ?? tag;
 
 			let response;
 			try {
 				response = await http.request({
 					method: "POST",
-					url: `${base}/${tag}/png`,
+					url: `${base}/${krokiTag}/png`,
 					headers: { "content-type": "text/plain" },
 					body: source,
 					signal: combinedSignal,

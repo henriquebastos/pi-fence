@@ -160,4 +160,53 @@ describe("createKrokiRenderer", () => {
 
 		expect(http.requests[0].body).toBe(source);
 	});
+
+	describe("tag aliases", () => {
+		it("resolves `dot` to Kroki's `/graphviz/png` endpoint", async () => {
+			const http = new FakeHttpClient();
+			http.setResponse("POST", "https://kroki.io/graphviz/png", pngResponse(Buffer.alloc(8)));
+			const kroki = createKrokiRenderer(http);
+
+			const result = await kroki.render("dot", "digraph { A -> B }");
+
+			expect(result.ok).toBe(true);
+			expect(http.requests).toHaveLength(1);
+			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png");
+		});
+
+		it("resolves `puml` to Kroki's `/plantuml/png` endpoint", async () => {
+			const http = new FakeHttpClient();
+			http.setResponse("POST", "https://kroki.io/plantuml/png", pngResponse(Buffer.alloc(8)));
+			const kroki = createKrokiRenderer(http);
+
+			const result = await kroki.render("puml", "@startuml\nA -> B\n@enduml");
+
+			expect(result.ok).toBe(true);
+			expect(http.requests[0].url).toBe("https://kroki.io/plantuml/png");
+		});
+
+		it("passes unaliased tags through unchanged", async () => {
+			const http = new FakeHttpClient();
+			http.setResponse("POST", "https://kroki.io/d2/png", pngResponse(Buffer.alloc(8)));
+			const kroki = createKrokiRenderer(http);
+
+			const result = await kroki.render("d2", "a -> b");
+
+			expect(result.ok).toBe(true);
+			expect(http.requests[0].url).toBe("https://kroki.io/d2/png");
+		});
+
+		it("also honours the canonical name (`graphviz` -> /graphviz/png)", async () => {
+			// Alias resolution is 'dot -> graphviz', not 'graphviz -> dot'. A user
+			// or LLM who writes `graphviz` directly must get the same endpoint.
+			const http = new FakeHttpClient();
+			http.setResponse("POST", "https://kroki.io/graphviz/png", pngResponse(Buffer.alloc(8)));
+			const kroki = createKrokiRenderer(http);
+
+			const result = await kroki.render("graphviz", "digraph { A -> B }");
+
+			expect(result.ok).toBe(true);
+			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png");
+		});
+	});
 });
