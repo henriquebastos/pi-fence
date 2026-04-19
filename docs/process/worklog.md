@@ -361,3 +361,27 @@ The previous session's retrospective surfaced that a fresh agent landing in the 
 2. `docs/project/roadmap/_plan-template.md` — makes the mandatory `Tests` section in `plan.md` concrete.
 3. `CONTRIBUTING.md` — thin, points at AGENTS.md + principles.md.
 4. Release checklist — defer until the first real release is on the horizon.
+
+### 2026-04-19 — rules for SHA handling and worklog/CHANGELOG ordering
+
+Two process gaps surfaced during the session and earned written rules.
+
+**Gap 1 — SHA transcription errors.** Mid-session I retyped commit SHAs from visual memory into bash commands three times in a row (`029985f`, `029a57`, `02920578`, and one `for`-loop literal) before stopping to re-read the source. The real SHA was `029279a`, visible directly in prior tool output. Each failure returned `fatal: ambiguous argument`; I kept guessing instead of treating the first failure as a signal to stop and copy.
+
+**Gap 2 — worklog predicting commits.** The repo's reflog shows an earlier session committed `worklog — drop placeholder SHAs for the spec commits`, evidence that worklog entries have historically been written *before* the commits they reference existed, then retrofitted. Same class of error as Gap 1 — prose claiming commits that either don't exist or have different SHAs than written.
+
+**Resolution:**
+
+- `AGENTS.md` gains a *Working with commit SHAs* section (copy, never retype; stop on first ambiguous-argument error; verify before saving) and a *Worklog and CHANGELOG ordering* section (never mix docs into feature commits; one final docs commit per cycle once SHAs are stable; never write a SHA before the commit exists).
+- `docs/product/principles.md` → *Process* tightens the "Living documentation" line to match: docs are updated at the end of each cycle in a dedicated docs commit, with a pointer to `AGENTS.md` for the full rule.
+- The rule applies retroactively in the sense that this very worklog entry is the docs commit catching up on the rules commit — feature commit first, docs commit immediately after, no bundling.
+
+**Commit:**
+
+- `1be7d46` docs: rules for SHA handling and worklog/CHANGELOG ordering.
+
+**Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 72 lines, under the 90-line ceiling set for it.
+
+**Clarified during the conversation, worth recording:**
+
+1. The "catch up" pattern is not "defer until a future session." It is "the very next commit after feature work is the docs commit covering it." Applies whether the feature work is code, docs-as-rules, or anything else that produces stable SHAs worth recording.
