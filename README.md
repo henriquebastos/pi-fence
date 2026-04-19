@@ -34,10 +34,14 @@ After installing pi-fence into pi:
 
 On expansion (ctrl+o on the rendered message) pi-fence also shows the original mermaid source in a code block for copy-paste.
 
+**Slash commands**:
+
+- `/fence list` — prints the registered processors and the tags each accepts. Offline, read-only. Today it shows one row (`kroki`); future Epics add more processors.
+
 What does **not** work yet:
 
 - Local rendering without network (CV0.E2, CV2.E1).
-- `/fence list` / `/fence doctor` / configuration via `~/.pi/agent/pi-fence.config.json` (CV1.E1).
+- `/fence doctor` (health probing) and configuration via `~/.pi/agent/pi-fence.config.json` (CV1.E1).
 - Error feedback loop to the LLM (CV1.E2).
 - Every CV past that (see [roadmap](docs/project/roadmap/README.md)).
 

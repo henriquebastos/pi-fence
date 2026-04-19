@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV0.E1.S3 — `/fence list`)
+
+- `/fence list` slash command: prints one readable line per registered processor (today only `kroki`), showing its status and accepted tags with aliases in parentheses, e.g. `kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2`. Offline, read-only; no network call.
+- `/fence` dispatches on a first-token subcommand. `list` is the only subcommand today; unknown or empty subcommands surface a `ctx.ui.notify` warning naming the available ones.
+- `extensions/pi-fence/list.ts` — pure `listProcessors(processors)` and `formatProcessorLines(listings)` helpers. Zero pi-SDK / pi-tui dependencies; shape scales to multiple processors.
+- `extensions/pi-fence/renderer.ts` — new `createPiFenceListRenderer` factory for the `pi-fence:list` custom message type. Shares the `Box` + `Text` composition style with `pi-fence:output`. Expanded and collapsed render identically (no hidden detail today).
+- `FenceProcessor` interface widened: every processor now declares `tags` (canonical names it handles) and `aliases` (alias → canonical map). Contract helper asserts every alias target appears in `tags`. Kroki exports `KROKI_CANONICAL_TAGS` and `KROKI_ALIASES` so `/fence list` reads them straight from the processor.
+- `FakeExtensionAPI` gains a minimal `ui` field (captures `ctx.ui.notify` calls), an `invokeCommand(name, args)` helper, and six self-test cases covering them. First real consumer of `FakeExtensionAPI` beyond its own self-test: `tests/unit/fence-command.test.ts`.
+- Extension-layer test dispatches `/fence list` through a real pi `AgentSession` (`session.prompt("/fence list")`) and asserts the `pi-fence:list` custom message reaches the transcript with no HTTP calls made.
+- README gains a `Slash commands` section; the `What does not work yet` list drops `/fence list`.
+
 ### Added (CV0.E1.S2 — Other Kroki-supported diagrams)
 
 - Extension accepts additional fenced-block tags: `graphviz`, `dot`, `plantuml`, `puml`, `d2`. `mermaid` continues to work.

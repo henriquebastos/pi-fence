@@ -25,6 +25,16 @@ The assistant answers with the obvious fenced block (```` ```mermaid ````, ```` 
 
 Supported tags today: `mermaid`, `graphviz`, `dot`, `plantuml`, `puml`, `d2`.
 
+Type `/fence list` to see every registered processor, its status, and the tags it accepts:
+
+```text
+Processors
+
+kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2
+```
+
+The listing is offline — no network call happens when you type `/fence list`.
+
 If you don't see an image, check:
 
 - Your terminal supports inline images.
