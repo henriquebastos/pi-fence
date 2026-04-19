@@ -17,10 +17,11 @@
  *     concern; no current processor needs it.
  *
  * Three impls:
- *   - NodeShellRunner     production; wraps child_process.execFile.
- *   - DockerExecShellRunner (separate file) runs binaries inside a named
- *     Docker container via `docker exec`. Lands in a later step.
- *   - FakeShellRunner     in-memory capture/replay for tests.
+ *   - NodeShellRunner       production; wraps child_process.execFile.
+ *   - DockerExecShellRunner  runs binaries inside a named Docker container
+ *                            via `docker exec`. Used by live integration
+ *                            tests; production never wires it.
+ *   - FakeShellRunner        in-memory capture/replay for tests.
  */
 
 import { execFile } from "node:child_process";
@@ -152,4 +153,41 @@ function keyFor(cmd: string, args: string[]): string {
 	// Args joined on a NUL byte so nothing user-provided collides with the
 	// delimiter. Simple, deterministic, adequate for tests.
 	return `${cmd}\0${args.join("\0")}`;
+}
+
+// ---------------------------------------------------------------------------
+// DockerExecShellRunner
+// ---------------------------------------------------------------------------
+
+/**
+ * Wraps every call in `docker exec [-i] [-w <cwd>] <container> <cmd> ...`.
+ * Used by live integration tests to reach a binary inside the
+ * pi-fence-live-deps container without installing it on the host.
+ *
+ * Production never uses this impl. It exists so live tests can drive the
+ * same `ShellRunner` interface the production `NodeShellRunner` would, from
+ * a container whose binaries the repo controls.
+ *
+ * When `opts.input` is present we add `-i` so docker keeps stdin open for
+ * the exec'd process. When `opts.cwd` is present we add `-w <cwd>` — this
+ * is the path inside the container, not on the host.
+ */
+export class DockerExecShellRunner implements ShellRunner {
+	private readonly inner = new NodeShellRunner();
+
+	constructor(private readonly containerName: string) {}
+
+	async run(cmd: string, args: string[], opts: ShellRunOptions = {}): Promise<ShellResult> {
+		const dockerArgs: string[] = ["exec"];
+		if (opts.input !== undefined) dockerArgs.push("-i");
+		if (opts.cwd !== undefined) dockerArgs.push("-w", opts.cwd);
+		dockerArgs.push(this.containerName, cmd, ...args);
+
+		return this.inner.run("docker", dockerArgs, {
+			// cwd on the host doesn't matter — docker exec is what runs. Only
+			// input and signal propagate.
+			input: opts.input,
+			signal: opts.signal,
+		});
+	}
 }
