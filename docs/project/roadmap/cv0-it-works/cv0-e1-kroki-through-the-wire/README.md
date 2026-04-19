@@ -14,7 +14,7 @@ The thinnest possible path through the system. Hook → parse → Kroki → inli
 | [S0](cv0-e1-s0-testing-foundation/README.md) | **Testing foundation: I can run unit, contract, extension, and live tests from a clean clone** | ✅ Done |
 | [S1](cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | ✅ Done |
 | [S2](cv0-e1-s2-other-kroki-tags/README.md) | **I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path** | ✅ Done |
-| [S3](cv0-e1-s3-fence-list/README.md) | **I can see which processors are registered and their status** (`/fence list`) | 🛠️ Planned |
+| [S3](cv0-e1-s3-fence-list/README.md) | **I can see which processors are registered and their status** (`/fence list`) | ✅ Done |
 | [S4](cv0-e1-s4-full-kroki-text-coverage/README.md) | **Every text-based language the public Kroki endpoint supports renders through pi-fence** | Planned |
 | [S5](cv0-e1-s5-kroki-json-body-languages/README.md) | **JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw) render through pi-fence** | Planned |
 

@@ -1,6 +1,6 @@
 [< CV0.E1 — Kroki Through The Wire](../README.md)
 
-# S3 — I can see which processors are registered and their status (`/fence list`)
+# S3 — I can see which processors are registered and their status (`/fence list`) ✅
 
 S1 and S2 proved the render path. S3 closes CV0.E1 with the first user-visible *control* surface: a read-only slash command that answers "what is pi-fence doing on my behalf?"
 

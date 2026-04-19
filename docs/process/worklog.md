@@ -10,11 +10,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-Implement `CV0.E1.S3` — `/fence list`. This is the last story of CV0.E1, completing the first Community Value. Spec the plan first under a new story directory, then implement test-first. S3 adds a read-only command surface; no new processors and no new tags beyond what S2 delivered.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). `S4` (full text-based Kroki coverage) and `S5` (JSON-body Kroki languages) remain specced and ready to pick up whenever the Epic's "every language Kroki serves" done criterion becomes the priority.
 
-After S3 lands, CV0.E1 closes and we move into CV0.E2 (Graphviz Local) to introduce the registry concept with a second processor.
+The likely next move is `CV0.E2` (Graphviz Local), which introduces a second processor alongside Kroki and forces the registry abstraction to earn its keep. `S3`'s `listProcessors(processors)` API already accepts a `FenceProcessor[]`, so adding a second row to `/fence list` is a wiring change, not a formatter change.
 
-Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
+Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
 ---
 
@@ -257,3 +257,55 @@ The top-level roadmap table and the Epic's stories table both gain rows for S4 a
 Commits in this spec-only work are under `wip(agent): extend CV0.E1 with S4 and S5...`, `spec CV0.E1.S4`, and `spec CV0.E1.S5` — see `git log` for SHAs.
 
 S3 remains the immediate next story.
+
+### 2026-04-19 — CV0.E1.S3 `/fence list` shipped ✅
+
+First user-facing *control* surface lands. `/fence list` prints a line per registered processor — today only Kroki — with status and accepted tags (aliases in parentheses next to their canonical):
+
+```text
+Processors
+
+kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2
+```
+
+Read-only, offline, no assistant turn triggered. Implementation ran test-first through the plan's 7 steps, each a single commit. Fast suite grew from 108 to 135 tests across the run.
+
+**Commits:**
+
+- `adb1bbe` spec CV0.E1.S3 — `/fence list`. Before writing code I drafted `README.md` / `plan.md` / `test-guide.md`. First draft proposed a column-aligned table; the user asked whether pi ships a table renderer — it doesn't, only primitives (`Box`, `Text`, `Spacer`, `Markdown`, `SettingsList`). Presented three options (hand-rolled formatter, `Markdown` table, plain per-processor lines); user chose plain lines, and the plan was revised before the first code commit. Amended into the single spec commit so no churn leaked into history.
+- `7c8df34` step 1: `FenceProcessor` contract widened with `tags` and `aliases` fields. Contract helper gained two assertions (tags is a non-empty string array; every alias value appears in `tags`). Kroki exports `KROKI_CANONICAL_TAGS` and `KROKI_ALIASES` and declares both on the returned processor.
+- `caff2af` step 2: new `extensions/pi-fence/list.ts` with pure `listProcessors(processors)` + `formatProcessorLines(listings)`. `tests/unit/list.test.ts` covers the single-processor case, the empty case, multiple-aliases-per-canonical, and a defensive "alias target not canonical" branch.
+- `9e844a9` step 3: `createPiFenceListRenderer` factory added to `renderer.ts`, parallel to `createPiFenceMessageRenderer`. The renderer reads `details.lines` (pre-formatted in the handler), composes a `Box` with a `Processors` header, a `Spacer`, and one `Text` per line. Expanded and collapsed render identically in S3. `tests/unit/renderer.test.ts` tests composition via fake pi-tui primitives — no pi-tui dependency in the test.
+- `87509cb` step 4: `/fence` command wired in `createPiFenceExtension`. Dispatches on the first token of `args`; `list` emits a `pi-fence:list` custom message whose `details` include both the pre-formatted `lines` and the raw `listings` (renderers may prefer one or the other; I included both to avoid forcing a choice too early). Unknown/empty subcommands go to `ctx.ui.notify` with a warning naming the available subcommands. Six unit tests drive the handler against `FakeExtensionAPI` — the fake's *first* real consumer beyond its self-test, per S0's original framing. To make this work the fake gained a minimal `ui` field (captures `notify`, throws on unimplemented `select`/`confirm`) and an `invokeCommand(name, args)` helper; both added with their own self-test cases.
+- `ad4bb27` step 5: extension-layer test dispatches `/fence list` through a real pi `AgentSession` (`session.prompt("/fence list")`). Earlier worry about needing a private dispatch path turned out unfounded — AgentSession intercepts slash commands before any LLM work, so no `streamFn` is needed. Refactored the existing session setup into a shared `buildSessionWithExtension(http)` helper so both the `agent_end` and `/fence list` paths share wiring.
+- `837ed7c` step 6: README (slash-commands section added, "what doesn't work yet" updated), CHANGELOG entry, getting-started gained the `/fence list` example.
+- *this entry* step 7: status flips in roadmap / Epic / story READMEs, worklog entry.
+
+**Test counts:**
+
+- Fast suite: 135 passing, up from 108 at session start (+27 across the story). Breakdown: 2 contract assertions (step 1), 9 unit cases in `list.test.ts` (step 2), 3 renderer-composition cases (step 3), 6 fence-command cases + 6 FakeExtensionAPI self-test cases (step 4), 1 extension-layer case (step 5).
+- Live suite: unchanged (4 Kroki cases, 6 shell-runner cases).
+- `pnpm run check`: green.
+
+**Design decisions landed:**
+
+1. **Slash-command shape**: one `/fence` command with subcommand dispatch, not hyphenated `/fence-list`. Matches the roadmap/briefing phrasing and gives future subcommands (`doctor`, `trace`) a natural home without a second command registration.
+2. **Status column**: literal `"registered"` today, typed as the single-member union `ProcessorStatus = "registered"`. Widens when real health probing arrives in a future `/fence doctor` story (not yet placed on the roadmap).
+3. **Two fields on `FenceProcessor`** (`tags`, `aliases`) vs a single `describe()` method: flat contract chosen. Contract tests read fields synchronously; `describe()` would have earned its keep only if the description needed to be dynamic.
+4. **Alias rendering**: `graphviz (dot)`, with multiple aliases grouped `graphviz (dot, gv)`. Formatter does not assume one-to-one; the test locks that in for the two-processor case CV0.E2 will exercise.
+5. **Custom message, not `ctx.ui.notify`**: `/fence list` output persists in the transcript (scrollable back), unlike transient notifications. Parallels how `pi-fence:output` surfaces rendered diagrams.
+6. **Content + details on the custom message**: content carries the text-only fallback (`lines.join("\n")`); details carry both the structured `listings` and the formatted `lines`. Renderers that don't read details still show readable text; the dedicated renderer prefers `details.lines` for layout.
+
+**Known deviation from the plan:**
+
+- Plan's Deliverable 2 called for deriving `SUPPORTED_TAGS` from the processor's advertised `tags` + `aliases` instead of the hardcoded array. I did not do that. The hardcoded list currently equals `KROKI_CANONICAL_TAGS ∪ Object.keys(KROKI_ALIASES)`, so behavior is identical; but once CV0.E2 adds a second processor with its own tags the hardcoded list will drift. Flagging here as a known carry-forward, not amending step 1 retroactively.
+
+**Carried forward:**
+
+- `SUPPORTED_TAGS` derivation (see above).
+- `extensions/pi-fence/kroki.ts` still imports `HttpClient` from `tests/utilities/`. Same I/O-seam wart carried from S1/S2; still no user impact.
+- `/fence doctor` (health probe) does not yet have a placeholder story. A sensible home is CV1.E1 (probably `CV1.E1.S3`); the roadmap table already lists such a row but today's `/fence list` output reads cleanly without that story shipping.
+- `/fence trace` still unbuilt. `NodeLogger` is wired, `PI_FENCE_LOG_LEVEL` is read, but no user-facing log view exists.
+- Argument auto-completion for `/fence <subcommand>` (`getArgumentCompletions`) not wired. One line of code + one test; left out because no consumer asks for it yet. Easy add whenever a second subcommand appears.
+
+CV0.E1's *user-visible* story line is now complete: install pi-fence, render diagrams, inspect what's registered. S4 and S5 remain as the "every language Kroki serves" expansion of the Epic's done criterion but are not in the critical path for CV0.E1's value proposition.
