@@ -254,10 +254,6 @@ Updated the Epic's done criterion accordingly: CV0.E1 now closes with every lang
 
 The top-level roadmap table and the Epic's stories table both gain rows for S4 and S5.
 
-Commits in this spec-only work:
-
-- `<pending>` extend CV0.E1 Epic with S4 and S5, tighten done criterion, add roadmap rows
-- `<pending>` spec CV0.E1.S4 — full Kroki text-body coverage
-- `<pending>` spec CV0.E1.S5 — Kroki JSON-body languages
+Commits in this spec-only work are under `wip(agent): extend CV0.E1 with S4 and S5...`, `spec CV0.E1.S4`, and `spec CV0.E1.S5` — see `git log` for SHAs.
 
 S3 remains the immediate next story.
