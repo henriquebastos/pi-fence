@@ -10,9 +10,9 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-Implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md).
+Land Draft 2 of the framework-update change set (specs `CV0.E1.S0` — testing foundation). Then implement `CV0.E1.S0` itself (Draft 3). Then implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
 
-Follow the plan step by step. Each step is its own commit. Tests pass on every commit. Run the manual test guide at the end.
+Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
 
 ---
 
@@ -58,3 +58,21 @@ First run surfaced 127 issues across all files. Auto-fix handled most (blank lin
 Also updated `docs/product/principles.md` to reference the new check script.
 
 Commits: `wip(agent): add markdownlint-cli2 with minimal config`, `wip(agent): fix markdown lint violations surfaced by initial run`.
+
+### 2026-04-18 — Testing framework shape (Draft 1 of 3)
+
+Elevated testing to a first-class framework concern after a user-driven design pass on how pi-fence gets tested. Three drafts will land the full change set; this is the framework-updates draft (no S0 spec yet, no implementation yet).
+
+Changes in this draft:
+
+- `briefing.md` — added **Verifiability** as the fifth Community Value type with a note that it is cross-cutting.
+- `roadmap/README.md` — added Verifiability to the CV types legend; inserted `CV0.E1.S0` row in the Epic table before `S1`.
+- `cv0-e1-kroki-through-the-wire/README.md` — Epic's stories table now shows `S0` before `S1`, with a paragraph explaining the order.
+- `principles.md` — rewrote the Testing section: test automation non-negotiable, test-first, four layers (unit / contract / extension / integration-live), fakes-not-mocks, DI at I/O seams, no host filesystem, skip cleanly, mandatory `Tests` section in every plan.md.
+- `decisions.md` — long entry capturing the testing architecture: vitest, four layers, fakes-not-mocks, Docker image `pi-fence-live-deps` for live deps, `Verifiability` CV type, mandatory plan.md `Tests` section.
+
+Draft 2 will ship the S0 story docs (`README.md`, `plan.md`, `test-guide.md`) and update `S1/plan.md` with its mandatory `Tests` section and test-first step order.
+
+Draft 3 will ship the implementation: vitest config, `tests/` tree, utilities, `docker/Dockerfile`, `scripts/live-container.ts`, exemplar tests.
+
+Commit: `wip(agent): framework updates for verifiability + testing architecture`.

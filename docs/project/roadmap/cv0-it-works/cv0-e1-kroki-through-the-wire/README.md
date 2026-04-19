@@ -11,9 +11,12 @@ The thinnest possible path through the system. Hook → parse → Kroki → inli
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | 🛠️ Planned |
+| `S0` | **Testing foundation: I can run unit, contract, extension, and live tests from a clean clone** | 🛠️ Planned |
+| [S1](cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | Planned |
 | `S2` | **I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path** | Planned |
 | `S3` | **I can see which processors are registered and their status** (`/fence list`) | Planned |
+
+`S0` lands before `S1`. It defines the test architecture, utilities, Docker image for live dependencies, and the mandatory `Tests` section structure in every future story plan. `S1` is then implemented test-first against the infrastructure `S0` provides.
 
 ---
 

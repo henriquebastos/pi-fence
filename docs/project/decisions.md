@@ -109,3 +109,46 @@ Defaults cover the first-install experience: Kroki endpoint at `https://kroki.io
 - **Command surface.** `/fence reload` calls `service.reload()`. Future `/fence doctor` can call `service.config` to show the effective config alongside processor availability.
 - **Documentation.** `docs/getting-started.md` documents only the file locations and the defaults-just-work story. The schema reference lives next to the code.
 - **Code impact timing.** The config module lands during CV1.E1 (Explicit Configuration), not in S1. S1 has one hardcoded processor and no config surface to expose.
+
+### 2026-04-18 — Testing architecture: `Verifiability` CV type, four layers, fakes-not-mocks, Docker for live deps
+
+**Context.** The user surfaced a worry that the project was accumulating features without a serious testing plan. They asked for: logs/traces to inspect side effects, fully-automated reproduction of the user experience, no mocks where avoidable, pure functions with dependency injection, explicit test organization, and a roadmap-level recognition that testing matters. A 22-extension survey of the ecosystem was run to check how pi extensions typically test. Most ship none; the coding-agent core itself uses vitest with real temp dirs, inline extension factories, and `session.agent.streamFn` swapping for fake LLMs. This decision locks in the testing architecture we will use and elevates verifiability to a first-class framework concern.
+
+**Rule.**
+
+1. **Verifiability is a Community Value type.** Added alongside Legibility, Extensibility, Control, Portability. It is cross-cutting: every story implicitly advances it through passing tests; stories whose primary delivery is testing infrastructure earn explicit progression credit in the roadmap.
+2. **Test runner: vitest.** Consistent with the rest of the pi ecosystem and with principles.md’s “TypeScript-native, minimal config” rule.
+3. **Four test layers, each with its own location and runner gate:**
+   - **Unit** (`tests/unit/`) — pure logic, no I/O, no fakes. `pnpm test`.
+   - **Contract** (`tests/contract/`) — any implementation of a published interface satisfies it. `pnpm test`.
+   - **Extension** (`tests/extension/`) — pi-fence running inside a real pi SDK `AgentSession` with a fake LLM stream (via `session.agent.streamFn = ...`). `pnpm test`.
+   - **Integration / live** (`tests/integration/`) — real processors against real binaries (Docker container) or real HTTP (`kroki.io` or a local Kroki container). `pnpm test:live`.
+4. **Fakes, not mocks.** `FakeHttpClient`, `FakeShellRunner`, `FakeLogger`, `FakeExtensionAPI` live under `tests/utilities/`. Real in-memory objects with capture arrays, not `vi.mock()`-style module interception. The distinction is load-bearing; the word “mock” is reserved for the bad sense.
+5. **Dependency injection at every I/O seam.** Three interfaces anchor the seams: `HttpClient`, `ShellRunner`, `Logger`. Production wires node impls; tests wire fakes; live tests wire “real” impls that run inside the Docker container when needed.
+6. **Live dependencies live in a Docker image**, `ghcr.io/henriquebastos/pi-fence-live-deps:<version>`. The image starts minimal (graphviz only at S0) and grows as each processor story lands. Hosts run the image as a long-lived named container (`pi-fence-live-deps`); live tests talk to it via a `DockerExecShellRunner` that wraps binary calls in `docker exec`.
+   - Fast CI runs only fake-based tests (`pnpm test`); no Docker, no network.
+   - Pre-release / nightly CI pulls the image, starts the container, and runs `pnpm test:live`.
+   - Windows contributors run live tests via Docker Desktop.
+   - Mac/Linux contributors the same.
+   - Image is tagged `:latest` for convenience and `:<sha>` for CI determinism; local scripts can pin to a version file.
+7. **Every plan.md has a mandatory `Tests` section** listing: layers touched, events/interactions covered, fakes added, live tests added, anything deferred.
+8. **No test touches the real filesystem outside `os.tmpdir()`** or the real `~/.pi/agent/`. Tests create per-test temp dirs and clean up in `afterEach`.
+
+**Why this shape.**
+
+- **vitest + real temp dirs** is the pattern pi-coding-agent's own test suite uses. Reusing it lowers the learning curve for anyone moving between the projects.
+- **Four layers separate concerns cleanly.** Unit tests stay fast; contract tests let third-party processor authors verify conformance; extension tests exercise the event-hook path end-to-end without an LLM; live tests guard against real-world rendering drift.
+- **Docker for live deps beats per-host install scripts** on reproducibility (byte-identical `dot` output across machines), on Windows support (Docker Desktop makes live tests work there too), on maintenance (one Dockerfile vs. a brew/apt/dnf matrix), and on host safety (no global `mmdc` install polluting dev machines). The cost (one-time image pull per version) is bounded.
+- **Fakes over mocks** keeps tests talking to real code paths, with all the shape fidelity that comes with it. Refactors that rename a function don’t break tests that mocked it; they do break tests that imported it.
+- **Mandatory `Tests` section in plans** is the tripwire against the user's original concern about stories shipping without coverage. It surfaces gaps at plan-review time, not at commit-review time.
+- **Verifiability as a CV type** elevates this work to first-class roadmap status. A story that skips its tests is not merely against a style guide; it fails to advance a named community value.
+
+**Consequences.**
+
+- `CV0.E1.S0` (“Testing foundation”) is inserted before `S1` in the Epic. It ships the `tests/` tree, the Dockerfile, the utility interfaces, exemplar tests at each layer, and the mandatory-Tests-section convention in plan templates.
+- The `Verifiability` type is added to the CV types table in both `briefing.md` and `roadmap/README.md` (legend) with a note that it is cross-cutting.
+- `principles.md` now carries an expanded Testing section naming the layers, the fake/mock distinction, the live-deps policy, the DI rule, the no-host-fs rule, and the mandatory `Tests` section in plans.
+- `S1`'s plan will be updated (in Draft 2 of this change set) to include a Tests section and reorder its implementation steps so tests come first.
+- Future story plans without a `Tests` section are incomplete and get sent back before approval.
+- The Docker image is a separate deliverable tracked under CV0.E1.S0. It is **not** a dependency of `pnpm test` — that would re-couple what the layer split was meant to separate.
+- This entry supersedes nothing; it extends the framework. No earlier decision is retired.

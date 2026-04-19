@@ -12,3 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pnpm as the package manager, pinned via `packageManager` field.
 - `scripts/check-links.ts`: validates internal markdown links and heading fragments. Runs via `pnpm run check`.
 - `markdownlint-cli2` with minimal config, covering structural markdown (headings, lists, code blocks, whitespace). Runs via `pnpm run check:markdown`. Auto-fix via `pnpm run fix:markdown`.
+- Framework: `Verifiability` Community Value type capturing "correctness is provable by automation"; cross-cutting, earned tacitly by feature stories and explicitly by testing-infrastructure stories.
+- Framework: mandatory `Tests` section in every story's `plan.md`.
+- Framework: `CV0.E1.S0` story placeholder for the testing foundation, inserted before `S1`.

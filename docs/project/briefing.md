@@ -26,6 +26,9 @@ Each delivery generates concrete value in one or more of these dimensions.
 | **Extensibility** | Other extensions or users can add new processors without touching the core |
 | **Control** | The user decides what is processed and how |
 | **Portability** | Works online, offline, self-hosted — no lock-in to a single backend |
+| **Verifiability** | The project's correctness is provable by automation — every behavior has a test a contributor can run without manual steps |
+
+**Verifiability is cross-cutting.** Every story advances it implicitly: no story is done without passing tests. Stories whose primary delivery is testing infrastructure (a runner, a harness, a fixture, a CI gate) earn explicit progression credit in the roadmap. Feature stories earn it tacitly through the tests they ship alongside their code.
 
 ## Hierarchy
 

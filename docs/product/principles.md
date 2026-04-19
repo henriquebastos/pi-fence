@@ -36,17 +36,44 @@ Guidelines for building pi-fence. Read before contributing code.
 
 ## Testing
 
-Two kinds of automated tests, each with a clear purpose.
+**Test automation is non-negotiable.** Every story ends with its tests passing, executable via `pnpm test` with no manual steps. Manual verification (`curl`, opening a terminal and eyeballing output) is a tool during development; it never ships as "the test." If a behavior can't be tested automatically, that fact is documented explicitly in the story's plan alongside why.
 
-**Unit tests** — pure logic in isolation: fence parsing, registry resolution, config merging. No disk, no network, no mocks for business logic. Fast.
+**Test-first.** New behavior starts with a failing test. This isn't ceremony — the failing test proves the assertion is meaningful. Red-green-refactor is the loop. Exceptions (prototyping, spikes) are named in the plan as spikes, not smuggled in as production work.
 
-**Smoke tests** — end-to-end against a real processor (Kroki public, or a local binary when available). Slower, can be gated behind an env var. Catch integration regressions.
+**Layers are distinct and named.** Each test belongs to exactly one layer; the layers have different speeds, different dependencies, and different commands to run them.
 
-**Skip a smoke test cleanly when its dependency isn't available.** A developer on a machine without Docker or Graphviz should still be able to run `pnpm test` and see green.
+| Layer | What it tests | Dependencies | Runner |
+|-------|--------------|--------------|--------|
+| **Unit** | Pure logic: parser, registry, config merge, info-string meta, renderer math | None | `pnpm test` |
+| **Contract** | Any implementation of `FenceProcessor` satisfies the interface | None | `pnpm test` |
+| **Extension** | pi-fence running inside a real pi SDK `AgentSession` with a fake LLM stream | pi SDK in-process | `pnpm test` |
+| **Integration (live)** | Real processors against real binaries or real HTTP | Docker container or network | `pnpm test:live` |
+
+Test files live under `tests/<layer>/`. Fixtures under `tests/fixtures/`. Shared utilities under `tests/utilities/`.
+
+**Fakes, not mocks.** Our stand-ins are real in-memory objects with capture arrays — `FakeHttpClient`, `FakeShellRunner`, `FakeLogger`, `FakeExtensionAPI`. Each implements the same interface as its production counterpart. We do not reach into real modules with `vi.mock()` to pretend they return something else — that couples tests to implementation details and hides real integration risk. Reserve the word "mock" for the bad sense.
+
+**Live tests exist as parallel gates.** Every fake has a sibling live test that uses the real thing: the `FakeHttpClient` is paired with a live kroki test, the `FakeShellRunner` is paired with a live graphviz test, etc. Live tests run against a dedicated Docker image (`pi-fence-live-deps`) for local binaries and against `kroki.io` or a local Kroki container for HTTP. Fast CI runs only the fake-based suite; pre-release and nightly CI runs the live suite. Fixtures are refreshable via `pnpm run refresh-fixtures`.
+
+**Dependency injection at every I/O seam.** Three interfaces are the main seams: `HttpClient` (for HTTP), `ShellRunner` (for subprocess), `Logger` (for diagnostics). Production wires node impls. Tests wire fakes that capture calls. Pure functions take their inputs as arguments and never reach out — no hidden disk or network.
+
+**No test reaches the real filesystem outside `os.tmpdir()`.** No test reaches the real home directory. No test pollutes the developer's `~/.pi/agent/`. Temp dirs are created per-test and cleaned up in `afterEach`.
+
+**Skip cleanly when deps are absent.** A contributor on a machine without Docker, without network, without the live-deps container running, should still be able to clone the repo and see `pnpm test` go green. Live tests self-check their preconditions and emit `describe.skipIf(...)` — not a failure — when the precondition isn't met.
 
 **Every commit leaves tests passing.**
 
 **Docs are checked too.** Link integrity is verified by `pnpm run check:links`, which walks the `docs/` tree and validates that every relative markdown link resolves to a real file and every `#fragment` points to a real heading. Structural linting — list numbering, blank-line rules, heading increments, duplicate headings — is handled by `markdownlint-cli2` via `pnpm run check:markdown`. Auto-fix most issues with `pnpm run fix:markdown`. `pnpm run check` is the umbrella that runs both.
+
+**Every story's plan.md has a mandatory `Tests` section** enumerating, at minimum:
+
+1. Which test layers the story touches.
+2. Which events / interactions / side effects are covered.
+3. Which fakes are added to `tests/utilities/`.
+4. Which live tests are added or updated.
+5. Anything deferred and why.
+
+Plans without a `Tests` section are incomplete and should not be approved.
 
 ---
 

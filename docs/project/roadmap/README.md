@@ -16,6 +16,7 @@
 | **Extensibility** | Others can add processors without touching the core |
 | **Control** | The user decides what is processed and how |
 | **Portability** | Works online, offline, self-hosted — no backend lock-in |
+| **Verifiability** | The project's correctness is provable by automation (cross-cutting — see [briefing](../briefing.md#community-value)) |
 
 ---
 
@@ -30,7 +31,8 @@
 
 | Code | Story | Status |
 |------|-------|--------|
-| [CV0.E1.S1](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | 🛠️ Planned |
+| `CV0.E1.S0` | **Testing foundation: I can run unit, contract, extension, and live tests from a clean clone** | 🛠️ Planned |
+| [CV0.E1.S1](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | Planned |
 | `CV0.E1.S2` | **I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path** | Planned |
 | `CV0.E1.S3` | **I can see which processors are registered and their status** (`/fence list`) | Planned |
 
