@@ -146,8 +146,12 @@ export function createPiFenceMessageRenderer(tui: {
 		for (const item of items) {
 			if (item?.type === "image" && typeof item.data === "string") {
 				const mimeType = item.mimeType ?? "image/png";
+				// 60 cells matches pi's own inline tool-output convention
+				// (see pi-coding-agent's `tool-execution` renderer). Wider
+				// values swallowed the terminal; narrower felt cramped for
+				// diagram legibility. Revisit when CV1.E1 ships settings.
 				box.addChild(
-					new tui.Image(item.data, mimeType, imageFallback, { maxWidthCells: 80 }),
+					new tui.Image(item.data, mimeType, imageFallback, { maxWidthCells: 60 }),
 				);
 			} else if (item?.type === "text" && typeof item.text === "string") {
 				box.addChild(new tui.Text(item.text, 0, 0));

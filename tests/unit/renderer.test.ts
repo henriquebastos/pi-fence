@@ -110,7 +110,11 @@ describe("clipSourceLines", () => {
 interface FakeChild {
 	kind: "Text" | "Spacer" | "Image";
 	text?: string;
-	image?: { base64: string; mimeType: string };
+	image?: {
+		base64: string;
+		mimeType: string;
+		options?: { maxWidthCells?: number };
+	};
 }
 
 interface FakeBox {
@@ -157,7 +161,11 @@ function makeTui() {
 			} else if (child instanceof Image) {
 				this.children.push({
 					kind: "Image",
-					image: { base64: child.base64, mimeType: child.mimeType },
+					image: {
+						base64: child.base64,
+						mimeType: child.mimeType,
+						options: child.options,
+					},
 				});
 			} else {
 				this.children.push({ kind: "Spacer" });
@@ -280,6 +288,10 @@ describe("createPiFenceMessageRenderer", () => {
 		);
 		expect(imageChild?.image.base64).toBe("ZmFrZS1ieXRlcw==");
 		expect(imageChild?.image.mimeType).toBe("image/png");
+
+		// Inline image width stays within pi's tool-output convention (60 cells)
+		// so the rendered diagram doesn't swallow the full terminal width.
+		expect(imageChild?.image.options?.maxWidthCells).toBe(60);
 
 		// The chrome label already names the tag/processor; no duplicate
 		// "Rendered ... via ..." text child should appear.
