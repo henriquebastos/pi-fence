@@ -132,15 +132,14 @@ export function createPiFenceMessageRenderer(tui: {
 		const label = formatLabel({ kind, tag, processor });
 		const labelLine = theme.fg(kind === "ok" ? "customMessageLabel" : "error", theme.bold(label));
 
-		// paddingY=0 so the image's partial bottom row lands flush against
-		// the box bottom. Otherwise pi-tui adds a blank padding row below the
-		// image, and the leftover fractional pixels on the image's last row
-		// (rounded up by pi-tui's cell-based layout) read as a distinct
-		// stripe against the custom-message background. Trade-off: the label
-		// now sits flush against the top border too, but pi's Box API has no
-		// asymmetric padding.
+		// No `customMessageBg` tint: pi-tui's Image emits empty-string rows
+		// that the Box would paint with the bg, producing a visible stripe
+		// wherever the image is narrower than the box. Leaving the box
+		// background transparent lets the image cells blend into the
+		// terminal background directly, which is what the PNG's own bg
+		// already targets (matching Kroki's dark theme we requested).
 		// Argument order is (paddingX, paddingY, bgFn) per pi-tui's Box.
-		const box = new tui.Box(1, 0, (t) => theme.bg("customMessageBg", t));
+		const box = new tui.Box(1, 0);
 		box.addChild(new tui.Text(labelLine, 0, 0));
 		box.addChild(new tui.Spacer(1));
 
