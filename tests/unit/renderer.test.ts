@@ -259,10 +259,7 @@ describe("createPiFenceMessageRenderer", () => {
 
 		const box = renderer(
 			{
-				content: [
-					{ type: "image", data: "ZmFrZS1ieXRlcw==", mimeType: "image/png" },
-					{ type: "text", text: "Rendered mermaid via kroki" },
-				],
+				content: [{ type: "image", data: "ZmFrZS1ieXRlcw==", mimeType: "image/png" }],
 				details: {
 					tag: "mermaid",
 					processor: "kroki",
@@ -283,6 +280,13 @@ describe("createPiFenceMessageRenderer", () => {
 		);
 		expect(imageChild?.image.base64).toBe("ZmFrZS1ieXRlcw==");
 		expect(imageChild?.image.mimeType).toBe("image/png");
+
+		// The chrome label already names the tag/processor; no duplicate
+		// "Rendered ... via ..." text child should appear.
+		const textChildren = box.children
+			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
+			.map((c) => c.text);
+		expect(textChildren.filter((t) => t.includes("Rendered mermaid via kroki"))).toHaveLength(1);
 	});
 
 	it("renders without an Image child on the error path (no image content)", () => {

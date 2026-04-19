@@ -227,6 +227,12 @@ function buildCustomMessage(
 	};
 
 	if (result.ok) {
+		// Content is just the image. The renderer's chrome (`Rendered <tag>
+		// via <processor>`) already labels the output; a duplicate text item
+		// here would render twice when pi invokes our renderer. Earlier
+		// versions included that text item as a fallback for imageless
+		// terminals, but the renderer is authoritative, so the fallback only
+		// produced the visible duplicate.
 		return {
 			customType: CUSTOM_MESSAGE_TYPE,
 			content: [
@@ -234,10 +240,6 @@ function buildCustomMessage(
 					type: "image",
 					data: result.png.toString("base64"),
 					mimeType: "image/png",
-				},
-				{
-					type: "text",
-					text: `Rendered ${tag} via ${processorId}`,
 				},
 			] as never,
 			details: details as never,
