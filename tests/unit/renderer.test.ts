@@ -1,5 +1,6 @@
 /**
- * Unit tests for the pure-math helpers in `renderer.ts`.
+ * Unit tests for the pure-math helpers in `renderer.ts` and light
+ * composition checks for the renderer factories.
  *
  * The full MessageRenderer that pi pi-tui drives at runtime composes
  * pi-tui Container/Box/Image/Text primitives that aren't trivially
@@ -7,12 +8,19 @@
  * extension-layer test at `tests/extension/pi-fence.test.ts`.
  *
  * These unit tests cover the bits that are pure: label formatting,
- * source-line clipping for the expanded view, and an overflow predicate.
+ * source-line clipping for the expanded view, an overflow predicate,
+ * and the child composition of the `/fence list` renderer via fake
+ * pi-tui primitives.
  */
 
 import { describe, expect, it } from "vitest";
 
-import { clipSourceLines, formatLabel, hasSourceOverflow } from "../../extensions/pi-fence/renderer.ts";
+import {
+	clipSourceLines,
+	createPiFenceListRenderer,
+	formatLabel,
+	hasSourceOverflow,
+} from "../../extensions/pi-fence/renderer.ts";
 
 describe("formatLabel", () => {
 	it("describes a successful render by tag and processor", () => {
@@ -86,5 +94,134 @@ describe("clipSourceLines", () => {
 	it("treats budget 0 as 'show no lines, report all as remaining'", () => {
 		// Not a pretty case but the math must behave sanely.
 		expect(clipSourceLines(["a", "b", "c"], 0)).toEqual({ lines: [], remaining: 3 });
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createPiFenceListRenderer — composition via fake pi-tui primitives
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal spies shaped like the pi-tui primitives the renderer consumes.
+ * Each captures its constructor arguments so tests can assert the child
+ * composition without loading pi-tui proper.
+ */
+interface FakeChild {
+	kind: "Text" | "Spacer";
+	text?: string;
+}
+
+interface FakeBox {
+	children: FakeChild[];
+}
+
+function makeTui() {
+	class Text {
+		readonly kind = "Text" as const;
+		constructor(public readonly text: string, _x: number, _y: number) {}
+		render(): string[] {
+			return [this.text];
+		}
+	}
+	class Spacer {
+		readonly kind = "Spacer" as const;
+		constructor(public readonly height: number) {}
+		render(): string[] {
+			return Array.from({ length: this.height }, () => "");
+		}
+	}
+	class Box {
+		readonly children: FakeChild[] = [];
+		constructor(
+			_paddingY: number,
+			_paddingX: number,
+			_bg?: (text: string) => string,
+		) {}
+		addChild(child: Text | Spacer): void {
+			if (child instanceof Text) {
+				this.children.push({ kind: "Text", text: child.text });
+			} else {
+				this.children.push({ kind: "Spacer" });
+			}
+		}
+		render(): string[] {
+			return this.children.flatMap((c) => (c.kind === "Text" ? [c.text ?? ""] : [""]));
+		}
+	}
+	return {
+		Box: Box as never,
+		Text: Text as never,
+		Spacer: Spacer as never,
+		truncateToWidth: (text: string, _width: number) => text,
+	};
+}
+
+const FAKE_THEME = {
+	fg: (_color: string, text: string) => text,
+	bold: (text: string) => text,
+	bg: (_color: string, text: string) => text,
+};
+
+describe("createPiFenceListRenderer", () => {
+	it("composes a header, a spacer, and one Text child per formatted line", () => {
+		const tui = makeTui();
+		const renderer = createPiFenceListRenderer(tui);
+
+		const box = renderer(
+			{
+				content: [{ type: "text", text: "ignored — renderer uses details.lines" }],
+				details: {
+					lines: [
+						"kroki [registered] — mermaid",
+						"graphviz-local [registered] — graphviz (dot)",
+					],
+				},
+			},
+			{ expanded: false },
+			FAKE_THEME,
+		) as unknown as FakeBox;
+
+		const kinds = box.children.map((c) => c.kind);
+		expect(kinds).toEqual(["Text", "Spacer", "Text", "Text"]);
+
+		const texts = box.children
+			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
+			.map((c) => c.text);
+		expect(texts[0]).toContain("Processors");
+		expect(texts.slice(1)).toEqual([
+			"kroki [registered] — mermaid",
+			"graphviz-local [registered] — graphviz (dot)",
+		]);
+	});
+
+	it("renders identically whether expanded or collapsed (no hidden detail in S3)", () => {
+		const render = (expanded: boolean) => {
+			const tui = makeTui();
+			const renderer = createPiFenceListRenderer(tui);
+			const box = renderer(
+				{ content: [], details: { lines: ["kroki [registered] — mermaid"] } },
+				{ expanded },
+				FAKE_THEME,
+			) as unknown as FakeBox;
+			return box.children;
+		};
+
+		expect(render(true)).toEqual(render(false));
+	});
+
+	it("falls back to the empty-listing line when details.lines is missing", () => {
+		const tui = makeTui();
+		const renderer = createPiFenceListRenderer(tui);
+
+		const box = renderer(
+			{ content: [], details: undefined },
+			{ expanded: false },
+			FAKE_THEME,
+		) as unknown as FakeBox;
+
+		const texts = box.children
+			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
+			.map((c) => c.text);
+		expect(texts).toEqual(["Processors", "(no processors registered)"]);
 	});
 });

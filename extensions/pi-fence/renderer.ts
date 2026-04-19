@@ -152,6 +152,63 @@ export function createPiFenceMessageRenderer(tui: {
 }
 
 // ---------------------------------------------------------------------------
+// `/fence list` renderer
+// ---------------------------------------------------------------------------
+
+/**
+ * Details payload the list renderer reads. The command handler populates
+ * `lines` with the pre-formatted output of `formatProcessorLines`; the
+ * renderer just drops one `Text` child per line under a `Processors`
+ * header. Keeping the formatting out of the renderer keeps the visual
+ * composition testable without loading a real pi-tui.
+ */
+export interface PiFenceListDetails {
+	lines: string[];
+}
+
+const LIST_HEADER = "Processors";
+const EMPTY_LISTING_LINE = "(no processors registered)";
+
+/**
+ * Factory parallel to `createPiFenceMessageRenderer`. Accepts the same
+ * shape-compatible pi-tui primitives so the unit test above can exercise
+ * composition without loading pi-tui proper.
+ *
+ * The rendered component is a `Box` containing:
+ *   1. A `Text` child with the bolded header.
+ *   2. A `Spacer` to breathe.
+ *   3. One `Text` child per line in `details.lines`.
+ *
+ * When `details.lines` is missing or empty, the body falls back to a
+ * single "(no processors registered)" line so the message always has
+ * visible content. Expanded and collapsed renders are identical today —
+ * `/fence list` has no hidden detail to unfold.
+ */
+export function createPiFenceListRenderer(tui: {
+	Box: new (paddingY: number, paddingX: number, bg?: (text: string) => string) => PiTuiContainer;
+	Text: new (text: string, x: number, y: number) => PiTuiComponent;
+	Spacer: new (height: number) => PiTuiComponent;
+	truncateToWidth: (text: string, width: number, suffix?: string) => string;
+}) {
+	return (
+		message: { content: unknown; details?: unknown },
+		_options: { expanded: boolean },
+		theme: { fg: (color: string, text: string) => string; bold: (text: string) => string; bg: (color: string, text: string) => string },
+	): PiTuiContainer => {
+		const details = (message.details ?? {}) as Partial<PiFenceListDetails>;
+		const lines = details.lines && details.lines.length > 0 ? details.lines : [EMPTY_LISTING_LINE];
+
+		const box = new tui.Box(1, 1, (t) => theme.bg("customMessageBg", t));
+		box.addChild(new tui.Text(theme.fg("customMessageLabel", theme.bold(LIST_HEADER)), 0, 0));
+		box.addChild(new tui.Spacer(1));
+		for (const line of lines) {
+			box.addChild(new tui.Text(line, 0, 0));
+		}
+		return box;
+	};
+}
+
+// ---------------------------------------------------------------------------
 // Minimal shape types for pi-tui primitives
 // ---------------------------------------------------------------------------
 
