@@ -119,6 +119,8 @@ interface FakeChild {
 
 interface FakeBox {
 	children: FakeChild[];
+	paddingY: number;
+	paddingX: number;
 }
 
 function makeTui() {
@@ -151,8 +153,8 @@ function makeTui() {
 	class Box {
 		readonly children: FakeChild[] = [];
 		constructor(
-			_paddingY: number,
-			_paddingX: number,
+			public readonly paddingY: number,
+			public readonly paddingX: number,
 			_bg?: (text: string) => string,
 		) {}
 		addChild(child: Text | Spacer | Image): void {
@@ -292,6 +294,13 @@ describe("createPiFenceMessageRenderer", () => {
 		// Inline image width stays within pi's tool-output convention (60 cells)
 		// so the rendered diagram doesn't swallow the full terminal width.
 		expect(imageChild?.image.options?.maxWidthCells).toBe(60);
+
+		// Box uses paddingY=0 so the image's partial bottom row lands flush
+		// against the box bottom edge (the "strange stripe" goes away
+		// because there is no separate bottom-padding row behind it). paddingX
+		// stays at 1 for horizontal breathing room.
+		expect(box.paddingY).toBe(0);
+		expect(box.paddingX).toBe(1);
 
 		// The chrome label already names the tag/processor; no duplicate
 		// "Rendered ... via ..." text child should appear.

@@ -132,7 +132,14 @@ export function createPiFenceMessageRenderer(tui: {
 		const label = formatLabel({ kind, tag, processor });
 		const labelLine = theme.fg(kind === "ok" ? "customMessageLabel" : "error", theme.bold(label));
 
-		const box = new tui.Box(1, 1, (t) => theme.bg("customMessageBg", t));
+		// paddingY=0 so the image's partial bottom row lands flush against
+		// the box bottom. Otherwise pi-tui adds a blank padding row below the
+		// image, and the leftover fractional pixels on the image's last row
+		// (rounded up by pi-tui's cell-based layout) read as a distinct
+		// stripe against the custom-message background. Trade-off: the label
+		// now sits flush against the top border too, but pi's Box API has no
+		// asymmetric padding.
+		const box = new tui.Box(0, 1, (t) => theme.bg("customMessageBg", t));
 		box.addChild(new tui.Text(labelLine, 0, 0));
 		box.addChild(new tui.Spacer(1));
 
