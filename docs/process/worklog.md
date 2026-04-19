@@ -238,3 +238,26 @@ Honest caveats for S3 and beyond:
 - The alias map is unidirectional: `graphviz → graphviz` (identity), `dot → graphviz`. A user who writes `dot` and reads the rendering label sees `dot`; a user who writes `graphviz` sees `graphviz`. Both are correct; both reach the same endpoint.
 - Case-insensitivity still unsupported. An LLM that writes ```` ```DOT ```` (uppercase) would not fire pi-fence. Case-insensitive matching was explicitly out of scope in S2's plan; revisit if it ever bites.
 - `extensions/pi-fence/kroki.ts` still imports `HttpClient` from `tests/utilities/`. Same wart as S1. Still no user impact.
+
+### 2026-04-18 — Spec CV0.E1.S4 and CV0.E1.S5 for full Kroki coverage
+
+Both stories deferred behind `S3` but specced now so the Epic shape is honest. No implementation in this entry.
+
+After the user asked whether to cram "all of Kroki" into E1, we chose to keep growing incrementally *but* commit explicitly to which growth is planned. `S4 — Full Kroki coverage for text-based languages` covers the straightforward expansion (research which languages the public endpoint serves, add them to the allowlist, one live test each). `S5 — JSON-body Kroki languages` handles the Vega / Vega-Lite / Excalidraw trio separately because they need `Content-Type: application/json` and pi-fence's current `kroki.ts` sends `text/plain` unconditionally.
+
+Shape of each spec:
+
+- **S4** makes research a first-class deliverable. The research output is a committed `tests/fixtures/kroki/canonical-sources.ts` file listing every researched language, its minimal canonical source, and known aliases. A throwaway probe script is allowed to investigate but does not ship. A new `docs/product/kroki-support.md` reference doc lists everything with supported/unsupported status and quirks.
+- **S5** ships a content-type dispatch in `kroki.ts` driven by a `KROKI_JSON_BODY_TAGS` set, run *after* alias resolution so both `vega-lite` and `vegalite` hit the JSON path. Unit tests lock the dispatch semantics; live tests prove real rendering.
+
+Updated the Epic's done criterion accordingly: CV0.E1 now closes with every language Kroki's public endpoint serves covered by a live test, not the previous "at least three different diagram languages."
+
+The top-level roadmap table and the Epic's stories table both gain rows for S4 and S5.
+
+Commits in this spec-only work:
+
+- `<pending>` extend CV0.E1 Epic with S4 and S5, tighten done criterion, add roadmap rows
+- `<pending>` spec CV0.E1.S4 — full Kroki text-body coverage
+- `<pending>` spec CV0.E1.S5 — Kroki JSON-body languages
+
+S3 remains the immediate next story.
