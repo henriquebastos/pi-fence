@@ -1,6 +1,6 @@
 [< CV0.E1 — Kroki Through The Wire](../README.md)
 
-# S2 — I see other Kroki-supported diagrams through the same path 🛠️
+# S2 — I see other Kroki-supported diagrams through the same path ✅
 
 S1 proved the mermaid path. S2 broadens the tag allowlist so `dot` / `graphviz`, `plantuml` / `puml`, and `d2` flow through the same pipeline without duplicated plumbing.
 

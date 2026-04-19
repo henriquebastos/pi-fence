@@ -10,7 +10,9 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-Implement `CV0.E1.S2` — *I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path*. Spec the plan first (`cv0-e1-s2-other-kroki-tags/` under the Epic), then implement test-first. The registry arrives only when CV0.E2 introduces a second processor; S2 stays within the Kroki path and broadens the tag allowlist.
+Implement `CV0.E1.S3` — `/fence list`. This is the last story of CV0.E1, completing the first Community Value. Spec the plan first under a new story directory, then implement test-first. S3 adds a read-only command surface; no new processors and no new tags beyond what S2 delivered.
+
+After S3 lands, CV0.E1 closes and we move into CV0.E2 (Graphviz Local) to introduce the registry concept with a second processor.
 
 Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -201,3 +203,38 @@ Honest caveats carried forward into S2:
 - `/fence trace` is still unbuilt. `NodeLogger` is wired into `index.ts` but nothing reads `PI_FENCE_LOG_LEVEL` from the user's side yet.
 
 S2 will spec shortly and land either by broadening the hardcoded tag list (smallest change) or by introducing the first tiny alias map (`dot` → `graphviz`, `puml` → `plantuml`). That decision belongs in the S2 plan, not the worklog.
+
+### 2026-04-18 — CV0.E1.S2 Other Kroki-supported diagrams shipped ✅
+
+Broadens pi-fence from `mermaid`-only to the four diagram languages Kroki hosts that users actually reach for: `graphviz`/`dot`, `plantuml`/`puml`, `d2`, alongside the existing `mermaid`.
+
+The change is small on purpose. No new abstractions, no registry, no settings. A flat alias map in `kroki.ts` (`dot → graphviz`, `puml → plantuml`) handles the one-line divergence between colloquial tags and Kroki's canonical endpoint names. The rest is a one-line widening of `SUPPORTED_TAGS` in `index.ts`.
+
+Commits:
+
+- `68e8538` spec CV0.E1.S2 — broaden Kroki tag support
+- `aea6c3c` kroki tag aliases (S2 step 1)
+- `d5c698c` accept additional Kroki tags (S2 step 2)
+- `8c5774c` live dot roundtrip (S2 step 3)
+- `91ac948` document S2 broader Kroki support
+
+Refactor landed with S2 without earning its own commit: `tests/extension/pi-fence.test.ts` gained a `runExtensionWithAssistantText` helper that collapses ~90 lines of session setup into a one-line call. S1 shipped the first case with that boilerplate inline; S2 would have duplicated it. The refactor kept the file short enough to survive S3 and beyond.
+
+Final test counts:
+
+- 108 tests passing in the fast suite (+5 over S1's 103: 4 alias cases in `kroki.test.ts`, 1 dot case in `pi-fence.test.ts`).
+- 4 kroki live cases pass against real kroki.io (+1 over S1's 3: the new dot round-trip).
+- `pnpm run check` green.
+
+Preserved from S1, no regressions:
+
+- S1 mermaid extension test passes unchanged (rewritten in the new helper shape, same assertions).
+- S1 live mermaid case unchanged.
+- Contract test unchanged (contract is processor-level, not per-tag).
+
+Honest caveats for S3 and beyond:
+
+- Tag support grows by enumeration (flat allowlist). Adding `nomnoml`, `wavedrom`, `vega-lite` is a one-line append + one alias if needed + one extension test case. No deeper change needed. Worth revisiting when the list exceeds ~10-12 tags.
+- The alias map is unidirectional: `graphviz → graphviz` (identity), `dot → graphviz`. A user who writes `dot` and reads the rendering label sees `dot`; a user who writes `graphviz` sees `graphviz`. Both are correct; both reach the same endpoint.
+- Case-insensitivity still unsupported. An LLM that writes ```` ```DOT ```` (uppercase) would not fire pi-fence. Case-insensitive matching was explicitly out of scope in S2's plan; revisit if it ever bites.
+- `extensions/pi-fence/kroki.ts` still imports `HttpClient` from `tests/utilities/`. Same wart as S1. Still no user impact.
