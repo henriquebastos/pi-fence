@@ -10,7 +10,7 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-Land Draft 2 of the framework-update change set (specs `CV0.E1.S0` — testing foundation). Then implement `CV0.E1.S0` itself (Draft 3). Then implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
+Land Draft 3 of the framework-update change set: implement [CV0.E1.S0 — Testing foundation](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s0-testing-foundation/plan.md) following its plan. Then implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
 
 Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -76,3 +76,20 @@ Draft 2 will ship the S0 story docs (`README.md`, `plan.md`, `test-guide.md`) an
 Draft 3 will ship the implementation: vitest config, `tests/` tree, utilities, `docker/Dockerfile`, `scripts/live-container.ts`, exemplar tests.
 
 Commit: `wip(agent): framework updates for verifiability + testing architecture`.
+
+### 2026-04-18 — Testing framework shape (Draft 2 of 3)
+
+Specs the first testing-infrastructure story and updates the first feature story to conform.
+
+Changes in this draft:
+
+- Created `cv0-e1-s0-testing-foundation/` with `README.md`, `plan.md`, `test-guide.md`. S0 ships vitest setup, the four-layer `tests/` tree, three I/O-seam interfaces (`ShellRunner`, `HttpClient`, `Logger`) with fake and node impls, a `FakeExtensionAPI`, a minimal `docker/Dockerfile` (graphviz only), `scripts/live-container.ts`, a `scripts/refresh-fixtures.ts` skeleton, GitHub Actions workflow skeletons, and exemplar tests at each layer — every piece verified by its own self-test.
+- S0 links promoted in the Epic README and the top-level roadmap table now that the story directory exists.
+- S1 plan rewritten: every step is test-first (unit tests → impl → contract tests → extension tests → integration live), HttpClient is injected into `kroki.ts`, and the mandatory `Tests` section lists layers touched, fakes used, live tests added, deferrals.
+- S1's test-guide updated to list the actual automated tests S1 now produces (parser, kroki-with-FakeHttpClient, renderer, contract, extension with real pi SDK + fake stream, live kroki integration).
+- S1 README gains an explicit `Depends on` pointer to S0.
+- `Epic README` adds a paragraph explaining the S0→S1 ordering.
+
+Draft 3 will ship the actual implementation of S0 — vitest config, the full `tests/` tree with self-tests, the three I/O-seam interfaces and their impls, the Dockerfile, and the live-container CLI.
+
+Commit: `wip(agent): draft 2 of testing framework — S0 spec + S1 plan rewrite`.

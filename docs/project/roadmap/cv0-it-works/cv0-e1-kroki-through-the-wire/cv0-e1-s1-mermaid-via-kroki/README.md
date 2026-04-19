@@ -4,6 +4,8 @@
 
 The first user-visible moment. The assistant writes a mermaid fenced block; I see a PNG below it.
 
+**Depends on:** [S0 — Testing foundation](../cv0-e1-s0-testing-foundation/README.md). S1 is implemented test-first against the infrastructure S0 provides (`HttpClient` DI, `FakeHttpClient`, pi SDK extension-test harness, live-test container).
+
 - [Plan](plan.md) — deliverables, implementation order, verification steps
 - [Test Guide](test-guide.md) — manual test script
 

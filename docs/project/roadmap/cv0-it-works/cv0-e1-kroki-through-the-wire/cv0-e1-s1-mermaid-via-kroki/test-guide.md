@@ -23,11 +23,25 @@ Run from the repo root.
 
 ```bash
 pnpm install
-pnpm run check   # docs link check
-pnpm test        # unit tests
+pnpm run check   # docs link + markdown
+pnpm test        # unit + contract + extension
 ```
 
-Expect: parser tests pass. No smoke test in this Story.
+Expect: all green. Specifically:
+
+- `tests/unit/parser.test.ts` passes.
+- `tests/unit/kroki.test.ts` passes (uses `FakeHttpClient`, no network).
+- `tests/unit/renderer.test.ts` passes.
+- `tests/contract/fence-processor.ts` conformance assertions pass.
+- `tests/extension/pi-fence.test.ts` passes (real pi SDK session, fake LLM stream emits a mermaid block, extension emits `pi-fence:output` with image content).
+
+For the live-kroki integration test:
+
+```bash
+pnpm test:live   # hits real kroki.io
+```
+
+Expect: passes when network is available; skips cleanly when offline. No Docker required — Kroki is an HTTP dependency, not a binary one.
 
 ---
 
