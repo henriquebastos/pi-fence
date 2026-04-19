@@ -24,6 +24,7 @@ import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
 import type { FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
 import { FakeHttpClient } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
+import type { LogEntry } from "../utilities/logger.ts";
 import { FakeExtensionAPI } from "../utilities/extension-api.ts";
 
 function stubProcessor(
@@ -41,19 +42,20 @@ function stubProcessor(
 	};
 }
 
-function setupExtension(processor: FenceProcessor): FakeExtensionAPI {
+function setupExtension(processor: FenceProcessor): { api: FakeExtensionAPI; logger: FakeLogger } {
 	const api = new FakeExtensionAPI();
+	const logger = new FakeLogger();
 	createPiFenceExtension(api as never, {
 		http: new FakeHttpClient(),
-		logger: new FakeLogger(),
+		logger,
 		processor,
 	});
-	return api;
+	return { api, logger };
 }
 
 describe("/fence command — registration", () => {
 	it("registers the /fence command with a description", () => {
-		const api = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		const entry = api.registeredCommands.get("fence") as
 			| { description?: string; handler: unknown }
@@ -64,7 +66,7 @@ describe("/fence command — registration", () => {
 	});
 
 	it("registers the pi-fence:list message renderer", () => {
-		const api = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		expect(api.registeredRenderers.has("pi-fence:list")).toBe(true);
 	});
@@ -76,9 +78,14 @@ describe("/fence list — subcommand", () => {
 			dot: "graphviz",
 			puml: "plantuml",
 		});
-		const api = setupExtension(kroki);
+		const { api, logger } = setupExtension(kroki);
 
 		await api.invokeCommand("fence", "list");
+
+		// Logging: a debug entry on the command subsystem records the subcommand.
+		const commandDebugs = logger.bySubsystem("command").filter((e) => e.level === "debug");
+		expect(commandDebugs).toHaveLength(1);
+		expect((commandDebugs[0].meta as { subcommand?: string }).subcommand).toBe("list");
 
 		const listMessages = api.sentMessages.filter((m) => m.customType === "pi-fence:list");
 		expect(listMessages).toHaveLength(1);
@@ -111,7 +118,7 @@ describe("/fence list — subcommand", () => {
 	});
 
 	it("tolerates surrounding whitespace in the arg string", async () => {
-		const api = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		await api.invokeCommand("fence", "  list  ");
 
@@ -121,7 +128,7 @@ describe("/fence list — subcommand", () => {
 
 describe("/fence — no subcommand / unknown subcommand", () => {
 	it("notifies with a warning listing the available subcommands when called with no args", async () => {
-		const api = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api, logger } = setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		await api.invokeCommand("fence", "");
 
@@ -131,10 +138,15 @@ describe("/fence — no subcommand / unknown subcommand", () => {
 		const notification = api.ui.notifications[0];
 		expect(notification.type).toBe("warning");
 		expect(notification.message).toContain("list");
+
+		// Logging: a warn entry on the command subsystem flags the unknown
+		// subcommand for operators tailing the log.
+		const warns: LogEntry[] = logger.bySubsystem("command").filter((e) => e.level === "warn");
+		expect(warns).toHaveLength(1);
 	});
 
 	it("notifies with a warning on an unknown subcommand and does not send a message", async () => {
-		const api = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		await api.invokeCommand("fence", "bogus");
 

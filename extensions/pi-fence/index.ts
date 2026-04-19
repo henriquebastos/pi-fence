@@ -69,7 +69,7 @@ export interface PiFenceDeps {
  * default export below wires production deps and calls through.
  */
 export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): void {
-	const processor = deps.processor ?? createKrokiRenderer(deps.http);
+	const processor = deps.processor ?? createKrokiRenderer(deps.http, undefined, deps.logger);
 	const processors: FenceProcessor[] = [processor];
 
 	// Custom message renderers — compose pi-tui primitives around the
@@ -96,11 +96,13 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 		description: "List or inspect pi-fence processors (usage: /fence list)",
 		handler: async (args, ctx) => {
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
+			deps.logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
 				sendListMessage(pi, processors);
 				return;
 			}
 			notifyUnknownSubcommand(ctx, subcommand);
+			deps.logger.warn("command", "unknown subcommand", { subcommand });
 		},
 	});
 
@@ -111,6 +113,10 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 		if (!assistantText) return;
 
 		const blocks = extractFencedBlocks(assistantText, SUPPORTED_TAGS);
+		deps.logger.debug("pi-fence", "agent_end parsed", {
+			assistantTextBytes: assistantText.length,
+			blocks: blocks.length,
+		});
 		if (blocks.length === 0) return;
 
 		const toRender = blocks.slice(0, MAX_BLOCKS_PER_TURN);
@@ -122,7 +128,25 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 		}
 
 		for (const block of toRender) {
+			deps.logger.debug("pi-fence", "rendering block", {
+				tag: block.tag,
+				processor: processor.id,
+				sourceBytes: block.source.length,
+			});
 			const result = await processor.render(block.tag, block.source);
+			if (result.ok) {
+				deps.logger.info("pi-fence", "block rendered", {
+					tag: block.tag,
+					processor: processor.id,
+					bytes: result.png.length,
+				});
+			} else {
+				deps.logger.warn("pi-fence", "block render failed", {
+					tag: block.tag,
+					processor: processor.id,
+					error: result.error.slice(0, 200),
+				});
+			}
 			pi.sendMessage(buildCustomMessage(block.tag, block.source, processor.id, result));
 		}
 	});

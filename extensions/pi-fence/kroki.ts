@@ -23,7 +23,20 @@
  */
 
 import type { HttpClient } from "../../tests/utilities/http-client.ts";
+import type { Logger } from "../../tests/utilities/logger.ts";
 import type { FenceProcessor, FenceResult } from "./processor.ts";
+
+/**
+ * No-op logger used when the caller passes no `Logger`. Keeps the render
+ * path free of `if (logger)` branches while preserving the two-arg
+ * factory signature the existing callers already use.
+ */
+const NULL_LOGGER: Logger = {
+	debug: () => {},
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+};
 
 const DEFAULT_ENDPOINT = "https://kroki.io";
 const DEFAULT_TIMEOUT_MS = 15_000;
@@ -74,6 +87,7 @@ export type KrokiRenderer = FenceProcessor;
 export function createKrokiRenderer(
 	http: HttpClient,
 	endpoint: string = DEFAULT_ENDPOINT,
+	logger: Logger = NULL_LOGGER,
 ): FenceProcessor {
 	const base = endpoint.replace(/\/+$/, "");
 
@@ -84,33 +98,53 @@ export function createKrokiRenderer(
 
 		async render(tag, source, signal): Promise<FenceResult> {
 			if (signal?.aborted) {
+				logger.warn("kroki", "Aborted before request", { tag });
 				return { ok: false, error: "Aborted before request" };
 			}
 
 			const combinedSignal = mergeSignals([signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)]);
 			const krokiTag = KROKI_ALIASES[tag] ?? tag;
+			const url = `${base}/${krokiTag}/png`;
+
+			logger.debug("kroki", "request", {
+				tag,
+				krokiTag,
+				url,
+				sourceBytes: Buffer.byteLength(source, "utf8"),
+			});
 
 			let response;
 			try {
 				response = await http.request({
 					method: "POST",
-					url: `${base}/${krokiTag}/png`,
+					url,
 					headers: { "content-type": "text/plain" },
 					body: source,
 					signal: combinedSignal,
 				});
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
+				logger.error("kroki", message, { url, tag });
 				return { ok: false, error: message };
 			}
 
 			if (response.status >= 200 && response.status < 300) {
+				logger.debug("kroki", "response ok", {
+					status: response.status,
+					tag,
+					bytes: response.body.length,
+				});
 				return { ok: true, png: response.body };
 			}
 
 			const text = response.body.toString("utf8");
 			const truncated =
 				text.length > ERROR_BODY_MAX_CHARS ? text.slice(0, ERROR_BODY_MAX_CHARS) : text;
+			logger.warn("kroki", "response error", {
+				status: response.status,
+				tag,
+				bodyBytes: response.body.length,
+			});
 			return { ok: false, error: truncated };
 		},
 	};

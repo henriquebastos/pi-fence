@@ -38,6 +38,25 @@ On expansion (ctrl+o on the rendered message) pi-fence also shows the original m
 
 - `/fence list` — prints the registered processors and the tags each accepts. Offline, read-only. Today it shows one row (`kroki`); future Epics add more processors.
 
+**Tracing**:
+
+Set `PI_FENCE_LOG_LEVEL` in the environment to see pi-fence's internal activity on stderr. Levels: `debug`, `info` (default), `warn`, `error`. Log lines look like:
+
+```text
+[pi-fence:pi-fence] debug: agent_end parsed {"assistantTextBytes":142,"blocks":1}
+[pi-fence:kroki] debug: request {"tag":"mermaid","krokiTag":"mermaid","url":"https://kroki.io/mermaid/png","sourceBytes":30}
+[pi-fence:kroki] debug: response ok {"status":200,"tag":"mermaid","bytes":3254}
+[pi-fence:command] debug: /fence invoked {"subcommand":"list"}
+```
+
+pi's TUI owns stdout; logs arrive on stderr, so redirect `2>` to capture them without disrupting the interface:
+
+```bash
+PI_FENCE_LOG_LEVEL=debug pi 2> /tmp/pi-fence.log
+```
+
+A user-facing `/fence trace` view inside pi is not yet built.
+
 What does **not** work yet:
 
 - Local rendering without network (CV0.E2, CV2.E1).

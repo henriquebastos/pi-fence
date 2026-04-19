@@ -19,6 +19,7 @@
 import { describe, expect, it } from "vitest";
 
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
+import { FakeLogger } from "../utilities/logger.ts";
 import { createKrokiRenderer } from "../../extensions/pi-fence/kroki.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
@@ -36,6 +37,88 @@ function pngResponse(bytes: Buffer): HttpResponse {
 		body: bytes,
 	};
 }
+
+describe("createKrokiRenderer — logging", () => {
+	it("logs a debug entry with the resolved URL when the request goes out", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png",
+			pngResponse(Buffer.from([0x89, 0x50])),
+		);
+		const logger = new FakeLogger();
+		const kroki = createKrokiRenderer(http, undefined, logger);
+
+		await kroki.render("mermaid", "flowchart LR\nA --> B");
+
+		const krokiLogs = logger.bySubsystem("kroki");
+		expect(krokiLogs.length).toBeGreaterThanOrEqual(1);
+		const requestLog = krokiLogs.find((e) => e.level === "debug");
+		expect(requestLog?.meta).toMatchObject({ url: "https://kroki.io/mermaid/png" });
+	});
+
+	it("logs a debug entry with the 2xx status on success", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png",
+			pngResponse(Buffer.from([0x89, 0x50])),
+		);
+		const logger = new FakeLogger();
+		const kroki = createKrokiRenderer(http, undefined, logger);
+
+		await kroki.render("mermaid", "x");
+
+		const successLogs = logger
+			.bySubsystem("kroki")
+			.filter((e) => e.meta && typeof (e.meta as { status?: number }).status === "number");
+		expect(successLogs).toHaveLength(1);
+		expect((successLogs[0].meta as { status: number }).status).toBe(200);
+		expect(successLogs[0].level).toBe("debug");
+	});
+
+	it("logs a warn entry on a 4xx/5xx response", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"https://kroki.io/mermaid/png",
+			textResponse(400, "syntax error"),
+		);
+		const logger = new FakeLogger();
+		const kroki = createKrokiRenderer(http, undefined, logger);
+
+		await kroki.render("mermaid", "bad source");
+
+		const warnLogs = logger.bySubsystem("kroki").filter((e) => e.level === "warn");
+		expect(warnLogs).toHaveLength(1);
+		expect((warnLogs[0].meta as { status?: number }).status).toBe(400);
+	});
+
+	it("logs an error entry when the HttpClient throws", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/mermaid/png", () => {
+			throw new Error("network went away");
+		});
+		const logger = new FakeLogger();
+		const kroki = createKrokiRenderer(http, undefined, logger);
+
+		await kroki.render("mermaid", "x");
+
+		const errorLogs = logger.bySubsystem("kroki").filter((e) => e.level === "error");
+		expect(errorLogs).toHaveLength(1);
+		expect(errorLogs[0].message).toContain("network went away");
+	});
+
+	it("works without a logger (back-compat with the two-arg factory)", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(Buffer.from([0x89])));
+		const kroki = createKrokiRenderer(http);
+
+		const result = await kroki.render("mermaid", "x");
+
+		expect(result.ok).toBe(true);
+	});
+});
 
 describe("createKrokiRenderer", () => {
 	it("posts the source to {endpoint}/{tag}/png with the right headers", async () => {

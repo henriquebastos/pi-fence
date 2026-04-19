@@ -92,6 +92,32 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 		},
 		20_000,
 	);
+
+	it(
+		"emits debug+info log entries through the full render pipeline",
+		async () => {
+			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png": TINY_PNG });
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+			);
+
+			const logger = captured.logger!;
+
+			// Extension hook traced parse + per-block render.
+			const fenceEntries = logger.bySubsystem("pi-fence");
+			expect(fenceEntries.find((e) => e.message.includes("agent_end parsed"))).toBeDefined();
+			expect(fenceEntries.find((e) => e.message.includes("rendering block"))).toBeDefined();
+			expect(
+				fenceEntries.find((e) => e.level === "info" && e.message.includes("block rendered")),
+			).toBeDefined();
+
+			// Kroki processor traced request + response.
+			const krokiEntries = logger.bySubsystem("kroki");
+			expect(krokiEntries.filter((e) => e.level === "debug").length).toBeGreaterThanOrEqual(2);
+		},
+		20_000,
+	);
 });
 
 describe("pi-fence extension — /fence list command through AgentSession", () => {
@@ -145,6 +171,7 @@ interface CapturedCustomMessage {
 
 interface Captured {
 	sentCustomMessages: CapturedCustomMessage[];
+	logger?: FakeLogger;
 }
 
 function pngResponse(bytes: Buffer): HttpResponse {
@@ -189,6 +216,7 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
 	model: NonNullable<ReturnType<typeof getModel>>;
+	logger: FakeLogger;
 }> {
 	const logger = new FakeLogger();
 	const sentCustomMessages: CapturedCustomMessage[] = [];
@@ -238,7 +266,7 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 
 	session.subscribe(() => {});
 
-	return { session, sentCustomMessages, model };
+	return { session, sentCustomMessages, model, logger };
 }
 
 /**
@@ -250,7 +278,7 @@ async function runExtensionWithAssistantText(
 	http: FakeHttpClient,
 	assistantText: string,
 ): Promise<Captured> {
-	const { session, sentCustomMessages, model } = await buildSessionWithExtension(http);
+	const { session, sentCustomMessages, model, logger } = await buildSessionWithExtension(http);
 
 	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
@@ -264,7 +292,7 @@ async function runExtensionWithAssistantText(
 	// to settle.
 	await new Promise((r) => setTimeout(r, 50));
 
-	return { sentCustomMessages };
+	return { sentCustomMessages, logger };
 }
 
 /**
