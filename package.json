@@ -52,7 +52,8 @@
     "live:down": "tsx scripts/live-container.ts down",
     "live:status": "tsx scripts/live-container.ts status",
     "live:exec": "tsx scripts/live-container.ts exec",
-    "live:build": "tsx scripts/live-container.ts build"
+    "live:build": "tsx scripts/live-container.ts build",
+    "refresh-fixtures": "tsx scripts/refresh-fixtures.ts"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
