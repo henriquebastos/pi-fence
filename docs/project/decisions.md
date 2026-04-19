@@ -76,3 +76,36 @@ Investigation of pi's source (`dist/core/settings-manager.d.ts`) confirmed that 
 - A `/fence reload` command re-reads the files at runtime, so users can edit settings without restarting pi.
 - Documentation for configuration lives in `docs/getting-started.md` under an “Advanced” section — the main path assumes defaults.
 - Schema of the `"pi-fence"` key is versioned in code and documented in getting-started, not in `briefing.md` (briefing is for rationale; schema is a product detail).
+
+> **Superseded** by *Adopt `@zenobius/pi-extension-config` with a per-extension config file* (below).
+
+### 2026-04-18 — Adopt `@zenobius/pi-extension-config` with a per-extension config file (supersedes the `"pi-fence"`-under-`settings.json` decision)
+
+**Context.** The user asked whether my previous D6 answer reflected how the ecosystem actually handles per-extension config. It did not. I had only sampled two extensions and extrapolated. A full survey of every extension currently installed under `~/.pi/agent/git/` showed three patterns: (A) manual per-extension JSON under `~/.pi/agent/settings/<name>.json` using `getAgentDir()` (pi-leash, pi-image-gen); (B) per-extension JSON managed by the library `@zenobius/pi-extension-config`, living at `~/.pi/agent/<name>.config.json` + `.pi/<name>.config.json` (pi-worktrees); (C) no user-facing config at all (most extensions). **Zero** extensions use a key under `settings.json` as I had proposed.
+
+**Rule.** pi-fence uses pattern B. It depends on `@zenobius/pi-extension-config` and delegates config discovery, layered resolution, parsing, migrations, and event lifecycle to that library.
+
+Resolution order (highest priority first):
+
+1. Environment variables (`PI_FENCE_*`).
+2. Project config at `<cwd>/.pi/pi-fence.config.json`.
+3. Home config at `~/.pi/agent/pi-fence.config.json`.
+4. Defaults defined in code.
+
+Defaults cover the first-install experience: Kroki endpoint at `https://kroki.io`, interception on, no processor bindings. Every key in the config file is optional.
+
+**Why.**
+
+- **Ecosystem consistency.** Users who already have pi-leash, pi-image-gen, and pi-worktrees configured see a familiar shape and location for pi-fence. Burying our config under `settings.json` would be a lone outlier.
+- **Namespace hygiene.** A malformed pi-fence config cannot break pi-core's settings parsing. Each extension’s JSON lives in its own file.
+- **No reinvented wheel.** pi-leash and pi-image-gen each carry their own manual layered-config implementation. pi-worktrees adopted the library and deleted theirs. We skip the intermediate step and start with the library.
+- **Migrations and env overrides for free.** We get a migration chain, typed validation hooks, and `PI_FENCE_*` env overrides without writing any of that code. Env overrides in particular are valuable for Docker users running Kroki locally.
+
+**Consequences.**
+
+- **Superseding the previous decision.** The prior entry (*“Config lives in `settings.json` under `"pi-fence"`; defaults in code”*) is marked superseded. It reflected an incomplete survey; this entry replaces its rule but keeps the spirit (defaults in code, graceful degradation, user never has to create a file).
+- **New dependency.** `@zenobius/pi-extension-config` will land as a runtime dependency when the config module is implemented in CV1.E1. It is not added yet — there is nothing to use it for in S1. ~10 KB, actively maintained (0.2.0 at time of decision, published April 2026).
+- **Config module shape.** The extension exposes a single `getConfig()` function, backed by `createConfigService<PiFenceConfig>("pi-fence", { defaults, parse })`. Schema defined with TypeBox to match the rest of the ecosystem.
+- **Command surface.** `/fence reload` calls `service.reload()`. Future `/fence doctor` can call `service.config` to show the effective config alongside processor availability.
+- **Documentation.** `docs/getting-started.md` documents only the file locations and the defaults-just-work story. The schema reference lives next to the code.
+- **Code impact timing.** The config module lands during CV1.E1 (Explicit Configuration), not in S1. S1 has one hardcoded processor and no config surface to expose.

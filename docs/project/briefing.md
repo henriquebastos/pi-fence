@@ -112,16 +112,27 @@ Third-party extensions register their own processors through `pi.events`. They d
 
 ### D6 — The user owns the registry via settings
 
-Configuration lives under a single `"pi-fence"` key in pi's own settings files: `~/.pi/agent/settings.json` (global) and `.pi/settings.json` (project). Project overrides global. The user edits these files directly — the same files they already curate for pi itself.
+Configuration lives in a dedicated, per-extension config file managed by the [`@zenobius/pi-extension-config`](https://www.npmjs.com/package/@zenobius/pi-extension-config) library:
+
+- Global: `~/.pi/agent/pi-fence.config.json`
+- Project: `<cwd>/.pi/pi-fence.config.json`
+- Env overrides: `PI_FENCE_*` (e.g. `PI_FENCE_KROKI_ENDPOINT=http://localhost:8000`)
+- Defaults: in code
+
+Resolution priority, highest first: env → project → home → defaults. The library handles discovery, layered merge, typed parsing, migrations, and a stable event API.
+
+Users configure pi-fence through this file:
 
 - Enable/disable any processor.
 - Bind a tag to a specific named processor when more than one is registered for it.
 - Configure endpoint, timeout, credentials per processor.
-- Override with meta info string on individual fences (`​`​`​`​mermaid processor=kroki`) for ad-hoc control.
+- Override with meta info string on individual fences (```mermaid processor=kroki```) for ad-hoc control.
 
-**Why `settings.json`.** Pi does not ship a general-purpose “extension-scoped config” API — its `SettingsManager` has typed getters for pi's known fields only. Extensions that want hand-edited user config either read `settings.json` directly or invent their own file. We pick `settings.json` because the user already curates it, and because pi-fence config naturally composes with the rest of pi's config (global vs project override rules, packages declared alongside, etc.). We read and merge the two files ourselves; the `"pi-fence"` namespace keeps our keys from colliding with pi-core or other extensions.
+**Why a per-extension file, not a key under `settings.json`.** Extensions in the ecosystem that carry non-trivial user config (pi-leash, pi-image-gen, pi-worktrees) each own a dedicated file under `~/.pi/agent/`. That pattern keeps namespaces clean, lets a malformed pi-fence config not break pi-core, and matches what users already see for their other extensions. Pi's own `SettingsManager` has no general-purpose "read my extension's custom key" API; every pattern here is convention, not framework.
 
-**Defaults in code, file-as-override.** The extension works out of the box with no settings file and no `"pi-fence"` block. All defaults live in code; the file only needs the keys the user wants to change. Missing file, missing keys, malformed values all fall back gracefully, with a single warning on bad values rather than a crash. The user never has to create a file for pi-fence to function.
+**Why `@zenobius/pi-extension-config` rather than rolling our own.** Two extensions in the ecosystem (pi-leash, pi-image-gen) implement the same manual read-merge-defaults code; pi-worktrees adopted the library to avoid repeating it. We follow pi-worktrees: we get layered resolution, env-var overrides, typed validation hooks (for our TypeBox schema), and migration primitives for free. The trade is one ~10 KB dependency against ~30 lines of glue code we would otherwise maintain (and re-debug every time the schema changes).
+
+**Defaults in code, file-as-override.** The extension works on first install with no config file and no env vars. Defaults (Kroki endpoint = `https://kroki.io`, interception on, no processor bindings) live in code. The file only needs the keys the user wants to change. Missing file, missing keys, parse failures all degrade gracefully — the library emits `ConfigLoadFailed` / `ConfigParseFailed` events; we log a single warning and continue with defaults. The user never has to create a file for pi-fence to function.
 
 ### D7 — `FenceProcessor` as the core abstraction
 
