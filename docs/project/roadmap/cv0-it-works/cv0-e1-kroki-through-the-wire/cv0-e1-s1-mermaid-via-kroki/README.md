@@ -1,6 +1,6 @@
 [< CV0.E1 — Kroki Through The Wire](../README.md)
 
-# S1 — I see my mermaid diagram rendered as a PNG when the assistant answers 🛠️
+# S1 — I see my mermaid diagram rendered as a PNG when the assistant answers ✅
 
 The first user-visible moment. The assistant writes a mermaid fenced block; I see a PNG below it.
 

@@ -10,9 +10,7 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-Implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
-
-The live Docker path is verified end-to-end as of 2026-04-18: `pnpm live:build`, `pnpm live:up`, `pnpm test:live` turns all 7 integration tests green on macOS arm64 with Colima. Two live-container bugs were caught and fixed during that verification (see the closing worklog entry below).
+Implement `CV0.E1.S2` — *I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path*. Spec the plan first (`cv0-e1-s2-other-kroki-tags/` under the Epic), then implement test-first. The registry arrives only when CV0.E2 introduces a second processor; S2 stays within the Kroki path and broadens the tag allowlist.
 
 Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -165,3 +163,41 @@ Both fixes committed as `4c36bc1 wip(agent): fix two live-container bugs surface
 The verification also incidentally caught that `@zenobius/pi-extension-config`, `markdownlint-cli2`, the whole `tests/` tree, and the four workflow scripts all compose cleanly from a clean container start on Colima. Nothing host-specific leaked into the test harness.
 
 S0 status: fully done, verified on a real Docker host.
+
+### 2026-04-18 — CV0.E1.S1 Mermaid via Kroki shipped ✅
+
+The first user-visible slice is live. A `mermaid` fenced block in the assistant's output now becomes a PNG rendered by `https://kroki.io` and emitted below the assistant's message. Happy path end-to-end.
+
+S1's 12-step implementation order ran test-first at every step. I deliberately collapsed the plan's `(red)` / `(green)` pairs into single commits so the invariant "every commit leaves tests passing" holds — the plan's step-per-commit table was wrong about that.
+
+Commits landed:
+
+- `d54922f` fenced-block parser (13 unit tests)
+- `4291b05` kroki renderer with HttpClient DI (9 unit tests)
+- `d7d09c6` pi-fence custom message renderer — pure helpers + component factory (12 unit tests)
+- `c94cd68` FenceProcessor contract + kroki conformance (5 contract assertions via a reusable helper)
+- `a61b0d7` pi-fence extension wiring + real-pi-SDK extension test
+- `537001d` live kroki integration test (3 cases against real kroki.io)
+- `2b4b137` README + CHANGELOG updated
+
+Final test counts:
+
+- 103 tests passing in the fast suite (`pnpm test`).
+- 9 live tests passing when the container is up (6 shell-runner) and network is available (3 kroki). `pnpm test:all` green.
+- `pnpm run check` green (links + markdown).
+
+Two pi-SDK shape landmines hit during step 8–9 (extension wiring):
+
+1. `streamFn` must return an `AssistantMessageEventStream` instance (a class with `push`/`end`/`result`), not a plain `AsyncIterable`. AgentSession calls `stream.result()` internally. The S0 exemplar's plain async iterator produced `"response.result is not a function"` errors silently absorbed into `stopReason: "error"` messages with empty content. Fixed by importing and instantiating `AssistantMessageEventStream` from `@mariozechner/pi-ai`.
+2. Real providers mutate `output.content[i].text` in place during `text_delta` events. AgentSession reads the accumulated `content` at `agent_end`. A canned stream that only yields deltas without mutating leaves `event.messages[].content` empty — the extension's `agent_end` handler sees no text to parse.
+
+Both are documented in the test file so future stories dodge the same traps.
+
+Honest caveats carried forward into S2:
+
+- `extensions/pi-fence/kroki.ts` still imports `HttpClient` from `tests/utilities/http-client.ts`. The promotion story is on the radar; S2 doesn't force the issue.
+- The extension-layer test uses a one-off monkey-patch of `pi.sendMessage` to capture custom messages. Works; not elegant. A `captureCustomMessages(session, customType)` utility would read better if S2 or later needs it again.
+- No fixture byte-comparison in the live integration test — we assert on PNG magic + size floor. Trade-off named in the test file. Kroki's PNGs aren't bit-stable across releases, so fixtures would churn with no real signal.
+- `/fence trace` is still unbuilt. `NodeLogger` is wired into `index.ts` but nothing reads `PI_FENCE_LOG_LEVEL` from the user's side yet.
+
+S2 will spec shortly and land either by broadening the hardcoded tag list (smallest change) or by introducing the first tiny alias map (`dot` → `graphviz`, `puml` → `plantuml`). That decision belongs in the S2 plan, not the worklog.
