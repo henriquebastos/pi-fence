@@ -14,9 +14,13 @@ The thinnest possible path through the system. Hook → parse → Kroki → inli
 | [S0](cv0-e1-s0-testing-foundation/README.md) | **Testing foundation: I can run unit, contract, extension, and live tests from a clean clone** | ✅ Done |
 | [S1](cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | ✅ Done |
 | [S2](cv0-e1-s2-other-kroki-tags/README.md) | **I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path** | ✅ Done |
-| `S3` | **I can see which processors are registered and their status** (`/fence list`) | Planned |
+| `S3` | **I can see which processors are registered and their status** (`/fence list`) | 🛠️ Planned |
+| [S4](cv0-e1-s4-full-kroki-text-coverage/README.md) | **Every text-based language the public Kroki endpoint supports renders through pi-fence** | Planned |
+| [S5](cv0-e1-s5-kroki-json-body-languages/README.md) | **JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw) render through pi-fence** | Planned |
 
 `S0` lands before `S1`. It defines the test architecture, utilities, Docker image for live dependencies, and the mandatory `Tests` section structure in every future story plan. `S1` is then implemented test-first against the infrastructure `S0` provides.
+
+`S3` closes the first user-visible feature set with a read-only `/fence list` command. `S4` and `S5` expand the Kroki coverage to match the Epic's name ("Kroki Through The Wire") with evidence: every language Kroki hosts on the public endpoint should render through pi-fence, subject to verified support. `S5` is split out because JSON-body languages (Vega, Excalidraw) need a different `Content-Type` and body shape than the text-based flow S1/S2/S4 use; the kroki processor gains a small dispatch there.
 
 ---
 
@@ -28,7 +32,7 @@ The assistant responds with a mermaid fenced block as it normally would. Immedia
 
 Then I ask: *"Same thing as a graphviz DOT graph."* — and the same mechanism handles it. And plantuml. And d2. Because Kroki speaks 30+ languages, S2 is mostly about proving the parser doesn't choke on tags other than `mermaid`.
 
-**Done criterion (CV0.E1):** pi-fence installed with zero configuration renders at least three different diagram languages (mermaid, graphviz, plantuml) from the assistant's output as inline PNGs. `/fence list` shows `kroki` as the active processor.
+**Done criterion (CV0.E1):** pi-fence installed with zero configuration renders every diagram language the public Kroki endpoint supports — including JSON-body languages like Vega-Lite and Excalidraw — from the assistant's output as inline PNGs. `/fence list` shows `kroki` as the active processor and enumerates the supported tags. Each supported language has at least one live test asserting it renders end-to-end; languages Kroki's public endpoint does not serve are documented as unsupported with a pointer to self-hosted Kroki (CV2.E2).
 
 ---
 
