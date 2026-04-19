@@ -10,7 +10,9 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-Land Draft 3 of the framework-update change set: implement [CV0.E1.S0 — Testing foundation](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s0-testing-foundation/plan.md) following its plan. Then implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
+Implement [CV0.E1.S1 — Mermaid via Kroki](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/plan.md) test-first against the infrastructure S0 provides.
+
+Before S1 feature work begins, a Docker-capable machine must verify the live path end-to-end: `pnpm live:build`, `pnpm live:up`, `pnpm test:live` should turn 7 currently-skipped integration tests green. This has not yet been done on any machine — the development host used during S0 does not have Docker installed.
 
 Follow each story’s plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -93,3 +95,46 @@ Changes in this draft:
 Draft 3 will ship the actual implementation of S0 — vitest config, the full `tests/` tree with self-tests, the three I/O-seam interfaces and their impls, the Dockerfile, and the live-container CLI.
 
 Commit: `wip(agent): draft 2 of testing framework — S0 spec + S1 plan rewrite`.
+
+### 2026-04-18 — CV0.E1.S0 Testing foundation shipped (Draft 3 of 3) ✅
+
+S0's 14-step implementation order ran test-first. Every utility shipped with its self-test red, then green. The fast suite went from 0 tests to 65 across 9 files (`pnpm test`, ~1.1s). The live suite skips cleanly on hosts without Docker and is ready to run green once a Docker-capable host exercises it.
+
+Commits landed in five sub-drafts:
+
+**Draft 3a — vitest setup (2 commits).** `vitest.config.ts` at repo root, `tests/` tree with per-layer `.gitkeep`s, `tests/utilities/temp-dir.ts` + self-test (8 cases) enforcing the "no host filesystem outside `os.tmpdir()`" rule, `tests/unit/example.test.ts` placeholder.
+
+**Draft 3b — three I/O seams (3 commits).** `ShellRunner` interface with `NodeShellRunner` (real subprocess via `child_process.execFile`) and `FakeShellRunner` (capture/replay). `HttpClient` interface with `NodeHttpClient` (fetch wrapper, live-tested only) and `FakeHttpClient` including dynamic function responses. `Logger` interface with `NodeLogger` (stderr, `PI_FENCE_LOG_LEVEL`-gated) and `FakeLogger` (full capture regardless of level). 35 self-test cases across the three.
+
+**Draft 3c — FakeExtensionAPI + extension-layer exemplar (2 commits).** `FakeExtensionAPI` implements only the `ExtensionAPI` slice pi-fence's handlers will use (`on`, `sendMessage`, `sendUserMessage`, `registerMessageRenderer`, `registerCommand`, `registerTool`); every other method throws "not implemented in FakeExtensionAPI" with a loud message. `tests/extension/example.test.ts` stands up a real `AgentSession` via `createAgentSession`, replaces `session.agent.streamFn` with a canned async iterator emitting `start → text_delta → text_end → end`, and asserts `agent_end` fires. Required adding `@mariozechner/pi-ai` as a devDependency for `getModel()` and the stream event types.
+
+**Draft 3d — Docker path (4 commits).** `docker/Dockerfile` on `node:22-slim` with graphviz only; grows per processor story. `scripts/live-container.ts` with `up`/`down`/`status`/`exec`/`build` subcommands, pinned image tag `ghcr.io/henriquebastos/pi-fence-live-deps:0.1.0`, graceful degradation on missing Docker. `tests/utilities/live-deps.ts` exporting `hasDocker()` / `hasContainer(name)` / `hasNetwork(target?)` — all returning booleans without throwing. `DockerExecShellRunner` added to `shell-runner.ts`, composing `NodeShellRunner` and wrapping every call in `docker exec [-i] [-w <cwd>]`. `tests/integration/shell-runner.live.test.ts` (6 cases) and `tests/integration/example.live.test.ts` (1 case) use `describe.skipIf(!hasContainer(...))`. Vitest config had to change mid-draft: `include: ["tests/**/*.test.ts"]` uniformly, with `test` script using `--exclude 'tests/integration/**'` and `test:live` using a positional filter — CLI filters intersect with config includes, which caused a transient "no test files found" issue. `test:all` runs everything.
+
+**Draft 3e — tail work (4 commits).** `scripts/refresh-fixtures.ts` skeleton throwing "not yet implemented" with a pointer to CV0.E1.S1; 2 self-tests lock the error shape. `.github/workflows/ci.yml` (push + PR, Ubuntu + macOS, Node 22, fast suite only) and `live.yml` (nightly + `workflow_dispatch`, Ubuntu, full live pipeline) committed dormant; `actionlint 1.7.12` reports no errors. `docs/getting-started.md` expanded with a full Development section: prerequisites, clone, fast and live suites, watch mode, scripts table, CI note, test layout. Worklog closes.
+
+Honest caveats carried forward into S1:
+
+- Docker path was never exercised end-to-end during S0 — the dev host has no Docker. All 7 integration tests report as skipped. The S1 kick-off must verify `pnpm live:up && pnpm test:live` on a Docker-capable host.
+- `HttpClient` still lives under `tests/utilities/`. S1's `kroki.ts` will import from that path. A later story promotes the three I/O seams to `extensions/pi-fence/io/`.
+- The three exemplar tests (`tests/unit/example.test.ts`, `tests/extension/example.test.ts`, `tests/integration/example.live.test.ts`) are placeholders. S1 deletes them as its real tests take over.
+- `PI_FENCE_LOG_LEVEL` env var is documented in `NodeLogger` but no `/fence trace` command exists yet. The command and its session-storage integration land with S1.
+- `hasNetwork()` makes real HTTP on every fast-suite run; that pushed `pnpm test` from ~220ms to ~1.1s. Acceptable cost for testing the real helper.
+
+Commits for Draft 3 (11 total):
+
+- `f3f1890` vitest setup with trivial unit example
+- `7047454` temp-dir test utility
+- `35e8693` ShellRunner with Node and Fake impls
+- `d0e8f34` HttpClient interface with Node and Fake impls
+- `2f5c06b` Logger interface with Node and Fake impls
+- `8ef5e34` FakeExtensionAPI test utility
+- `847af23` extension-layer exemplar with fake LLM stream
+- `ab76fc1` docker image for live deps (graphviz only)
+- `f043dc5` live-container lifecycle CLI + live-deps detection helpers
+- `b5b73dc` DockerExecShellRunner + live shell-runner integration tests
+- `52876c5` integration-layer exemplar with DockerExecShellRunner
+- `455d472` refresh-fixtures script skeleton
+- `b90f867` CI workflow skeletons (dormant)
+- `5be50a9` document testing workflow in getting-started
+
+S0 status in the Epic: ✅.

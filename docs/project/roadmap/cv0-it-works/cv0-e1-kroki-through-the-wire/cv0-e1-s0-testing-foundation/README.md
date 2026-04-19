@@ -1,6 +1,6 @@
 [< CV0.E1 — Kroki Through The Wire](../README.md)
 
-# S0 — Testing foundation 🛠️
+# S0 — Testing foundation ✅
 
 The test architecture pi-fence will use for every story after this one. No feature code yet. Ships: vitest setup, `tests/` tree, the three I/O-seam interfaces with fakes (`ShellRunner`, `HttpClient`, `Logger`), a `FakeExtensionAPI`, a Docker image for live dependencies (graphviz-only at this point), and container-lifecycle scripts.
 
