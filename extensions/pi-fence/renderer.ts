@@ -107,7 +107,7 @@ export interface PiFenceOutputDetails {
  * that was wrong, and produced a visible chrome with no image.
  */
 export function createPiFenceMessageRenderer(tui: {
-	Box: new (paddingY: number, paddingX: number, bg?: (text: string) => string) => PiTuiContainer;
+	Box: new (paddingX: number, paddingY: number, bg?: (text: string) => string) => PiTuiContainer;
 	Text: new (text: string, x: number, y: number) => PiTuiComponent;
 	Spacer: new (height: number) => PiTuiComponent;
 	Image: new (
@@ -139,7 +139,8 @@ export function createPiFenceMessageRenderer(tui: {
 		// stripe against the custom-message background. Trade-off: the label
 		// now sits flush against the top border too, but pi's Box API has no
 		// asymmetric padding.
-		const box = new tui.Box(0, 1, (t) => theme.bg("customMessageBg", t));
+		// Argument order is (paddingX, paddingY, bgFn) per pi-tui's Box.
+		const box = new tui.Box(1, 0, (t) => theme.bg("customMessageBg", t));
 		box.addChild(new tui.Text(labelLine, 0, 0));
 		box.addChild(new tui.Spacer(1));
 
@@ -221,7 +222,7 @@ const EMPTY_LISTING_LINE = "(no processors registered)";
  * `/fence list` has no hidden detail to unfold.
  */
 export function createPiFenceListRenderer(tui: {
-	Box: new (paddingY: number, paddingX: number, bg?: (text: string) => string) => PiTuiContainer;
+	Box: new (paddingX: number, paddingY: number, bg?: (text: string) => string) => PiTuiContainer;
 	Text: new (text: string, x: number, y: number) => PiTuiComponent;
 	Spacer: new (height: number) => PiTuiComponent;
 	truncateToWidth: (text: string, width: number, suffix?: string) => string;

@@ -153,8 +153,8 @@ function makeTui() {
 	class Box {
 		readonly children: FakeChild[] = [];
 		constructor(
-			public readonly paddingY: number,
 			public readonly paddingX: number,
+			public readonly paddingY: number,
 			_bg?: (text: string) => string,
 		) {}
 		addChild(child: Text | Spacer | Image): void {
@@ -297,10 +297,11 @@ describe("createPiFenceMessageRenderer", () => {
 
 		// Box uses paddingY=0 so the image's partial bottom row lands flush
 		// against the box bottom edge (the "strange stripe" goes away
-		// because there is no separate bottom-padding row behind it). paddingX
-		// stays at 1 for horizontal breathing room.
-		expect(box.paddingY).toBe(0);
+		// because there is no separate bottom-padding row behind it).
+		// paddingX stays at 1 for horizontal breathing room. Note: pi-tui's
+		// Box constructor is `(paddingX, paddingY, bgFn)` — X first.
 		expect(box.paddingX).toBe(1);
+		expect(box.paddingY).toBe(0);
 
 		// The chrome label already names the tag/processor; no duplicate
 		// "Rendered ... via ..." text child should appear.
