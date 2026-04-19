@@ -14,7 +14,7 @@
  *     output.
  */
 
-import { Box, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui";
+import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui";
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
@@ -78,6 +78,7 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 		Box: Box as never,
 		Text: Text as never,
 		Spacer: Spacer as never,
+		Image: Image as never,
 		truncateToWidth,
 	};
 	pi.registerMessageRenderer(

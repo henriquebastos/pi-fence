@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
 	clipSourceLines,
 	createPiFenceListRenderer,
+	createPiFenceMessageRenderer,
 	formatLabel,
 	hasSourceOverflow,
 } from "../../extensions/pi-fence/renderer.ts";
@@ -107,8 +108,9 @@ describe("clipSourceLines", () => {
  * composition without loading pi-tui proper.
  */
 interface FakeChild {
-	kind: "Text" | "Spacer";
+	kind: "Text" | "Spacer" | "Image";
 	text?: string;
+	image?: { base64: string; mimeType: string };
 }
 
 interface FakeBox {
@@ -130,6 +132,18 @@ function makeTui() {
 			return Array.from({ length: this.height }, () => "");
 		}
 	}
+	class Image {
+		readonly kind = "Image" as const;
+		constructor(
+			public readonly base64: string,
+			public readonly mimeType: string,
+			public readonly imageTheme: { fallbackColor: (s: string) => string },
+			public readonly options?: { maxWidthCells?: number },
+		) {}
+		render(): string[] {
+			return [`<image:${this.mimeType}:${this.base64.length}b>`];
+		}
+	}
 	class Box {
 		readonly children: FakeChild[] = [];
 		constructor(
@@ -137,21 +151,29 @@ function makeTui() {
 			_paddingX: number,
 			_bg?: (text: string) => string,
 		) {}
-		addChild(child: Text | Spacer): void {
+		addChild(child: Text | Spacer | Image): void {
 			if (child instanceof Text) {
 				this.children.push({ kind: "Text", text: child.text });
+			} else if (child instanceof Image) {
+				this.children.push({
+					kind: "Image",
+					image: { base64: child.base64, mimeType: child.mimeType },
+				});
 			} else {
 				this.children.push({ kind: "Spacer" });
 			}
 		}
 		render(): string[] {
-			return this.children.flatMap((c) => (c.kind === "Text" ? [c.text ?? ""] : [""]));
+			return this.children.flatMap((c) =>
+				c.kind === "Text" ? [c.text ?? ""] : [""],
+			);
 		}
 	}
 	return {
 		Box: Box as never,
 		Text: Text as never,
 		Spacer: Spacer as never,
+		Image: Image as never,
 		truncateToWidth: (text: string, _width: number) => text,
 	};
 }
@@ -223,5 +245,70 @@ describe("createPiFenceListRenderer", () => {
 			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
 			.map((c) => c.text);
 		expect(texts).toEqual(["Processors", "(no processors registered)"]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createPiFenceMessageRenderer — composition via fake pi-tui primitives
+// ---------------------------------------------------------------------------
+
+describe("createPiFenceMessageRenderer", () => {
+	it("composes label, spacer, and an Image child when content carries a PNG", () => {
+		const tui = makeTui();
+		const renderer = createPiFenceMessageRenderer(tui);
+
+		const box = renderer(
+			{
+				content: [
+					{ type: "image", data: "ZmFrZS1ieXRlcw==", mimeType: "image/png" },
+					{ type: "text", text: "Rendered mermaid via kroki" },
+				],
+				details: {
+					tag: "mermaid",
+					processor: "kroki",
+					kind: "ok",
+					source: "flowchart LR\nA --> B",
+				},
+			},
+			{ expanded: false },
+			FAKE_THEME,
+		) as unknown as FakeBox;
+
+		const kinds = box.children.map((c) => c.kind);
+		expect(kinds).toContain("Image");
+
+		const imageChild = box.children.find(
+			(c): c is FakeChild & { kind: "Image"; image: { base64: string; mimeType: string } } =>
+				c.kind === "Image",
+		);
+		expect(imageChild?.image.base64).toBe("ZmFrZS1ieXRlcw==");
+		expect(imageChild?.image.mimeType).toBe("image/png");
+	});
+
+	it("renders without an Image child on the error path (no image content)", () => {
+		const tui = makeTui();
+		const renderer = createPiFenceMessageRenderer(tui);
+
+		const box = renderer(
+			{
+				content: [{ type: "text", text: "Error rendering mermaid via kroki: syntax" }],
+				details: {
+					tag: "mermaid",
+					processor: "kroki",
+					kind: "error",
+					source: "bad",
+				},
+			},
+			{ expanded: false },
+			FAKE_THEME,
+		) as unknown as FakeBox;
+
+		expect(box.children.filter((c) => c.kind === "Image")).toHaveLength(0);
+		const texts = box.children
+			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
+			.map((c) => c.text);
+		// Label + the error text content item both surface.
+		expect(texts.some((t) => t.includes("Error rendering mermaid via kroki"))).toBe(true);
+		expect(texts.some((t) => t.includes("syntax"))).toBe(true);
 	});
 });

@@ -97,13 +97,25 @@ export interface PiFenceOutputDetails {
  *   (message, { expanded }, theme) => Component
  *
  * Where Component is any object with a `render(width: number): string[]`
- * method. We build ours from Box+Text composition using the provided
- * pi-tui helpers.
+ * method. We build ours from Box+Text+Image composition using the
+ * provided pi-tui helpers.
+ *
+ * The renderer is authoritative: pi displays exactly what it returns.
+ * Content items on the custom message (image, text) are NOT rendered by
+ * pi automatically; we explicitly compose them as children. An earlier
+ * version of this factory assumed pi's runtime drew the content for us —
+ * that was wrong, and produced a visible chrome with no image.
  */
 export function createPiFenceMessageRenderer(tui: {
 	Box: new (paddingY: number, paddingX: number, bg?: (text: string) => string) => PiTuiContainer;
 	Text: new (text: string, x: number, y: number) => PiTuiComponent;
 	Spacer: new (height: number) => PiTuiComponent;
+	Image: new (
+		base64Data: string,
+		mimeType: string,
+		imageTheme: { fallbackColor: (s: string) => string },
+		options?: { maxWidthCells?: number; maxHeightCells?: number; filename?: string },
+	) => PiTuiComponent;
 	truncateToWidth: (text: string, width: number, suffix?: string) => string;
 }) {
 	return (
@@ -122,12 +134,25 @@ export function createPiFenceMessageRenderer(tui: {
 
 		const box = new tui.Box(1, 1, (t) => theme.bg("customMessageBg", t));
 		box.addChild(new tui.Text(labelLine, 0, 0));
-
-		// The image (or error text) already lives in the message's `content`
-		// array. pi's CustomMessageComponent renders those content items
-		// before invoking our renderer — we only draw the chrome around
-		// them. A `Spacer` separates chrome from content visually.
 		box.addChild(new tui.Spacer(1));
+
+		// Render each content item pi-fence attached. PNGs via pi-tui's
+		// Image component; text via Text. Anything else is skipped — pi-fence
+		// only produces image/text today.
+		const items = Array.isArray(message.content)
+			? (message.content as Array<{ type?: string; text?: string; data?: string; mimeType?: string }>)
+			: [];
+		const imageFallback = { fallbackColor: (s: string) => theme.fg("muted", s) };
+		for (const item of items) {
+			if (item?.type === "image" && typeof item.data === "string") {
+				const mimeType = item.mimeType ?? "image/png";
+				box.addChild(
+					new tui.Image(item.data, mimeType, imageFallback, { maxWidthCells: 80 }),
+				);
+			} else if (item?.type === "text" && typeof item.text === "string") {
+				box.addChild(new tui.Text(item.text, 0, 0));
+			}
+		}
 
 		if (options.expanded && source) {
 			box.addChild(new tui.Spacer(1));
