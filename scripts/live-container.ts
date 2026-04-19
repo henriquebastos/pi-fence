@@ -127,16 +127,20 @@ async function cmdUp(): Promise<number> {
 		return 0;
 	}
 
-	// absent — need to pull (or build) and run
-	const pullCode = await runStreamingAllowFail("docker", ["pull", IMAGE]);
-	if (pullCode !== 0) {
-		console.error(
-			`docker pull failed. If this image has not been published yet, run 'pnpm live:build' first.`,
-		);
-		return pullCode;
+	// absent — need to run. Prefer a locally-built image; fall back to pulling.
+	const imageLocal = await hasLocalImage(IMAGE);
+	if (!imageLocal) {
+		const pullCode = await runStreamingAllowFail("docker", ["pull", IMAGE]);
+		if (pullCode !== 0) {
+			console.error(
+				`docker pull failed and no local image '${IMAGE}' was found. ` +
+					`If this image has not been published yet, run 'pnpm live:build' first.`,
+			);
+			return pullCode;
+		}
 	}
 	await runStreaming("docker", ["run", "-d", "--name", CONTAINER, IMAGE]);
-	console.log(`${CONTAINER}: started`);
+	console.log(`${CONTAINER}: started${imageLocal ? " (from local image)" : ""}`);
 	return 0;
 }
 
@@ -167,7 +171,13 @@ async function cmdDown(): Promise<number> {
 
 async function cmdExec(rest: string[]): Promise<number> {
 	if (!(await dockerReachable())) return reportMissingDocker();
-	if (rest.length === 0) {
+
+	// Allow both `live:exec cmd args...` and `live:exec -- cmd args...`. The
+	// `--` form is conventional for "stop parsing flags" but we don't have
+	// flags, so just drop it if it appears first.
+	const userArgs = rest[0] === "--" ? rest.slice(1) : rest;
+
+	if (userArgs.length === 0) {
 		console.error("live:exec requires a command. Usage: pnpm live:exec -- <cmd> [args...]");
 		return 1;
 	}
@@ -176,7 +186,7 @@ async function cmdExec(rest: string[]): Promise<number> {
 		console.error(`${CONTAINER} is '${state}'. Start it with 'pnpm live:up' first.`);
 		return 1;
 	}
-	return await runStreamingAllowFail("docker", ["exec", CONTAINER, ...rest]);
+	return await runStreamingAllowFail("docker", ["exec", CONTAINER, ...userArgs]);
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +208,17 @@ async function dockerReachable(): Promise<boolean> {
 	try {
 		await execFileAsync("docker", ["info"], { timeout: 2000 });
 		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function hasLocalImage(imageRef: string): Promise<boolean> {
+	try {
+		const { stdout } = await execFileAsync("docker", ["images", "-q", imageRef], {
+			timeout: 5000,
+		});
+		return stdout.trim().length > 0;
 	} catch {
 		return false;
 	}
