@@ -37,6 +37,26 @@ Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog
 - Prefixes used in this repo: `spec <CODE>`, `step N: <why>`, `close <CODE>`, `wip(agent): <why>`.
 - Before the first commit on a new clone, confirm `git config user.name` / `user.email` match the intended identity.
 
+## Working with commit SHAs
+
+SHAs are hex — unstructured, error-prone to retype. Never type a SHA from memory or visual recall.
+
+1. When a SHA appears in prose (worklog, CHANGELOG, commit message body, chat explanations), copy it from tool output or a pipeline; never retype it.
+2. When operating on commits in the shell, prefer pipelines that carry SHAs by reference: `git log --format='%H' A..B | while read sha; do git show --stat $sha; done`. Avoid literal SHA lists in `for` loops.
+3. If a `git` command fails with `fatal: ambiguous argument` or `unknown revision`, stop. Do not re-guess. Re-read the source (`git log --oneline …`) and copy again.
+4. Before any prose that lists SHAs is saved or committed, verify each one with `git log --oneline <sha1> <sha2> …`. Wrong SHAs in the worklog are worse than no SHAs — they corrode trust in the record.
+
+## Worklog and CHANGELOG ordering
+
+The worklog and CHANGELOG record history; they must not predict it. Both are edited *after* the commits they describe exist.
+
+1. During implementation, commit the code. Do not touch `docs/process/worklog.md` or `CHANGELOG.md` in the same commit as the feature.
+2. At story close (or at any history catch-up), once all feature commits exist and their SHAs are stable, create one final commit that edits the worklog + CHANGELOG together. Copy SHAs from `git log --oneline`, never from memory.
+3. This final commit's message starts with `docs:` (or `close <CODE>` for a story close that also flips roadmap statuses). It touches only documentation.
+4. Never write a SHA into the worklog before the commit it refers to exists. If a draft needs to reference a not-yet-existing commit, use a verbal placeholder (e.g. "the spec commit for S3") and replace it with the SHA in the final docs commit.
+
+Exception: a `worklog: placeholder for <story>` entry with no SHAs is fine as a scaffold; it just cannot claim commits that do not exist yet.
+
 ## I/O seams and fakes
 
 Three DI seams: `HttpClient`, `ShellRunner`, `Logger`. Production wires node impls; tests wire **fakes** (`FakeHttpClient`, `FakeShellRunner`, `FakeLogger`, `FakeExtensionAPI`) with capture arrays. No `vi.mock()`. Every fake has a sibling live test — adding a fake means adding its live gate.

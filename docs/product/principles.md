@@ -85,7 +85,7 @@ Plans without a `Tests` section are incomplete and should not be approved.
 
 **Refactoring in cycle.** After implement + test, evaluate refactoring. Document what was refactored *and* what was evaluated but left as-is, with criteria for revisiting.
 
-**Living documentation.** Roadmap, worklog, decisions, story docs are updated every cycle. They are the map.
+**Living documentation.** Roadmap, worklog, decisions, story docs are the map. They are updated at the end of each cycle, in a dedicated docs commit — never mixed into a feature commit, never predicting commits that do not yet exist. See `AGENTS.md` → *Worklog and CHANGELOG ordering* for the rule.
 
 **Commits focus on "why".** Descriptive messages in English. Explain the reason for the change, not just what changed. No self-referential or AI-authorship language.
 
