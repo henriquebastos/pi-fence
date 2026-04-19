@@ -29,7 +29,20 @@ import type { FenceProcessor, FenceResult } from "./processor.ts";
 import { createPiFenceMessageRenderer, type PiFenceOutputDetails } from "./renderer.ts";
 
 const CUSTOM_MESSAGE_TYPE = "pi-fence:output";
-const SUPPORTED_TAGS = ["mermaid"];
+
+// Tags pi-fence claims on fenced blocks in the assistant's output. Order
+// is for readability; matching is by exact string membership.
+//
+// The Kroki processor resolves its own aliases (e.g. `dot` -> `graphviz`)
+// at request time, so both aliases and canonical names appear here.
+const SUPPORTED_TAGS = [
+	"mermaid",
+	"graphviz",
+	"dot",
+	"plantuml",
+	"puml",
+	"d2",
+];
 const MAX_BLOCKS_PER_TURN = 5;
 
 export interface PiFenceDeps {
