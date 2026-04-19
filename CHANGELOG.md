@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (docs — agent/contributor front door)
+
+- `AGENTS.md` at the repo root. Short redirect-first guide that names the three authoritative sources (`docs/product/principles.md`, `docs/project/briefing.md`, worklog tail), the verification gate (`pnpm test`, `pnpm run check`, `pnpm test:live` when touching I/O seams), the story workflow (spec → implement → close), the commit-message conventions used in this repo (`spec <CODE>`, `step N: <why>`, `close <CODE>`, `wip(agent): <why>`), and the I/O-seam / fake / live-test discipline. Does not duplicate `principles.md`; redirects for anything substantive.
+
+### Refined (post-CV0.E1.S3 render polish)
+
+Eight small commits between S3's close and today tightening the rendered-diagram surface from "works" to "sits cleanly in the transcript." No new user-visible capability beyond what S1/S2/S3 already promised — this is refinement inside their territory.
+
+- **Theme tracking.** Kroki request URL gains `?theme=dark` when pi's current theme name does not contain `light`, `latte`, or `day`. Heuristic catches `dark`, `tokyo-night`, `catppuccin-mocha`, `gruvbox-dark` without enumerating every theme. Theme is re-read at every turn, so switching themes mid-session takes effect on the next rendered block.
+- **Tracing via env var.** `PI_FENCE_LOG_LEVEL` (default `info`, levels `debug|info|warn|error`) enables structured stderr logs on three channels: `[pi-fence:pi-fence]` for `agent_end` parsing, `[pi-fence:kroki]` for HTTP request/response/error, `[pi-fence:command]` for `/fence` dispatch. README's new **Tracing** section includes the `pi 2> /tmp/pi-fence.log` redirection recipe. User-facing `/fence trace` view still not built.
+- **PNG actually renders inline.** The `pi-fence:output` renderer now reads the message's `content` array and composes `tui.Image` / `tui.Text` children per item. Before: chrome + details only, with the PNG hidden in `details`.
+- **Width capped at 60 cells.** Matches pi-coding-agent's own `tool-execution` renderer convention. 80 swallowed the terminal on typical window sizes. Revisit when CV1.E1 ships user settings.
+- **Chrome cleaned up.** Dropped the duplicate label text from the content stream (the renderer already draws the header); collapsed the bottom stripe caused by the Box's bottom padding; corrected the pi-tui `Box` constructor argument order (`paddingX, paddingY` — previous code used the wrong order and accidentally padded the wrong axis); dropped the `customMessageBg` closure from the Box so image rows blend with the terminal's native background instead of showing tinted seams around the PNG.
+
 ### Added (CV0.E1.S3 — `/fence list`)
 
 - `/fence list` slash command: prints one readable line per registered processor (today only `kroki`), showing its status and accepted tags with aliases in parentheses, e.g. `kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2`. Offline, read-only; no network call.

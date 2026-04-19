@@ -309,3 +309,55 @@ Read-only, offline, no assistant turn triggered. Implementation ran test-first t
 - Argument auto-completion for `/fence <subcommand>` (`getArgumentCompletions`) not wired. One line of code + one test; left out because no consumer asks for it yet. Easy add whenever a second subcommand appears.
 
 CV0.E1's *user-visible* story line is now complete: install pi-fence, render diagrams, inspect what's registered. S4 and S5 remain as the "every language Kroki serves" expansion of the Epic's done criterion but are not in the critical path for CV0.E1's value proposition.
+
+### 2026-04-19 — post-S3 render polish and trace logging
+
+Eight unplanned commits between S3's close and today, none big enough to earn their own story but together tightening the rendered-diagram surface from "works" to "sits cleanly in the transcript." No roadmap status flips — this is refinement inside CV0.E1.S1/S2/S3 territory, not new user-visible capability beyond what was already promised.
+
+**Commits (oldest first):**
+
+- `04cffc3` trace logging on the render and command paths. `NodeLogger` is wired through `createPiFenceExtension`, and `PI_FENCE_LOG_LEVEL` (default `info`) controls verbosity. Three log channels emit structured JSON-ish payloads on stderr: `[pi-fence:pi-fence]` for `agent_end` parsing, `[pi-fence:kroki]` for request/response/error, `[pi-fence:command]` for `/fence` dispatch. README gains a **Tracing** section with redirection recipe (`pi 2> /tmp/pi-fence.log`). No user-facing `/fence trace` view yet — that remains carried forward from S3.
+- `fdf4dee` render PNG content in the `pi-fence:output` message. The renderer now reads the `content` array on the custom message and appends `tui.Image` / `tui.Text` children for each item, with the base64 bytes from the Kroki response going straight into `Image` at `maxWidthCells: 80` (narrowed to 60 later in `1ba79aa`). Before this commit the message carried only chrome and details; the PNG sat in `details` but was never rendered inline.
+- `735e3a1` drop duplicate label text from `pi-fence:output` content. The `text` content item was repeating the header the renderer already drew — pi's default custom-message renderer showed both. Removing the duplicate text keeps the expanded view clean and matches how other pi extensions structure content vs chrome.
+- `029279a` Kroki tracks pi theme for dark/light diagram rendering. `createPiFenceExtension` reads `pi.theme.current()` every turn and passes the name into `createKrokiRenderer` via a fresh closure. Kroki's request URL gains `?theme=dark` when the theme name does not contain `light`, `latte`, or `day`. The heuristic is deliberately wide — it catches `dark`, `tokyo-night`, `catppuccin-mocha`, `gruvbox-dark` without enumerating every theme. Re-reading per turn means switching themes mid-session takes effect on the next rendered block.
+- `1ba79aa` narrow inline diagram width to 60 cells. 80 swallowed the terminal on typical Ghostty window sizes; 60 matches pi-coding-agent's own `tool-execution` renderer convention. Comment in code flags this to revisit once CV1.E1 ships user settings.
+- `86566bf` collapse bottom stripe on `pi-fence:output` messages. The Box's bottom padding produced a visible one-row stripe in the custom-message background color below the image — visual noise without semantic value. Dropped the bottom pad.
+- `0427558` correct pi-tui Box padding order. The previous fix relied on a `(paddingY, paddingX)` argument order; pi-tui's `Box` actually takes `(paddingX, paddingY)`. The bottom stripe was incidentally the *left* padding being 0 and the *bottom* still being 1. Swapped the argument names in the renderer's `tui` type and the construction call. Comment updated.
+- `859cca8` drop box background so image rows blend with terminal. Dropped the `bg` closure (`theme.bg("customMessageBg", t)`) from the Box construction. The background was tinting the rows around the image, creating visible seams; letting the terminal's native background through made the PNG sit flush with surrounding text.
+
+**Test counts:**
+
+- Fast suite: 135 (S3 close) → 154 today (+19). Breakdown from the seven commits that shipped tests: `04cffc3` added cases across `kroki.test.ts` (log emission), `fence-command.test.ts`, and `pi-fence.test.ts` (trace on dispatch); `fdf4dee` expanded `renderer.test.ts` to cover image/text child composition; `735e3a1` updated renderer cases for the dropped duplicate; `029279a` added cases in `kroki.test.ts` (theme query param) and `pi-fence.test.ts` (theme passed at turn boundary); `1ba79aa`, `86566bf`, `0427558` each tightened renderer cases for their specific layout invariants; `859cca8` shipped no tests — a pure visual decision with no testable invariant beyond "no bg closure passed to Box."
+- Live suite: unchanged (4 Kroki cases, 6 shell-runner cases). None of the polish touches live paths.
+- `pnpm run check`: green on every commit.
+
+**User-visible changes that made it into the README but not the CHANGELOG until today:**
+
+1. Theme tracking (`?theme=dark` based on pi's current theme name).
+2. `PI_FENCE_LOG_LEVEL` env var + stderr tracing with three log channels.
+3. Inline PNG actually renders (before: chrome only).
+4. Width capped at 60 cells to match pi's convention.
+5. Custom message chrome cleaned up (no bottom stripe, no duplicate label, no tinted background).
+
+CHANGELOG entry landing in the same commit as this worklog update, under a new `Refined` section inside `[Unreleased]` so the S3 `Added` block stays pristine.
+
+**Nothing earned a carry-forward beyond what S3 already listed.** The items still open from S3 remain open: `SUPPORTED_TAGS` derivation, `HttpClient` import location, `/fence doctor` placeholder story, `/fence trace` user-facing view, `/fence <subcommand>` auto-completion.
+
+### 2026-04-19 — AGENTS.md as the agent/contributor front door
+
+The previous session's retrospective surfaced that a fresh agent landing in the repo had no single entry point: the rules lived in `docs/product/principles.md`, the architecture in `docs/project/briefing.md`, the canonical story example at the tail of this worklog, and the verification gate was implicit in `package.json` scripts. Each question ("what's pending?", "how do we build?", "how do we code?") required stitching two or three docs together.
+
+`AGENTS.md` at the repo root now serves as that front door. ~60 lines, redirect-first: points at the three authoritative sources, names the verification gate, sketches the story workflow in five lines (spec → implement → close), lists commit-message conventions used in this repo (`spec <CODE>`, `step N: <why>`, `close <CODE>`, `wip(agent): <why>`), and documents the I/O-seam / fake / live-test discipline in one paragraph. It does not duplicate `principles.md` — anything substantive redirects there.
+
+**Commit:**
+
+- `d209dd9` docs: add AGENTS.md as the contributor/agent front door.
+
+**Tests:** N/A (docs-only). `pnpm run check` green (30 files linked, 29 markdown files linted).
+
+**Ranked follow-ups proposed during the discussion but not yet done:**
+
+1. `docs/process/story-workflow.md` — extract the canonical 10-step loop from S3's worklog entry so it stops being archaeology. Include a worklog-entry template at the bottom.
+2. `docs/project/roadmap/_plan-template.md` — makes the mandatory `Tests` section in `plan.md` concrete.
+3. `CONTRIBUTING.md` — thin, points at AGENTS.md + principles.md.
+4. Release checklist — defer until the first real release is on the horizon.
