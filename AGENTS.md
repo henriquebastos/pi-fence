@@ -24,7 +24,7 @@ No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all th
 
 ## Story workflow
 
-1. **Spec** — draft the story folder's `README.md` + `plan.md` + `test-guide.md`. `plan.md` must have a `Tests` section (layers, events covered, fakes added, live tests, anything deferred). Amend spec churn *into the spec commit* so plan revisions don't leak into history.
+1. **Spec** — draft the story folder's `README.md` + `plan.md` + `test-guide.md`. `plan.md` must have a `Tests` section (layers, events covered, fakes added, live tests, anything deferred). Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story's three files as the working template — imitate the section shape, don't invent one. No separate template file exists; the shipped stories are the template.
 2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm test`.
 3. **Close** — flip status in the story `README.md`, the Epic `README.md`, and the top-level roadmap table; append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards); update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
 
