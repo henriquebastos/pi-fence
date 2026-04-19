@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV0.E1.S2 — Other Kroki-supported diagrams)
+
+- Extension accepts additional fenced-block tags: `graphviz`, `dot`, `plantuml`, `puml`, `d2`. `mermaid` continues to work.
+- Kroki processor maps colloquial tags to canonical endpoints at request time (`dot` → `graphviz`, `puml` → `plantuml`). Canonical names (`graphviz`, `plantuml`) also work directly. Details panel and rendering label preserve the user's original tag — the alias is invisible to every surface except the outgoing URL.
+- Four new unit cases in `tests/unit/kroki.test.ts` cover alias resolution.
+- `tests/extension/pi-fence.test.ts` refactored: a `runExtensionWithAssistantText` helper removes the ~90 lines of per-case boilerplate. New case covers a `dot` block end-to-end (details.tag stays `dot` while the HTTP call hits `/graphviz/png`).
+- `tests/integration/kroki.live.test.ts` gains a `dot` round-trip against real kroki.io.
+- README and `docs/getting-started.md` updated to reflect the broader support.
+
 ### Added (CV0.E1.S1 — Mermaid via Kroki)
 
 - `extensions/pi-fence/parser.ts` — pure `extractFencedBlocks(markdown, tags)`. CommonMark-narrowed: backtick and tilde fences, fence-length respect, up to 3 spaces leading indent, case-sensitive tag matching, info-string suffix preserved verbatim, CRLF normalised, unclosed fences ignored.

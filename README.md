@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** first slice working. `mermaid` fenced blocks in the assistant's output are rendered as inline PNGs via [kroki.io](https://kroki.io). Other diagram languages, local rendering, configuration, and the rest of the [roadmap](docs/project/roadmap/README.md) are next.
+**Status:** first Kroki slice working. `mermaid`, `graphviz`/`dot`, `plantuml`/`puml`, and `d2` fenced blocks in the assistant's output are rendered as inline PNGs via [kroki.io](https://kroki.io). Local rendering, configuration, and the rest of the [roadmap](docs/project/roadmap/README.md) are next.
 
 ---
 
@@ -25,16 +25,17 @@ The same mechanism works for anything text-to-visual: syntax-highlighted code, f
 
 After installing pi-fence into pi:
 
-1. Ask the assistant for a mermaid diagram of anything.
-2. The assistant writes a ```` ```mermaid ```` fenced block as usual.
+1. Ask the assistant for any diagram — mermaid, graphviz DOT, PlantUML, or d2.
+2. The assistant writes the natural fenced block: ```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```d2 ````, etc.
 3. pi-fence intercepts `agent_end`, posts the source to `https://kroki.io`, and emits a custom message below the assistant's text containing the rendered PNG.
 4. Your terminal displays the PNG inline (Ghostty, Kitty, iTerm2, WezTerm).
+
+**Supported tags**: `mermaid`, `graphviz`, `dot`, `plantuml`, `puml`, `d2`. Others (nomnoml, wavedrom, vega-lite, ...) are on the roadmap; each arrives with its own story when a user asks.
 
 On expansion (ctrl+o on the rendered message) pi-fence also shows the original mermaid source in a code block for copy-paste.
 
 What does **not** work yet:
 
-- Other diagram languages (graphviz, plantuml, d2 — coming in CV0.E1.S2).
 - Local rendering without network (CV0.E2, CV2.E1).
 - `/fence list` / `/fence doctor` / configuration via `~/.pi/agent/pi-fence.config.json` (CV1.E1).
 - Error feedback loop to the LLM (CV1.E2).
