@@ -1,0 +1,50 @@
+# Fast CI — runs on every push and pull request.
+#
+# Executes: docs lint, markdown lint, fast test suite.
+# Excluded: live tests under tests/integration/ (see live.yml).
+#
+# Runs on Ubuntu and macOS to catch platform-sensitive behaviour in the
+# ShellRunner + live-deps helpers without requiring Windows at this stage.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: ['22']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint docs
+        run: pnpm run check
+
+      - name: Run fast test suite
+        run: pnpm test

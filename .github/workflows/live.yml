@@ -1,0 +1,56 @@
+# Live CI — exercises the integration-layer tests against real Docker and
+# real external services (kroki.io when S1 ships).
+#
+# Separate workflow so rate limits, upstream outages, and container image
+# drift don't block merges to main. This workflow:
+#   - Runs nightly.
+#   - Can be triggered manually via workflow_dispatch.
+#   - Ubuntu only — Docker Desktop on macOS in GitHub Actions runners is
+#     flaky and slow; when we need macOS live coverage we'll add a second
+#     job.
+
+name: live
+
+on:
+  schedule:
+    # 04:17 UTC every day. Offset from the top of the hour to avoid
+    # runner contention with other projects.
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build live-deps image
+        run: pnpm live:build
+
+      - name: Start live-deps container
+        run: pnpm live:up
+
+      - name: Run live test suite
+        run: pnpm test:live
+
+      - name: Stop live-deps container
+        if: always()
+        run: pnpm live:down
