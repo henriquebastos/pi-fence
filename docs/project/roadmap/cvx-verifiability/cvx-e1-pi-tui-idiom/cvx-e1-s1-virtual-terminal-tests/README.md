@@ -13,7 +13,7 @@ The hand-rolled pi-tui fakes in `tests/unit/renderer.test.ts` (~60 lines of `Box
 
 `tests/extension/pi-fence.test.ts` gains a viewport assertion for the mermaid happy-path case: after the canned assistant turn, the viewport contains the rendered `"Rendered mermaid via kroki"` label line, and the write log contains a Kitty graphics protocol sequence (`\x1b_G...\x1b\\`) whose base64 payload decodes to our fixture PNG bytes.
 
-`tests/utilities/` gains `virtual-terminal.ts` (or equivalent) and a `LoggingVirtualTerminal` helper. The fast suite (`pnpm test`) stays green. No new npm deps beyond what's already transitive via pi-tui.
+`tests/utilities/` gains `virtual-terminal.ts` (or equivalent) and a `LoggingVirtualTerminal` helper. The fast suite (`pnpm test`) stays green. One new dev dependency: `@xterm/headless` (pi-tui lists it under its own `devDependencies`, so published consumers do not receive it transitively — see the worklog close for CVx.E1.S1 for the full deviation note against the plan's original "already transitive" claim).
 
 ## Scope
 

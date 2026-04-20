@@ -10,13 +10,13 @@
 
 ## Prerequisites
 
-No Docker, no network. `@xterm/headless` is already transitive via `@mariozechner/pi-tui`; confirm with:
+No Docker, no network. `@xterm/headless` ships as a direct `devDependency` of pi-fence (installed in CVx.E1.S1 step 1); `pnpm install` pulls it in. Confirm with:
 
 ```bash
 pnpm list @xterm/headless
 ```
 
-If the command reports it, no install step is needed.
+> **Correction (2026-04-20, post-implementation):** the original draft of this guide claimed `@xterm/headless` was "already transitive via `@mariozechner/pi-tui`." That was wrong — pi-tui lists it under its own `devDependencies`, not `dependencies`, so a published consumer does not receive it. The story's step 1 added it as a direct `devDependency` of pi-fence. See the worklog close entry for CVx.E1.S1 for the full deviation note.
 
 ---
 

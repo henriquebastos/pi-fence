@@ -31,7 +31,9 @@ Copy `packages/tui/test/virtual-terminal.ts` from `~/me/oss/pi-mono` at `upstrea
 // import and delete this file.
 ```
 
-The file keeps its original `implements Terminal` against `@mariozechner/pi-tui`'s published `Terminal` type (already importable from `@mariozechner/pi-tui`). `@xterm/headless` is already a transitive dep via pi-tui; confirm it resolves with `pnpm list @xterm/headless`.
+The file keeps its original `implements Terminal` against `@mariozechner/pi-tui`'s published `Terminal` type (already importable from `@mariozechner/pi-tui`). `@xterm/headless` needs to be added as a pi-fence `devDependency`; pi-tui lists it under its own `devDependencies`, not `dependencies`, so a published consumer does *not* receive it transitively. Install with `pnpm add -D @xterm/headless`.
+
+> **Correction (2026-04-20, post-implementation):** the draft of this plan claimed `@xterm/headless` was "already transitive via pi-tui" and suggested confirming with `pnpm list @xterm/headless`. That was wrong — pi-tui declares it under `devDependencies` in its `package.json`, which npm/pnpm do not propagate to consumers. Step 1 of the implementation added it as a direct `devDependency` of pi-fence; see the worklog close entry for CVx.E1.S1 for the full deviation note.
 
 Exported: the `VirtualTerminal` class plus its test-specific methods (`getViewport`, `getScrollBuffer`, `flush`, `flushAndGetViewport`, `clear`, `reset`, `sendInput`, `resize`).
 
