@@ -56,7 +56,8 @@
     "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
     "render:spike": "tsx scripts/render-screenshot.ts",
     "render:a11y-spike": "tsx scripts/render-a11y-spike.ts",
-    "render:image-spike": "tsx scripts/render-image-spike.ts"
+    "render:image-spike": "tsx scripts/render-image-spike.ts",
+    "render:verify": "tsx scripts/verify.ts"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
