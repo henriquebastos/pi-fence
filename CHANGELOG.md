@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (render-verify — image layer now overlays the text grid)
+
+The "big gap between the label and the mermaid image" in `pnpm render:verify` output: `@xterm/addon-image` (beta ≥ 0.10) creates a canvas and appends it to `.xterm-screen` expecting it to overlay the text grid, but ships no CSS defining that positioning. The canvas inherits `position: static` and flows as a regular block element BELOW the screen in the page flow. Images drawn at buffer row 2 end up rendered at pixel row `screenHeight + (2 * cellHeight)` instead of `2 * cellHeight`.
+
+- **Fix**: `tests/utilities/addon-image-overlay-fix.ts` exports `ADDON_IMAGE_OVERLAY_CSS`, a string constant containing the CSS that positions `.xterm-image-layer-*` absolute over `.xterm-screen`. `scripts/verify/pipeline.ts` injects it into the verifier's HTML `<style>` block. Fully client-side; no fork, no patch, no upstream dependency.
+- **Recaptured goldens** for all four combos (happy/error × default/narrow) on the calibration environment (macOS arm64, Chromium 1217). Pixel-diff still zero across consecutive runs.
+- **Found by** a user reviewing the rendered gallery; reported as "I see a big gap between the label and the diagram." DOM inspection showed the image canvas was at page y=925 while the xterm screen ended at y=900 — a 25-pixel gap plus the full screen height between them, which is exactly the symptom.
+- **Upstream bug**: backlog entry at `~/me/mirror/backlog.md` for eventual report against `@xterm/addon-image`. The addon should either ship a stylesheet with the positioning rule or document it in its README as a required consumer-side rule.
+
 ### Refined (CVx post-close follow-ups)
 
 Four of the eight follow-ups surfaced at CVx.E2.S3's close, batched into one block.
