@@ -445,3 +445,31 @@ Immediately after `1b9a5f0` landed, the user tightened the rule further: don't j
 **Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 84 lines — two lines off the 90-line ceiling, worth a trim pass soon.
 
 **Meta-observation:** this is the second sharpening pass on a rule set that landed only a few commits ago. The pattern (rule lands → user notices it's underspecified → rule gets tightened → catch-up) is not a failure — it is how AGENTS.md is supposed to evolve. First-pass rules are scaffolding; specificity accretes through use.
+
+### 2026-04-19 — spec CVx — Verifiability lane (+ E1 + E1.S1)
+
+After reading pi-tui's source on `upstream/main` — specifically `packages/tui/test/virtual-terminal.ts`, `packages/tui/test/tui-render.test.ts`, and `packages/tui/test/terminal-image.test.ts` — the gap in pi-fence's testing became concrete: the eight render-polish `wip(agent)` commits between `CV0.E1.S3`'s close and `2026-04-19` all fixed visual bugs the existing fast suite did not catch, because the fast suite asserts on our hand-rolled fakes of pi-tui's primitives rather than on real pi-tui output. pi-tui itself tests visual results by painting into a `VirtualTerminal` (xterm.js-headless-backed) and asserting on both the resulting viewport grid and a `LoggingVirtualTerminal.getWrites()` byte log. That idiom is free for pi-fence to adopt — we already depend on pi-tui transitively.
+
+**Decision — cross-cutting lane, not numbered CV.** The briefing names Verifiability as cross-cutting: every feature story advances it implicitly by shipping tests; testing-infrastructure stories earn *explicit* progression credit. `CVx` (not `CV5`) signals this: the lane runs alongside CV0–CV4, not after them. First time the `x` suffix appears in this repo's roadmap.
+
+**Scope of the spec commit:**
+
+1. Top-level `docs/project/roadmap/README.md` gains a `CVx — Verifiability` section after `CV4` and before the Radar, with two Epics: `CVx.E1 — pi-tui Testing Idiom` (full spec) and `CVx.E2 — Dev-time Render Screenshots` (table-row only).
+2. `cvx-verifiability/README.md` names a new **Render** layer in the test pyramid — sits between Extension and Integration (live), runs at unit-suite speed via `pnpm test`, asserts on real pi-tui output via `VirtualTerminal`.
+3. `CVx.E1/README.md` describes the realignment: replace hand-rolled pi-tui fakes in `tests/unit/renderer.test.ts` with real primitives painting into `VirtualTerminal`; assert on both viewport and write log; delete ~60 LOC of hand-rolled fakes.
+4. `CVx.E1.S1` full three-file spec (`README.md` + `plan.md` + `test-guide.md`): vendor `VirtualTerminal` from `~/me/oss/pi-mono` at `upstream/main` into `tests/utilities/virtual-terminal.ts` (because pi-tui does not export it from its published entry point yet), add `LoggingVirtualTerminal` subclass, `forceCapabilities` helper with disposer, rewrite renderer cases, extend `pi-fence.test.ts` mermaid happy-path with viewport + write-log assertions.
+
+**What this spec commit does *not* do:** commit any code. Steps 1–5 in the plan's Implementation order are separate commits, each green on `pnpm test`, landing in sequence. `CVx.E2` is deliberately spike-first; no spec beyond the table rows until the screenshot flow proves out in a throwaway script.
+
+**Commit:**
+
+- `f54224b` spec CVx — Verifiability lane (+ E1 pi-tui testing idiom + E1.S1).
+
+**Tests:** N/A (spec-only). `pnpm run check` green (35 files linked, 34 markdown files linted; 5 new files added).
+
+**Why this lane earns its spot now, not later:** the signal is the render-polish commit stream after S3. Feature work is actively producing visual bugs the suite doesn't catch; every bug is paid for twice — once in the original ship, once in the polish commit. `CVx.E1` is small (one story, test-only, no runtime changes) and pays back on the very next rendering change, which is CV0.E1.S4 or CV0.E2 — both on the horizon. Later would mean more polish debt.
+
+**Known open:**
+
+1. The `AgentSession` terminal-injection seam for `tests/extension/pi-fence.test.ts` is not yet confirmed. The plan treats this as a research sub-step in implementation step 4; if the seam needs an upstream change, that specific assertion becomes a carry-forward without blocking S1.
+2. `VirtualTerminal` vendoring is the default path; if upstream exports it later (trivial PR against pi-mono), pi-fence switches to an import and deletes the vendored file. The vendored file's header comment will document the re-sync policy and the `upstream/main` SHA at vendor time.
