@@ -63,6 +63,7 @@
   "devDependencies": {
     "@mariozechner/pi-ai": "^0.67.68",
     "@types/node": "^25.6.0",
+    "@xterm/headless": "^6.0.0",
     "markdownlint-cli2": "^0.22.0",
     "tsx": "^4.21.0",
     "vitest": "^4.1.4"
