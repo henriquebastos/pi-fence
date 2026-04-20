@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (pi-fence:output — breathing row between header and content)
+
+The single `Spacer(1)` between the `Rendered <tag> via <processor>` / `Error rendering <tag> via <processor>` label and the content below produced a structurally-correct one-row blank at the cell grid, but the happy path's Kroki PNG has its own internal top margin — dark pixels indistinguishable from the terminal's black background — which visually absorbed that single blank row. The diagram boxes appeared to sit directly below the label with no breathing space.
+
+- Fix: `Spacer(1)` → `Spacer(2)` after the label in `extensions/pi-fence/renderer.ts`. Two blank cell-grid rows survive Kroki's top margin with a perceptible gap remaining.
+- The error (text) path gets the same shape — slightly more airy between the red header and the white body. Acceptable uniform tradeoff over branching the spacing per content kind; the error text is short and the extra row doesn't hurt legibility.
+- Expanded-source path's internal `Spacer(1)` stays as-is (no scenario covers it today; touched only if feedback surfaces).
+- Comment block made explicit about the why, so the invariant is harder to regress.
+- Reported by the user via a screenshot of `mermaid-happy-path / narrow` where the boxes sat flush against the `Rendered mermaid via kroki` header. Another data point for the composition-level verifier surfacing issues that the isolated renderer would have hidden behind its tighter panel footprint.
+- Goldens recaptured for all 4 combos (happy/error × default/narrow). Byte-identical across consecutive renders. Fast suite 181 → 181 (viewport assertions use `.includes()` on content substrings, not exact blank-row counts). Live suite 4 → 4 render-image cases.
+
 ### Fixed (pi-fence:output — error panel no longer duplicates its header phrase)
 
 Every real pi user seeing a Kroki parse error saw two stacked lines:

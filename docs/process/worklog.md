@@ -679,6 +679,23 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
 
+### 2026-04-20 — fix: breathing row between pi-fence:output header and content (user-surfaced via verifier fidelity)
+
+**Trigger.** Hot on the heels of the duplicate-header fix (`e0f29c7`), the user opened the `mermaid-happy-path/narrow` golden and flagged the opposite symptom: the A/B/C boxes sat flush against the purple `Rendered mermaid via kroki` header with no visible breathing space. Asked for an empty line of air between them.
+
+**Diagnosis.** The renderer's `box.addChild(new tui.Spacer(1))` after the label is structurally correct — it does emit one blank row at the cell grid between the label and the content. The error (text) path's blank row is plainly visible between the red header and the white body. The happy path's blank row is invisible: Kroki's rendered PNG has its own internal top margin of dark pixels that are indistinguishable from the terminal's black background, and the image canvas is overlayed starting at row Y+2 (right after the Spacer row Y+1). The first couple of pixel rows inside the PNG look identical to a blank cell-grid row, so visually the `Spacer(1)` is swallowed by the image's margin and the diagram boxes read as sitting right below the label.
+
+**Design discussion with the user.** The user first asked whether `paddingY` on the Box could replace the Spacer. `paddingY` pads the Box top and bottom, not *between* children, so that change alone would have removed the only label⇔content gap without adding one. I laid out four options — bump `Spacer(1)→Spacer(2)`, keep Spacer(1) + `paddingY=1`, combine both, or branch per content kind — and recommended the first. The user picked option 1.
+
+**What shipped (one feature commit + this docs catch-up):**
+
+- `9372e78` **fix: breathing room between pi-fence:output header and content.** `extensions/pi-fence/renderer.ts`: the sole `Spacer(1)` after the label becomes `Spacer(2)`, with a comment block spelling out why (Kroki's internal PNG top margin visually absorbs a single blank cell-grid row). The expanded-source branch's internal `Spacer(1)` stays as-is — no scenario covers it today, so no user-visible signal to bump it yet. Goldens recaptured for all 4 combos on the calibration machine (macOS 26.4.1 arm64, Chromium 1217). Byte-identical across two consecutive `--update` runs.
+- This worklog entry + matching CHANGELOG `[Unreleased]` block.
+
+**Tests:** fast suite 181 → 181 (viewport assertions use `.includes()` on content substrings, not exact blank-row counts, so they're insensitive to the spacer bump). Live suite 4 → 4 render-image cases, all green after recapture. `pnpm run check` green.
+
+**Meta — second catch in under an hour.** Two human-surfaced issues from reading the verifier gallery, back-to-back (`e0f29c7` error panel header-duplicate, now this breathing-row fix). Both were production behaviours that neither the fast-suite unit tests nor the pre-refactor isolated render-image scenarios could have caught: the unit tests don't paint the whole panel in a xterm-faithful way, and the pre-refactor scenarios had the same production behaviours baked into their goldens so the pixel-diff would always match. The composition-level trail layout gave these issues enough visual room to be noticed. Concrete reinforcement that a reviewer-facing gallery of composition-level PNGs earns its keep as a design-review artefact, not just a regression gate.
+
 ### 2026-04-20 — fix: error panel no longer duplicates its header phrase (user-surfaced via verifier fidelity)
 
 **Trigger.** Immediately after the composition-level refactor shipped (`2112eae`), the user opened the `mermaid-error-path/default` golden from the gallery and noticed the panel stacked two nearly-identical lines: a red header `Error rendering mermaid via kroki` and a white body `Error rendering mermaid via kroki: Parse error on line 1: unknown tag 'flowchrt'`. The white body re-spoke the red header's phrase before getting to the actual upstream error. This is exactly the kind of regression the composition-level shift to trail-shaped scenarios is supposed to surface — the old isolated-renderer scenario showed the same redundancy but in a compact enough layout that it blended in; the wider composition made it jump out.
