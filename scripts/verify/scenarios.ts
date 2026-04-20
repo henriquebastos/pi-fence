@@ -64,6 +64,18 @@ export const DEFAULT_VARIANT: Variant = {
 	rows: 60,
 };
 
+/**
+ * 80-column variant. Exercises pi-fence's layout at the narrower
+ * terminal width many users actually run. paddingX=1 on the
+ * pi-fence:output box plus the 60-cell image max-width still fits,
+ * but the chrome lives in a tighter horizontal budget.
+ */
+export const NARROW_VARIANT: Variant = {
+	name: "narrow",
+	cols: 80,
+	rows: 30,
+};
+
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 const IDENTITY_THEME = {
@@ -157,14 +169,14 @@ export const SCENARIOS: readonly Scenario[] = [
 		name: "mermaid-happy-path",
 		description:
 			"pi-fence:output panel with a Kroki-rendered mermaid flowchart (A → B → C).",
-		variants: [DEFAULT_VARIANT],
+		variants: [DEFAULT_VARIANT, NARROW_VARIANT],
 		build: buildMermaidHappyPath,
 	},
 	{
 		name: "mermaid-error-path",
 		description:
 			"pi-fence:output panel when the Kroki processor returns an error (text content, no image).",
-		variants: [DEFAULT_VARIANT],
+		variants: [DEFAULT_VARIANT, NARROW_VARIANT],
 		build: buildMermaidErrorPath,
 	},
 ];
