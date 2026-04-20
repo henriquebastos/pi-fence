@@ -39,6 +39,11 @@ export interface RenderResult {
 	bytesPath: string;
 	cols: number;
 	rows: number;
+	/** Wall-clock milliseconds from the start of this combo's render
+	 *  (new browser context) through the screenshot flushing to disk.
+	 *  Used by the live-suite timing-budget assertion and by the CLI
+	 *  stderr summary. */
+	durationMs: number;
 }
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -132,6 +137,8 @@ async function renderScenarioInBrowser(
 	await mkdir(comboDir, { recursive: true });
 	const pngPath = join(comboDir, "render.png");
 	const bytesPath = join(comboDir, "render.bin");
+
+	const renderStart = performance.now();
 
 	// Capture bytes alongside the PNG so the "pixels derive from
 	// these bytes" invariant is inspectable out-of-band.
@@ -275,6 +282,8 @@ async function renderScenarioInBrowser(
 		await context.close();
 	}
 
+	const durationMs = Math.round(performance.now() - renderStart);
+
 	return {
 		scenarioName: scenario.name,
 		variantName: variant.name,
@@ -282,6 +291,7 @@ async function renderScenarioInBrowser(
 		bytesPath,
 		cols,
 		rows,
+		durationMs,
 	};
 }
 

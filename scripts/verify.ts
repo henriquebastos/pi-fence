@@ -191,11 +191,19 @@ async function main(): Promise<void> {
 		process.exit(2);
 	}
 
+	let totalMs = 0;
 	for (const result of results) {
+		totalMs += result.durationMs;
 		process.stderr.write(
-			`[render:verify] wrote ${result.pngPath} (${result.cols}x${result.rows})\n`,
+			`[render:verify] ${result.scenarioName} / ${result.variantName} rendered in ${result.durationMs}ms\n`,
+		);
+		process.stderr.write(
+			`[render:verify]   wrote ${result.pngPath} (${result.cols}x${result.rows})\n`,
 		);
 	}
+	process.stderr.write(
+		`[render:verify] total: ${results.length} combo${results.length === 1 ? "" : "s"} in ${totalMs}ms\n`,
+	);
 
 	// Write the gallery. Paths inside index.html are relative to
 	// args.out so the document travels cleanly (e.g. if someone
