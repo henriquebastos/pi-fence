@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refined (test layer — CVx.E2.S2 multi-scenario + gallery)
+
+Widens S1's one-scenario verifier into a usable review surface.
+
+- **Scenario registry** carries explicit `variants`. New `Variant { name, cols, rows }`. `build(variant)` replaces the dim-less `build()`; dimensions flow through pi-fence's `paintComponent` and xterm.js's viewport consistently. `DEFAULT_VARIANT` is the S1-era 120×60 shape.
+- **New scenario: `mermaid-error-path`**. Exercises the error-rendering branch of `createPiFenceMessageRenderer`: text content (no image, so no Kitty APC in the byte stream), error label, synthetic parse-error body pinned for determinism. Previous `mermaid-happy-path` continues to exercise the happy-path image branch.
+- **Pipeline** iterates `scenario × variant` combos. `expandCombos(scenarios)` flattens the product; `renderCombos(combos, outDir)` shares one Chromium across the batch. `RenderResult` gains `scenarioName` / `variantName` fields so gallery writers don't need to re-derive them. Output nests under `<outDir>/<scenario>/<variant>/render.png`.
+- **`pnpm render:verify --variant <name>`** narrows a run to one combo. Without filter flags the CLI iterates every registered combo. `--update` walks every rendered combo, writing each PNG over `tests/fixtures/golden/<scenario>/<variant>.png`. Error cases (bad variant, variant without scenario) exit `1` with a message listing valid inputs.
+- **HTML gallery** at `scripts/out/render-verify/index.html` after every run. Self-contained single-file document: dark-themed flex-wrapping grid of cards; each card shows the PNG, scenario and variant names, dimensions, and the monospaced relative path. No JS, no CDN, no external CSS.
+- **Render Image test layer** iterates `expandCombos(listScenarios())` with the same `DIFF_BUDGET=100` / `threshold=0.1` S1 calibrated. Nested golden lookup at `tests/fixtures/golden/<scenario>/<variant>.png`. S1's existing golden migrated to `mermaid-happy-path/default.png` via `git mv` (content unchanged). `pnpm test:live` runs 2 render-image cases today (up from 1); each is green-skipped cleanly without Chromium.
+- **No new deps.** `pngjs` / `pixelmatch` / Chromium from S1 still cover the whole story.
+- **Spike 3 (`scripts/render-image-spike.ts`) picks `scenario.variants[0]`** so it keeps working through the variant refactor.
+- **Theme / width matrix is not populated.** The plumbing (Variant shape, cross-product loop, nested golden layout, test iteration) is ready; each scenario ships exactly one variant today. A future story with real pressure can add terminal-theme or width variants without refactoring.
+
 ### Refined (test layer — CVx.E2.S1 headless image verifier)
 
 Promotes the third CVx.E2 spike into a maintained verifier tool + its first live-suite test. The three spikes that preceded this (`2183665` live-Ghostty, `373a9e5` wterm + jsdom, `12e4e1d` xterm.js + Kitty + Chromium) mapped the tradeoff space; S1 picks the winner (spike 3's shape) and wires it into the project's test pyramid.

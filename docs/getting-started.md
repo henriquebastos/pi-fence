@@ -128,7 +128,7 @@ pnpm test:watch    # vitest --watch on the fast suite
 | `pnpm test:watch` | vitest in watch mode. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
-| `pnpm render:verify` | Produces a PNG of a named pi-fence scenario via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/render.png`. Flags: `--list`, `--scenario <name>`, `--update`. |
+| `pnpm render:verify` | Produces PNGs + an HTML gallery of pi-fence scenarios via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/<variant>/render.png` + `scripts/out/render-verify/index.html`. Flags: `--list`, `--scenario <name>`, `--variant <name>`, `--update`. |
 | `pnpm run check` | Link check + markdown lint. |
 | `pnpm run check:links` | Link check only. |
 | `pnpm run check:markdown` | Markdown lint only. |
