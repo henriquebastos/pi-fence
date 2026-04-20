@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV0.E1.S4 — full Kroki text coverage)
+
+Every text-body language Kroki's public endpoint serves as PNG now renders through pi-fence, verified by a live integration test per language.
+
+- **14 new canonical tags** accepted: `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`. No new aliases — the research pass didn't turn up colloquial alternatives as established as `dot` / `puml` for any of the new languages; bespoke aliases ahead of real user demand would be guesses.
+- **`tests/fixtures/kroki/canonical-sources.ts`** captures each supported language with a canonical minimal source, alias list, and a per-language `sizeFloorBytes` calibrated from the research-pass observations (catches Kroki's ~300-byte "error PNG" regression without over-constraining against version drift).
+- **Live integration test refactored to data-drive from the fixture.** `tests/integration/kroki.live.test.ts` now iterates `KROKI_TEXT_LANGUAGES` instead of hardcoding per-language assertions. Adding a new language = edit the fixture. Live suite grew from 4 passing kroki cases to 25 (17 happy-path languages + 2 alias round-trips + error + cancellation + 4 unrelated pre-existing cases). Full live run ~17s on the calibration machine (dominated by `plantuml`, `c4plantuml`, `blockdiag`, `umlet` each in the 1–3s range).
+- **`docs/product/kroki-support.md`** ships as the reference doc — tables for the 17 supported languages, the 8 SVG-only languages that are deliberately deferred, the 3 JSON-body languages scoped to CV0.E1.S5, and the 1 backend-unavailable language. README and `docs/getting-started.md` updated to link there rather than enumerating inline.
+- **Extension test updated to derive from production constants.** The `/fence list` assertion in `tests/extension/pi-fence.test.ts` previously hardcoded a tag-list string; now imports `KROKI_CANONICAL_TAGS`, `KROKI_ALIASES`, and `formatProcessorLines` and asserts the listing reflects the live Kroki config. Future language additions no longer require updating this test.
+
+### Removed (CV0.E1.S4 — breaking change from S2's allowlist surface)
+
+- **`d2` dropped from `KROKI_CANONICAL_TAGS` / `SUPPORTED_TAGS`.** It was added in S2 but never had a live test — CV0.E1.S4's research pass turned up the reason: Kroki's public endpoint refuses PNG for d2 (`400: Unsupported output format: png for d2. Must be one of svg.`). Every user who wrote a ` ```d2 ` block was getting an error-kind `pi-fence:output` panel. Advertising a language that always errors is worse than not advertising it at all. Follow-up paths documented in `docs/product/kroki-support.md`: self-hosted Kroki (CV2.E2) or a future SVG→PNG rasterization story.
+
 ### Fixed (pi-fence:output — breathing row between header and content, sized per content kind)
 
 The single `Spacer(1)` between the `Rendered <tag> via <processor>` / `Error rendering <tag> via <processor>` label and the content below produced a structurally-correct one-row blank at the cell grid, but the happy path's Kroki PNG has its own internal top margin — dark pixels indistinguishable from the terminal's black background — which visually absorbed that single blank row. The diagram boxes appeared to sit directly below the label with no breathing space.

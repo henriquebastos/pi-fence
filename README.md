@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** first Kroki slice working. `mermaid`, `graphviz`/`dot`, `plantuml`/`puml`, and `d2` fenced blocks in the assistant's output are rendered as inline PNGs via [kroki.io](https://kroki.io). Local rendering, configuration, and the rest of the [roadmap](docs/project/roadmap/README.md) are next.
+**Status:** full Kroki text coverage. Every text-body language the public [kroki.io](https://kroki.io) endpoint serves as PNG renders inline — `mermaid`, `graphviz`/`dot`, `plantuml`/`puml`, the `blockdiag` family (`blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`), plus `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`. SVG-only Kroki languages (including `d2`), JSON-body languages (Vega, Vega-Lite, Excalidraw), local rendering, and configuration are next on the [roadmap](docs/project/roadmap/README.md). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
 
 ---
 
@@ -25,12 +25,12 @@ The same mechanism works for anything text-to-visual: syntax-highlighted code, f
 
 After installing pi-fence into pi:
 
-1. Ask the assistant for any diagram — mermaid, graphviz DOT, PlantUML, or d2.
-2. The assistant writes the natural fenced block: ```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```d2 ````, etc.
+1. Ask the assistant for any diagram the public [Kroki](https://kroki.io) endpoint renders as PNG.
+2. The assistant writes the natural fenced block: ```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```blockdiag ````, ```` ```wireviz ````, etc.
 3. pi-fence intercepts `agent_end`, posts the source to `https://kroki.io`, and emits a custom message below the assistant's text containing the rendered PNG.
 4. Your terminal displays the PNG inline (Ghostty, Kitty, iTerm2, WezTerm).
 
-**Supported tags**: `mermaid`, `graphviz`, `dot`, `plantuml`, `puml`, `d2`. Others (nomnoml, wavedrom, vega-lite, ...) are on the roadmap; each arrives with its own story when a user asks.
+**Supported tags**: `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz` — 17 canonical languages, two aliases. See [docs/product/kroki-support.md](docs/product/kroki-support.md) for minimal source examples per language, quirks worth knowing, and the list of Kroki languages pi-fence deliberately does *not* advertise yet (SVG-only on the public endpoint, JSON-body, or backend unavailable).
 
 On expansion (ctrl+o on the rendered message) pi-fence also shows the original source in a code block for copy-paste, regardless of which supported tag you used.
 

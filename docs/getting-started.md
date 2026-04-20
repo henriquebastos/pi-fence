@@ -31,18 +31,19 @@ Ask the assistant for a diagram — any of these work today:
 - *"Draw me a mermaid diagram of an OAuth 2.0 authorization code flow."*
 - *"Sketch the module dependencies as a graphviz DOT graph."*
 - *"Make a PlantUML sequence diagram of a checkout flow."*
-- *"Render a d2 diagram of a three-service architecture."*
+- *"Render a blockdiag showing three services calling a database."*
+- *"Draw a wireviz harness for a D-Sub to barrel-jack cable."*
 
-The assistant answers with the obvious fenced block (```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```d2 ````). pi-fence intercepts it, renders via `https://kroki.io`, and the PNG appears inline in any terminal that supports inline images (Ghostty, Kitty, iTerm2, WezTerm).
+The assistant answers with the obvious fenced block (```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```blockdiag ````, ```` ```wireviz ````, …). pi-fence intercepts it, renders via `https://kroki.io`, and the PNG appears inline in any terminal that supports inline images (Ghostty, Kitty, iTerm2, WezTerm).
 
-Supported tags today: `mermaid`, `graphviz`, `dot`, `plantuml`, `puml`, `d2`.
+Supported tags today: every text-body Kroki language the public endpoint serves as PNG — `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`. Full reference with minimal source examples, per-language quirks, and a list of languages pi-fence deliberately does *not* advertise yet: [docs/product/kroki-support.md](product/kroki-support.md).
 
 Type `/fence list` to see every registered processor, its status, and the tags it accepts:
 
 ```text
 Processors
 
-kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2
+kroki [registered] — mermaid, graphviz (dot), plantuml (puml), blockdiag, seqdiag, actdiag, nwdiag, packetdiag, rackdiag, c4plantuml, ditaa, erd, structurizr, symbolator, tikz, umlet, wireviz
 ```
 
 The listing is offline — no network call happens when you type `/fence list`.
