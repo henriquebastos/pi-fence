@@ -91,7 +91,7 @@ const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
  * without importing pi-coding-agent's `CustomMessage<T>` internal type.
  * Kept inline so the helper stays decoupled from pi's message-entry shape.
  */
-type PiFenceCustomMessage = {
+export type PiFenceCustomMessage = {
 	role: "custom";
 	customType: string;
 	content: Array<
@@ -136,7 +136,7 @@ type PiFenceCustomMessage = {
  * those fields in chrome. Two consecutive renders on the calibration
  * machine produce byte-identical PNGs.
  */
-async function buildTrail(
+export async function buildTrail(
 	userText: string,
 	assistantMarkdown: string,
 	customMessage: PiFenceCustomMessage,

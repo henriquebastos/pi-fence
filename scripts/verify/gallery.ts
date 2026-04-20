@@ -31,17 +31,42 @@ export interface GalleryCard {
 	rows: number;
 }
 
-export function renderGalleryHtml(cards: readonly GalleryCard[]): string {
+/**
+ * Options for the gallery HTML renderer. All fields optional — defaults
+ * match `pnpm render:verify`'s original shape, so existing callers don't
+ * need to pass anything.
+ */
+export interface GalleryHtmlOptions {
+	/** Document `<title>`. Default: "pi-fence render:verify gallery". */
+	title?: string;
+	/**
+	 * Heading shown inside the empty-state placeholder when `cards` is
+	 * empty. Defaults to the `pnpm render:verify` hint; `pnpm render:gallery`
+	 * and other callers can override it.
+	 */
+	emptyHint?: string;
+}
+
+const DEFAULT_TITLE = "pi-fence render:verify gallery";
+const DEFAULT_EMPTY_HINT =
+	'No renders in this run. Invoke <code>pnpm render:verify</code> with at least one matching scenario.';
+
+export function renderGalleryHtml(
+	cards: readonly GalleryCard[],
+	options: GalleryHtmlOptions = {},
+): string {
+	const title = options.title ?? DEFAULT_TITLE;
+	const emptyHint = options.emptyHint ?? DEFAULT_EMPTY_HINT;
 	const generatedAt = new Date().toISOString();
 	const cardHtml = cards.length === 0
-		? '<div class="empty">No renders in this run. Invoke <code>pnpm render:verify</code> with at least one matching scenario.</div>'
+		? `<div class="empty">${emptyHint}</div>`
 		: cards.map(renderCardHtml).join("\n");
 
 	return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>pi-fence render:verify gallery</title>
+<title>${title}</title>
 <style>
   :root {
     color-scheme: dark;

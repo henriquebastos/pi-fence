@@ -105,6 +105,19 @@ These languages take a JSON body, not text. They need a different request shape 
 | `vegalite` | Vega-Lite. |
 | `excalidraw` | Excalidraw scenes. |
 
+## Browsing a live gallery
+
+`pnpm render:gallery` renders one tile per canonical language listed above, through the full user → assistant → `pi-fence:output` trail composition (the same shape the Render Image test layer uses). Each tile fetches a fresh PNG from `https://kroki.io` at runtime, so the gallery always reflects Kroki's current rendering, not a cached fixture.
+
+```bash
+pnpm render:gallery
+open scripts/out/render-gallery/index.html
+```
+
+The command is **not a test gate** — no goldens, no pixel-diff, no CI. It exists so reviewers, contributors, and users can see every supported language rendered in context, one page. Re-run whenever you want a fresh snapshot for README screenshots, PR previews, or design review. Requires network access to `kroki.io`; languages that fail to fetch are reported on stderr and skipped rather than failing the whole run.
+
+Per-tile output dimensions are auto-trimmed — a tall viewport (120×140 cells) accommodates even `ditaa` or `c4plantuml` in full, then each resulting PNG is cropped to its last non-empty row + a small bottom margin so every tile in the gallery is as compact as its content allows.
+
 ## Adding a language
 
 If Kroki hosts a text-body language on its public endpoint that pi-fence doesn't yet support, extending is small:

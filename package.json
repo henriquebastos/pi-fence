@@ -54,7 +54,8 @@
     "live:exec": "tsx scripts/live-container.ts exec",
     "live:build": "tsx scripts/live-container.ts build",
     "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
-    "render:verify": "tsx scripts/verify.ts"
+    "render:verify": "tsx scripts/verify.ts",
+    "render:gallery": "tsx scripts/render-gallery.ts"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
