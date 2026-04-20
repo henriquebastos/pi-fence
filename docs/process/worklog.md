@@ -6,7 +6,7 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-No story is currently in flight. The CVx batch is fully closed: CVx.E1.S1 + CVx.E2.S1–S4 are all ✅ Done. The roadmap's only remaining `Planned` rows are on the feature CVs (CV0.E1.S4–S5, CV0.E2, CV1+) — the next session should pick one based on the user's pressure.
+No story is currently in flight. The CVx batch is fully closed and the Render Image scenario shape has been standardised on the composition-level trail in a follow-up refactor (see `2112eae` below). The roadmap's only remaining `Planned` rows are on the feature CVs (CV0.E1.S4–S5, CV0.E2, CV1+) — the next session should pick one based on the user's pressure.
 
 ## Next
 
@@ -678,6 +678,27 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 5. Upstream pi-mono PR for `VirtualTerminal` export (still in `~/me/mirror/backlog.md`).
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
+
+### 2026-04-20 — Render Image scenarios standardise on the composition-level trail (post-CVx.E2.S4 refactor)
+
+**Goal:** immediately after S4's close, the user flagged that S4's framing — "does what a pi user actually look right?" — applies to *every* Render Image scenario, not just one flagship. Keeping `mermaid-happy-path` and `mermaid-error-path` as isolated-renderer scenarios alongside a dedicated trail scenario duplicated coverage the Render layer already provides (via `VirtualTerminal` byte-stream assertions in `tests/unit/renderer.test.ts` and `tests/extension/pi-fence.test.ts`) while missing the composition-level shape on the happy and error paths. This refactor folds everything onto one shape: every Render Image scenario renders the full user → assistant → pi-fence:output composition.
+
+**What shipped (one feature commit + this docs catch-up):**
+
+- `2112eae` **refactor: all render-image scenarios render at composition level.** `scripts/verify/scenarios.ts` factors `buildTrail(userText, assistantMarkdown, customMessage, variant)` — the shared helper that sets capabilities, bootstraps the dark theme via `initTheme("dark")`, constructs `UserMessageComponent` + `AssistantMessageComponent` (with `timestamp: 0` + zero `usage` pinned for determinism) + `CustomMessageComponent(customMessage, createPiFenceMessageRenderer(...))`, wires them into a pi-tui `Container` with spacers, and paints through `paintComponent`. `buildMermaidHappyPath` becomes a thin wrapper: user asks for a mermaid flowchart → assistant replies with a fenced block → pi-fence:output panel shows the PNG. `buildMermaidErrorPath` mirrors it: user asks for a flowchart → assistant replies with a fenced block containing a `flowchrt` typo → pi-fence:output surfaces Kroki's parse error. The `mermaid-user-agent-trail` scenario retires (its coverage folds into `mermaid-happy-path`, which is now the same composition); the `IDENTITY_THEME` stub is gone. Goldens recaptured for all 4 combos; the orphan `mermaid-user-agent-trail/default.png` is removed. `tests/unit/verify-scenarios.test.ts` drops the trail-specific assertions. Teeth check: swapping the happy-path user text produces a 3901-pixel diff on both happy combos (error combos stay green, different user text); revert restores byte-identity.
+- This worklog entry + CHANGELOG `[Unreleased]` block + focus/next touch-up.
+
+**Tests:** fast suite 182 → 181 (−1 obsolete trail-specific invariant). Live suite 5 → 4 render-image cases: the dedicated trail scenario retires, and the two composition-level scenarios each carry both width variants (default + narrow). `pnpm test` green; `pnpm test:live` green on first run after recapture; `pnpm run check` green (0 lint errors across 47 markdown files).
+
+**Narrow variant fit verified.** The trail stack (user bubble + spacer + assistant reply + fenced source + spacer + pi-fence:output panel) fits cleanly in 80×30 for both happy and error paths; no clipping visible in the captured PNGs.
+
+**Design note on scope.** This was shipped as a post-close refactor, not a new story (no `CVx.E2.S5` spec). Rationale matches the post-close batching pattern used for the four S3 follow-ups (`58f7951`, `bc37a7e`, `dce3c6e`, `5ab0d7a`): the change is tightly scoped, pure test-layer, has no new interface or behaviour, and the reasoning was already captured in the chat that surfaced it. One feature commit, one docs commit, adjacent.
+
+**Follow-ups this refactor surfaces:**
+
+1. Additional content families (`graphviz-happy-path`, `plantuml-happy-path`, …) are now cheap to add — `buildTrail` handles all the scaffolding, callers only supply the three content knobs. Added as pressure arises.
+2. Multi-turn compositions (user → assistant → user → assistant → fence) remain a future story — `buildTrail` paints one turn by design; multi-turn is a bigger shape.
+3. Theme variants (dark vs. light) still deferred — the helper hard-codes `initTheme("dark")`. A future story could parameterise this through the `Variant` shape.
 
 ### 2026-04-20 — close CVx.E2.S4 (`mermaid-user-agent-trail` scenario) — the CVx.E2 epic's Planned row is now empty
 

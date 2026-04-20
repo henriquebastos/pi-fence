@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refined (test layer — composition-level Render Image scenarios across the board)
+
+Post-close follow-up on CVx.E2.S4. S4 introduced the trail shape (user → assistant → pi-fence:output via pi-coding-agent's real interactive-mode components) on a single dedicated scenario; this refactor standardises *every* Render Image scenario on that shape.
+
+- **Rationale.** The Render Image layer's job is "what does a pi user actually see?" — and a pi user never sees our renderer standalone, always wrapped inside a `CustomMessageComponent` below an `AssistantMessageComponent` and a `UserMessageComponent`. The isolated-renderer scenarios duplicated coverage the faster Render layer (`tests/unit/renderer.test.ts`, `tests/extension/pi-fence.test.ts`) already provides via `VirtualTerminal` byte-stream assertions, while missing the composition-level shape that catches bubble stacking, padding, theme-bleed, and custom-message-child regressions.
+- **`scripts/verify/scenarios.ts`** gains `buildTrail(userText, assistantMarkdown, customMessage, variant)`. Both registered scenarios become thin wrappers: `mermaid-happy-path` (image content, Kitty APC present) and `mermaid-error-path` (text content, no APC, error-colored label + parse-error body). The `mermaid-user-agent-trail` scenario retires — its coverage folds into `mermaid-happy-path`, which is now the same composition. The `IDENTITY_THEME` stub is gone; scenarios use pi's real dark theme via `initTheme("dark")` inside the helper.
+- **`mermaid-error-path` reflects the real user-visible shape.** User asks for a flowchart; assistant replies with a fenced block containing the `flowchrt` typo; pi-fence:output panel surfaces Kroki's parse error in the custom-message-wrapped error panel. Previously the error scenario rendered only pi-fence's error panel in isolation — the user never actually sees that without the surrounding turn.
+- **Goldens recaptured** for all 4 combos (happy-path × [default, narrow], error-path × [default, narrow]) on the calibration machine (macOS 26.4.1 arm64, Chromium 1217). Byte-identical across two consecutive renders. The orphan `tests/fixtures/golden/mermaid-user-agent-trail/default.png` is deleted.
+- **Teeth check.** Swapping the happy-path user text produces a 3901-pixel diff on both happy combos (budget=100); the error-path combos stay green (different user text). Reverting restores byte-identical output and all four combos return to green.
+- **Fast suite 182 → 181** (-1 trail-specific invariant, superseded by `mermaid-happy-path` which IS now the trail). Live suite **5 → 4** render-image cases (-1 since the dedicated trail scenario retires; the two composition-level scenarios carry both width variants). Per-combo timings 143–263ms, ~20× under the 5000ms budget.
+- **Narrow variant fit confirmed** for both scenarios — the trail stack + diagram / error panel both fit cleanly in 80×30.
+
 ### Refined (test layer — CVx.E2.S4 `mermaid-user-agent-trail` scenario)
 
 Closes the last open CVx story by wiring a scenario that renders the full user → assistant → pi-fence:output visual through pi-coding-agent's real interactive-mode components, so the gallery and the pixel-diff gate catch regressions at the composition level (bubble stacking, padding, theme bleed) not just the pi-fence renderer in isolation.
