@@ -30,15 +30,24 @@ importers:
       '@wterm/dom':
         specifier: ^0.1.9
         version: 0.1.9
+      '@xterm/addon-image':
+        specifier: 0.10.0-beta.197
+        version: 0.10.0-beta.197(@xterm/xterm@6.1.0-beta.197)
       '@xterm/headless':
         specifier: ^6.0.0
         version: 6.0.0
+      '@xterm/xterm':
+        specifier: 6.1.0-beta.197
+        version: 6.1.0-beta.197
       jsdom:
         specifier: ^29.0.2
         version: 29.0.2
       markdownlint-cli2:
         specifier: ^0.22.0
         version: 0.22.0
+      playwright-core:
+        specifier: ^1.59.1
+        version: 1.59.1
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -968,8 +977,16 @@ packages:
   '@wterm/dom@0.1.9':
     resolution: {integrity: sha512-jccLWVW36loRWWnieY3iRLmDgvTgvCroMQfkcuMUeLmTSwnmrm6dB7RAAngal+udQ6VaTp0QF0gLpA+kq1R1fw==}
 
+  '@xterm/addon-image@0.10.0-beta.197':
+    resolution: {integrity: sha512-31oIqBm+Yk3xyYGjBhhp308gDyFywv3JJAWBflycgqZFbvfZ2ju4IvHmvKJhp8qC+0ac6SRAA7XBKGqtoZjcsA==}
+    peerDependencies:
+      '@xterm/xterm': ^6.1.0-beta.197
+
   '@xterm/headless@6.0.0':
     resolution: {integrity: sha512-5Yj1QINYCyzrZtf8OFIHi47iQtI+0qYFPHmouEfG8dHNxbZ9Tb9YGSuLcsEwj9Z+OL75GJqPyJbyoFer80a2Hw==}
+
+  '@xterm/xterm@6.1.0-beta.197':
+    resolution: {integrity: sha512-vzoc8sBcsvFpziSgeVGKZQDT1T/9MmEUKfUDpVqc3slDv7o0SiQCjvPeOF8y1++5vx2xmUn8lfcLnbfdtigtSQ==}
 
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
@@ -1742,6 +1759,11 @@ packages:
   picomatch@4.0.4:
     resolution: {integrity: sha512-QP88BAKvMam/3NxH6vj2o21R6MjxZUAd6nlwAS/pnGvN9IVLocLHxGYIzFhg6fUQ+5th6P4dv4eW9jX3DSIj7A==}
     engines: {node: '>=12'}
+
+  playwright-core@1.59.1:
+    resolution: {integrity: sha512-HBV/RJg81z5BiiZ9yPzIiClYV/QMsDCKUyogwH9p3MCP6IYjUFu/MActgYAvK0oWyV9NlwM3GLBjADyWgydVyg==}
+    engines: {node: '>=18'}
+    hasBin: true
 
   postcss@8.5.10:
     resolution: {integrity: sha512-pMMHxBOZKFU6HgAZ4eyGnwXF/EvPGGqUr0MnZ5+99485wwW41kW91A4LOGxSHhgugZmSChL5AlElNdwlNgcnLQ==}
@@ -3324,7 +3346,13 @@ snapshots:
     dependencies:
       '@wterm/core': 0.1.9
 
+  '@xterm/addon-image@0.10.0-beta.197(@xterm/xterm@6.1.0-beta.197)':
+    dependencies:
+      '@xterm/xterm': 6.1.0-beta.197
+
   '@xterm/headless@6.0.0': {}
+
+  '@xterm/xterm@6.1.0-beta.197': {}
 
   agent-base@7.1.4: {}
 
@@ -4198,6 +4226,8 @@ snapshots:
   picomatch@2.3.2: {}
 
   picomatch@4.0.4: {}
+
+  playwright-core@1.59.1: {}
 
   postcss@8.5.10:
     dependencies:

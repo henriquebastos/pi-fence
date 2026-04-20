@@ -6,6 +6,9 @@ dist/
 .env.local
 coverage/
 
+# Spike/tooling outputs (PNG screenshots, byte-stream captures, etc.)
+scripts/out/
+
 # Editor / IDE local state
 .obsidian/
 .vscode/

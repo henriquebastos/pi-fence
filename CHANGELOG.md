@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (spike — CVx.E2 image render via xterm.js + Kitty graphics + headless Chromium)
+
+Third pass at the CVx.E2 verification loop, closing the last gap the previous two spikes left open: actually seeing the rendered diagram as a real PNG, headlessly.
+
+- **`scripts/render-image-spike.ts`** — drives a headless Chromium (via `playwright-core`) running xterm.js plus the `@xterm/addon-image` beta (which, unlike stable `0.9.x`, implements the **Kitty graphics protocol** that pi-fence emits). Playwright loads a tiny self-contained HTML host, injects xterm + the image addon from `node_modules/` via `addScriptTag`, writes our captured pi-tui byte stream into the terminal, waits for RAF-scheduled renders, then calls `page.screenshot()`. Output: `scripts/out/render-image.png` (ignored) + `scripts/out/render-image.bin` (the exact byte stream, alongside for inspection).
+- **`pnpm --silent render:image-spike`** — entry point. One-time Chromium install via `npx playwright install chromium` (∼150 MB, cached globally at `~/Library/Caches/ms-playwright/`); subsequent runs reuse it.
+- **Dev dependencies:** `@xterm/xterm@^6.1.0-beta.197`, `@xterm/addon-image@^0.10.0-beta.197`, `playwright-core@^1.59.1`. The addon's beta peer-depends on the beta xterm, so both are pinned to beta channel until the Kitty-graphics MVP lands in a stable release.
+- **Test fixture:** `tests/fixtures/mermaid-flowchart.png` — a real Kroki-rendered mermaid diagram (324×70 px, ∼2 KB) fetched once via `curl https://kroki.io/mermaid/png?theme=dark`. The synthetic "magic + IHDR only" PNG the fast-suite tests use exercises pi-tui's dimension-parse path but has no IDAT chunk, so a real image decoder renders it as a placeholder; the spike uses a real PNG so the PNG-for-human-check actually shows the diagram.
+- **Key invariant still holds:** the bytes the spike writes to xterm.js are produced by the same `paintComponent()` harness the fast suite uses, fed into a terminal emulator that shares its parser (xterm.js) with our `VirtualTerminal`-backed render-layer tests (via `@xterm/headless`). So: tests and screenshot paint from byte-identical streams, through parser-identical stacks, differing only in which renderer (headless grid vs. DOM + image addon) attaches.
+- **Observed result (first run, inspecting `scripts/out/render-image.png`):** label "Rendered mermaid via kroki" lands at top with paddingX=1 indent; below it, with the vertical gap pi-tui's Image layout reserves, the mermaid diagram `A → B → C` renders in its full 324×70 resolution. Proves the byte stream's image-protocol half is correct end-to-end, not just the text-layout half the a11y spike covered.
+- **Tradeoffs vs. the earlier spikes:** heavier than the a11y spike (Chromium download, no Kroki-free offline story), but produces a PNG (a11y spike did not) and is still headless + CI-compatible (live-terminal spike was neither). The three spikes together map the tradeoff space `CVx.E2.S1` will pick from.
+
 ### Added (spike — CVx.E2 wterm + a11y tree render verifier)
 
 A second pass at the CVx.E2 dev-time-verify loop, taking a completely different tack from the live-terminal spike: feed pi-tui's byte stream into [wterm](https://github.com/vercel-labs/wterm) (Vercel Labs' new Zig+WASM web terminal emulator that renders to the DOM) inside jsdom, then read the rendered DOM directly to assert on "what a real VT terminal would display." No real Kitty window, no `screencapture`, no cursor-positioning racing against a shell prompt.
