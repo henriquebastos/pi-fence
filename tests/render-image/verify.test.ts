@@ -43,14 +43,31 @@ const OUT_DIR = join(REPO_ROOT, "scripts/out/render-verify-test");
  * PNGs and zero diff pixels. The budget of 100 absorbs anti-aliasing
  * variance that may appear across Chromium patch revisions.
  *
+ * S3 made readiness sentinel-based (no more `setTimeout(100)` tail),
+ * which empirically keeps per-combo diff pixels at 0 across
+ * consecutive runs on the calibration machine. The budget stays at
+ * 100 as conservative headroom for CI variance; a tighter bound can
+ * become a per-combo follow-up if one combo proves stable while the
+ * other doesn't.
+ *
  * If CI observes drift above this budget, the options are (in
  * increasing cost):
  *   1. Re-capture the golden via `pnpm render:verify --update`
  *      (if the drift is intentional).
  *   2. Raise the budget (if drift is unavoidable minor anti-aliasing).
- *   3. Tighten `renderScenario`'s determinism (S3 territory).
+ *   3. Tighten the sentinel further (inspect what onImageAdded /
+ *      onRender are / aren't covering).
  */
 const DIFF_BUDGET = 100;
+
+/**
+ * Per-combo wall-clock budget. The CVx.E2 epic's done criterion
+ * calls for under five seconds per scenario on a warm laptop; we
+ * assert that on every combo. Observed per-combo timings on the
+ * calibration machine are in the 150–500ms range after the S3
+ * sentinel change, so 5s gives ~10x headroom for slower CI hosts.
+ */
+const RENDER_BUDGET_MS = 5000;
 
 /** `pixelmatch` threshold: 0 = strict, 1 = lenient. 0.1 is pixelmatch's documented "recommended". */
 const DIFF_THRESHOLD = 0.1;
@@ -126,6 +143,15 @@ describe.skipIf(!hasChromium)(
 								`See ${diffPath} and the rendered PNG at ${result.pngPath}.`,
 						);
 					}
+
+					// Timing budget. Guards against pipeline regressions that
+					// accidentally reintroduce a time-based wait or stall on
+					// a missing sentinel.
+					assert.ok(
+						result.durationMs < RENDER_BUDGET_MS,
+						`${scenario.name}/${variant.name}: render took ${result.durationMs}ms, ` +
+							`exceeds ${RENDER_BUDGET_MS}ms budget`,
+					);
 				},
 				60_000,
 			);
