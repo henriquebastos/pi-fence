@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (pi-fence:output — error panel no longer duplicates its header phrase)
+
+Every real pi user seeing a Kroki parse error saw two stacked lines:
+
+```text
+Error rendering mermaid via kroki              (red header)
+Error rendering mermaid via kroki: <upstream>  (white body)
+```
+
+The renderer composes the red header from `details.{tag, processor, kind}` on its own — the text body passed through pi's custom message does not need to re-speak that prefix. The happy-path branch of `buildCustomMessage` in `extensions/pi-fence/index.ts` had already recognised this and dropped its fallback text item (the comment there reads: *"the renderer is authoritative … the fallback only produced the visible duplicate"*). The error branch was an oversight. Symmetric fix: emit just `result.error` as the body; comment made explicit so the invariant is harder to reintroduce.
+
+- Reported by the user via a screenshot of the verifier's `mermaid-error-path` output — the composition-level scenario was producing a faithful rendering of pi-fence's production behaviour, and that fidelity exposed the latent redundancy. Exactly the kind of regression the composition-level framing is supposed to surface.
+- `tests/unit/renderer.test.ts`'s error-path case tightens the fixture to just `'syntax'` as the body; existing assertions still pass because the `Error rendering mermaid via kroki` phrase comes from the renderer's header, not the body.
+- `scripts/verify/scenarios.ts`'s `mermaid-error-path` scenario uses `'Parse error on line 1: unknown tag \'flowchrt\''` as the body — the raw upstream error with no prefix. Panel's red header and white body are now distinct rather than a duplicate. Goldens recaptured for both default and narrow; byte-stable across consecutive renders.
+- Fast suite 181 → 181 (no count change; same assertions pass against the tightened fixtures). Live suite 4 → 4 render-image cases (goldens updated in place).
+
 ### Refined (test layer — composition-level Render Image scenarios across the board)
 
 Post-close follow-up on CVx.E2.S4. S4 introduced the trail shape (user → assistant → pi-fence:output via pi-coding-agent's real interactive-mode components) on a single dedicated scenario; this refactor standardises *every* Render Image scenario on that shape.
