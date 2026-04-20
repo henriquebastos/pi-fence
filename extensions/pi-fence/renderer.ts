@@ -141,7 +141,15 @@ export function createPiFenceMessageRenderer(tui: {
 		// Argument order is (paddingX, paddingY, bgFn) per pi-tui's Box.
 		const box = new tui.Box(1, 0);
 		box.addChild(new tui.Text(labelLine, 0, 0));
-		box.addChild(new tui.Spacer(1));
+		// Two blank rows between the label and the content below. One
+		// is not enough in the happy path: Kroki's rendered PNG has its
+		// own top margin (dark pixels indistinguishable from the black
+		// terminal background), which visually absorbs a single blank
+		// cell-grid row. A second row restores a perceptible gap. The
+		// error path is text-only and reads slightly more airy with the
+		// same shape — that's an acceptable uniform tradeoff rather than
+		// branching the spacing per content kind.
+		box.addChild(new tui.Spacer(2));
 
 		// Render each content item pi-fence attached. PNGs via pi-tui's
 		// Image component; text via Text. Anything else is skipped — pi-fence
