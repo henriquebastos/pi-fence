@@ -85,141 +85,71 @@ export const NARROW_VARIANT: Variant = {
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-const IDENTITY_THEME = {
-	fg: (_color: string, text: string) => text,
-	bold: (text: string) => text,
-	bg: (_color: string, text: string) => text,
+/**
+ * A minimal `CustomMessage` shape for pi-fence's output — enough for
+ * `CustomMessageComponent` to forward to `createPiFenceMessageRenderer`
+ * without importing pi-coding-agent's `CustomMessage<T>` internal type.
+ * Kept inline so the helper stays decoupled from pi's message-entry shape.
+ */
+type PiFenceCustomMessage = {
+	role: "custom";
+	customType: string;
+	content: Array<
+		| { type: "image"; data: string; mimeType: string }
+		| { type: "text"; text: string }
+	>;
+	display: boolean;
+	details: {
+		tag: string;
+		processor: string;
+		kind: "ok" | "error";
+		source: string;
+	};
+	timestamp: number;
 };
 
 /**
- * Build a `pi-fence:output` byte stream for a canned happy-path
- * mermaid render. Mirrors the shape `tests/unit/renderer.test.ts`
- * and `tests/extension/pi-fence.test.ts` produce in the fast suite,
- * so the bytes verifier and tests see are identical.
+ * Compose a full user → assistant → pi-fence:output byte stream through
+ * pi-coding-agent's real interactive-mode components, the exact shape a
+ * pi user sees in their terminal for a single turn.
+ *
+ * Previously only the `mermaid-user-agent-trail` scenario rendered at
+ * this level; `mermaid-happy-path` and `mermaid-error-path` painted
+ * pi-fence's renderer in isolation. Post CVx.E2.S4 close, all Render
+ * Image scenarios standardise on the trail shape — the Render Image
+ * layer's job is "what does a pi user actually see?" and the user
+ * never sees our renderer standalone. Renderer-in-isolation coverage
+ * lives at the faster Render layer (`tests/unit/renderer.test.ts`,
+ * `tests/extension/pi-fence.test.ts`), which paints via
+ * `VirtualTerminal` and asserts on byte-stream shape.
+ *
+ * Theme bootstrap: pi-coding-agent components read pi's runtime theme
+ * singleton via a `Proxy` that throws `Theme not initialized.` if
+ * never initialised. `initTheme("dark")` inside the helper mirrors the
+ * `setCapabilities` pattern: scenario-local, idempotent across calls,
+ * no hidden test-runner setup. The builtin `dark` theme loads by name
+ * with no filesystem side-effect beyond pi-coding-agent's bundled
+ * `dark.json`.
+ *
+ * Determinism pins: `timestamp: 0` and zero `usage` on the synthetic
+ * `AssistantMessage` guard against drift if the component ever surfaces
+ * those fields in chrome. Two consecutive renders on the calibration
+ * machine produce byte-identical PNGs.
  */
-async function buildMermaidHappyPath(variant: Variant): Promise<{ bytes: string }> {
-	// Pin capabilities so the Kitty graphics path emits deterministically
-	// (matches the render-layer tests' forceCapabilities behaviour).
-	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
-
-	const pngPath = join(REPO_ROOT, "tests/fixtures/mermaid-flowchart.png");
-	const pngBase64 = (await readFile(pngPath)).toString("base64");
-
-	const renderer = createPiFenceMessageRenderer({
-		Box,
-		Text,
-		Spacer,
-		Image,
-		truncateToWidth,
-	});
-
-	const component = renderer(
-		{
-			content: [{ type: "image", data: pngBase64, mimeType: "image/png" }],
-			details: {
-				tag: "mermaid",
-				processor: "kroki",
-				kind: "ok",
-				source: "flowchart LR\n  A --> B\n  B --> C",
-			},
-		},
-		{ expanded: false },
-		IDENTITY_THEME,
-	);
-
-	const terminal = await paintComponent(component, variant.cols, variant.rows);
-	return { bytes: terminal.getWrites() };
-}
-
-/**
- * Build a `pi-fence:output` byte stream for the error-rendering
- * branch of `createPiFenceMessageRenderer`: no image content, the
- * error label instead of the success label, a stable synthetic
- * error body, and a source that reflects the triggering typo.
- */
-async function buildMermaidErrorPath(variant: Variant): Promise<{ bytes: string }> {
-	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
-
-	const renderer = createPiFenceMessageRenderer({
-		Box,
-		Text,
-		Spacer,
-		Image,
-		truncateToWidth,
-	});
-
-	const component = renderer(
-		{
-			content: [
-				{
-					type: "text",
-					text: "Error rendering mermaid via kroki: Parse error on line 1: unknown tag 'flowchrt'",
-				},
-			],
-			details: {
-				tag: "mermaid",
-				processor: "kroki",
-				kind: "error",
-				source: "flowchrt LR\n  A --> B",
-			},
-		},
-		{ expanded: false },
-		IDENTITY_THEME,
-	);
-
-	const terminal = await paintComponent(component, variant.cols, variant.rows);
-	return { bytes: terminal.getWrites() };
-}
-
-/**
- * Build a full user → assistant → pi-fence:output visual using
- * pi-coding-agent's own interactive-mode components, so the scenario
- * reflects what a pi user actually sees when they ask for a diagram.
- *
- * Composed through:
- *
- *   - `UserMessageComponent` — user's prompt bubble.
- *   - `AssistantMessageComponent` — assistant's reply with the fenced
- *     mermaid block.
- *   - `CustomMessageComponent` wrapping pi-fence's own
- *     `createPiFenceMessageRenderer` — the pi-fence:output panel
- *     with the Kroki-rendered PNG.
- *
- * Root is a pi-tui `Container` painted through the same
- * `paintComponent` harness the other scenarios use. Theme bootstrap:
- * pi-coding-agent's components call `theme.fg` / `theme.bg` on pi's
- * runtime theme singleton, which throws `Theme not initialized.` if
- * never initialised. We `initTheme("dark")` inside `build` — same
- * shape as `setCapabilities` above: idempotent, scenario-local, no
- * hidden test-runner setup.
- *
- * Determinism: `timestamp: 0` and zero `usage` on the assistant
- * message prevent per-run drift on any `AssistantMessageComponent`
- * chrome that might surface them. A fresh `initTheme("dark")` loads
- * the builtin dark theme by name (no filesystem side-effects beyond
- * reading pi-coding-agent's own bundled `dark.json`).
- */
-async function buildMermaidUserAgentTrail(
+async function buildTrail(
+	userText: string,
+	assistantMarkdown: string,
+	customMessage: PiFenceCustomMessage,
 	variant: Variant,
 ): Promise<{ bytes: string }> {
 	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
 	initTheme("dark");
 
-	const pngPath = join(REPO_ROOT, "tests/fixtures/mermaid-flowchart.png");
-	const pngBase64 = (await readFile(pngPath)).toString("base64");
-
-	const userComponent = new UserMessageComponent(
-		"Show me a mermaid flowchart of A → B → C.",
-	);
+	const userComponent = new UserMessageComponent(userText);
 
 	const assistantMsg: AssistantMessage = {
 		role: "assistant",
-		content: [
-			{
-				type: "text",
-				text: "Here's the diagram:\n\n```mermaid\nflowchart LR\n  A --> B\n  B --> C\n```",
-			},
-		],
+		content: [{ type: "text", text: assistantMarkdown }],
 		api: "anthropic-messages",
 		provider: "anthropic",
 		model: "claude-sonnet-4-5",
@@ -249,21 +179,6 @@ async function buildMermaidUserAgentTrail(
 		Image,
 		truncateToWidth,
 	});
-	const customMessage = {
-		role: "custom" as const,
-		customType: "pi-fence:output",
-		content: [
-			{ type: "image" as const, data: pngBase64, mimeType: "image/png" },
-		],
-		display: true,
-		details: {
-			tag: "mermaid",
-			processor: "kroki",
-			kind: "ok" as const,
-			source: "flowchart LR\n  A --> B\n  B --> C",
-		},
-		timestamp: 0,
-	};
 	const customComponent = new CustomMessageComponent(customMessage, renderer);
 
 	const root = new Container();
@@ -277,27 +192,85 @@ async function buildMermaidUserAgentTrail(
 	return { bytes: terminal.getWrites() };
 }
 
+/**
+ * Happy-path: user asks for a mermaid flowchart, assistant replies
+ * with a fenced mermaid block, pi-fence:output panel shows the
+ * Kroki-rendered PNG. Emits the Kitty graphics APC.
+ */
+async function buildMermaidHappyPath(
+	variant: Variant,
+): Promise<{ bytes: string }> {
+	const pngPath = join(REPO_ROOT, "tests/fixtures/mermaid-flowchart.png");
+	const pngBase64 = (await readFile(pngPath)).toString("base64");
+
+	return buildTrail(
+		"Show me a mermaid flowchart of A → B → C.",
+		"Here's the diagram:\n\n```mermaid\nflowchart LR\n  A --> B\n  B --> C\n```",
+		{
+			role: "custom",
+			customType: "pi-fence:output",
+			content: [{ type: "image", data: pngBase64, mimeType: "image/png" }],
+			display: true,
+			details: {
+				tag: "mermaid",
+				processor: "kroki",
+				kind: "ok",
+				source: "flowchart LR\n  A --> B\n  B --> C",
+			},
+			timestamp: 0,
+		},
+		variant,
+	);
+}
+
+/**
+ * Error-path: user asks for a diagram, assistant replies with a
+ * fenced mermaid block that has a typo (`flowchrt` instead of
+ * `flowchart`), pi-fence:output surfaces Kroki's parse error.
+ * Text content only — no image — so no Kitty APC emits.
+ */
+async function buildMermaidErrorPath(
+	variant: Variant,
+): Promise<{ bytes: string }> {
+	return buildTrail(
+		"Draw me a simple flowchart, please.",
+		"Sure — here's the diagram:\n\n```mermaid\nflowchrt LR\n  A --> B\n```",
+		{
+			role: "custom",
+			customType: "pi-fence:output",
+			content: [
+				{
+					type: "text",
+					text: "Error rendering mermaid via kroki: Parse error on line 1: unknown tag 'flowchrt'",
+				},
+			],
+			display: true,
+			details: {
+				tag: "mermaid",
+				processor: "kroki",
+				kind: "error",
+				source: "flowchrt LR\n  A --> B",
+			},
+			timestamp: 0,
+		},
+		variant,
+	);
+}
+
 export const SCENARIOS: readonly Scenario[] = [
 	{
 		name: "mermaid-happy-path",
 		description:
-			"pi-fence:output panel with a Kroki-rendered mermaid flowchart (A → B → C).",
+			"Trail: user prompt → assistant reply with fenced mermaid block → pi-fence:output panel with the Kroki-rendered PNG.",
 		variants: [DEFAULT_VARIANT, NARROW_VARIANT],
 		build: buildMermaidHappyPath,
 	},
 	{
 		name: "mermaid-error-path",
 		description:
-			"pi-fence:output panel when the Kroki processor returns an error (text content, no image).",
+			"Trail: user prompt → assistant reply with a broken mermaid block → pi-fence:output panel showing Kroki's parse error (text content, no image).",
 		variants: [DEFAULT_VARIANT, NARROW_VARIANT],
 		build: buildMermaidErrorPath,
-	},
-	{
-		name: "mermaid-user-agent-trail",
-		description:
-			"Full user → assistant → pi-fence:output composition via pi-coding-agent's own UserMessage / AssistantMessage / CustomMessage components.",
-		variants: [DEFAULT_VARIANT],
-		build: buildMermaidUserAgentTrail,
 	},
 ];
 

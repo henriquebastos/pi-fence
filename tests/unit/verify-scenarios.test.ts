@@ -24,7 +24,6 @@ describe("scenario registry", () => {
 		const names = listScenarios().map((s) => s.name);
 		expect(names).toContain("mermaid-happy-path");
 		expect(names).toContain("mermaid-error-path");
-		expect(names).toContain("mermaid-user-agent-trail");
 	});
 
 	it("each scenario has a unique name, a description, a build function, and at least one variant", () => {
@@ -95,22 +94,4 @@ describe("scenario registry", () => {
 		20_000,
 	);
 
-	it(
-		"mermaid-user-agent-trail default variant composes user + assistant + pi-fence:output and emits the Kitty APC",
-		async () => {
-			const scenario = getScenario("mermaid-user-agent-trail");
-			const variant = scenario.variants[0];
-			expect(variant).toBeDefined();
-			const { bytes } = await scenario.build(variant!);
-			expect(bytes.length).toBeGreaterThan(0);
-			// The custom-message wraps pi-fence's renderer which emits the
-			// PNG via the Kitty graphics protocol: the APC MUST appear.
-			expect(bytes).toContain("\x1b_G");
-			// The single default variant pins the S1-era shape; other
-			// widths are deferred per the story scope.
-			expect(scenario.variants).toHaveLength(1);
-			expect(variant!.name).toBe("default");
-		},
-		20_000,
-	);
 });
