@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (spike — CVx.E2 wterm + a11y tree render verifier)
+
+A second pass at the CVx.E2 dev-time-verify loop, taking a completely different tack from the live-terminal spike: feed pi-tui's byte stream into [wterm](https://github.com/vercel-labs/wterm) (Vercel Labs' new Zig+WASM web terminal emulator that renders to the DOM) inside jsdom, then read the rendered DOM directly to assert on "what a real VT terminal would display." No real Kitty window, no `screencapture`, no cursor-positioning racing against a shell prompt.
+
+- **`scripts/render-a11y-spike.ts`** — sets up jsdom globals (ResizeObserver + requestAnimationFrame shims lifted verbatim from `@wterm/dom`'s own test setup upstream), captures pi-tui bytes via the shared `paintComponent()` harness, instantiates a `WTerm`, writes the bytes, lets the RAF-scheduled render fire, reads `.term-row` textContent per row, and dumps a JSON report on stdout + a human-readable summary on stderr.
+- **`pnpm --silent render:a11y-spike`** — entry point. Stdout is pure JSON so snapshot-style tests can redirect to a file and diff.
+- **Dev dependencies:** `@wterm/dom@^0.1.9` (and its transitive `@wterm/core` that ships a ~13 KB inlined WASM blob), `jsdom@^29.0.2`, `@types/jsdom`. No Chromium download; jsdom is a ~10 MB Node module. If a future story decides full browser a11y snapshots matter, the port from jsdom to Playwright is one `page.goto` + one `page.accessibility.snapshot`.
+- **What the spike proves:** our byte stream parses correctly in a real VT100/xterm emulator — the "Rendered mermaid via kroki" label lands on row 0 of wterm's rendered grid, paddingX=1 indent intact. Automatable (exit 0, machine-readable report), offline, CI-friendly.
+- **What the spike reveals:** wterm does not parse the Kitty graphics APC (`\x1b_G...\x1b\\`) — neither as a rendered image nor as an entry in `getUnhandledSequences()`. The APC payload leaks into the rendered grid as text on a subsequent row. Expected: wterm's README lists VT100/VT220/xterm parsing, not Kitty graphics. For text-layout verification this is fine; for image-rendering verification (the other half of CVx.E2), a different path is still needed (a Kitty-aware terminal emulator that also exposes an automation surface, or a real-browser + screencapture loop).
+- **Comparison with the earlier live-terminal spike:** the live spike (`scripts/render-screenshot.ts`) failed in Ghostty because pi-tui's byte stream assumes it owns the terminal viewport; cursor positioning and stdin races fought against the surrounding shell. The a11y spike sidesteps both: pi-tui's stream enters a wterm instance with a clean 120×60 viewport and no interactive shell underneath, so the only failure modes are parser-level rather than lifecycle-level. That alone is a strong argument for making the a11y-tree approach the default in `CVx.E2.S1`'s eventual spec.
+
 ### Added (spike — CVx.E2 live-terminal render)
 
 Minimal tracer for the dev-time screenshot loop that `CVx.E2` will formalise. Not a story, not a feature — a throwaway tool that de-risks the eventual spec by proving the path end-to-end.

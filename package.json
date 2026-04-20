@@ -54,7 +54,8 @@
     "live:exec": "tsx scripts/live-container.ts exec",
     "live:build": "tsx scripts/live-container.ts build",
     "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
-    "render:spike": "tsx scripts/render-screenshot.ts"
+    "render:spike": "tsx scripts/render-screenshot.ts",
+    "render:a11y-spike": "tsx scripts/render-a11y-spike.ts"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
@@ -63,8 +64,11 @@
   },
   "devDependencies": {
     "@mariozechner/pi-ai": "^0.67.68",
+    "@types/jsdom": "^28.0.1",
     "@types/node": "^25.6.0",
+    "@wterm/dom": "^0.1.9",
     "@xterm/headless": "^6.0.0",
+    "jsdom": "^29.0.2",
     "markdownlint-cli2": "^0.22.0",
     "tsx": "^4.21.0",
     "vitest": "^4.1.4"
