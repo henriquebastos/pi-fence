@@ -431,3 +431,17 @@ The cost of reading the dist was a round-trip of wrong framings. I proposed HTML
 **Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 82 lines — still under the 90-line ceiling but closer to the top.
 
 **State of `~/me/oss/pi-mono/upstream/main` at the moment the rule landed:** `efc58fed Add [Unreleased] section for next cycle`. `origin/main` in sync at the same SHA. `packages/` contains `agent`, `ai`, `coding-agent`, `mom`, `pods`, `tui`, `web-ui` — all reachable as source from upstream.
+
+### 2026-04-19 — pin pi-mono reads to `upstream/main` via `git show <ref>:<path>`
+
+Immediately after `1b9a5f0` landed, the user tightened the rule further: don't just "read from pi-mono" — always read from `main` unless another ref is explicitly named. The subtlety I missed: my previous entry observed that `~/me/oss/pi-mono` was on branch `refactor/session-storage-interface`, 6 commits ahead of `upstream/main`. If I had started reading source files from the working tree, I would have been reading WIP refactor code that does not match what pi-fence's installed `pi-tui@0.67.68` was built from. The working tree is the wrong source; `upstream/main` is the right source.
+
+**The sharpened rule:** prefer `git show upstream/main:packages/<pkg>/src/<file>.ts` over the working tree. Reads the ref directly, never depends on what's checked out, never risks polluting the user's workspace. Same idea for `git cat-file -p upstream/main:<path>` (single file) and `git grep <pattern> upstream/main -- packages/<pkg>/` (broader search). Always `git fetch --all` before reading so `upstream/main` is current. Note the `upstream/main` SHA in prose when citing internals.
+
+**Commit:**
+
+- `4c808c5` docs: pin pi-mono reads to upstream/main via 'git show <ref>:<path>'.
+
+**Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 84 lines — two lines off the 90-line ceiling, worth a trim pass soon.
+
+**Meta-observation:** this is the second sharpening pass on a rule set that landed only a few commits ago. The pattern (rule lands → user notices it's underspecified → rule gets tightened → catch-up) is not a failure — it is how AGENTS.md is supposed to evolve. First-pass rules are scaffolding; specificity accretes through use.
