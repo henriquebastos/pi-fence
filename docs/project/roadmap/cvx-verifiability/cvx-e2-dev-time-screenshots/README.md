@@ -14,6 +14,7 @@ Produce real PNG screenshots of what pi-fence would render in a Kitty-graphics-c
 | [S1](cvx-e2-s1-headless-image-verifier/README.md) | **`pnpm render:verify` produces a diffable PNG of one named pi-fence scenario, headlessly; a pixel-diff test gates regressions** | ✅ Done |
 | [S2](cvx-e2-s2-multi-scenario-gallery/README.md) | **Multi-scenario rendering with a per-run HTML gallery; variants plumbing ready for future theme/width matrices** | ✅ Done |
 | [S3](cvx-e2-s3-sentinel-readiness/README.md) | **Sentinel-based readiness; edit-verify loops complete in under five seconds per scenario** | ✅ Done |
+| [S4](cvx-e2-s4-user-agent-trail/README.md) | **`mermaid-user-agent-trail` scenario — full user→assistant→pi-fence:output visual via pi-coding-agent's own components** | 🛠️ Planned |
 
 ## Deliverable vision (epic scope)
 
