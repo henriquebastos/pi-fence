@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refined (test layer — CVx.E2.S3 sentinel-based render readiness + timing budget)
+
+Closes the CVx.E2 epic by dropping the pipeline's time-based wait in favour of deterministic observables and guarding the five-second-per-scenario budget in the live suite.
+
+- **`scripts/verify/kitty.ts`** — `countKittyImages(bytes)` walks a byte stream counting Kitty graphics APC transmits (`a=T` / `a=t`). Query (`a=q`), delete (`a=d`), placement (`a=p`), and multi-chunk continuations (no `a=` param) do not count. Matches `@xterm/addon-image`'s internal "one `onImageAdded` per complete image" semantics. Unit-tested with 7 cases including real byte streams from both registered scenarios.
+- **Pipeline sentinel wait.** `scripts/verify/pipeline.ts` no longer ends with `setTimeout(100)`. For each combo the pipeline counts expected images via `countKittyImages`, registers `ImageAddon.onImageAdded` (if images expected) and `Terminal.onRender` listeners BEFORE calling `term.write`, then `Promise.race`s the combined readiness against a 10-second hard bailout so a stuck pipeline surfaces as a slow-and-failing test rather than a hung process. Two trailing rAFs absorb residual layout settlement.
+- **Timing instrumentation.** `RenderResult.durationMs` measures wall-clock from new browser context to screenshot flush. The CLI prints one `scenario / variant rendered in NNNms` line per combo and a `total: N combos in NNNms` summary. On the calibration machine, per-combo timings dropped from ~545ms to ~400–440ms (image-free scenarios especially, since the gone `setTimeout(100)` was the tail of their render).
+- **Render-image timing budget.** `tests/render-image/verify.test.ts` asserts `result.durationMs < 5000` per combo. On this machine the two combos run at ~10x under budget; the assertion acts as a regression guard against accidental time-based waits creeping back in.
+- **Determinism.** Three consecutive `pnpm test:live` runs after the sentinel change produce zero diff pixels on every combo. `DIFF_BUDGET` stays at 100 for CI-host headroom; the test file's comment explicitly names the S3 calibration run so a future reader sees both the current value and the observation that justifies shrinking further if needed.
+- **Fast suite 172 → 179** (+7 kitty APC counter cases). Live suite count unchanged; the two existing render-image cases now carry a timing assertion in addition to the pixel-diff.
+- **No new dev deps.** Everything is in-memory APC parsing and xterm.js/addon-image events.
+
 ### Refined (test layer — CVx.E2.S2 multi-scenario + gallery)
 
 Widens S1's one-scenario verifier into a usable review surface.
