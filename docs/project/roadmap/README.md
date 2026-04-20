@@ -140,13 +140,13 @@
 |------|-------|--------|
 | [CVx.E1.S1](cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md) | **Extension and renderer tests assert on real pi-tui output via `VirtualTerminal`** | ✅ Done |
 
-### CVx.E2 — Dev-time Render Screenshots
+### [CVx.E2 — Dev-time Render Screenshots](cvx-verifiability/cvx-e2-dev-time-screenshots/README.md)
 
 | Code | Story | Status |
 |------|-------|--------|
-| `CVx.E2.S1` | **A script captures the bytes pi-tui emits for a scenario and paints them in a real Kitty window; the resulting screenshot lands on disk** | Planned |
-| `CVx.E2.S2` | **Multiple scenarios × themes × widths produce a browsable PNG gallery per run** | Planned |
-| `CVx.E2.S3` | **Screenshot readiness is sentinel-based, not time-based; runs are deterministic enough for edit–verify loops** | Planned |
+| [CVx.E2.S1](cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s1-headless-image-verifier/README.md) | **`pnpm render:verify` produces a diffable PNG of one named pi-fence scenario, headlessly; a pixel-diff test gates regressions** | 🛠️ Planned |
+| `CVx.E2.S2` | **Multi-scenario × theme × width gallery per run** | Planned |
+| `CVx.E2.S3` | **Sentinel-based readiness; edit-verify loops complete in under five seconds per scenario** | Planned |
 
 ---
 
