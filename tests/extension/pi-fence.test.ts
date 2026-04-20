@@ -26,10 +26,15 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
+import type { Component } from "@mariozechner/pi-tui";
+import { TUI } from "@mariozechner/pi-tui";
+
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
+import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
+import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
 
 const TINY_PNG = Buffer.from([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad, 0xbe, 0xef,
@@ -64,6 +69,22 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(http.requests).toHaveLength(1);
 			expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png?theme=dark");
 			expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
+
+			// Render-layer assertion: paint the custom message through the
+			// extension's registered pi-fence:output renderer into a
+			// VirtualTerminal and confirm the viewport shows the expected
+			// label, and the write log carries a Kitty graphics sequence
+			// whose base64 payload decodes to the exact fixture PNG bytes.
+			// This closes the gap between "data reached the renderer" (above)
+			// and "the renderer actually paints an image" (here).
+			const terminal = await paintCustomMessage(captured, outputs[0], "pi-fence:output");
+			expect(
+				terminal.getViewport().some((line) =>
+					line.includes("Rendered mermaid via kroki"),
+				),
+			).toBe(true);
+			expect(terminal.getWrites()).toContain("\x1b_G");
+			expect(extractKittyBase64(terminal.getWrites())).toBe(TINY_PNG.toString("base64"));
 		},
 		20_000,
 	);
@@ -172,13 +193,85 @@ interface CapturedCustomMessage {
 	details: unknown;
 }
 
+type CapturedRenderer = (
+	message: { customType: string; content: unknown; details: unknown },
+	options: { expanded: boolean },
+	theme: unknown,
+) => Component | undefined;
+
 interface Captured {
 	sentCustomMessages: CapturedCustomMessage[];
+	registeredRenderers: Map<string, CapturedRenderer>;
 	logger?: FakeLogger;
 }
 
 function pngResponse(bytes: Buffer): HttpResponse {
 	return { status: 200, headers: { "content-type": "image/png" }, body: bytes };
+}
+
+/**
+ * Minimal theme shape the pi-fence renderers consume. Returns text
+ * unchanged so viewport assertions match on plain strings; mirrors the
+ * IDENTITY_THEME used by tests/unit/renderer.test.ts.
+ */
+const IDENTITY_THEME = {
+	fg: (_color: string, text: string) => text,
+	bold: (text: string) => text,
+	bg: (_color: string, text: string) => text,
+};
+
+/**
+ * Paint the captured custom message through the extension's registered
+ * renderer for `customType` into a LoggingVirtualTerminal, returning
+ * the terminal for viewport / write-log assertions. Dimensions match
+ * those used in tests/unit/renderer.test.ts (see that file for rationale).
+ */
+async function paintCustomMessage(
+	captured: Captured,
+	message: CapturedCustomMessage,
+	customType: string,
+): Promise<LoggingVirtualTerminal> {
+	const renderer = captured.registeredRenderers.get(customType);
+	if (!renderer) {
+		throw new Error(`No renderer registered for customType='${customType}'`);
+	}
+	const component = renderer(
+		{ customType, content: message.content, details: message.details },
+		{ expanded: false },
+		IDENTITY_THEME,
+	);
+	if (!component) {
+		throw new Error(`Renderer for '${customType}' returned undefined`);
+	}
+
+	const resetCaps = forceCapabilities();
+	try {
+		const terminal = new LoggingVirtualTerminal(120, 60);
+		const tui = new TUI(terminal);
+		tui.addChild(component);
+		tui.start();
+		await terminal.waitForRender();
+		tui.stop();
+		return terminal;
+	} finally {
+		resetCaps();
+	}
+}
+
+/**
+ * Extract the base64 payload from the first Kitty graphics sequence in
+ * a write stream. Kitty's APC sequence is `\x1b_G<params>;<base64>\x1b\\`
+ * for a single-chunk image, or `\x1b_G<params>,m=1;<chunk1>\x1b\\` +
+ * continuation chunks for multi-chunk. Our fixture is tiny (< 4 KiB),
+ * so it always emits a single chunk.
+ */
+function extractKittyBase64(writes: string): string {
+	const start = writes.indexOf("\x1b_G");
+	if (start < 0) return "";
+	const payloadStart = writes.indexOf(";", start);
+	const end = writes.indexOf("\x1b\\", payloadStart);
+	if (payloadStart < 0 || end < 0) return "";
+	return writes.slice(payloadStart + 1, end);
 }
 
 /** Build a FakeHttpClient pre-programmed with PNG responses for the given URLs. */
@@ -218,11 +311,13 @@ function expectImageBytes(content: unknown, expectedBytes: Buffer): void {
 async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
+	registeredRenderers: Map<string, CapturedRenderer>;
 	model: NonNullable<ReturnType<typeof getModel>>;
 	logger: FakeLogger;
 }> {
 	const logger = new FakeLogger();
 	const sentCustomMessages: CapturedCustomMessage[] = [];
+	const registeredRenderers = new Map<string, CapturedRenderer>();
 
 	const agentDir = makeTempDir("pi-fence-ext-");
 	const authStorage = AuthStorage.create(`${agentDir}/auth.json`);
@@ -244,6 +339,15 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 			});
 			return originalSendMessage(message, options);
 		}) as ExtensionAPI["sendMessage"];
+
+		const originalRegisterMessageRenderer = pi.registerMessageRenderer.bind(pi);
+		pi.registerMessageRenderer = ((customType: string, renderer: unknown) => {
+			registeredRenderers.set(customType, renderer as CapturedRenderer);
+			return originalRegisterMessageRenderer(
+				customType,
+				renderer as Parameters<ExtensionAPI["registerMessageRenderer"]>[1],
+			);
+		}) as ExtensionAPI["registerMessageRenderer"];
 
 		createPiFenceExtension(pi, { http, logger });
 	};
@@ -269,7 +373,7 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 
 	session.subscribe(() => {});
 
-	return { session, sentCustomMessages, model, logger };
+	return { session, sentCustomMessages, registeredRenderers, model, logger };
 }
 
 /**
@@ -281,7 +385,8 @@ async function runExtensionWithAssistantText(
 	http: FakeHttpClient,
 	assistantText: string,
 ): Promise<Captured> {
-	const { session, sentCustomMessages, model, logger } = await buildSessionWithExtension(http);
+	const { session, sentCustomMessages, registeredRenderers, model, logger } =
+		await buildSessionWithExtension(http);
 
 	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
@@ -295,7 +400,7 @@ async function runExtensionWithAssistantText(
 	// to settle.
 	await new Promise((r) => setTimeout(r, 50));
 
-	return { sentCustomMessages, logger };
+	return { sentCustomMessages, registeredRenderers, logger };
 }
 
 /**
@@ -305,7 +410,7 @@ async function runExtensionWithAssistantText(
  * stream is needed.
  */
 async function runExtensionWithCommand(http: FakeHttpClient, command: string): Promise<Captured> {
-	const { session, sentCustomMessages } = await buildSessionWithExtension(http);
+	const { session, sentCustomMessages, registeredRenderers } = await buildSessionWithExtension(http);
 
 	try {
 		await session.prompt(command);
@@ -315,7 +420,7 @@ async function runExtensionWithCommand(http: FakeHttpClient, command: string): P
 
 	await new Promise((r) => setTimeout(r, 50));
 
-	return { sentCustomMessages };
+	return { sentCustomMessages, registeredRenderers };
 }
 
 function cannedAssistantStream(_model: NonNullable<ReturnType<typeof getModel>>, text: string) {
