@@ -27,6 +27,7 @@ import { fileURLToPath } from "node:url";
 
 import { chromium, type Browser } from "playwright-core";
 
+import { countKittyImages } from "./kitty.ts";
 import type { Scenario, Variant } from "./scenarios.ts";
 
 export interface RenderResult {
@@ -125,6 +126,7 @@ async function renderScenarioInBrowser(
 ): Promise<RenderResult> {
 	const { bytes } = await scenario.build(variant);
 	const { cols, rows } = variant;
+	const expectedImages = countKittyImages(bytes);
 
 	const comboDir = join(outDir, scenario.name, variant.name);
 	await mkdir(comboDir, { recursive: true });
@@ -147,7 +149,12 @@ async function renderScenarioInBrowser(
 		await page.addScriptTag({ path: IMAGE_ADDON_JS_PATH });
 
 		await page.evaluate(
-			async (args: { bytesB64: string; cols: number; rows: number }) => {
+			async (args: {
+				bytesB64: string;
+				cols: number;
+				rows: number;
+				expectedImages: number;
+			}) => {
 				// xterm.js's UMD bundle unpacks its exports onto globals, so
 				// window.Terminal is the constructor directly. addon-image's
 				// UMD differs: window.ImageAddon is the module object
@@ -157,8 +164,15 @@ async function renderScenarioInBrowser(
 						loadAddon(addon: unknown): void;
 						open(el: HTMLElement): void;
 						write(data: string, cb?: () => void): void;
+						onRender(cb: () => void): { dispose(): void };
 					};
-					ImageAddon: { ImageAddon: new () => unknown };
+					ImageAddon: {
+						ImageAddon: new () => {
+							onImageAdded: {
+								(cb: () => void): { dispose(): void };
+							} | ((cb: () => void) => { dispose(): void });
+						};
+					};
 				};
 
 				const term = new w.Terminal({
@@ -177,21 +191,82 @@ async function renderScenarioInBrowser(
 				if (!host) throw new Error("missing #term host element");
 				term.open(host);
 
+				// Register sentinel listeners BEFORE term.write so events
+				// fired mid-parse are not missed. onImageAdded fires per
+				// complete image (not per chunk); we count the expected
+				// number outside the browser and wait for that many here.
+				let imagesSeen = 0;
+				let imageWaitResolve: (() => void) | null = null;
+				const imageWait =
+					args.expectedImages === 0
+						? Promise.resolve()
+						: new Promise<void>((resolve) => {
+								imageWaitResolve = resolve;
+							});
+				const imageDisposable =
+					args.expectedImages === 0
+						? null
+						: (
+								imageAddon.onImageAdded as (cb: () => void) => {
+									dispose(): void;
+								}
+							)(() => {
+								imagesSeen++;
+								if (
+									imagesSeen >= args.expectedImages &&
+									imageWaitResolve
+								) {
+									imageWaitResolve();
+									imageWaitResolve = null;
+								}
+							});
+
+				// For image-free scenarios we still need to know xterm has
+				// repainted once after the write. Register this listener
+				// before write too; register outside the image-count branch
+				// so we can await BOTH when the scenario has images (paint
+				// completing is a stronger signal than onImageAdded alone).
+				let renderWaitResolve: (() => void) | null = null;
+				const renderWait = new Promise<void>((resolve) => {
+					renderWaitResolve = resolve;
+				});
+				const renderDisposable = term.onRender(() => {
+					if (renderWaitResolve) {
+						renderWaitResolve();
+						renderWaitResolve = null;
+					}
+				});
+
 				const bin = atob(args.bytesB64);
 				await new Promise<void>((resolve) => {
 					term.write(bin, () => resolve());
 				});
 
-				// Two rAFs settle xterm's render pipeline; one extra setTimeout
-				// gives addon-image's async pixel decoding a moment to finish.
+				// Safety ceiling: if images never arrive or onRender never
+				// fires, bail after a hard limit so a stuck pipeline
+				// surfaces as a slow-and-failing test rather than a hung
+				// process. Well above the 5-second per-scenario budget.
+				const bailout = new Promise<void>((resolve) =>
+					setTimeout(resolve, 10_000),
+				);
+
+				await Promise.race([
+					Promise.all([imageWait, renderWait]),
+					bailout,
+				]);
+
+				imageDisposable?.dispose();
+				renderDisposable.dispose();
+
+				// Two rAFs let layout + paint fully settle after the sentinel.
 				await new Promise<void>((r) => requestAnimationFrame(() => r()));
 				await new Promise<void>((r) => requestAnimationFrame(() => r()));
-				await new Promise<void>((r) => setTimeout(r, 100));
 			},
 			{
 				bytesB64: Buffer.from(bytes, "binary").toString("base64"),
 				cols,
 				rows,
+				expectedImages,
 			},
 		);
 
