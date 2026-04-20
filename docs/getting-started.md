@@ -2,9 +2,21 @@
 
 # Getting Started
 
-> **Status:** nothing to install yet. The extension is scaffolding. This page describes the intended experience once [CV0.E1.S1](project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/README.md) ships.
+> **Status:** `CV0.E1` has shipped its core user-visible stories ([S0](project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s0-testing-foundation/README.md)–[S3](project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s3-fence-list/README.md)) plus [CVx.E1.S1](project/roadmap/cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md) (render-layer testing). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. Local rendering, `/fence doctor`, and configuration are still on the [roadmap](project/roadmap/README.md).
 
-## Intended install (not yet functional)
+## Install
+
+From source (today):
+
+```bash
+git clone https://github.com/henriquebastos/pi-fence
+cd pi-fence
+corepack enable   # one-time
+pnpm install
+# Point pi at the local checkout; see the extension-loading section of the pi docs.
+```
+
+From npm (once published):
 
 ```bash
 pi install npm:pi-fence
@@ -42,12 +54,12 @@ If you don't see an image, check:
 
 ## Next
 
-Once S1 ships this page expands with:
+Future CVs expand this page with:
 
-- Configuration examples (`pi-fence` config file under `~/.pi/agent/`)
-- Offline setup via Docker Kroki
-- Adding/removing processors
-- Writing your own processor
+- Configuration examples (`pi-fence` config file under `~/.pi/agent/`) — CV1.E1.
+- Offline setup via Docker Kroki — CV2.E2.
+- Adding/removing processors — CV1.E1.
+- Writing your own processor — CV4.E1.
 
 Track progress in the [worklog](process/worklog.md).
 
@@ -112,7 +124,7 @@ pnpm test:watch    # vitest --watch on the fast suite
 
 | Script | Purpose |
 |--------|---------|
-| `pnpm test` | Fast suite (unit, contract, extension, utility). |
+| `pnpm test` | Fast suite (unit, contract, render, extension, utility). |
 | `pnpm test:watch` | vitest in watch mode. |
 | `pnpm test:live` | Integration suite (Docker/network). Skips cleanly without prerequisites. |
 | `pnpm test:all` | Fast + live. |
@@ -125,7 +137,7 @@ pnpm test:watch    # vitest --watch on the fast suite
 | `pnpm live:status` | Print `running` / `stopped` / `absent`. |
 | `pnpm live:exec -- <cmd>` | Run a command inside the container. |
 | `pnpm live:build` | Build the live-deps image locally. |
-| `pnpm refresh-fixtures <tag>` | Regenerate committed fixtures from live sources (S1 onward). |
+| `pnpm refresh-fixtures <tag>` | Regenerate committed fixtures from live sources. |
 
 ### CI
 
@@ -140,10 +152,10 @@ See [principles.md](product/principles.md#testing) for the architectural rules. 
 
 ```text
 tests/
-├── unit/           pure-logic tests, no I/O
-├── contract/       interface-conformance tests (grows with S1)
+├── unit/           pure-logic + render-layer tests (TUI painting into VirtualTerminal), no external I/O
+├── contract/       interface-conformance tests
 ├── extension/      pi-SDK-level tests with fake LLM stream
 ├── integration/    live tests (Docker/network); skip cleanly when deps absent
-├── utilities/      shared test fakes (ShellRunner, HttpClient, Logger, ExtensionAPI) + self-tests
-└── fixtures/       committed reference bytes (PNGs once S1 ships)
+├── utilities/      shared test fakes + harnesses (ShellRunner, HttpClient, Logger, ExtensionAPI, VirtualTerminal, forceCapabilities)
+└── fixtures/       committed reference bytes
 ```

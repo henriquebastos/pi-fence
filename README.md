@@ -32,7 +32,7 @@ After installing pi-fence into pi:
 
 **Supported tags**: `mermaid`, `graphviz`, `dot`, `plantuml`, `puml`, `d2`. Others (nomnoml, wavedrom, vega-lite, ...) are on the roadmap; each arrives with its own story when a user asks.
 
-On expansion (ctrl+o on the rendered message) pi-fence also shows the original mermaid source in a code block for copy-paste.
+On expansion (ctrl+o on the rendered message) pi-fence also shows the original source in a code block for copy-paste, regardless of which supported tag you used.
 
 **Theme tracking:** pi-fence requests `?theme=dark` from Kroki when pi's current theme is a dark one (any theme whose name does not contain `light`, `latte`, or `day` — including defaults like `dark`, `tokyo-night`, `catppuccin-mocha`, `gruvbox-dark`). On light pi themes the diagram is rendered in Kroki's default light style. The theme is re-read every turn, so switching pi themes mid-session takes effect on the next rendered block.
 
