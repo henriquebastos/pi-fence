@@ -11,7 +11,7 @@ Produce real PNG screenshots of what pi-fence would render in a Kitty-graphics-c
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cvx-e2-s1-headless-image-verifier/README.md) | **`pnpm render:verify` produces a diffable PNG of one named pi-fence scenario, headlessly; a pixel-diff test gates regressions** | 🛠️ Planned |
+| [S1](cvx-e2-s1-headless-image-verifier/README.md) | **`pnpm render:verify` produces a diffable PNG of one named pi-fence scenario, headlessly; a pixel-diff test gates regressions** | ✅ Done |
 | `S2` | **Multi-scenario × theme × width gallery per run** | Planned |
 | `S3` | **Sentinel-based readiness; edit-verify loops complete in under five seconds per scenario** | Planned |
 

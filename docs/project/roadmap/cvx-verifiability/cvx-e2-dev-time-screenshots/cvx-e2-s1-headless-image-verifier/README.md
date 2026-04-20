@@ -1,6 +1,6 @@
 [< CVx.E2 — Dev-time Render Screenshots](../README.md)
 
-# S1 — `pnpm render:verify` produces a diffable PNG of one pi-fence scenario 🛠️ Planned
+# S1 — `pnpm render:verify` produces a diffable PNG of one pi-fence scenario ✅ Done
 
 Promote the third CVx.E2 spike (`scripts/render-image-spike.ts`) to a first-class verifier tool. One named scenario, one deterministic PNG per run, one pixel-diff test that fails the live suite when the render regresses.
 

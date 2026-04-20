@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-Between stories. `CVx.E1.S1` just closed — the render layer now asserts on real pi-tui output. Feature work resumes next.
+Between stories. `CVx.E2.S1` just closed — `pnpm render:verify` produces diffable PNGs of pi-fence's rendered output headlessly, and the Render Image live layer gates regressions. Feature work resumes next.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`) and on `CVx.E1.S1` (render-layer test rung). `S4` (full text-based Kroki coverage) and `S5` (JSON-body Kroki languages) remain specced and ready to pick up whenever the Epic's "every language Kroki serves" done criterion becomes the priority.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). `CVx.E1.S1` (render-layer test rung) and `CVx.E2.S1` (dev-time image verifier + first live diff gate) are both closed. `CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) remain specced and ready to pick up whenever the Epic's "every language Kroki serves" done criterion becomes the priority.
 
-The likely next move is `CV0.E2` (Graphviz Local), which introduces a second processor alongside Kroki and forces the registry abstraction to earn its keep. `S3`'s `listProcessors(processors)` API already accepts a `FenceProcessor[]`, so adding a second row to `/fence list` is a wiring change, not a formatter change. Whichever feature CV comes next will exercise the render-layer rung for real on its first visual touch.
+The likely next move is `CV0.E2` (Graphviz Local), which introduces a second processor alongside Kroki and forces the registry abstraction to earn its keep. `S3`'s `listProcessors(processors)` API already accepts a `FenceProcessor[]`, so adding a second row to `/fence list` is a wiring change, not a formatter change. Whichever feature CV comes next will exercise both test rungs (Render + Render Image) on its first visual touch. `CVx.E2.S2` (multi-scenario gallery) is also specced-enough to pick up any time — now that S1's pipeline is factored for `renderMany()`, adding more scenarios is cheap.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -551,3 +551,33 @@ Dev dependencies added across the two spikes: `@wterm/dom@^0.1.9` (+ transitive 
 **Follow-up this batch surfaces for `CVx.E2.S1`'s eventual spec:** the original table row in the epic's README said "paint in a real Kitty window." The three spikes taught us the headless path is strictly better (CI-compatible, no shell lifecycle race, reproducible, diffable). The spec commit that defines `CVx.E2.S1` should revise both that table row and the epic-level "done" criterion (which currently also says "real Kitty") to reflect the headless direction, and should ship a proper verifier tool promoted from the spike scripts rather than paving over the original live-terminal framing.
 
 **Meta on docs ordering:** pass 2 (`373a9e5`) shipped without an adjacent docs commit in the prior session (it was implicit in the "follow-ups surfaced" section of `946e177` but not claimed by SHA there). Pass 3 (`12e4e1d`) shipped one commit ago, also without docs. This entry is the retroactive-batch catch-up for both, per the AGENTS.md Worklog-and-CHANGELOG-ordering exception. Going forward, one-feature-one-docs remains the default.
+
+### 2026-04-20 — close CVx.E2.S1 (headless image verifier)
+
+**Goal:** promote the third CVx.E2 spike from research code to a maintained verifier with a named CLI, a scenario registry, a pipeline module, a committed golden PNG, and a live-suite pixel-diff test. Deliver the first building block of the `CVx.E2` epic so that the remaining stories (S2 multi-scenario gallery, S3 sentinel-based determinism) extend rather than restart.
+
+**What shipped (one commit per plan step):**
+
+- `f579f38` spec CVx.E2.S1 — headless image verifier with pixel-diff snapshot test. Created the Epic folder (previously table-row-only in the CVx parent README), wrote `README.md` + `plan.md` + `test-guide.md` under `cvx-e2-dev-time-screenshots/cvx-e2-s1-headless-image-verifier/`, revised the top-level roadmap table rows and the CVx parent to reflect the headless direction the three spikes demonstrated (replacing the original "real Kitty window" framing). Added a `Render Image (live)` row to the CVx parent's test-pyramid comparison. Updated the epic-level "done" criterion to name `pnpm render:verify` + `@xterm/addon-image` + `pixelmatch` explicitly rather than the original generic "real Kitty" shape.
+- `3394a7d` step 1: scenario registry + pipeline extraction. `scripts/verify/scenarios.ts` with `Scenario` interface, one registered scenario (`mermaid-happy-path`), `getScenario()` / `listScenarios()`; `scripts/verify/pipeline.ts` with `renderScenario()` and `renderMany()` sharing Chromium across scenarios. `tests/unit/verify-scenarios.test.ts` covers the registry contract (unique names, plausible dimensions, Kitty APC in the built byte stream) — 5 new cases; fast suite 161 → 166. `scripts/render-image-spike.ts` collapsed from a 250-line inline pipeline to a ~40-line driver over the new library modules, proving the extraction is behavior-preserving.
+- `4585869` step 2: `pnpm render:verify` CLI. `scripts/verify.ts` dispatches flags (`--list`, `--scenario <name>`, `--update`, `--out <dir>`, `-h`/`--help`) and exits 0/1/2 for success / argument error / pipeline failure. No tests added yet; step 4 is the test gate.
+- `836ce5a` step 3: golden PNG. `pnpm render:verify --update` captured `tests/fixtures/golden/mermaid-happy-path.png` (2560x2280, 37.9 KB) on the authoring machine (macOS arm64, Chromium revision 1217, Chrome for Testing 147.0.7727.15). Baseline calibration noted in the commit message for future re-roll reference.
+- `765d331` step 4: pixel-diff render-image test. `tests/render-image/verify.test.ts` iterates the registered scenarios, pixel-matches via `pngjs` + `pixelmatch`, budgets at `DIFF_BUDGET=100` and `threshold=0.1`. Calibrated against three consecutive byte-identical renders (0 diff pixels each) on this machine. Gated on Chromium availability via `chromium.executablePath()` + `existsSync()`; contributors without `npx playwright install chromium` green-skip. On failure writes a `diff.png` alongside the rendered PNG. `package.json` broadens `test:live` to include `tests/render-image/` and narrows `test` / `test:watch` to exclude it (the original fast-suite exclude only named `tests/integration/`; step 4 adding a sibling live suite required updating both sides of the suite split). Deps added: `pngjs@^7`, `pixelmatch@^7`, `@types/pngjs`, `@types/pixelmatch`.
+- `2fb5792` step 5: principles + docs. `principles.md` Testing table gets the `Render Image (live)` row between `Extension` / `Integration (live)` and the new entry. `docs/getting-started.md` scripts table adds the `pnpm render:verify` row; the test-layout tree gains `tests/render-image/` and points out `tests/fixtures/golden/`. `CHANGELOG.md` [Unreleased] block describes the verifier, the dep footprint, the calibration environment, and the "spike 3 now drives the new library" rewire.
+
+**Tests:** fast suite 161 → 166 (+5 from scenario registry self-test). `tests/render-image/` has 1 live case (`mermaid-happy-path: PNG matches golden within DIFF_BUDGET=100`). `pnpm test` green; `pnpm test:live` green (render-image + kroki.live pass; shell-runner.live skipped cleanly because Docker isn’t running); `pnpm run check` green.
+
+**Known carry-forwards:**
+
+1. `DIFF_BUDGET=100` is tuned against one machine (macOS arm64, Chromium 1217). CI on a different OS / Chromium patch may observe higher drift; option is to raise the budget, re-capture the golden, or invest in S3's sentinel-based determinism.
+2. `pnpm test:live` now runs two live cases even when Chromium is present but Docker is not. The two gates are independent (Chromium gate on `chromium.executablePath()`, Docker gate on container presence), which is the right shape but means the live suite's green-skip pattern is now a matrix rather than a single condition.
+3. The three spike scripts (`render-screenshot.ts`, `render-a11y-spike.ts`, `render-image-spike.ts`) remain in the tree. They are research artifacts and the S1 close does not delete them; a future consolidation story can decide whether the spike-3 script is redundant now that `pnpm render:verify` exists, and whether the a11y spike earns its own CVx.E1.S2-style promotion.
+
+**Follow-ups this story surfaces (not claimed):**
+
+1. **CVx.E2.S2** scope is now concrete — add a second scenario (likely an error path or a second diagram family), parameterise `renderScenario()` over theme / width variants, produce a browsable gallery per run. S2's plan.md can be drafted whenever there's pressure.
+2. **CI activation.** `.github/workflows/live.yml` is dormant. Activating it would run the Render Image suite on every push. Separate concern from S1.
+3. **Spike script consolidation.** `render-image-spike.ts` is now fully subsumed by `pnpm render:verify`. A later cleanup story could delete it. `render-screenshot.ts` stays as a record of the road not taken; `render-a11y-spike.ts` is a candidate for its own CVx.E1-style promotion if text-layout snapshotting earns a home.
+4. **Upstream pi-mono PR** for `VirtualTerminal` export (still pending per `~/me/mirror/backlog.md`). Unchanged since the previous session.
+
+**Meta — test-first on infrastructure code.** Step 1 had a clear red → green slice: the scenario registry test failed because `scripts/verify/scenarios.ts` didn’t exist, then passed once the module was written. Steps 2 and 3 were tooling / fixture steps (no tests added, behavior proven by direct invocation), step 4 was test-first at the live-suite layer (the pixel-diff test was written expecting the golden to exist at the path step 3 committed), step 5 was docs-only. Six feature commits total + one spec commit; each step left `pnpm test` green.

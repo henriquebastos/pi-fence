@@ -29,7 +29,7 @@ This lane **does not replace** the testing foundation `CV0.E1.S0` established. I
 | Extension | pi-fence inside a real `AgentSession` with fakes | CV0.E1.S0 |
 | **Render** | **Bytes pi-tui emits + resulting viewport, via `VirtualTerminal`** | **CVx.E1.S1** |
 | Integration (live) | Real processors against real binaries / real HTTP | CV0.E1.S0 |
-| **Render Image (live)** | **Pixel-level PNG of pi-fence's rendered panel via xterm.js + `@xterm/addon-image` in headless Chromium; pixel-diff against a committed golden** | **CVx.E2.S1 (planned)** |
+| **Render Image (live)** | **Pixel-level PNG of pi-fence's rendered panel via xterm.js + `@xterm/addon-image` in headless Chromium; pixel-diff against a committed golden** | **CVx.E2.S1** |
 
 Dev-time tooling (`CVx.E2`) is parallel, not a test layer — it's a script for humans, producing artifacts for humans.
 
@@ -38,7 +38,7 @@ Dev-time tooling (`CVx.E2`) is parallel, not a test layer — it's a script for 
 | Code | Epic | Status |
 |------|------|--------|
 | [CVx.E1](cvx-e1-pi-tui-idiom/README.md) | **pi-tui Testing Idiom** | ✅ S1 Done; further stories open |
-| [CVx.E2](cvx-e2-dev-time-screenshots/README.md) | **Dev-time Render Screenshots** | 🛠️ S1 Planned (three spikes landed; spec ready) |
+| [CVx.E2](cvx-e2-dev-time-screenshots/README.md) | **Dev-time Render Screenshots** | ✅ S1 Done; S2/S3 open |
 
 `CVx.E1` comes first because it is additive, pure refactor, and delivers value the next time a render bug ships (which, given the recent commit history, is likely soon). `CVx.E2` is larger infrastructure — spike first, spec second — and can proceed in parallel with feature CVs once E1 lands.
 
