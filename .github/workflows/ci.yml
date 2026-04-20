@@ -1,7 +1,9 @@
 # Fast CI — runs on every push and pull request.
 #
 # Executes: docs lint, markdown lint, fast test suite.
-# Excluded: live tests under tests/integration/ (see live.yml).
+# Excluded: live tests under tests/integration/ and the Render Image
+# layer under tests/render-image/ (both live in live.yml, which also
+# handles Docker + Chromium provisioning).
 #
 # Runs on Ubuntu and macOS to catch platform-sensitive behaviour in the
 # ShellRunner + live-deps helpers without requiring Windows at this stage.

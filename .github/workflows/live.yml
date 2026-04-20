@@ -1,13 +1,23 @@
-# Live CI — exercises the integration-layer tests against real Docker and
-# real external services (kroki.io when S1 ships).
+# Live CI — exercises the live test suites against real dependencies:
+#   - tests/integration/  — Docker (shell-runner), kroki.io HTTP (kroki).
+#   - tests/render-image/ — headless Chromium rendering xterm.js + Kitty
+#     graphics for pi-fence scenarios; pixel-diff against committed
+#     goldens under tests/fixtures/golden/.
 #
-# Separate workflow so rate limits, upstream outages, and container image
-# drift don't block merges to main. This workflow:
+# Separate workflow so rate limits, upstream outages, container image
+# drift, or Chromium font drift don't block merges to main. This workflow:
 #   - Runs nightly.
 #   - Can be triggered manually via workflow_dispatch.
 #   - Ubuntu only — Docker Desktop on macOS in GitHub Actions runners is
 #     flaky and slow; when we need macOS live coverage we'll add a second
 #     job.
+#
+# Cross-platform Render Image note: goldens were calibrated on macOS arm64
+# + Chromium revision 1217. Ubuntu + whatever Chromium ships with
+# playwright-core 1.59.x may produce measurably different anti-aliasing;
+# DIFF_BUDGET=100 should absorb that, but if CI flakes regularly on the
+# Render Image cases a follow-up story can calibrate per-OS budgets or
+# ship OS-specific goldens.
 
 name: live
 
@@ -41,6 +51,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Chromium for playwright-core (render-image suite)
+        run: npx playwright install --with-deps chromium
 
       - name: Build live-deps image
         run: pnpm live:build
