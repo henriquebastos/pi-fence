@@ -679,6 +679,19 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
 
+### 2026-04-20 — fix: breathing row scoped per content kind after a uniform-bump iteration
+
+**Trigger.** `9372e78` uniformly bumped the label→content Spacer from 1 to 2 for both happy and error paths. The user flagged that the error path then read as unnecessarily airy with two blank rows between the red header and the white body — asked for Spacer(2) only for image content, Spacer(1) for text.
+
+**What shipped (one feature commit + this docs catch-up):**
+
+- `d87c345` **fix: scope the label breathing-row bump to image content only.** `extensions/pi-fence/renderer.ts`: peek at `message.content` up front to compute `hasImage`, then size the label spacer as `Spacer(hasImage ? 2 : 1)`. Content-driven check chosen over keying on `details.kind` because if anyone ever sends text-only content with `kind: "ok"`, the spacing still matches the text reality. Renderer comment block rewritten to name both branches explicitly so the invariant is harder to regress. Happy-path goldens are byte-identical to `9372e78`'s (same Spacer(2) for them); error-path goldens recaptured with the one-row gap restored.
+- This worklog entry + CHANGELOG `[Unreleased]` block folded into the prior "breathing row" entry with the "sized per content kind" refinement noted inline.
+
+**Tests:** fast suite 181 → 181 (viewport assertions use `.includes()` on content substrings, insensitive to blank-row counts). Live suite 4 → 4 render-image cases, all green after the error-path recapture. `pnpm run check` green.
+
+**Meta — two-step fix as a cost of over-generalising.** The original choice to keep the spacer uniform across both paths came from my preference to avoid branching; the user's feedback reframed that as over-generalising at the expense of the error path's aesthetics. The content-driven check is cheap (one `.some()` on a small array) and the result reads better in both paths. Concrete reminder that "uniform" isn't free when the two paths paint different content kinds with different visual absorption of blank rows.
+
 ### 2026-04-20 — fix: breathing row between pi-fence:output header and content (user-surfaced via verifier fidelity)
 
 **Trigger.** Hot on the heels of the duplicate-header fix (`e0f29c7`), the user opened the `mermaid-happy-path/narrow` golden and flagged the opposite symptom: the A/B/C boxes sat flush against the purple `Rendered mermaid via kroki` header with no visible breathing space. Asked for an empty line of air between them.
