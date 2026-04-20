@@ -1,24 +1,24 @@
 /**
- * CVx.E2 spike — paint one pi-fence scenario into the current terminal.
+ * CVx.E2 spike -- paint one pi-fence scenario into the current terminal.
  *
  * Goal of this script (and the spike it belongs to):
  *
  *   Prove that the byte stream the render-layer tests assert on
- *   (`tests/unit/renderer.test.ts` + `tests/extension/pi-fence.test.ts`,
- *   via `LoggingVirtualTerminal.getWrites()`) reproduces faithfully in
- *   a real Kitty-graphics-capable terminal. If the tests pass and this
- *   script shows a broken image, we have a capture bug. If both the
- *   tests pass and this shows the expected render, we have end-to-end
- *   confidence that our assertions track reality.
+ *   (tests/unit/renderer.test.ts + tests/extension/pi-fence.test.ts,
+ *   via LoggingVirtualTerminal.getWrites()) reproduces faithfully in
+ *   a real Kitty-graphics-capable terminal. If the tests pass and
+ *   this script shows a broken image, we have a capture bug. If both
+ *   the tests pass and this shows the expected render, we have
+ *   end-to-end confidence that our assertions track reality.
  *
  * Scope of the spike:
  *
- *   - ONE hardcoded scenario. Multi-scenario × theme × width galleries
- *     are CVx.E2.S2 territory; this spike is "can we paint anything at
- *     all through this path."
- *   - ONE fixture — the same tiny synthetic PNG the render-layer unit
- *     tests use. No Kroki fetch, no network. A future iteration can
- *     swap in a real fixture per the scenario.
+ *   - ONE hardcoded scenario. Multi-scenario x theme x width galleries
+ *     are CVx.E2.S2 territory; this spike is "can we paint anything
+ *     at all through this path."
+ *   - ONE fixture -- the same tiny synthetic PNG the render-layer
+ *     unit tests use. No Kroki fetch, no network. A future iteration
+ *     can swap in a real fixture per the scenario.
  *   - NO automated screenshot. Run the script inside a real
  *     Kitty/Ghostty window, screenshot manually, inspect. Automating
  *     that loop (spawn Kitty, capture on sentinel, write PNG) is
@@ -29,20 +29,39 @@
  *   # Inside a Kitty-graphics-capable terminal (Kitty, Ghostty, WezTerm):
  *   pnpm --silent render:spike
  *
- * The `--silent` flag suppresses pnpm's own "> pi-fence@... render:spike"
- * preamble so the first bytes on stdout are pi-tui's, not pnpm's. Without
- * it the script still works (the preamble is a text line above the
- * rendered panel) but the stdout capture is noisier.
+ * The --silent flag suppresses pnpm's own preamble so the first
+ * bytes on stdout are pi-tui's, not pnpm's. Without it the script
+ * still renders correctly; the preamble is just a text line above
+ * the rendered panel.
  *
- * Expected: you see the pi-fence:output chrome (label + image panel) in
- * the terminal, then a prompt on stderr. Screenshot the visible region,
- * then press Enter to exit.
+ * Expected behavior:
  *
- * Non-Kitty terminal (iTerm2 without Kitty graphics, tmux, plain
- * xterm): you see the chrome and pi-tui's Unicode-block fallback for
- * the image. Still useful to confirm text layout and error paths even
- * without Kitty graphics.
+ *   1. A brief prompt appears on stderr: "screenshot the rendered
+ *      panel below, then press Enter to exit."
+ *   2. The pi-fence:output panel paints below the prompt (label +
+ *      image). Inside a Kitty-capable terminal the image renders
+ *      inline; elsewhere you see pi-tui's Unicode-block fallback.
+ *   3. The script waits for you to press Enter, then exits cleanly.
+ *
+ * Why prompt-before-paint (not after): pi-tui's paint owns the
+ * terminal cursor. Image emits `\x1b[29A` to anchor the image
+ * sequence at the top of its bounding box; the paint's closing
+ * bytes leave the cursor INSIDE that bounding box. Anything written
+ * to stdout/stderr after the paint overwrites the image content.
+ * Keeping the paint as the last thing on screen preserves the
+ * rendered image intact.
+ *
+ * Why readline (not `process.stdin.once('data', ...)`): the paint
+ * includes `\x1b[16t`, a cursor-cell-size query; the terminal
+ * replies on stdin with something like `\x1b[6;34;17t` independent
+ * of any user keypress. A raw `data` listener fires on that reply
+ * and exits the script before the user can screenshot. readline
+ * accumulates bytes until a newline, so the terminal reply is
+ * absorbed as "part of the line being edited" and discarded when
+ * Enter submits the line.
  */
+
+import { createInterface } from "node:readline";
 
 import { Box, Image, Spacer, Text, setCapabilities, truncateToWidth } from "@mariozechner/pi-tui";
 
@@ -55,7 +74,7 @@ import { paintComponent } from "../tests/utilities/render.ts";
 
 /**
  * A minimal 1x1 PNG (magic + IHDR with valid dimensions). pi-tui's
- * `getImageDimensions()` parses it; the Kitty encoder emits a real
+ * getImageDimensions() parses it; the Kitty encoder emits a real
  * graphics protocol sequence around the base64 payload. Same fixture
  * shape the fast suite uses, for byte-stream parity.
  */
@@ -105,9 +124,9 @@ async function main(): Promise<void> {
 	// Pin capabilities so the Kitty graphics path emits even under
 	// environments where detection might return something different.
 	// In a terminal that does not actually understand Kitty graphics,
-	// the APC sequences will pass through as invisible bytes and the
-	// Unicode-block fallback will not render \u2014 the script is intended
-	// to be run inside a Kitty-capable terminal. For deterministic
+	// the APC sequences pass through as invisible bytes and the
+	// Unicode-block fallback does not render -- the script is
+	// intended for a Kitty-capable terminal. For deterministic
 	// byte-stream parity with the tests, we pin.
 	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
 
@@ -134,22 +153,15 @@ async function main(): Promise<void> {
 	);
 
 	// Paint through a LoggingVirtualTerminal so the bytes we emit are
-	// the exact byte stream the fast suite asserts on. That\u2019s the
-	// whole point of the spike \u2014 prove the test assertions track
+	// the exact byte stream the fast suite asserts on. That is the
+	// whole point of the spike -- prove the test assertions track
 	// what a real terminal renders.
 	const terminal = await paintComponent(component);
 
-	// Emit a short preamble OUTSIDE the captured bytes so the user
-	// knows what they\u2019re looking at. The preamble goes to stderr so
-	// it doesn\u2019t interleave with the captured stream on stdout.
+	// Prompt BEFORE the paint (see module doc comment for why).
 	process.stderr.write(
-		"\n[pi-fence CVx.E2 spike] painting one canned scenario:\n" +
-			"  details.tag        = mermaid\n" +
-			"  details.processor  = kroki\n" +
-			"  details.kind       = ok\n" +
-			"  content[0].type    = image (tiny synthetic PNG)\n" +
-			"\nstdout bytes below are the pi-tui LoggingVirtualTerminal capture\n" +
-			"\u2014 identical to what the unit + extension tests assert on.\n\n",
+		"[pi-fence CVx.E2 spike] canned scenario: mermaid / kroki / ok (synthetic PNG).\n" +
+			"Screenshot the rendered panel below, then press Enter to exit.\n\n",
 	);
 
 	// Actual paint: write the captured byte stream to stdout. In a
@@ -157,19 +169,13 @@ async function main(): Promise<void> {
 	// current cursor position.
 	process.stdout.write(terminal.getWrites());
 
-	// Separator + prompt. After the emitted bytes, the terminal cursor
-	// sits below the rendered component (pi-tui moves it there with
-	// `\\x1b[1B` at the tail of each render cycle). A newline gives a
-	// gap, then the prompt on stderr.
-	process.stdout.write("\n");
-	process.stderr.write("Screenshot now. Press Enter to exit.\n");
-
-	// Keep the process alive until the user confirms. Read one line
-	// from stdin, then exit.
+	// Wait for Enter via readline (see module doc for why readline
+	// and not process.stdin.once('data', ...)).
+	const rl = createInterface({ input: process.stdin });
 	await new Promise<void>((resolve) => {
-		process.stdin.once("data", () => resolve());
-		process.stdin.resume();
+		rl.once("line", () => resolve());
 	});
+	rl.close();
 }
 
 main().catch((err) => {
