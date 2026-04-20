@@ -657,3 +657,24 @@ Every specced story in the CVx batch is closed. The epic-level done criterion fo
 8. Upstream pi-mono PR for `VirtualTerminal` export (backlog entry at `~/me/mirror/backlog.md`).
 
 **Meta — one-session CVx burn-down.** This worklog entry closes a session that spanned CVx.E2.S1 close, the backlog creation, CVx.E2.S2 spec + implementation + close, and CVx.E2.S3 spec + implementation + close — three consecutive stories shipped following the same spec / step-commits / close rhythm. Across the three stories: 30+ commits, fast suite 161 → 179 (+18 cases), live suite 5 → 6 passing with the new timing assertion, docs catch-ups stayed adjacent to feature commits per the docs-follows-feature rule (one retroactive batch entry early on covered the two CVx.E2 spikes that predated the rule's tightening).
+
+### 2026-04-20 — CVx post-close follow-ups (#7, #1, #6, #4)
+
+Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this docs catch-up. Batched because each is small and they landed adjacently in the same session.
+
+- `58f7951` **#7 — spike scripts retired.** Deleted the three `scripts/render-*-spike.ts` files and their `render:*-spike` npm scripts. Dev deps that only the a11y spike used (`@wterm/dom`, `jsdom`, `@types/jsdom`) pruned. `pnpm render:verify` is the one maintained verifier entry point.
+- `bc37a7e` **#1 — narrow variant matrix.** `scripts/verify/scenarios.ts` exports `NARROW_VARIANT` (80×30); both scenarios list `[DEFAULT_VARIANT, NARROW_VARIANT]`. `pnpm render:verify --update` captured two new goldens. Live suite 6 → 8 passing cases. Three consecutive runs produced zero diff pixels on all four combos. Theme-color variants (terminal bg/fg) still deferred — they'd need a new field on `Variant` and re-calibration across every combo.
+- `dce3c6e` **#6 — gallery polish.** `GalleryCard.goldenRelativePath` added; cards with a golden grow a `[data-showing]` toggle button that swaps rendered / golden in place. Click-to-zoom: a lightbox overlay opens the current image full-size on click, closes on click or Escape. Inline `<script>` (~40 lines), no external deps. `scripts/verify.ts` wires `tests/fixtures/golden/<scenario>/<variant>.png` into each card when present. Fast suite +2 cases.
+- `5ab0d7a` **#4 — live workflow activated.** `.github/workflows/live.yml` adds `npx playwright install --with-deps chromium` before the test run so the Render Image layer has its browser. Both CI workflow comments updated to name the tests/render-image layer and flag the cross-OS `DIFF_BUDGET` carry-forward. Enabling PR triggers for the live suite was NOT included — Chromium + Docker per PR costs ~3 extra CI minutes, a bigger decision than this cleanup.
+
+**Tests:** fast suite 179 → 181 (+2 gallery cases). Live suite 6 → 8 (narrow combos). `pnpm run check`: 44 markdown files linted, 0 errors throughout.
+
+**Remaining CVx follow-ups from `a99e859` that are still open:**
+
+1. Populate the theme matrix (only width variants were added here).
+2. Shrink `DIFF_BUDGET` after observing cross-OS drift (needs CI runs post-#4).
+3. Parallel combo rendering (`renderCombos` still serial; fine at 4 combos, worth revisiting past ~10).
+4. `--watch` / incremental mode for the verifier.
+5. Upstream pi-mono PR for `VirtualTerminal` export (still in `~/me/mirror/backlog.md`).
+
+**Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.

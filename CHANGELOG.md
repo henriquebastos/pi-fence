@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refined (CVx post-close follow-ups)
+
+Four of the eight follow-ups surfaced at CVx.E2.S3's close, batched into one block.
+
+- **Spike scripts retired** (follow-up #7). `scripts/render-screenshot.ts`, `scripts/render-a11y-spike.ts`, `scripts/render-image-spike.ts` and the three matching `render:*-spike` package scripts are gone. Dev deps that only the a11y spike needed (`@wterm/dom`, `jsdom`, `@types/jsdom`) removed. `pnpm render:verify` is the one maintained entry point. Research history survives in git.
+- **First real variant matrix** (follow-up #1). `NARROW_VARIANT` (80×30) exposed from `scripts/verify/scenarios.ts` alongside `DEFAULT_VARIANT` (120×60); both scenarios now declare both variants. `pnpm render:verify` runs 4 combos total. Goldens captured on the S1 calibration environment; the live suite gains 2 cases (6 → 8) each with the same pixel-diff + timing assertions.
+- **Gallery polish** (follow-up #6). `GalleryCard` gains optional `goldenRelativePath`. Cards with a golden grow a `[data-showing]` toggle button that swaps the visible image between rendered and golden in place; the button label reads "Showing rendered — click for golden" and vice versa. All card images are click-to-zoom: a lightbox overlay opens full-size (respects the current toggle state), closes on click or `Escape`. Inline `<script>`, no external deps. `scripts/verify.ts` wires `tests/fixtures/golden/<scenario>/<variant>.png` into each card when the file exists. Fast suite: +2 gallery cases.
+- **Live workflow activated for Render Image** (follow-up #4). `.github/workflows/live.yml` adds `npx playwright install --with-deps chromium` before the live test run so the Render Image suite has its browser. Workflow comments updated to name both live layers (integration + render-image) and flag the cross-OS `DIFF_BUDGET` carry-forward. Enabling PR / push triggers for the live workflow remains deliberately separate — Chromium + Docker per PR is ~3 extra CI minutes and warrants its own decision.
+- **Fast suite**: 179 → 181 (gallery toggle / omit cases). **Live suite**: 6 → 8 (narrow variants). `pnpm run check` green throughout.
+- Of the eight follow-ups from S3's close, four still stand: populate the theme matrix (only width variants added here), shrink `DIFF_BUDGET` based on cross-OS data, parallel combo rendering, `--watch` mode. Plus the upstream pi-mono PR at `~/me/mirror/backlog.md`.
+
 ### Refined (test layer — CVx.E2.S3 sentinel-based render readiness + timing budget)
 
 Closes the CVx.E2 epic by dropping the pipeline's time-based wait in favour of deterministic observables and guarding the five-second-per-scenario budget in the live suite.
