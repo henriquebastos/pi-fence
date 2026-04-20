@@ -27,7 +27,14 @@ import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { Box, Image, Spacer, Text, setCapabilities, truncateToWidth } from "@mariozechner/pi-tui";
+import type { AssistantMessage } from "@mariozechner/pi-ai";
+import {
+	AssistantMessageComponent,
+	CustomMessageComponent,
+	UserMessageComponent,
+	initTheme,
+} from "@mariozechner/pi-coding-agent";
+import { Box, Container, Image, Spacer, Text, setCapabilities, truncateToWidth } from "@mariozechner/pi-tui";
 
 import { createPiFenceMessageRenderer } from "../../extensions/pi-fence/renderer.ts";
 import { paintComponent } from "../../tests/utilities/render.ts";
@@ -164,6 +171,112 @@ async function buildMermaidErrorPath(variant: Variant): Promise<{ bytes: string 
 	return { bytes: terminal.getWrites() };
 }
 
+/**
+ * Build a full user → assistant → pi-fence:output visual using
+ * pi-coding-agent's own interactive-mode components, so the scenario
+ * reflects what a pi user actually sees when they ask for a diagram.
+ *
+ * Composed through:
+ *
+ *   - `UserMessageComponent` — user's prompt bubble.
+ *   - `AssistantMessageComponent` — assistant's reply with the fenced
+ *     mermaid block.
+ *   - `CustomMessageComponent` wrapping pi-fence's own
+ *     `createPiFenceMessageRenderer` — the pi-fence:output panel
+ *     with the Kroki-rendered PNG.
+ *
+ * Root is a pi-tui `Container` painted through the same
+ * `paintComponent` harness the other scenarios use. Theme bootstrap:
+ * pi-coding-agent's components call `theme.fg` / `theme.bg` on pi's
+ * runtime theme singleton, which throws `Theme not initialized.` if
+ * never initialised. We `initTheme("dark")` inside `build` — same
+ * shape as `setCapabilities` above: idempotent, scenario-local, no
+ * hidden test-runner setup.
+ *
+ * Determinism: `timestamp: 0` and zero `usage` on the assistant
+ * message prevent per-run drift on any `AssistantMessageComponent`
+ * chrome that might surface them. A fresh `initTheme("dark")` loads
+ * the builtin dark theme by name (no filesystem side-effects beyond
+ * reading pi-coding-agent's own bundled `dark.json`).
+ */
+async function buildMermaidUserAgentTrail(
+	variant: Variant,
+): Promise<{ bytes: string }> {
+	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
+	initTheme("dark");
+
+	const pngPath = join(REPO_ROOT, "tests/fixtures/mermaid-flowchart.png");
+	const pngBase64 = (await readFile(pngPath)).toString("base64");
+
+	const userComponent = new UserMessageComponent(
+		"Show me a mermaid flowchart of A → B → C.",
+	);
+
+	const assistantMsg: AssistantMessage = {
+		role: "assistant",
+		content: [
+			{
+				type: "text",
+				text: "Here's the diagram:\n\n```mermaid\nflowchart LR\n  A --> B\n  B --> C\n```",
+			},
+		],
+		api: "anthropic-messages",
+		provider: "anthropic",
+		model: "claude-sonnet-4-5",
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 0,
+			cost: {
+				input: 0,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				total: 0,
+			},
+		},
+		stopReason: "stop",
+		timestamp: 0,
+	};
+	const assistantComponent = new AssistantMessageComponent(assistantMsg);
+
+	const renderer = createPiFenceMessageRenderer({
+		Box,
+		Text,
+		Spacer,
+		Image,
+		truncateToWidth,
+	});
+	const customMessage = {
+		role: "custom" as const,
+		customType: "pi-fence:output",
+		content: [
+			{ type: "image" as const, data: pngBase64, mimeType: "image/png" },
+		],
+		display: true,
+		details: {
+			tag: "mermaid",
+			processor: "kroki",
+			kind: "ok" as const,
+			source: "flowchart LR\n  A --> B\n  B --> C",
+		},
+		timestamp: 0,
+	};
+	const customComponent = new CustomMessageComponent(customMessage, renderer);
+
+	const root = new Container();
+	root.addChild(userComponent);
+	root.addChild(new Spacer(1));
+	root.addChild(assistantComponent);
+	root.addChild(new Spacer(1));
+	root.addChild(customComponent);
+
+	const terminal = await paintComponent(root, variant.cols, variant.rows);
+	return { bytes: terminal.getWrites() };
+}
+
 export const SCENARIOS: readonly Scenario[] = [
 	{
 		name: "mermaid-happy-path",
@@ -178,6 +291,13 @@ export const SCENARIOS: readonly Scenario[] = [
 			"pi-fence:output panel when the Kroki processor returns an error (text content, no image).",
 		variants: [DEFAULT_VARIANT, NARROW_VARIANT],
 		build: buildMermaidErrorPath,
+	},
+	{
+		name: "mermaid-user-agent-trail",
+		description:
+			"Full user → assistant → pi-fence:output composition via pi-coding-agent's own UserMessage / AssistantMessage / CustomMessage components.",
+		variants: [DEFAULT_VARIANT],
+		build: buildMermaidUserAgentTrail,
 	},
 ];
 
