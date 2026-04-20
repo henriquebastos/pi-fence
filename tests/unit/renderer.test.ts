@@ -23,7 +23,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { Box, Image, Spacer, Text, truncateToWidth, TUI } from "@mariozechner/pi-tui";
+import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui";
 
 import {
 	clipSourceLines,
@@ -33,7 +33,7 @@ import {
 	hasSourceOverflow,
 } from "../../extensions/pi-fence/renderer.ts";
 import { forceCapabilities } from "../utilities/force-capabilities.ts";
-import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
+import { paintComponent } from "../utilities/render.ts";
 
 // ---------------------------------------------------------------------------
 // Pure helpers — unchanged from the pre-render-layer suite
@@ -183,32 +183,8 @@ const TINY_PNG_BASE64 = Buffer.from([
 	0x00, // 8-bit RGBA, no interlace
 ]).toString("base64");
 
-/**
- * Paint one factory-produced component into a VirtualTerminal via TUI
- * and return the terminal so the caller can read viewport and write log.
- *
- * Terminal dimensions are chosen so the whole rendered component fits in
- * the viewport without scrolling:
- *   - columns=120 gives the box's paddingX=1 indent and the image's
- *     60-cell width cap room to exercise.
- *   - rows=60 absorbs the Image component's worst case. For a 1x1
- *     source PNG (our tiny test fixture), pi-tui scales it to 60
- *     cells wide at the default cell ratio, which stretches it to
- *     ~30 rows tall. Label + spacer + image clears 32 rows; 60 is
- *     comfortable headroom and still well below xterm.js's default
- *     buffer size. Real Kroki PNGs are usually much smaller than 30
- *     rows on our 60-cell cap; the test uses a worst-case fixture to
- *     keep the assertion robust.
- */
-async function paint(component: import("@mariozechner/pi-tui").Component): Promise<LoggingVirtualTerminal> {
-	const terminal = new LoggingVirtualTerminal(120, 60);
-	const tui = new TUI(terminal);
-	tui.addChild(component);
-	tui.start();
-	await terminal.waitForRender();
-	tui.stop();
-	return terminal;
-}
+// Rendering into a VirtualTerminal is shared with the extension-layer
+// test; the harness lives at `tests/utilities/render.ts`.
 
 describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () => {
 	let resetCaps: () => void;
@@ -236,7 +212,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 			IDENTITY_THEME,
 		);
 
-		const terminal = await paint(component);
+		const terminal = await paintComponent(component);
 
 		const viewport = terminal.getViewport();
 		expect(viewport.some((line) => line.includes("Rendered mermaid via kroki"))).toBe(
@@ -271,7 +247,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 			IDENTITY_THEME,
 		);
 
-		const terminal = await paint(component);
+		const terminal = await paintComponent(component);
 
 		const viewport = terminal.getViewport();
 		expect(
@@ -300,7 +276,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 			IDENTITY_THEME,
 		);
 
-		const terminal = await paint(component);
+		const terminal = await paintComponent(component);
 
 		const viewport = terminal.getViewport();
 		// Opening fence names the tag, every source line appears, and
@@ -342,7 +318,7 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 			IDENTITY_THEME,
 		);
 
-		const terminal = await paint(component);
+		const terminal = await paintComponent(component);
 
 		const viewport = terminal.getViewport();
 		expect(viewport.some((line) => line.includes("Processors"))).toBe(true);
@@ -364,7 +340,7 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 			IDENTITY_THEME,
 		);
 
-		const terminal = await paint(component);
+		const terminal = await paintComponent(component);
 
 		const viewport = terminal.getViewport();
 		expect(viewport.some((line) => line.includes("Processors"))).toBe(true);

@@ -27,12 +27,12 @@ import {
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Component } from "@mariozechner/pi-tui";
-import { TUI } from "@mariozechner/pi-tui";
 
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
 import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
+import { paintComponent } from "../utilities/render.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
 import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
 
@@ -223,8 +223,12 @@ const IDENTITY_THEME = {
 /**
  * Paint the captured custom message through the extension's registered
  * renderer for `customType` into a LoggingVirtualTerminal, returning
- * the terminal for viewport / write-log assertions. Dimensions match
- * those used in tests/unit/renderer.test.ts (see that file for rationale).
+ * the terminal for viewport / write-log assertions. The paint itself
+ * is delegated to `paintComponent` so the test-terminal dimension
+ * rationale lives in one place (tests/utilities/render.ts); this
+ * wrapper's job is to look up the captured renderer, replay it
+ * against the message with a neutral theme, and handle the
+ * capability pin lifecycle.
  */
 async function paintCustomMessage(
 	captured: Captured,
@@ -246,13 +250,7 @@ async function paintCustomMessage(
 
 	const resetCaps = forceCapabilities();
 	try {
-		const terminal = new LoggingVirtualTerminal(120, 60);
-		const tui = new TUI(terminal);
-		tui.addChild(component);
-		tui.start();
-		await terminal.waitForRender();
-		tui.stop();
-		return terminal;
+		return await paintComponent(component);
 	} finally {
 		resetCaps();
 	}
