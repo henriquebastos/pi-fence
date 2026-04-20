@@ -415,3 +415,19 @@ The natural follow-up question — *do we need template files then?* — flipped
 **Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 73 lines.
 
 **Follow-ups this supersedes:** the earlier ranked follow-up list included `docs/process/story-workflow.md` and `docs/project/roadmap/_plan-template.md`. Both drop off the list for the same reason — shipped stories and `principles.md` already teach what they would teach, and a separate doc would drift. Remaining open follow-ups: `CONTRIBUTING.md` (thin, GitHub PR surface) and a release checklist (defer until first release).
+
+### 2026-04-19 — name `~/me/oss/pi-mono` as the source of truth for pi internals
+
+While exploring strategies for capturing what pi-fence renders in a real terminal, I spent several turns reading `node_modules/@mariozechner/pi-tui/dist/` — the compiled emit plus the published README — to reconstruct pi-tui's `Terminal` interface, its capability-detection seam, and its testing patterns. The user interrupted with a simple observation: `~/me/oss/pi-mono/` has the real source. Once pointed there, `packages/tui/src/` held the TypeScript sources and `packages/tui/test/` held `virtual-terminal.ts`, `terminal-image.test.ts`, `image-test.ts`, `tui-render.test.ts`, and regression tests — exactly the files I was speculating about. The dist had given me enough to guess but not enough to see; the source would have made the answers obvious on the first read.
+
+The cost of reading the dist was a round-trip of wrong framings. I proposed HTML/CSS emulation before seeing that pi-tui ships a `VirtualTerminal` for testing. I called out "terminal detection might gate image emission" as a risk before seeing that `setCapabilities()` is explicitly documented in the source as *for tests*. I sized a "build it" plan at 1–2 days before noticing that `PI_TUI_WRITE_LOG` already captures the exact byte stream I wanted to capture.
+
+**The rule added to `AGENTS.md`:** when investigating pi-tui / pi-coding-agent / pi-ai internals, read `~/me/oss/pi-mono/packages/<pkg>/src/` and `.../test/` first. Keep the repo current (`git fetch` + `git status -sb` against `upstream/main`). Do not rely on `node_modules/@mariozechner/<pkg>/dist/` for anything beyond confirming the installed version actually ships a particular export.
+
+**Commit:**
+
+- `1b9a5f0` docs: point pi internals questions at ~/me/oss/pi-mono, not node_modules.
+
+**Tests:** N/A (docs-only). `pnpm run check` green. `AGENTS.md` at 82 lines — still under the 90-line ceiling but closer to the top.
+
+**State of `~/me/oss/pi-mono/upstream/main` at the moment the rule landed:** `efc58fed Add [Unreleased] section for next cycle`. `origin/main` in sync at the same SHA. `packages/` contains `agent`, `ai`, `coding-agent`, `mom`, `pods`, `tui`, `web-ui` — all reachable as source from upstream.
