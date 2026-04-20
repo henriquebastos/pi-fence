@@ -51,17 +51,32 @@
  * Keeping the paint as the last thing on screen preserves the
  * rendered image intact.
  *
- * Why readline (not `process.stdin.once('data', ...)`): the paint
- * includes `\x1b[16t`, a cursor-cell-size query; the terminal
- * replies on stdin with something like `\x1b[6;34;17t` independent
- * of any user keypress. A raw `data` listener fires on that reply
- * and exits the script before the user can screenshot. readline
- * accumulates bytes until a newline, so the terminal reply is
- * absorbed as "part of the line being edited" and discarded when
- * Enter submits the line.
+ * Why raw-mode stdin (not readline, not `stdin.once('data', ...)`):
+ *
+ * The paint includes `\x1b[16t`, a cursor-cell-size query. The
+ * terminal replies on stdin with something like `\x1b[6;34;17t`
+ * independent of any user keypress. Three earlier attempts tripped
+ * on that race:
+ *
+ *   - `stdin.once('data', ...)` fires on the terminal's reply and
+ *     exits the script before the user can screenshot.
+ *   - `readline.once('line', ...)` *should* accumulate bytes until
+ *     a newline, but in practice under pnpm's stdin forwarding the
+ *     script still exits too early -- pnpm appears to close the
+ *     child's stdin, giving readline an EOF before the user types
+ *     Enter.
+ *   - Polling with `setTimeout` is flaky across terminal speeds and
+ *     can't be canceled by the user.
+ *
+ * Raw-mode stdin is the fix: it bypasses line buffering, delivers
+ * every byte through a single `data` listener we own, and lets us
+ * filter explicitly for Enter (`\r` or `\n`) or Ctrl+C (`\x03`).
+ * The terminal's `\x1b[...t` reply arrives as data bytes that do
+ * not match those, so it's silently dropped. If stdin is not a
+ * TTY (e.g. the script was piped, as in smoke tests), raw mode is
+ * unavailable and we fall back to a short grace timeout so the
+ * script still exits cleanly.
  */
-
-import { createInterface } from "node:readline";
 
 import { Box, Image, Spacer, Text, setCapabilities, truncateToWidth } from "@mariozechner/pi-tui";
 
@@ -169,13 +184,48 @@ async function main(): Promise<void> {
 	// current cursor position.
 	process.stdout.write(terminal.getWrites());
 
-	// Wait for Enter via readline (see module doc for why readline
-	// and not process.stdin.once('data', ...)).
-	const rl = createInterface({ input: process.stdin });
-	await new Promise<void>((resolve) => {
-		rl.once("line", () => resolve());
+	// Wait for Enter (or Ctrl+C). See module doc comment for why
+	// raw-mode stdin.
+	await waitForEnterOrCtrlC();
+}
+
+/**
+ * Wait for the user to press Enter (or Ctrl+C). Uses raw-mode stdin
+ * so the terminal's `\x1b[...t` reply to pi-tui's cell-size query
+ * cannot masquerade as a keystroke.
+ *
+ * If stdin is not a TTY (smoke tests, CI, piped invocation), raw
+ * mode is unavailable. In that case we drain a short grace window
+ * and return, so the script exits cleanly instead of hanging.
+ */
+async function waitForEnterOrCtrlC(): Promise<void> {
+	if (!process.stdin.isTTY) {
+		// Non-interactive: give a moment for the paint bytes to flush,
+		// then exit. Avoids hanging in CI / piped smoke tests.
+		await new Promise((r) => setTimeout(r, 100));
+		return;
+	}
+
+	process.stdin.setRawMode(true);
+	process.stdin.resume();
+
+	return new Promise<void>((resolve) => {
+		const onData = (chunk: Buffer): void => {
+			for (const byte of chunk) {
+				// Enter (CR, LF) or Ctrl+C (ETX).
+				if (byte === 0x0d || byte === 0x0a || byte === 0x03) {
+					process.stdin.off("data", onData);
+					if (process.stdin.isTTY) process.stdin.setRawMode(false);
+					process.stdin.pause();
+					resolve();
+					return;
+				}
+				// Any other byte (including the terminal's reply to
+				// pi-tui's `\x1b[16t` query) is silently dropped.
+			}
+		};
+		process.stdin.on("data", onData);
 	});
-	rl.close();
 }
 
 main().catch((err) => {
