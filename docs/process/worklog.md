@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E2.S3` is the last open story in the current CVx batch — sentinel-based readiness for the render pipeline (replace the `setTimeout(100)` tail with deterministic observables). Once S3 closes, the CVx lane is caught up to every specced story.
+Between CVs. The whole CVx batch (E1.S1 + E2.S1–S3) is caught up to ✅; feature work resumes next.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). `CVx.E1.S1` (render-layer test rung), `CVx.E2.S1` (dev-time image verifier + first live diff gate), and `CVx.E2.S2` (multi-scenario + gallery + variant plumbing) are closed. `CV0.E1.S4` and `CV0.E1.S5` (Kroki breadth) are specced and ready when the "every language Kroki serves" criterion becomes the priority.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). The entire CVx lane is done. `CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) are specced and ready if the "every language Kroki serves" criterion becomes the priority.
 
-After `CVx.E2.S3` closes, the likely next move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through both test rungs (Render + Render Image) on its first visual touch without writing a verifier from scratch.
+The likely next move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -613,3 +613,47 @@ Dev dependencies added across the two spikes: `@wterm/dom@^0.1.9` (+ transitive 
 3. **Gallery polish** — click-to-zoom, side-by-side diff against golden. Only when review load actually demands it.
 
 **Meta — test-first iteration speed.** Every step other than the golden-capture and docs commits started with an additive failing unit test (step 1 broadened the scenarios test, step 2 added the error-path invariants, step 3 wrote gallery tests against a nonexistent module). Each green slice landed in under five minutes between test-red and implementation-green. Seven feature commits total + one spec commit + one close; fast suite green on every commit.
+
+### 2026-04-20 — close CVx.E2.S3 (sentinel-based render readiness + timing budget) — closes the CVx lane
+
+**Goal:** drop the pipeline's `setTimeout(100)` tail in favour of deterministic observables; instrument per-combo timing; assert the epic-level five-second-per-scenario budget; verify the sentinel change holds determinism across repeated runs. S3 is the last open story in the CVx batch — closing it brings every specced CVx.E1 + CVx.E2 story to ✅.
+
+**What shipped (spec + five step commits + close):**
+
+- `7600c6a` spec CVx.E2.S3. Three-file story folder under `cvx-e2-dev-time-screenshots/cvx-e2-s3-sentinel-readiness/`; parent roadmap + CVx.E2 epic README linkified the S3 row. Spec flagged three known-unknowns up front: `onImageAdded` ordering vs. `term.write` callback, multi-chunk images, very-small-scenario `onRender` timing.
+- `ef85f26` step 1: `scripts/verify/kitty.ts` exports `countKittyImages(bytes)`. Counts only transmit actions (`a=T` / `a=t`); ignores query / delete / placement / multi-chunk continuations. Matches `@xterm/addon-image`'s "one `onImageAdded` per complete image" semantics. Seven unit cases in `tests/unit/verify-kitty.test.ts` including real-scenario byte-stream verification (mermaid-happy-path: 1; mermaid-error-path: 0). Fast suite 172 → 179.
+- `265cf9b` step 2: sentinel wait in `scripts/verify/pipeline.ts`. Registers `ImageAddon.onImageAdded` + `Terminal.onRender` BEFORE `term.write` (avoids the race the spec's known-unknowns flagged). `Promise.race` awaits the combined readiness against a 10-second hard bailout so a stuck pipeline surfaces as a slow-and-failing test, not a hung process. Two trailing rAFs for layout settlement. `setTimeout(100)` tail removed. Observed per-combo timings dropped from ~545ms to ~400ms for image-free scenarios (the `setTimeout` was the tail).
+- `a170651` step 3: `RenderResult.durationMs`. CLI prints one line per combo (`scenario / variant rendered in NNNms`) + a total (`total: N combos in NNNms`). On this machine the CLI total is ~330ms for the two combos, plus Chromium launch.
+- `30964da` step 4: `RENDER_BUDGET_MS = 5000` assertion in `tests/render-image/verify.test.ts`. `DIFF_BUDGET` recalibration decision: three consecutive `pnpm test:live` runs produced zero diff pixels across all 6 combo-runs (3 runs × 2 combos) with per-combo timings of 392–444ms. The budget stays at 100 for CI-host headroom; the test file's comment explicitly names the S3 calibration run so a future reader sees both the value and the observation that would justify shrinking further.
+- `feab920` step 5: CHANGELOG `[Unreleased]` block for S3.
+- `close CVx.E2.S3` (this commit): status flips (roadmap / CVx parent / CVx.E2 epic / S3 story) + this worklog entry + CVx parent's `Last updated` bumped to 2026-04-20 with a note that every specced story is Done.
+
+**Tests:** fast suite 172 → 179 (+7 kitty APC counter cases). Live suite still 2 render-image cases, now each asserting both pixel-diff (budget 100) and wall-clock (budget 5000ms). `pnpm test` green; `pnpm test:live` green across three consecutive runs; `pnpm run check` green.
+
+**Carry-forwards from S1 resolved:**
+
+1. "`DIFF_BUDGET=100` tuned on one machine; CI may observe drift" — partially resolved. With sentinel-based readiness, determinism on this machine is byte-level. The budget of 100 stays as CI-host headroom; if cross-OS CI proves identically perfect, a future story can shrink it.
+2. "Live suite's green-skip pattern is a matrix (Chromium AND Docker)" — still carried forward; unchanged by S3.
+3. "Spike scripts remain" — still carried forward. Same treatment as S2.
+
+**CVx lane state at close:**
+
+- CVx.E1.S1 ✅ Render layer (VirtualTerminal-backed renderer tests).
+- CVx.E2.S1 ✅ Headless image verifier (first scenario, first diff gate).
+- CVx.E2.S2 ✅ Multi-scenario + gallery + variants plumbing.
+- CVx.E2.S3 ✅ Sentinel readiness + timing budget.
+
+Every specced story in the CVx batch is closed. The epic-level done criterion for both CVx.E1 and CVx.E2 is met. The lane itself remains open (Verifiability is always advancing, per the parent README), but there is no specced follow-up work waiting.
+
+**Follow-ups this close surfaces (not claimed; none are blocking):**
+
+1. Populate the theme / width variant matrix (S2 left the plumbing; no scenarios exercising it yet).
+2. Shrink `DIFF_BUDGET` toward 0 after observing cross-OS determinism on CI.
+3. Parallel combo rendering (`renderCombos` is serial across a shared browser; if combo count grows past ~10, parallelism starts to matter).
+4. CI activation (`.github/workflows/live.yml` is dormant).
+5. `--watch` / incremental mode for the verifier.
+6. Interactive gallery polish (side-by-side vs golden, click-to-zoom).
+7. Spike-script consolidation (`scripts/render-*-spike.ts` could now go, but stay until a cleanup story).
+8. Upstream pi-mono PR for `VirtualTerminal` export (backlog entry at `~/me/mirror/backlog.md`).
+
+**Meta — one-session CVx burn-down.** This worklog entry closes a session that spanned CVx.E2.S1 close, the backlog creation, CVx.E2.S2 spec + implementation + close, and CVx.E2.S3 spec + implementation + close — three consecutive stories shipped following the same spec / step-commits / close rhythm. Across the three stories: 30+ commits, fast suite 161 → 179 (+18 cases), live suite 5 → 6 passing with the new timing assertion, docs catch-ups stayed adjacent to feature commits per the docs-follows-feature rule (one retroactive batch entry early on covered the two CVx.E2 spikes that predated the rule's tightening).

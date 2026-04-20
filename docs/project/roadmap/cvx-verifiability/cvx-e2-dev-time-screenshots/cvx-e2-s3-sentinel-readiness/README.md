@@ -1,6 +1,6 @@
 [< CVx.E2 — Dev-time Render Screenshots](../README.md)
 
-# S3 — Sentinel-based render readiness 🛠️ Planned
+# S3 — Sentinel-based render readiness ✅ Done
 
 S1 and S2 settled the verifier's shape. S3 closes the determinism gap: replace the pipeline's `setTimeout(100)` "render probably done by now" tail with **sentinels** — observable events the pipeline awaits deterministically. Also ships the timing instrumentation the epic's "under five seconds per scenario" budget requires.
 
