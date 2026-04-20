@@ -275,12 +275,18 @@ function buildCustomMessage(
 		};
 	}
 
+	// Symmetric with the happy-path branch above: the renderer's chrome
+	// (`Error rendering <tag> via <processor>`) is authoritative and
+	// already labels the output. The content item here is just the raw
+	// upstream error body — prefixing it with the same `Error rendering
+	// <tag> via <processor>:` string the renderer paints as its red
+	// header produces a visible duplicate in the rendered panel.
 	return {
 		customType: CUSTOM_MESSAGE_TYPE,
 		content: [
 			{
 				type: "text",
-				text: `Error rendering ${tag} via ${processorId}: ${result.error}`,
+				text: result.error,
 			},
 		] as never,
 		details: details as never,

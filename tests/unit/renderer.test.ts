@@ -232,8 +232,12 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 			{
 				content: [
 					{
+						// Just the raw upstream error body. The renderer composes
+						// the `Error rendering <tag> via <processor>` red header
+						// from `details` on its own — see extensions/pi-fence/
+						// index.ts's buildCustomMessage error branch.
 						type: "text",
-						text: "Error rendering mermaid via kroki: syntax",
+						text: "syntax",
 					},
 				],
 				details: {

@@ -239,9 +239,13 @@ async function buildMermaidErrorPath(
 			role: "custom",
 			customType: "pi-fence:output",
 			content: [
+				// Just the raw upstream error body — the pi-fence renderer's
+				// red header already labels this as "Error rendering mermaid
+				// via kroki" from `details`, so re-speaking that prefix in the
+				// body produces a visible duplicate.
 				{
 					type: "text",
-					text: "Error rendering mermaid via kroki: Parse error on line 1: unknown tag 'flowchrt'",
+					text: "Parse error on line 1: unknown tag 'flowchrt'",
 				},
 			],
 			display: true,
