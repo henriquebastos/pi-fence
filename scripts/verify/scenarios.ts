@@ -224,6 +224,65 @@ async function buildMermaidHappyPath(
 }
 
 /**
+ * Tall-image: user asks for a wireviz connector harness, assistant
+ * replies with the fenced `wireviz` YAML block, pi-fence:output shows
+ * the Kroki-rendered PNG — visually the tallest of the Kroki text
+ * languages. Pressure-tests the trail composition with much more
+ * vertical content than the mermaid-happy-path PNG (which is nearly
+ * square), so layout regressions that only manifest at larger image
+ * heights have somewhere to surface.
+ *
+ * Kept as a separate scenario rather than a variant on
+ * `mermaid-happy-path` because the WHOLE trail differs: user prompt,
+ * assistant source, tag, processor — all of it is content the
+ * pi-coding-agent bubbles paint. A variant is for "same content,
+ * different viewport"; this is a different scenario entirely.
+ */
+async function buildKrokiTallImage(
+	variant: Variant,
+): Promise<{ bytes: string }> {
+	const pngPath = join(REPO_ROOT, "tests/fixtures/wireviz-harness.png");
+	const pngBase64 = (await readFile(pngPath)).toString("base64");
+
+	const source =
+		"connectors:\n" +
+		"  X1:\n" +
+		"    type: D-Sub\n" +
+		"    subtype: female\n" +
+		"    pinlabels: [DCD, RX, TX, DTR, GND]\n" +
+		"\n" +
+		"cables:\n" +
+		"  W1:\n" +
+		"    wirecount: 5\n" +
+		"    length: 0.2\n" +
+		"    color_code: DIN\n" +
+		"\n" +
+		"connections:\n" +
+		"  -\n" +
+		"    - X1: [1-5]\n" +
+		"    - W1: [1-5]";
+
+	return buildTrail(
+		"Show me a wireviz harness diagram for a 5-pin D-Sub to a DIN cable.",
+		"Here's the harness:\n\n```wireviz\n" + source + "\n```",
+		{
+			role: "custom",
+			customType: "pi-fence:output",
+			content: [{ type: "image", data: pngBase64, mimeType: "image/png" }],
+			display: true,
+			details: {
+				tag: "wireviz",
+				processor: "kroki",
+				kind: "ok",
+				source,
+			},
+			timestamp: 0,
+		},
+		variant,
+	);
+}
+
+/**
  * Error-path: user asks for a diagram, assistant replies with a
  * fenced mermaid block that has a typo (`flowchrt` instead of
  * `flowchart`), pi-fence:output surfaces Kroki's parse error.
@@ -275,6 +334,13 @@ export const SCENARIOS: readonly Scenario[] = [
 			"Trail: user prompt → assistant reply with a broken mermaid block → pi-fence:output panel showing Kroki's parse error (text content, no image).",
 		variants: [DEFAULT_VARIANT, NARROW_VARIANT],
 		build: buildMermaidErrorPath,
+	},
+	{
+		name: "kroki-tall-image",
+		description:
+			"Trail with a visually-tall PNG (wireviz harness, ≥26 KB, one of the tallest Kroki languages). Pressure-tests pi-fence's layout for regressions that only surface at larger image extents.",
+		variants: [DEFAULT_VARIANT],
+		build: buildKrokiTallImage,
 	},
 ];
 
