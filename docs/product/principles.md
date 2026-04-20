@@ -49,6 +49,7 @@ Guidelines for building pi-fence. Read before contributing code.
 | **Render** | Real pi-tui components painting into a `VirtualTerminal`; asserts on the viewport grid + the raw write log (escape sequences xterm.js does not paint into the grid, like the Kitty graphics protocol) | pi-tui in-process + `@xterm/headless` (dev dep) | `pnpm test` |
 | **Extension** | pi-fence running inside a real pi SDK `AgentSession` with a fake LLM stream | pi SDK in-process | `pnpm test` |
 | **Integration (live)** | Real processors against real binaries or real HTTP | Docker container or network | `pnpm test:live` |
+| **Render Image (live)** | Pixel-level PNG of pi-fence's rendered panel via xterm.js + `@xterm/addon-image` (Kitty graphics) in headless Chromium; `pixelmatch` diff against a committed golden. Catches visual regressions the byte-stream assertions alone cannot see. | Chromium (dev install via `npx playwright install chromium`) + `playwright-core`, `pngjs`, `pixelmatch` (dev deps) | `pnpm test:live` |
 
 Test files live under `tests/<layer>/`. Fixtures under `tests/fixtures/`. Shared utilities under `tests/utilities/`.
 

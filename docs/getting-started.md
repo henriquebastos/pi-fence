@@ -126,8 +126,9 @@ pnpm test:watch    # vitest --watch on the fast suite
 |--------|---------|
 | `pnpm test` | Fast suite (unit, contract, render, extension, utility). |
 | `pnpm test:watch` | vitest in watch mode. |
-| `pnpm test:live` | Integration suite (Docker/network). Skips cleanly without prerequisites. |
+| `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
+| `pnpm render:verify` | Produces a PNG of a named pi-fence scenario via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/render.png`. Flags: `--list`, `--scenario <name>`, `--update`. |
 | `pnpm run check` | Link check + markdown lint. |
 | `pnpm run check:links` | Link check only. |
 | `pnpm run check:markdown` | Markdown lint only. |
@@ -156,6 +157,7 @@ tests/
 ├── contract/       interface-conformance tests
 ├── extension/      pi-SDK-level tests with fake LLM stream
 ├── integration/    live tests (Docker/network); skip cleanly when deps absent
+├── render-image/   live tests that pixel-diff pi-fence's rendered PNG against a committed golden; skip without Chromium
 ├── utilities/      shared test fakes + harnesses (ShellRunner, HttpClient, Logger, ExtensionAPI, VirtualTerminal, forceCapabilities)
-└── fixtures/       committed reference bytes
+└── fixtures/       committed reference bytes (including fixtures/golden/ for render-image)
 ```

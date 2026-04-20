@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refined (test layer — CVx.E2.S1 headless image verifier)
+
+Promotes the third CVx.E2 spike into a maintained verifier tool + its first live-suite test. The three spikes that preceded this (`2183665` live-Ghostty, `373a9e5` wterm + jsdom, `12e4e1d` xterm.js + Kitty + Chromium) mapped the tradeoff space; S1 picks the winner (spike 3's shape) and wires it into the project's test pyramid.
+
+- **`pnpm render:verify`** — the maintained entry point. Flags: `--list`, `--scenario <name>`, `--update`, `--out <dir>`, `-h`/`--help`. Exit codes: `0` success, `1` bad args / unknown scenario, `2` pipeline failure. Output: `scripts/out/render-verify/<scenario>/render.png` + `render.bin` (captured byte stream alongside).
+- **`scripts/verify/scenarios.ts`** — scenario registry with one entry today (`mermaid-happy-path`). Each scenario's `build()` produces a byte stream + terminal dimensions via the render-layer harness shared with the fast suite, preserving the "bytes verifier sees = bytes tests assert on" invariant across test layers.
+- **`scripts/verify/pipeline.ts`** — headless xterm.js + `@xterm/addon-image` + `playwright-core` Chromium render + `page.screenshot()`. Chromium lifecycle is factored so `renderMany()` can amortise launch cost once S2 adds more scenarios.
+- **Render Image test layer** — new `tests/render-image/verify.test.ts` runs under `pnpm test:live` alongside `tests/integration/`. For every registered scenario, pixel-matches the produced PNG against a committed golden at `tests/fixtures/golden/<scenario>.png`. `DIFF_BUDGET=100` pixels at `threshold=0.1`; calibrated against three consecutive byte-identical renders on the authoring machine (macOS arm64, Chromium revision 1217). On failure, writes a `diff.png` alongside the rendered PNG. Gated on Chromium availability so contributors without `npx playwright install chromium` green-skip rather than fail.
+- **Committed golden** — `tests/fixtures/golden/mermaid-happy-path.png` (2560x2280, ~38 KB). Captured via `pnpm render:verify --update`. Future rolls of the Chromium revision or xterm.js metrics may require re-capture.
+- **Dev dependencies** — `pngjs@^7`, `pixelmatch@^7` (both pure JS), plus `@types/pngjs`, `@types/pixelmatch`.
+- **Principles Testing table** gains a `Render Image (live)` row between `Integration (live)` and the previous last entry, naming the exact dependency footprint and runner.
+- **Spike 3 rewired** — `scripts/render-image-spike.ts` now drives the new library modules rather than carrying its own inline pipeline. The spike stays in the tree as a worked single-shot example; the maintained CLI is `pnpm render:verify`.
+- **Fast suite guarded** — `pnpm test` now excludes `tests/render-image/**` in addition to the existing `tests/integration/**`, so the fast-suite runtime budget stays clean.
+
 ### Added (spike — CVx.E2 image render via xterm.js + Kitty graphics + headless Chromium)
 
 Third pass at the CVx.E2 verification loop, closing the last gap the previous two spikes left open: actually seeing the rendered diagram as a real PNG, headlessly.
