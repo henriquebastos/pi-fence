@@ -1,19 +1,29 @@
 /**
- * Unit tests for the pure-math helpers in `renderer.ts` and light
- * composition checks for the renderer factories.
+ * Unit + render-layer tests for `renderer.ts`.
  *
- * The full MessageRenderer that pi pi-tui drives at runtime composes
- * pi-tui Container/Box/Image/Text primitives that aren't trivially
- * testable in isolation. That path is exercised end-to-end in the
- * extension-layer test at `tests/extension/pi-fence.test.ts`.
+ * Two halves:
  *
- * These unit tests cover the bits that are pure: label formatting,
- * source-line clipping for the expanded view, an overflow predicate,
- * and the child composition of the `/fence list` renderer via fake
- * pi-tui primitives.
+ *   1. Pure helpers (`formatLabel`, `hasSourceOverflow`, `clipSourceLines`) —
+ *      unit-level: direct function calls, no pi-tui.
+ *
+ *   2. Component factories (`createPiFenceMessageRenderer`,
+ *      `createPiFenceListRenderer`) — render-layer: compose the factory's
+ *      returned component into a pi-tui `TUI` whose terminal is a
+ *      `LoggingVirtualTerminal`, paint, and assert on both the viewport
+ *      grid (what the user would see) and the raw write log (what
+ *      pi-tui actually emitted to the terminal, including escape
+ *      sequences xterm.js doesn't paint into the grid, like the Kitty
+ *      graphics protocol).
+ *
+ * Render-layer tests pin pi-tui's capability cache to a Kitty-full shape
+ * via `forceCapabilities()` so the image-protocol path is deterministic.
+ * Each case takes the reset disposer in `afterEach` to keep the pin from
+ * leaking across cases.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import { Box, Image, Spacer, Text, truncateToWidth, TUI } from "@mariozechner/pi-tui";
 
 import {
 	clipSourceLines,
@@ -22,6 +32,12 @@ import {
 	formatLabel,
 	hasSourceOverflow,
 } from "../../extensions/pi-fence/renderer.ts";
+import { forceCapabilities } from "../utilities/force-capabilities.ts";
+import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
+
+// ---------------------------------------------------------------------------
+// Pure helpers — unchanged from the pre-render-layer suite
+// ---------------------------------------------------------------------------
 
 describe("formatLabel", () => {
 	it("describes a successful render by tag and processor", () => {
@@ -99,107 +115,220 @@ describe("clipSourceLines", () => {
 });
 
 // ---------------------------------------------------------------------------
-// createPiFenceListRenderer — composition via fake pi-tui primitives
+// Render-layer helpers
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal spies shaped like the pi-tui primitives the renderer consumes.
- * Each captures its constructor arguments so tests can assert the child
- * composition without loading pi-tui proper.
+ * The minimum pi-tui primitives + helper the renderer factories need.
+ * Shared by every render-layer case so the tree we build at test time
+ * matches exactly what `createPiFenceExtension` wires in production at
+ * `extensions/pi-fence/index.ts`.
  */
-interface FakeChild {
-	kind: "Text" | "Spacer" | "Image";
-	text?: string;
-	image?: {
-		base64: string;
-		mimeType: string;
-		options?: { maxWidthCells?: number };
-	};
-}
+const TUI_PRIMITIVES = { Box, Text, Spacer, Image, truncateToWidth } as const;
 
-interface FakeBox {
-	children: FakeChild[];
-	paddingY: number;
-	paddingX: number;
-}
-
-function makeTui() {
-	class Text {
-		readonly kind = "Text" as const;
-		constructor(public readonly text: string, _x: number, _y: number) {}
-		render(): string[] {
-			return [this.text];
-		}
-	}
-	class Spacer {
-		readonly kind = "Spacer" as const;
-		constructor(public readonly height: number) {}
-		render(): string[] {
-			return Array.from({ length: this.height }, () => "");
-		}
-	}
-	class Image {
-		readonly kind = "Image" as const;
-		constructor(
-			public readonly base64: string,
-			public readonly mimeType: string,
-			public readonly imageTheme: { fallbackColor: (s: string) => string },
-			public readonly options?: { maxWidthCells?: number },
-		) {}
-		render(): string[] {
-			return [`<image:${this.mimeType}:${this.base64.length}b>`];
-		}
-	}
-	class Box {
-		readonly children: FakeChild[] = [];
-		constructor(
-			public readonly paddingX: number,
-			public readonly paddingY: number,
-			_bg?: (text: string) => string,
-		) {}
-		addChild(child: Text | Spacer | Image): void {
-			if (child instanceof Text) {
-				this.children.push({ kind: "Text", text: child.text });
-			} else if (child instanceof Image) {
-				this.children.push({
-					kind: "Image",
-					image: {
-						base64: child.base64,
-						mimeType: child.mimeType,
-						options: child.options,
-					},
-				});
-			} else {
-				this.children.push({ kind: "Spacer" });
-			}
-		}
-		render(): string[] {
-			return this.children.flatMap((c) =>
-				c.kind === "Text" ? [c.text ?? ""] : [""],
-			);
-		}
-	}
-	return {
-		Box: Box as never,
-		Text: Text as never,
-		Spacer: Spacer as never,
-		Image: Image as never,
-		truncateToWidth: (text: string, _width: number) => text,
-	};
-}
-
-const FAKE_THEME = {
+/**
+ * A minimal theme matching the three-method shape the renderer factories
+ * consume. Returns text unchanged so viewport assertions can match on
+ * plain strings. When a test needs to see the ANSI escapes (e.g. to
+ * confirm the label is bolded), it can override with a theme that
+ * actually emits codes — but none of today's cases need that.
+ */
+const IDENTITY_THEME = {
 	fg: (_color: string, text: string) => text,
 	bold: (text: string) => text,
 	bg: (_color: string, text: string) => text,
 };
 
-describe("createPiFenceListRenderer", () => {
-	it("composes a header, a spacer, and one Text child per formatted line", () => {
-		const tui = makeTui();
-		const renderer = createPiFenceListRenderer(tui);
+/**
+ * A 1x1 fake PNG. Magic + IHDR header with valid dimensions so
+ * pi-tui's getImageDimensions() parses it and feeds the Kitty
+ * renderer a real cell count. We don't care about the pixel payload;
+ * xterm.js ignores the graphics protocol in the viewport grid anyway,
+ * and the only assertion that depends on the bytes is the write-log
+ * substring check for the `\x1b_G` prefix.
+ *
+ * Built from a minimal valid-ish PNG rather than using Buffer of
+ * random bytes so the Image component's dimension-parse path exercises
+ * the same code production hits.
+ */
+const TINY_PNG_BASE64 = Buffer.from([
+	0x89,
+	0x50,
+	0x4e,
+	0x47,
+	0x0d,
+	0x0a,
+	0x1a,
+	0x0a, // PNG magic
+	0x00,
+	0x00,
+	0x00,
+	0x0d, // IHDR length
+	0x49,
+	0x48,
+	0x44,
+	0x52, // "IHDR"
+	0x00,
+	0x00,
+	0x00,
+	0x01, // width 1
+	0x00,
+	0x00,
+	0x00,
+	0x01, // height 1
+	0x08,
+	0x06,
+	0x00,
+	0x00,
+	0x00, // 8-bit RGBA, no interlace
+]).toString("base64");
 
-		const box = renderer(
+/**
+ * Paint one factory-produced component into a VirtualTerminal via TUI
+ * and return the terminal so the caller can read viewport and write log.
+ *
+ * Terminal dimensions are chosen so the whole rendered component fits in
+ * the viewport without scrolling:
+ *   - columns=120 gives the box's paddingX=1 indent and the image's
+ *     60-cell width cap room to exercise.
+ *   - rows=60 absorbs the Image component's worst case. For a 1x1
+ *     source PNG (our tiny test fixture), pi-tui scales it to 60
+ *     cells wide at the default cell ratio, which stretches it to
+ *     ~30 rows tall. Label + spacer + image clears 32 rows; 60 is
+ *     comfortable headroom and still well below xterm.js's default
+ *     buffer size. Real Kroki PNGs are usually much smaller than 30
+ *     rows on our 60-cell cap; the test uses a worst-case fixture to
+ *     keep the assertion robust.
+ */
+async function paint(component: import("@mariozechner/pi-tui").Component): Promise<LoggingVirtualTerminal> {
+	const terminal = new LoggingVirtualTerminal(120, 60);
+	const tui = new TUI(terminal);
+	tui.addChild(component);
+	tui.start();
+	await terminal.waitForRender();
+	tui.stop();
+	return terminal;
+}
+
+describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () => {
+	let resetCaps: () => void;
+
+	beforeEach(() => {
+		resetCaps = forceCapabilities();
+	});
+	afterEach(() => {
+		resetCaps();
+	});
+
+	it("paints the label and emits a Kitty graphics sequence when content carries a PNG", async () => {
+		const renderer = createPiFenceMessageRenderer(TUI_PRIMITIVES);
+		const component = renderer(
+			{
+				content: [{ type: "image", data: TINY_PNG_BASE64, mimeType: "image/png" }],
+				details: {
+					tag: "mermaid",
+					processor: "kroki",
+					kind: "ok",
+					source: "flowchart LR\nA --> B",
+				},
+			},
+			{ expanded: false },
+			IDENTITY_THEME,
+		);
+
+		const terminal = await paint(component);
+
+		const viewport = terminal.getViewport();
+		expect(viewport.some((line) => line.includes("Rendered mermaid via kroki"))).toBe(
+			true,
+		);
+
+		// The image is emitted as a Kitty graphics APC sequence
+		// (`\x1b_G...\x1b\\`). xterm.js does not paint it into the
+		// viewport grid, so the only place to see it is the raw
+		// write log.
+		expect(terminal.getWrites()).toContain("\x1b_G");
+	});
+
+	it("paints label + error text and emits no Kitty graphics on the error path", async () => {
+		const renderer = createPiFenceMessageRenderer(TUI_PRIMITIVES);
+		const component = renderer(
+			{
+				content: [
+					{
+						type: "text",
+						text: "Error rendering mermaid via kroki: syntax",
+					},
+				],
+				details: {
+					tag: "mermaid",
+					processor: "kroki",
+					kind: "error",
+					source: "bad",
+				},
+			},
+			{ expanded: false },
+			IDENTITY_THEME,
+		);
+
+		const terminal = await paint(component);
+
+		const viewport = terminal.getViewport();
+		expect(
+			viewport.some((line) => line.includes("Error rendering mermaid via kroki")),
+		).toBe(true);
+		expect(viewport.some((line) => line.includes("syntax"))).toBe(true);
+
+		// No image in this path: no Kitty graphics sequence should land
+		// in the write log.
+		expect(terminal.getWrites()).not.toContain("\x1b_G");
+	});
+
+	it("paints the source fenced block when expanded", async () => {
+		const renderer = createPiFenceMessageRenderer(TUI_PRIMITIVES);
+		const component = renderer(
+			{
+				content: [{ type: "image", data: TINY_PNG_BASE64, mimeType: "image/png" }],
+				details: {
+					tag: "mermaid",
+					processor: "kroki",
+					kind: "ok",
+					source: "flowchart LR\nA --> B\nC --> D",
+				},
+			},
+			{ expanded: true },
+			IDENTITY_THEME,
+		);
+
+		const terminal = await paint(component);
+
+		const viewport = terminal.getViewport();
+		// Opening fence names the tag, every source line appears, and
+		// a closing fence bookends the block.
+		expect(viewport.some((line) => line.includes("```mermaid"))).toBe(true);
+		expect(viewport.some((line) => line.includes("flowchart LR"))).toBe(true);
+		expect(viewport.some((line) => line.includes("A --> B"))).toBe(true);
+		expect(viewport.some((line) => line.includes("C --> D"))).toBe(true);
+		// The closing fence appears on its own line. Guard the match to
+		// a trimmed-equality check so the opening `\`\`\`mermaid\` line
+		// (which also starts with three backticks) is not a false hit.
+		expect(viewport.some((line) => line.trim() === "```")).toBe(true);
+	});
+});
+
+describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => {
+	let resetCaps: () => void;
+
+	beforeEach(() => {
+		resetCaps = forceCapabilities();
+	});
+	afterEach(() => {
+		resetCaps();
+	});
+
+	it("paints the Processors header and one line per listing", async () => {
+		const renderer = createPiFenceListRenderer(TUI_PRIMITIVES);
+		const component = renderer(
 			{
 				content: [{ type: "text", text: "ignored — renderer uses details.lines" }],
 				details: {
@@ -210,131 +339,37 @@ describe("createPiFenceListRenderer", () => {
 				},
 			},
 			{ expanded: false },
-			FAKE_THEME,
-		) as unknown as FakeBox;
+			IDENTITY_THEME,
+		);
 
-		const kinds = box.children.map((c) => c.kind);
-		expect(kinds).toEqual(["Text", "Spacer", "Text", "Text"]);
+		const terminal = await paint(component);
 
-		const texts = box.children
-			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
-			.map((c) => c.text);
-		expect(texts[0]).toContain("Processors");
-		expect(texts.slice(1)).toEqual([
-			"kroki [registered] — mermaid",
-			"graphviz-local [registered] — graphviz (dot)",
-		]);
+		const viewport = terminal.getViewport();
+		expect(viewport.some((line) => line.includes("Processors"))).toBe(true);
+		expect(
+			viewport.some((line) => line.includes("kroki [registered] — mermaid")),
+		).toBe(true);
+		expect(
+			viewport.some((line) =>
+				line.includes("graphviz-local [registered] — graphviz (dot)"),
+			),
+		).toBe(true);
 	});
 
-	it("renders identically whether expanded or collapsed (no hidden detail in S3)", () => {
-		const render = (expanded: boolean) => {
-			const tui = makeTui();
-			const renderer = createPiFenceListRenderer(tui);
-			const box = renderer(
-				{ content: [], details: { lines: ["kroki [registered] — mermaid"] } },
-				{ expanded },
-				FAKE_THEME,
-			) as unknown as FakeBox;
-			return box.children;
-		};
-
-		expect(render(true)).toEqual(render(false));
-	});
-
-	it("falls back to the empty-listing line when details.lines is missing", () => {
-		const tui = makeTui();
-		const renderer = createPiFenceListRenderer(tui);
-
-		const box = renderer(
+	it("falls back to the empty-listing line when details.lines is missing", async () => {
+		const renderer = createPiFenceListRenderer(TUI_PRIMITIVES);
+		const component = renderer(
 			{ content: [], details: undefined },
 			{ expanded: false },
-			FAKE_THEME,
-		) as unknown as FakeBox;
-
-		const texts = box.children
-			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
-			.map((c) => c.text);
-		expect(texts).toEqual(["Processors", "(no processors registered)"]);
-	});
-});
-
-// ---------------------------------------------------------------------------
-// createPiFenceMessageRenderer — composition via fake pi-tui primitives
-// ---------------------------------------------------------------------------
-
-describe("createPiFenceMessageRenderer", () => {
-	it("composes label, spacer, and an Image child when content carries a PNG", () => {
-		const tui = makeTui();
-		const renderer = createPiFenceMessageRenderer(tui);
-
-		const box = renderer(
-			{
-				content: [{ type: "image", data: "ZmFrZS1ieXRlcw==", mimeType: "image/png" }],
-				details: {
-					tag: "mermaid",
-					processor: "kroki",
-					kind: "ok",
-					source: "flowchart LR\nA --> B",
-				},
-			},
-			{ expanded: false },
-			FAKE_THEME,
-		) as unknown as FakeBox;
-
-		const kinds = box.children.map((c) => c.kind);
-		expect(kinds).toContain("Image");
-
-		const imageChild = box.children.find(
-			(c): c is FakeChild & { kind: "Image"; image: { base64: string; mimeType: string } } =>
-				c.kind === "Image",
+			IDENTITY_THEME,
 		);
-		expect(imageChild?.image.base64).toBe("ZmFrZS1ieXRlcw==");
-		expect(imageChild?.image.mimeType).toBe("image/png");
 
-		// Inline image width stays within pi's tool-output convention (60 cells)
-		// so the rendered diagram doesn't swallow the full terminal width.
-		expect(imageChild?.image.options?.maxWidthCells).toBe(60);
+		const terminal = await paint(component);
 
-		// Box uses paddingY=0 so the image's partial bottom row lands flush
-		// against the box bottom edge (the "strange stripe" goes away
-		// because there is no separate bottom-padding row behind it).
-		// paddingX stays at 1 for horizontal breathing room. Note: pi-tui's
-		// Box constructor is `(paddingX, paddingY, bgFn)` — X first.
-		expect(box.paddingX).toBe(1);
-		expect(box.paddingY).toBe(0);
-
-		// The chrome label already names the tag/processor; no duplicate
-		// "Rendered ... via ..." text child should appear.
-		const textChildren = box.children
-			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
-			.map((c) => c.text);
-		expect(textChildren.filter((t) => t.includes("Rendered mermaid via kroki"))).toHaveLength(1);
-	});
-
-	it("renders without an Image child on the error path (no image content)", () => {
-		const tui = makeTui();
-		const renderer = createPiFenceMessageRenderer(tui);
-
-		const box = renderer(
-			{
-				content: [{ type: "text", text: "Error rendering mermaid via kroki: syntax" }],
-				details: {
-					tag: "mermaid",
-					processor: "kroki",
-					kind: "error",
-					source: "bad",
-				},
-			},
-			{ expanded: false },
-			FAKE_THEME,
-		) as unknown as FakeBox;
-
-		expect(box.children.filter((c) => c.kind === "Image")).toHaveLength(0);
-		const texts = box.children
-			.filter((c): c is FakeChild & { kind: "Text"; text: string } => c.kind === "Text")
-			.map((c) => c.text);
-		// Label + the error text content item both surface.
-		expect(texts.some((t) => t.includes("Error rendering mermaid via kroki"))).toBe(true);
-		expect(texts.some((t) => t.includes("syntax"))).toBe(true);
+		const viewport = terminal.getViewport();
+		expect(viewport.some((line) => line.includes("Processors"))).toBe(true);
+		expect(
+			viewport.some((line) => line.includes("(no processors registered)")),
+		).toBe(true);
 	});
 });
