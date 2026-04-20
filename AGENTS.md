@@ -58,6 +58,15 @@ The worklog and CHANGELOG record history; they must not predict it. Both are edi
 
 Exception: a `worklog: placeholder for <story>` entry with no SHAs is fine as a scaffold inside a feature commit; it just cannot claim commits that do not exist yet.
 
+## Reading pi's source
+
+When investigating pi-tui / pi-coding-agent / pi-ai behavior (interfaces, tests, internals), read the source in `~/me/oss/pi-mono/packages/<pkg>/src/` and the tests in `~/me/oss/pi-mono/packages/<pkg>/test/` — **not** the compiled `node_modules/@mariozechner/<pkg>/dist/` files in this repo.
+
+1. `~/me/oss/pi-mono` is the real source of truth: TypeScript, full test suite, history, work-in-progress.
+2. Before relying on it, make sure it is up to date: `cd ~/me/oss/pi-mono && git fetch && git status -sb` and check against `upstream/main`.
+3. `node_modules/` only has emitted `.d.ts` + `.js` and the published README. No tests, no source comments, often stale relative to upstream.
+4. When citing pi-tui internals in prose (worklog, plan, chat), prefer referencing files in `~/me/oss/pi-mono/packages/tui/` by path, so the reader can open the real source.
+
 ## I/O seams and fakes
 
 Three DI seams: `HttpClient`, `ShellRunner`, `Logger`. Production wires node impls; tests wire **fakes** (`FakeHttpClient`, `FakeShellRunner`, `FakeLogger`, `FakeExtensionAPI`) with capture arrays. No `vi.mock()`. Every fake has a sibling live test — adding a fake means adding its live gate.
