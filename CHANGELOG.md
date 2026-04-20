@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (spike — CVx.E2 live-terminal render)
+
+Minimal tracer for the dev-time screenshot loop that `CVx.E2` will formalise. Not a story, not a feature — a throwaway tool that de-risks the eventual spec by proving the path end-to-end.
+
+- **`scripts/render-screenshot.ts`** — builds one canned pi-fence scenario (mermaid happy-path with a synthetic 1x1 PNG fixture), paints it through the same `paintComponent()` harness the fast suite uses, and writes the captured `LoggingVirtualTerminal` byte stream to `process.stdout`. Inside a Kitty-graphics-capable terminal (Kitty, Ghostty, WezTerm) the image renders inline; the user screenshots manually, then presses Enter to exit. Preamble goes to stderr so it doesn’t interleave with the captured bytes.
+- **`pnpm --silent render:spike`** — entry point. `--silent` suppresses pnpm’s own script-preamble so stdout is purely pi-tui’s byte stream (useful for redirect-to-file captures). Without the flag the script still renders correctly; the preamble is just a text line above the panel.
+- The spike’s key invariant: the bytes it emits to stdout are identical to the ones `tests/unit/renderer.test.ts` and `tests/extension/pi-fence.test.ts` assert on via `LoggingVirtualTerminal.getWrites()`. If the tests pass but the screenshot shows a broken render, the capture itself has a bug. If both pass, the fast suite’s assertions faithfully track what a real terminal paints.
+- What is **not** in the spike: automated Kitty spawning, automated `screencapture`, multi-scenario gallery, sentinel-based readiness. Those are `CVx.E2.S1`–`S3` scope and will be specced once the spike informs the shape. For now, the tool answers the single question "is the test byte stream what the terminal actually paints?" — and leaves scenario multiplication, automation, and CI integration to the follow-up stories.
+
 ### Refined (test layer — CVx.E1.S1 render layer on `VirtualTerminal`)
 
 The fast suite now asserts on real pi-tui emission instead of hand-rolled primitives. The eight post-S3 render-polish commits motivated the lane: each bug was caught by a human looking at a terminal, because the tests were asking our fakes if they were consistent with themselves. Replacing the fakes with real pi-tui components painting into `@xterm/headless` via `VirtualTerminal` closes that blind spot.
