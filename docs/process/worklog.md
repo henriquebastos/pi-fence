@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-Between CVs. The whole CVx batch (E1.S1 + E2.S1–S3) is caught up to ✅; feature work resumes next.
+`CVx.E2.S4` (`mermaid-user-agent-trail` scenario) is the one open specced story. Spec commit `db753a6` landed the three-file folder; implementation hasn't started. A fresh session reading the [roadmap](../project/roadmap/README.md) will find S4 as the only `Planned` row and should follow its [plan](../project/roadmap/cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s4-user-agent-trail/plan.md) step by step.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). The entire CVx lane is done. `CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) are specced and ready if the "every language Kroki serves" criterion becomes the priority.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). CVx lane state: CVx.E1.S1 + CVx.E2.S1–S3 are ✅; `CVx.E2.S4` is 🛠️ specced but not implemented; CVx.E1.S2–S3 and any further CVx.E1 work remain unspec’d but welcome when there's pressure.
 
-The likely next move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+`CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) are specced and ready if the "every language Kroki serves" criterion becomes the priority. The likely next CV-line move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -678,3 +678,21 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 5. Upstream pi-mono PR for `VirtualTerminal` export (still in `~/me/mirror/backlog.md`).
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
+
+### 2026-04-20 — addon-image overlay fix (`bb02d33`) + spec CVx.E2.S4 (`db753a6`)
+
+Two commits after the post-close follow-up batch. Logged retroactively as one entry because (a) neither is a story commit, (b) each has a CHANGELOG entry already, and (c) they're related: the fix made the verifier's output faithful enough that the user noticed the isolated-render framing as the remaining gap, which is exactly what S4 addresses.
+
+- **`bb02d33` fix: overlay the Kitty-addon image canvas on the xterm screen.** The user opened the `pnpm render:verify` gallery and reported: 'I see a big gap between the label and the diagram.' DOM inspection showed `@xterm/addon-image`'s `xterm-image-layer-top` canvas at page `y=925`, while `.xterm-screen` ended at `y=900` — a 25-pixel visual gap plus a full screen-height below, i.e. the canvas flows as a regular block instead of overlaying the text grid. Root cause: the addon `appendChild`s its canvas to `.xterm-screen` expecting absolute positioning rules that the addon itself never ships. Fix: `tests/utilities/addon-image-overlay-fix.ts` exports `ADDON_IMAGE_OVERLAY_CSS` (four lines: `.xterm-screen { position: relative }` + `position: absolute; top/left: 0; pointer-events: none` for `xterm-image-layer-*`). `scripts/verify/pipeline.ts` injects it into the verifier's `<style>` block. Goldens recaptured; live suite green at 8 combos.
+- **`c233afd` docs: log addon-image overlay fix + file upstream-report backlog entry.** Paired docs commit for `bb02d33` per docs-follows-feature. Added an entry to `~/me/mirror/backlog.md` capturing everything a future session needs to report the bug upstream against `xtermjs/xterm.js` (reproduction, proposed CSS rules, permission protocol). Not filed yet; requires Henrique's go-ahead.
+- **`db753a6` spec CVx.E2.S4 — `mermaid-user-agent-trail`.** After the fix landed, the user observed that the verifier still shows pi-fence's render in isolation rather than in the surrounding chat context a real pi user sees. Specced S4 as the scenario that fills this gap: compose pi-coding-agent's real `UserMessageComponent` / `AssistantMessageComponent` / `CustomMessageComponent` into a `Container` painted through the existing verifier pipeline. Public exports confirmed on `upstream/main`. `timestamp: 0` + zero usage pinned in the synthetic `AssistantMessage` for byte-stability. Theme-singleton bootstrap has two candidate paths flagged as decision-on-encounter. Single `default` variant to keep scope tight; no new dependencies needed. Spec-only commit, no code.
+
+**Tests:** 182 → 181 between `873367a` and `bb02d33` (the addon-image workaround file carried a stray unit test before the CSS fix superseded it; the test file was deleted alongside the misguided workaround). Live suite: 8 passing (4 render-image × pixel-diff + 4 kroki.live); 6 skipped under Docker gate. `pnpm run check`: 47 markdown files linted (3 new from the S4 spec folder), 0 errors.
+
+**Handoff state at the moment this entry lands:**
+
+- Roadmap top + CVx parent + CVx.E2 epic + story READMEs all consistent: CVx.E1.S1 and CVx.E2.S1–S3 are ✅; CVx.E2.S4 is 🛠️ Planned.
+- No uncommitted changes; all gates green.
+- `AGENTS.md` Read-first + roadmap flow lands a fresh session on CVx.E2.S4's plan as the next actionable Planned row.
+- Two non-blocking backlog items still in `~/me/mirror/backlog.md`: upstream `VirtualTerminal` export (pi-tui) and upstream addon-image overlay CSS bug report (xterm.js). Both need Henrique's go-ahead before filing.
+- CVx post-close follow-ups still open (from `a99e859`'s list): theme variant matrix, `DIFF_BUDGET` cross-OS tightening, parallel combo rendering, `--watch` mode.
