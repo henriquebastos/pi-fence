@@ -520,3 +520,34 @@ Four small commits closing open loops from CVx.E1.S1. Not a story — documentat
 **Backlog entry moved off-repo:** during the CVx.E1.S1 post-close review, an "upstream PR against pi-mono to export `VirtualTerminal`" follow-up was surfaced. Since PRs against someone else's repo need explicit permission and are not scoped to pi-fence anyway, the full write-up (motivation, subpath-export design decision, step-by-step implementation plan, permission protocol) was moved to `~/me/mirror/backlog.md` where a future session can pick it up independently. The follow-up is still listed in the CVx.E1.S1 close entry above, but the actionable detail lives outside the repo so it doesn't lose context across sessions.
 
 **Why all four commits fit in one worklog entry:** the docs-follows-feature rule wants one feature commit to one docs commit. Items 1 and 2 are standalone `docs:` commits (not features) and don't need their own docs catch-up. Item 3 is a small refactor with no user-visible surface; mentioning it alongside items 1, 2, and 4 is more informative than a separate entry would be. Item 4 is a spike, not a story, and spikes historically ride in a single batch entry when they're not the focal work of the session. Grouping is honest (all four landed in one session), proportionate to the weight of the changes, and follows the retroactive-batching precedent set by `042acb8` earlier.
+
+### 2026-04-20 — CVx.E2 spike pass 2 (wterm + a11y) and pass 3 (xterm.js + Kitty + headless Chromium)
+
+Two more CVx.E2 spikes landed in the same session as the first one, each taking a different strategy in response to what the previous had taught. Neither is a story; both are research spikes that inform `CVx.E2.S1`'s eventual spec. Batched into one worklog entry because each commit's docs catch-up would otherwise have been three lines and a pointer.
+
+**Why the first (live-terminal) spike needed follow-ups.** Pass 1 (`2183665`) dumped pi-tui's captured byte stream to `process.stdout` from a standalone script, expecting the user's Ghostty window to render the Kitty graphics inline. It did not — pi-tui's paint assumes it owns the terminal viewport, so its `\x1b[29A` cursor movements and `\x1b[16t` cell-size query raced against the surrounding shell. Two iterations of the stdin wait (readline in `edd9794`, raw-mode stdin in `9b6e61d`) did not make the rendered panel reliably visible — a second screenshot from the user still showed only `^[[6;34;17t` leaking into the next shell prompt. The lifecycle problem was foundational, not a detail.
+
+**Pass 2 (`373a9e5`) — wterm + jsdom.** Gave up on the live-terminal path; instead fed the same byte stream into wterm (Vercel Labs' Zig+WASM DOM-rendering terminal emulator, `github.com/vercel-labs/wterm`, upstream at the time: `0.1.9`) inside jsdom. The wterm README sells "accessibility comes for free" via DOM rendering; since the rendered content is just DOM text, `.term-row` textContent per row gives the terminal's output without a screen reader. `scripts/render-a11y-spike.ts` + `pnpm --silent render:a11y-spike` writes a JSON report (rendered rows + cursor + unhandled sequences) on stdout. Human summary on stderr: "'Rendered mermaid via kroki' found in rendered rows: true." Headless, offline, ~10 MB jsdom. Useful finding: wterm does NOT implement Kitty graphics, so the APC payload leaks as text in the rendered grid. Text-layout verification ✔; image-render verification ✗.
+
+**Pass 3 (`12e4e1d`) — xterm.js + Kitty addon + headless Chromium.** Web search (both `wterm` and `a11y tree` as independent queries, then `xterm-addon-image kitty graphics protocol`) surfaced that `@xterm/addon-image@beta` (0.10.0-beta.197+) adds Kitty-graphics-protocol parsing on top of xterm.js. pi-tui emits `a=T` (transmit-and-display), which the beta supports. Drove the byte stream through xterm.js + the image addon in a headless Chromium via `playwright-core`, then `page.screenshot()` to PNG. Test fixture: `tests/fixtures/mermaid-flowchart.png`, a real Kroki-rendered PNG (324x70, ~2 KB) fetched once via `curl https://kroki.io/mermaid/png?theme=dark`; the synthetic "magic + IHDR only" PNG used by the fast-suite tests has no IDAT chunk so real decoders show a placeholder. First run produced `scripts/out/render-image.png` with the "Rendered mermaid via kroki" label and the actual mermaid flowchart `A -> B -> C` rendered as boxes with arrows. Headless, CI-capable, ~150 MB Chromium one-time install. `pnpm --silent render:image-spike` is the entry point; `scripts/out/` is gitignored.
+
+**Shape of the three spikes after pass 3:**
+
+| Spike | Output | Headless | CI-capable | Text | Image |
+|-------|--------|----------|------------|------|-------|
+| 1 `render:spike` (live Ghostty) | manual screenshot | no | no | yes | yes (flaky) |
+| 2 `render:a11y-spike` (wterm + jsdom) | JSON on stdout | yes | yes | yes | no (wterm ignores Kitty) |
+| 3 `render:image-spike` (xterm.js + addon + Chromium) | PNG on disk | yes | yes | yes | yes |
+
+**Commits:**
+
+1. `373a9e5` wip(agent): spike CVx.E2 pass 2 - wterm + a11y-style DOM verifier.
+2. `12e4e1d` wip(agent): spike CVx.E2 pass 3 - real PNG via xterm.js + Kitty addon.
+
+Dev dependencies added across the two spikes: `@wterm/dom@^0.1.9` (+ transitive `@wterm/core`), `jsdom@^29.0.2`, `@types/jsdom`, `@xterm/xterm@^6.1.0-beta.197`, `@xterm/addon-image@^0.10.0-beta.197`, `playwright-core@^1.59.1`. Chromium binaries live in the global playwright cache (`~/Library/Caches/ms-playwright/`), not under `node_modules/`; installed once via `npx playwright install chromium`. Real Kroki PNG checked in under `tests/fixtures/` as committed bytes rather than regenerated on every test run — no network dependency for CVx.E2 consumers.
+
+**Tests:** unchanged at 161 across both commits. Spikes are scripts, not tests.
+
+**Follow-up this batch surfaces for `CVx.E2.S1`'s eventual spec:** the original table row in the epic's README said "paint in a real Kitty window." The three spikes taught us the headless path is strictly better (CI-compatible, no shell lifecycle race, reproducible, diffable). The spec commit that defines `CVx.E2.S1` should revise both that table row and the epic-level "done" criterion (which currently also says "real Kitty") to reflect the headless direction, and should ship a proper verifier tool promoted from the spike scripts rather than paving over the original live-terminal framing.
+
+**Meta on docs ordering:** pass 2 (`373a9e5`) shipped without an adjacent docs commit in the prior session (it was implicit in the "follow-ups surfaced" section of `946e177` but not claimed by SHA there). Pass 3 (`12e4e1d`) shipped one commit ago, also without docs. This entry is the retroactive-batch catch-up for both, per the AGENTS.md Worklog-and-CHANGELOG-ordering exception. Going forward, one-feature-one-docs remains the default.
