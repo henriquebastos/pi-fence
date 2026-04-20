@@ -27,6 +27,7 @@ import { fileURLToPath } from "node:url";
 
 import { chromium, type Browser } from "playwright-core";
 
+import { ADDON_IMAGE_OVERLAY_CSS } from "../../tests/utilities/addon-image-overlay-fix.ts";
 import { countKittyImages } from "./kitty.ts";
 import type { Scenario, Variant } from "./scenarios.ts";
 
@@ -335,6 +336,7 @@ function buildHtml(
         width: ${termWidth}px;
         height: ${termHeight}px;
       }
+      ${ADDON_IMAGE_OVERLAY_CSS}
     </style>
   </head>
   <body>
