@@ -20,9 +20,10 @@ import {
 } from "../../scripts/verify/scenarios.ts";
 
 describe("scenario registry", () => {
-	it("listScenarios() returns at least the mermaid-happy-path scenario", () => {
+	it("listScenarios() returns the mermaid-happy-path and mermaid-error-path scenarios", () => {
 		const names = listScenarios().map((s) => s.name);
 		expect(names).toContain("mermaid-happy-path");
+		expect(names).toContain("mermaid-error-path");
 	});
 
 	it("each scenario has a unique name, a description, a build function, and at least one variant", () => {
@@ -75,4 +76,21 @@ describe("scenario registry", () => {
 		expect(DEFAULT_VARIANT.cols).toBe(120);
 		expect(DEFAULT_VARIANT.rows).toBe(60);
 	});
+
+	it(
+		"mermaid-error-path default variant produces a byte stream with no Kitty APC and an error-shaped label",
+		async () => {
+			const scenario = getScenario("mermaid-error-path");
+			const variant = scenario.variants[0];
+			expect(variant).toBeDefined();
+			const { bytes } = await scenario.build(variant!);
+			expect(bytes.length).toBeGreaterThan(0);
+			// Error path has text content, not an image: no Kitty APC emits.
+			expect(bytes).not.toContain("\x1b_G");
+			// The error label shape is a user-visible surface; pinning it
+			// in the bytes guards against silent phrasing drift.
+			expect(bytes).toContain("Error rendering mermaid via kroki");
+		},
+		20_000,
+	);
 });

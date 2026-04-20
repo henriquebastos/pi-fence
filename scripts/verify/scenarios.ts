@@ -112,6 +112,46 @@ async function buildMermaidHappyPath(variant: Variant): Promise<{ bytes: string 
 	return { bytes: terminal.getWrites() };
 }
 
+/**
+ * Build a `pi-fence:output` byte stream for the error-rendering
+ * branch of `createPiFenceMessageRenderer`: no image content, the
+ * error label instead of the success label, a stable synthetic
+ * error body, and a source that reflects the triggering typo.
+ */
+async function buildMermaidErrorPath(variant: Variant): Promise<{ bytes: string }> {
+	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
+
+	const renderer = createPiFenceMessageRenderer({
+		Box,
+		Text,
+		Spacer,
+		Image,
+		truncateToWidth,
+	});
+
+	const component = renderer(
+		{
+			content: [
+				{
+					type: "text",
+					text: "Error rendering mermaid via kroki: Parse error on line 1: unknown tag 'flowchrt'",
+				},
+			],
+			details: {
+				tag: "mermaid",
+				processor: "kroki",
+				kind: "error",
+				source: "flowchrt LR\n  A --> B",
+			},
+		},
+		{ expanded: false },
+		IDENTITY_THEME,
+	);
+
+	const terminal = await paintComponent(component, variant.cols, variant.rows);
+	return { bytes: terminal.getWrites() };
+}
+
 export const SCENARIOS: readonly Scenario[] = [
 	{
 		name: "mermaid-happy-path",
@@ -119,6 +159,13 @@ export const SCENARIOS: readonly Scenario[] = [
 			"pi-fence:output panel with a Kroki-rendered mermaid flowchart (A → B → C).",
 		variants: [DEFAULT_VARIANT],
 		build: buildMermaidHappyPath,
+	},
+	{
+		name: "mermaid-error-path",
+		description:
+			"pi-fence:output panel when the Kroki processor returns an error (text content, no image).",
+		variants: [DEFAULT_VARIANT],
+		build: buildMermaidErrorPath,
 	},
 ];
 
