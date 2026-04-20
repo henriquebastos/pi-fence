@@ -63,9 +63,11 @@ Exception: a `worklog: placeholder for <story>` entry with no SHAs is fine as a 
 When investigating pi-tui / pi-coding-agent / pi-ai behavior (interfaces, tests, internals), read the source in `~/me/oss/pi-mono/packages/<pkg>/src/` and the tests in `~/me/oss/pi-mono/packages/<pkg>/test/` — **not** the compiled `node_modules/@mariozechner/<pkg>/dist/` files in this repo.
 
 1. `~/me/oss/pi-mono` is the real source of truth: TypeScript, full test suite, history, work-in-progress.
-2. Before relying on it, make sure it is up to date: `cd ~/me/oss/pi-mono && git fetch && git status -sb` and check against `upstream/main`.
-3. `node_modules/` only has emitted `.d.ts` + `.js` and the published README. No tests, no source comments, often stale relative to upstream.
-4. When citing pi-tui internals in prose (worklog, plan, chat), prefer referencing files in `~/me/oss/pi-mono/packages/tui/` by path, so the reader can open the real source.
+2. Always read from the `main` branch (`upstream/main` in the fork setup) unless the user explicitly names another ref. The checked-out branch may be a work-in-progress refactor and is not representative of what pi-fence's installed pi-tui reflects.
+3. Prefer `git show upstream/main:packages/<pkg>/src/<file>.ts` over relying on the working tree: it reads the ref directly, never depends on what's checked out, never risks polluting the user's workspace. `cat-file -p upstream/main:<path>` and `git grep <pattern> upstream/main -- packages/<pkg>/` are the same idea for broader searches.
+4. Fetch before reading: `cd ~/me/oss/pi-mono && git fetch --all` to ensure `upstream/main` is current. Note the SHA of `upstream/main` in prose when relevant so the reader can reproduce the read later.
+5. `node_modules/` only has emitted `.d.ts` + `.js` and the published README. No tests, no source comments, often stale relative to upstream. Use it only to confirm the installed version ships a particular export.
+6. When citing pi internals in prose (worklog, plan, chat), reference files at `~/me/oss/pi-mono/packages/<pkg>/...` by path so the reader can open the real source.
 
 ## I/O seams and fakes
 
