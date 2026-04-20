@@ -36,7 +36,9 @@ async function main(): Promise<void> {
 	const outDir = join(repoRoot, "scripts/out/render-image-spike");
 
 	const scenario = getScenario("mermaid-happy-path");
-	const result = await renderScenario(scenario, outDir);
+	const variant = scenario.variants[0];
+	if (!variant) throw new Error("scenario has no variants");
+	const result = await renderScenario(scenario, variant, outDir);
 
 	process.stderr.write(
 		`[pi-fence CVx.E2 image spike] wrote ${result.pngPath}\n` +

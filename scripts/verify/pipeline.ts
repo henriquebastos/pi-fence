@@ -27,9 +27,11 @@ import { fileURLToPath } from "node:url";
 
 import { chromium, type Browser } from "playwright-core";
 
-import type { Scenario } from "./scenarios.ts";
+import type { Scenario, Variant } from "./scenarios.ts";
 
 export interface RenderResult {
+	scenarioName: string;
+	variantName: string;
 	/** Filesystem path to the written PNG screenshot. */
 	pngPath: string;
 	/** Filesystem path to the captured byte stream (for inspection). */
@@ -53,36 +55,61 @@ const IMAGE_ADDON_JS_PATH = join(
 );
 
 /**
- * Render a single scenario. Launches and closes a private Chromium
- * instance. Use `renderMany` when rendering several scenarios in
- * sequence — it shares the browser and amortises launch cost.
+ * One (scenario, variant) pair. The pipeline iterates these.
+ */
+export interface Combo {
+	scenario: Scenario;
+	variant: Variant;
+}
+
+/**
+ * Expand a list of scenarios into the full `scenario × variant`
+ * cross-product. Each scenario contributes one entry per variant
+ * it declares. Order preserved (scenario order, then variant order
+ * within each scenario).
+ */
+export function expandCombos(scenarios: readonly Scenario[]): Combo[] {
+	const combos: Combo[] = [];
+	for (const scenario of scenarios) {
+		for (const variant of scenario.variants) {
+			combos.push({ scenario, variant });
+		}
+	}
+	return combos;
+}
+
+/**
+ * Render a single (scenario, variant) pair. Launches and closes a
+ * private Chromium instance. Use `renderCombos` when rendering
+ * multiple combos in one run — it shares the browser and amortises
+ * launch cost.
  */
 export async function renderScenario(
 	scenario: Scenario,
+	variant: Variant,
 	outDir: string,
 ): Promise<RenderResult> {
 	const browser = await chromium.launch({ headless: true });
 	try {
-		return await renderScenarioInBrowser(browser, scenario, outDir);
+		return await renderScenarioInBrowser(browser, scenario, variant, outDir);
 	} finally {
 		await browser.close();
 	}
 }
 
 /**
- * Render several scenarios through one shared browser. Returns
- * results in input order. Caller owns the `outDir` layout; the
- * pipeline writes to `<outDir>/<scenario.name>/render.png` for each.
+ * Render many (scenario, variant) combos through one shared browser.
+ * Output layout: `<outDir>/<scenario>/<variant>/render.png`.
  */
-export async function renderMany(
-	scenarios: readonly Scenario[],
+export async function renderCombos(
+	combos: readonly Combo[],
 	outDir: string,
 ): Promise<RenderResult[]> {
 	const browser = await chromium.launch({ headless: true });
 	try {
 		const results: RenderResult[] = [];
-		for (const scenario of scenarios) {
-			results.push(await renderScenarioInBrowser(browser, scenario, outDir));
+		for (const { scenario, variant } of combos) {
+			results.push(await renderScenarioInBrowser(browser, scenario, variant, outDir));
 		}
 		return results;
 	} finally {
@@ -93,14 +120,16 @@ export async function renderMany(
 async function renderScenarioInBrowser(
 	browser: Browser,
 	scenario: Scenario,
+	variant: Variant,
 	outDir: string,
 ): Promise<RenderResult> {
-	const { bytes, cols, rows } = await scenario.build();
+	const { bytes } = await scenario.build(variant);
+	const { cols, rows } = variant;
 
-	const scenarioDir = join(outDir, scenario.name);
-	await mkdir(scenarioDir, { recursive: true });
-	const pngPath = join(scenarioDir, "render.png");
-	const bytesPath = join(scenarioDir, "render.bin");
+	const comboDir = join(outDir, scenario.name, variant.name);
+	await mkdir(comboDir, { recursive: true });
+	const pngPath = join(comboDir, "render.png");
+	const bytesPath = join(comboDir, "render.bin");
 
 	// Capture bytes alongside the PNG so the "pixels derive from
 	// these bytes" invariant is inspectable out-of-band.
@@ -171,7 +200,14 @@ async function renderScenarioInBrowser(
 		await context.close();
 	}
 
-	return { pngPath, bytesPath, cols, rows };
+	return {
+		scenarioName: scenario.name,
+		variantName: variant.name,
+		pngPath,
+		bytesPath,
+		cols,
+		rows,
+	};
 }
 
 /**

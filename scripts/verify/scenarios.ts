@@ -32,6 +32,14 @@ import { Box, Image, Spacer, Text, setCapabilities, truncateToWidth } from "@mar
 import { createPiFenceMessageRenderer } from "../../extensions/pi-fence/renderer.ts";
 import { paintComponent } from "../../tests/utilities/render.ts";
 
+export interface Variant {
+	/** Unique within a Scenario; keys the golden file at
+	 *  `tests/fixtures/golden/<scenario>/<variant>.png`. */
+	readonly name: string;
+	readonly cols: number;
+	readonly rows: number;
+}
+
 export interface Scenario {
 	/** Unique key. Used as `pnpm render:verify --scenario <name>` and
 	 *  as the subdir of `scripts/out/render-verify/` + `tests/fixtures/golden/`. */
@@ -40,10 +48,21 @@ export interface Scenario {
 	/** One-line human description. Printed by `--list`. */
 	readonly description: string;
 
-	/** Produce the byte stream and the terminal dimensions this scenario
-	 *  should render at. */
-	build(): Promise<{ bytes: string; cols: number; rows: number }>;
+	/** At least one variant. The verifier iterates every variant; tests
+	 *  pixel-diff each variant against its own committed golden. */
+	readonly variants: readonly Variant[];
+
+	/** Produce the byte stream for the given variant. Dimensions flow
+	 *  from the variant into pi-fence's paintComponent so the emitted
+	 *  bytes reflect the target viewport's layout. */
+	build(variant: Variant): Promise<{ bytes: string }>;
 }
+
+export const DEFAULT_VARIANT: Variant = {
+	name: "default",
+	cols: 120,
+	rows: 60,
+};
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -59,11 +78,7 @@ const IDENTITY_THEME = {
  * and `tests/extension/pi-fence.test.ts` produce in the fast suite,
  * so the bytes verifier and tests see are identical.
  */
-async function buildMermaidHappyPath(): Promise<{
-	bytes: string;
-	cols: number;
-	rows: number;
-}> {
+async function buildMermaidHappyPath(variant: Variant): Promise<{ bytes: string }> {
 	// Pin capabilities so the Kitty graphics path emits deterministically
 	// (matches the render-layer tests' forceCapabilities behaviour).
 	setCapabilities({ images: "kitty", trueColor: true, hyperlinks: true });
@@ -93,8 +108,8 @@ async function buildMermaidHappyPath(): Promise<{
 		IDENTITY_THEME,
 	);
 
-	const terminal = await paintComponent(component);
-	return { bytes: terminal.getWrites(), cols: 120, rows: 60 };
+	const terminal = await paintComponent(component, variant.cols, variant.rows);
+	return { bytes: terminal.getWrites() };
 }
 
 export const SCENARIOS: readonly Scenario[] = [
@@ -102,6 +117,7 @@ export const SCENARIOS: readonly Scenario[] = [
 		name: "mermaid-happy-path",
 		description:
 			"pi-fence:output panel with a Kroki-rendered mermaid flowchart (A → B → C).",
+		variants: [DEFAULT_VARIANT],
 		build: buildMermaidHappyPath,
 	},
 ];

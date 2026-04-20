@@ -28,6 +28,7 @@ import { PNG } from "pngjs";
 import { describe, it } from "vitest";
 
 import { renderScenario } from "../../scripts/verify/pipeline.ts";
+import { expandCombos } from "../../scripts/verify/pipeline.ts";
 import { listScenarios } from "../../scripts/verify/scenarios.ts";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -74,17 +75,21 @@ const hasChromium = await chromiumAvailable();
 describe.skipIf(!hasChromium)(
 	"Render Image — live suite — pixel-diff against committed golden",
 	() => {
-		for (const scenario of listScenarios()) {
+		for (const { scenario, variant } of expandCombos(listScenarios())) {
 			it(
-				`${scenario.name}: PNG matches golden within DIFF_BUDGET=${DIFF_BUDGET}`,
+				`${scenario.name} / ${variant.name}: PNG matches golden within DIFF_BUDGET=${DIFF_BUDGET}`,
 				async () => {
 					await mkdir(OUT_DIR, { recursive: true });
-					const result = await renderScenario(scenario, OUT_DIR);
+					const result = await renderScenario(scenario, variant, OUT_DIR);
 
-					const goldenPath = join(GOLDEN_DIR, `${scenario.name}.png`);
+					const goldenPath = join(
+						GOLDEN_DIR,
+						scenario.name,
+						`${variant.name}.png`,
+					);
 					if (!existsSync(goldenPath)) {
 						assert.fail(
-							`No golden at ${goldenPath}. Run 'pnpm render:verify --update --scenario ${scenario.name}'.`,
+							`No golden at ${goldenPath}. Run 'pnpm render:verify --update --scenario ${scenario.name} --variant ${variant.name}'.`,
 						);
 					}
 
@@ -116,7 +121,7 @@ describe.skipIf(!hasChromium)(
 						const diffPath = join(dirname(result.pngPath), "diff.png");
 						await writeFile(diffPath, PNG.sync.write(diff));
 						assert.fail(
-							`${scenario.name}: PNG differs from golden by ${diffPixels} pixels ` +
+							`${scenario.name}/${variant.name}: PNG differs from golden by ${diffPixels} pixels ` +
 								`(budget=${DIFF_BUDGET}, threshold=${DIFF_THRESHOLD}). ` +
 								`See ${diffPath} and the rendered PNG at ${result.pngPath}.`,
 						);

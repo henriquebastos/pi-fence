@@ -131,9 +131,21 @@ async function main(): Promise<void> {
 		`[render:verify] rendering scenario: ${scenario.name}\n`,
 	);
 
+	// Step 1 of S2 touches only the Scenario + Variant shape. Full
+	// cross-product iteration + --variant flag + gallery land in later
+	// S2 steps; for step 1 the CLI renders each scenario's first
+	// variant so existing behaviour is preserved.
+	const variant = scenario.variants[0];
+	if (!variant) {
+		process.stderr.write(
+			`[render:verify] scenario '${scenario.name}' has no variants\n`,
+		);
+		process.exit(1);
+	}
+
 	let result;
 	try {
-		result = await renderScenario(scenario, args.out);
+		result = await renderScenario(scenario, variant, args.out);
 	} catch (err) {
 		process.stderr.write(
 			`[render:verify] pipeline error: ${err instanceof Error ? err.message : String(err)}\n`,
@@ -151,8 +163,9 @@ async function main(): Promise<void> {
 	);
 
 	if (args.update) {
-		await mkdir(GOLDEN_DIR, { recursive: true });
-		const goldenPath = join(GOLDEN_DIR, `${scenario.name}.png`);
+		const scenarioGoldenDir = join(GOLDEN_DIR, scenario.name);
+		await mkdir(scenarioGoldenDir, { recursive: true });
+		const goldenPath = join(scenarioGoldenDir, `${variant.name}.png`);
 		await copyFile(result.pngPath, goldenPath);
 		process.stderr.write(`[render:verify] updated golden: ${goldenPath}\n`);
 	}

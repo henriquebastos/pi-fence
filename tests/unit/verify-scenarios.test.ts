@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	DEFAULT_VARIANT,
 	getScenario,
 	listScenarios,
 } from "../../scripts/verify/scenarios.ts";
@@ -24,14 +25,24 @@ describe("scenario registry", () => {
 		expect(names).toContain("mermaid-happy-path");
 	});
 
-	it("each scenario has a unique name, a description, and a build function", () => {
+	it("each scenario has a unique name, a description, a build function, and at least one variant", () => {
 		const seen = new Set<string>();
 		for (const scenario of listScenarios()) {
 			expect(scenario.name.length).toBeGreaterThan(0);
 			expect(scenario.description.length).toBeGreaterThan(0);
 			expect(typeof scenario.build).toBe("function");
+			expect(scenario.variants.length).toBeGreaterThan(0);
 			expect(seen.has(scenario.name)).toBe(false);
 			seen.add(scenario.name);
+
+			const variantNames = new Set<string>();
+			for (const variant of scenario.variants) {
+				expect(variant.name.length).toBeGreaterThan(0);
+				expect(variant.cols).toBeGreaterThan(0);
+				expect(variant.rows).toBeGreaterThan(0);
+				expect(variantNames.has(variant.name)).toBe(false);
+				variantNames.add(variant.name);
+			}
 		}
 	});
 
@@ -45,20 +56,23 @@ describe("scenario registry", () => {
 	});
 
 	it(
-		"mermaid-happy-path.build() produces a non-empty byte stream and sensible dimensions",
+		"mermaid-happy-path default variant produces a byte stream with the Kitty APC",
 		async () => {
 			const scenario = getScenario("mermaid-happy-path");
-			const { bytes, cols, rows } = await scenario.build();
+			const variant = scenario.variants[0];
+			expect(variant).toBeDefined();
+			const { bytes } = await scenario.build(variant!);
 			expect(bytes.length).toBeGreaterThan(0);
 			// Kitty graphics sequence must be present — this is the whole
-			// point of the render scenario.
+			// point of an image-rendering scenario.
 			expect(bytes).toContain("\x1b_G");
-			// 120x60 matches the render-layer harness, which the scenario
-			// inherits. The exact values matter less than "plausible
-			// terminal dimensions."
-			expect(cols).toBeGreaterThanOrEqual(80);
-			expect(rows).toBeGreaterThanOrEqual(20);
 		},
 		20_000,
 	);
+
+	it("DEFAULT_VARIANT exposes the S1-era 120x60 shape", () => {
+		expect(DEFAULT_VARIANT.name).toBe("default");
+		expect(DEFAULT_VARIANT.cols).toBe(120);
+		expect(DEFAULT_VARIANT.rows).toBe(60);
+	});
 });
