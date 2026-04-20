@@ -681,6 +681,35 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
 
+### 2026-04-20 — post-CV0.E1.S4 follow-ups: shape-variation scenario + language gallery
+
+**Trigger.** Immediately after S4 closed, the natural question surfaced: *now that we advertise 17 languages, shouldn't the render-verify suite cover all of them?* Design discussion walked through the tradeoff:
+
+1. **Per-language render-verify scenarios** would cost ~34 new combos, ~1.7 MB of committed goldens, and a refresh-fixtures burden per Kroki drift — while mostly duplicating the composition signal across 17 different image payloads (pi-fence's renderer doesn't branch on tag name).
+2. **The Render Image test layer's unique value** is catching pi-fence-level shape regressions independent of image content. Variance along the *shape* dimension (tall PNG, short PNG, long error text, multi-image) adds genuine signal; variance along the *tag* dimension does not.
+3. **The marketing / docs value of a 17-tile showcase** is real but separate from the test gate.
+
+Conclusion: split the two concerns.
+
+- Add one shape-variation render-verify scenario now (`kroki-tall-image`) as the first step in the shape dimension. Keep the gate lean.
+- Ship a separate `pnpm render:gallery` dev-tool entrypoint that renders every language through the trail composition for docs / screenshots / design review. No goldens, no pixel-diff.
+
+**What shipped (two feature commits + this docs catch-up):**
+
+- `29a95fc` **feat(verify): add kroki-tall-image render scenario.** `scripts/verify/scenarios.ts` gains `buildKrokiTallImage`, a trail composition around the wireviz harness PNG (≥26 KB, one of the tallest Kroki outputs) + the full YAML source in the assistant's reply. Fixture at `tests/fixtures/wireviz-harness.png` (POST-fetched from kroki.io using the canonical source from `canonical-sources.ts`). Default variant only — narrow deferred. Byte-identical across consecutive renders; teeth check not rerun since the broader teeth pattern was validated in the CVx.E2 batch.
+- `9852937` **feat(tooling): `pnpm render:gallery` — one tile per Kroki language.** `scripts/render-gallery.ts` fetches 17 PNGs from `kroki.io` (bounded concurrency 4), constructs in-memory `Scenario[]` per language (dynamic, NOT added to the static test registry), runs them through the existing `renderCombos` pipeline at a taller 120×140 viewport, post-crops each PNG via `pngjs` to trim trailing black. Emits browsable HTML. Supporting changes: `buildTrail` / `PiFenceCustomMessage` exported from `scenarios.ts`; `renderGalleryHtml` gains a `{ title, emptyHint }` options bag (defaults match today's render:verify shape so existing callers unchanged). `docs/product/kroki-support.md` documents the command under "Browsing a live gallery" with the not-a-test-gate framing made explicit.
+
+**Gates:** fast suite 181 → 181 unchanged. Live suite 25 → 26 render-image cases. `pnpm render:gallery` runs end-to-end in ~10–15s wall clock on the calibration machine with network access (4 concurrent Kroki fetches then serial Chromium renders). `pnpm run check` green across 48 markdown files.
+
+**Follow-ups not claimed:**
+
+1. **More shape-variation render-verify scenarios.** `short-image`, `long-error-text`, `light-theme`, `multi-image` — each one added when a concrete shape-regression concern warrants it. No blanket need today.
+2. **Refresh-fixtures command.** Today's tall-image fixture (`wireviz-harness.png`) and the mermaid fixture (`mermaid-flowchart.png`) refresh by manually POSTing to kroki.io. `scripts/refresh-fixtures.ts` is a skeleton from CV0.E1.S0 that never got filled in. Candidate for a small tooling story when a second committed fixture joins the mermaid+wireviz pair.
+3. **Gallery polish.** Today's gallery is 17 tiles in the existing render-verify gallery HTML shape. Potential additions once the gallery earns them: category grouping (core vs. blockdiag family vs. domain-specific), per-tile fetch-timing, language descriptions inline with each tile. None of these blockers for the showcase purpose.
+4. **Concurrent fetch progress output tidiness.** Current render:gallery progress output interleaves stderr lines when concurrent fetches complete in the same tick. Minor UX. Fix if it becomes annoying in practice; acceptable for a dev tool today.
+
+**Meta — design discussion ahead of implementation pays off.** The user asked "should we have render-verify tests for all the tags?" The answer (no — split the shape and the showcase values) was arrived at in the chat, and implementing against it produced two cleanly-scoped commits that compose without overlap. Had this been implemented first and questioned second, we'd likely have a sprawl of per-language scenarios to unwind. Concrete argument for the "discuss shape, then ship" cadence.
+
 ### 2026-04-20 — close CV0.E1.S4 (full Kroki text coverage)
 
 **Goal:** honest coverage of Kroki's public endpoint — every text-body language the endpoint serves as PNG renders through pi-fence with a verified live test. Languages the public endpoint refuses are documented as unsupported with a follow-up path.

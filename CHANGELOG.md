@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (post-CV0.E1.S4 follow-ups — shape-variation scenario + language gallery)
+
+Two additions responding to the natural "now that we advertise 17 languages, what's the visual story?" question. Neither expands the per-language pixel-diff monitor; each targets a different real value without that cost.
+
+- **`kroki-tall-image` render-verify scenario** (`29a95fc`). Trail composition with a visually-tall PNG (wireviz harness, ≥26 KB) + a long fenced YAML source in the assistant's reply. First *shape-variation* scenario — pressure-tests the trail layout at larger vertical extents than `mermaid-happy-path`'s near-square image. Fixture committed at `tests/fixtures/wireviz-harness.png`; default variant only (narrow deferred). Live suite 25 → 26 render-image cases; byte-identical across consecutive runs.
+- **`pnpm render:gallery` entrypoint** (`9852937`). Renders one composition-level tile per canonical text-body Kroki language through the full trail, fetching fresh PNGs from `kroki.io` at runtime. Not a test gate: no goldens, no pixel-diff, no CI. Browsable HTML at `scripts/out/render-gallery/index.html`. Design-review / README-screenshot artefact. Uses a tall 120×140 viewport and post-render PNG cropping (via `pngjs`, already a dev dep) so every tile is as compact as its content allows (691–3041 px heights observed from a uniform 5160 px pre-crop). Documented in `docs/product/kroki-support.md` under a new "Browsing a live gallery" section.
+- **Shared helpers promoted to `export`** — `buildTrail` and `PiFenceCustomMessage` in `scripts/verify/scenarios.ts`, reused by the gallery script. `renderGalleryHtml` gains an optional `{ title, emptyHint }` options bag so the gallery can set a bespoke document title without affecting `render:verify`'s default. Existing callers unchanged.
+- **Why not 17 per-language render-verify scenarios?** The extended design discussion lives in `docs/process/worklog.md`'s corresponding 2026-04-20 entry. TL;DR: pi-fence's renderer doesn't branch on tag name, so 17 tag-dimension scenarios would mostly duplicate the composition signal with different image payloads and turn the Render Image test layer into a Kroki-content monitor. The shape-variation scenario + showcase gallery split those two values into the right shapes.
+
 ### Added (CV0.E1.S4 — full Kroki text coverage)
 
 Every text-body language Kroki's public endpoint serves as PNG now renders through pi-fence, verified by a live integration test per language.
