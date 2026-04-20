@@ -1,6 +1,6 @@
 [< CV0.E1 — Kroki Through The Wire](../README.md)
 
-# S4 — Every text-based Kroki language renders through pi-fence 🛠️ Planned
+# S4 — Every text-based Kroki language renders through pi-fence ✅ Done
 
 S1–S2 added four languages one story at a time. S4 makes the coverage honest: every text-based language the public Kroki endpoint supports — and that pi-fence's current text-body flow fits — renders with a verified live test.
 

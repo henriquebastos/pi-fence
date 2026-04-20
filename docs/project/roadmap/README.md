@@ -35,7 +35,7 @@
 | [CV0.E1.S1](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s1-mermaid-via-kroki/README.md) | **I see my mermaid diagram rendered as a PNG when the assistant answers** | ✅ Done |
 | [CV0.E1.S2](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s2-other-kroki-tags/README.md) | **I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path** | ✅ Done |
 | [CV0.E1.S3](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s3-fence-list/README.md) | **I can see which processors are registered and their status** (`/fence list`) | ✅ Done |
-| [CV0.E1.S4](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s4-full-kroki-text-coverage/README.md) | **Every text-based language the public Kroki endpoint supports renders through pi-fence** | Planned |
+| [CV0.E1.S4](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s4-full-kroki-text-coverage/README.md) | **Every text-based language the public Kroki endpoint supports renders through pi-fence** | ✅ Done |
 | [CV0.E1.S5](cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s5-kroki-json-body-languages/README.md) | **JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw) render through pi-fence** | Planned |
 
 ### CV0.E2 — Graphviz Local

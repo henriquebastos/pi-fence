@@ -6,13 +6,15 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-No story is currently in flight. The CVx batch is fully closed and the Render Image scenario shape has been standardised on the composition-level trail in a follow-up refactor (see `2112eae` below). The roadmap's only remaining `Planned` rows are on the feature CVs (CV0.E1.S4–S5, CV0.E2, CV1+) — the next session should pick one based on the user's pressure.
+No story is currently in flight. CV0.E1.S4 closed (full text-based Kroki coverage shipped); the CVx batch remains fully closed. The roadmap's only remaining `Planned` rows are `CV0.E1.S5` (JSON-body Kroki languages — specced), `CV0.E2` (Graphviz Local — not specced), and everything CV1+.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. CVx.E1.S2–S3 and any further CVx.E1 work remain unspec’d but welcome when there's pressure.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S4`). CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. CVx.E1.S2–S3 and any further CVx.E1 work remain unspec’d but welcome when there's pressure.
 
-`CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) are specced and ready if the "every language Kroki serves" criterion becomes the priority. The likely next CV-line move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+`CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw) is specced and ready if the "every language Kroki serves" criterion is still the priority. The likely next CV-line move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+
+Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -678,6 +680,37 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 5. Upstream pi-mono PR for `VirtualTerminal` export (still in `~/me/mirror/backlog.md`).
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
+
+### 2026-04-20 — close CV0.E1.S4 (full Kroki text coverage)
+
+**Goal:** honest coverage of Kroki's public endpoint — every text-body language the endpoint serves as PNG renders through pi-fence with a verified live test. Languages the public endpoint refuses are documented as unsupported with a follow-up path.
+
+**What shipped (six commits):**
+
+- `637b8d1` **step 1: research.** `tests/fixtures/kroki/canonical-sources.ts` captures 17 PNG-supporting languages with canonical minimal sources, alias lists, and per-language `sizeFloorBytes` calibrated from probe observations. The probe itself lived at `/tmp/s4-probe/probe.ts` (not committed, per plan). Surprise finding: `d2` was in pi-fence's current allowlist since S2 but never had a live test — Kroki's public endpoint refuses PNG for it (`400: Unsupported output format: png … Must be one of svg.`). Every user who wrote a ` ```d2 ` block was seeing an error-kind panel.
+- (step 2 skipped) No new aliases surfaced by the research. None of the 14 new canonicals have colloquial alternatives as established as `dot` / `puml`.
+- `413a1db` **step 3: broaden allowlist.** 14 new canonical tags added to `KROKI_CANONICAL_TAGS` + `SUPPORTED_TAGS`: `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`. Ordering groups related languages (core → blockdiag family → domain-specific). The extension test's hardcoded tag-list assertion refactored to derive from production constants via `formatProcessorLines(KROKI_CANONICAL_TAGS, KROKI_ALIASES)` — immune to future language additions.
+- `ed5fea0` **step 3b: remove `d2`.** Its own atomic commit per the design discussion, so the breaking-from-S2 change has a reviewable SHA in isolation. The unit test's `passes unaliased tags through unchanged` case swapped its example from `d2` to `blockdiag` (a real unaliased canonical tag pi-fence now advertises).
+- `0ec5956` **step 4: live tests per language.** `tests/integration/kroki.live.test.ts` refactored to iterate `KROKI_TEXT_LANGUAGES` from the fixture. 17 happy-path cases + 2 alias round-trip cases added. Handwritten error + abort cases kept. Per-case timeout bumped from 20s to 30s (c4plantuml's C4-PlantUML stdlib fetch needs headroom). Live suite grew from 4 passing kroki cases to 25; full run 17.45s on the calibration machine.
+- `c12040f` **step 5: docs.** New `docs/product/kroki-support.md` reference with four tables: supported (17), SVG-only deferred (8), backend-unavailable (1), JSON-body scoped to S5 (3). README status line and supported-tags paragraph updated. `docs/getting-started.md` prompts refreshed (dropped `d2`, added `blockdiag` + `wireviz`). CHANGELOG `[Unreleased]` gets an `Added (CV0.E1.S4)` block and a `Removed (CV0.E1.S4 — breaking change)` block specifically for `d2`.
+- `close CV0.E1.S4` (this commit): status flips across roadmap + Epic + story READMEs, focus/next unstaled, worklog close entry.
+
+**Plan deviations:**
+
+- **Step 2 skipped** (unit tests for new aliases). The plan assumed new aliases would surface; research showed none as common as `dot`/`puml`. Noted in step 3's commit message rather than fabricating aliases.
+- **Step 3b added** (d2 removal). The plan didn't anticipate removing a language from the allowlist. The research pass turned up that d2 never worked. Kept as a separate atomic commit between steps 3 and 4 for reviewability, per the design discussion.
+- **Step 4 refactored rather than batched.** The plan suggested batching live tests 5-per-commit. Data-driving the live test from the fixture made that split artificial — one refactor commit lights up 17 + 2 cases simultaneously, and future per-language additions reduce to fixture edits. Trade-off discussed in the commit message.
+
+**Tests:** fast suite 181 → 181 (the extension test's hardcoded assertion was refactored to derive from production, absorbing the new tags without adding case count). Live suite went from 6 passing cases (2 render-image + 4 kroki) to 27 passing (4 render-image + 23 kroki), 6 Docker-skipped unchanged. `pnpm run check` green across 48 markdown files.
+
+**Carry-forwards:**
+
+1. `d2` and 7 other SVG-only Kroki languages (`bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`) documented as deferred. An SVG→PNG rasterization story would unlock all 8 at once; self-hosted Kroki (CV2.E2) with alternate backends is the other path.
+2. `diagramsnet` (503 Connection refused on public endpoint) deferred to CV2.E2.
+3. JSON-body languages (Vega, Vega-Lite, Excalidraw) scoped to CV0.E1.S5 — specced and ready to start.
+4. The fast suite's extension-layer test now derives from `KROKI_CANONICAL_TAGS` + `KROKI_ALIASES`. Any future test that asserts on the tag-list shape should follow the same pattern rather than hardcoding.
+
+**Meta — research drove scope.** The plan treated the research step as "enumerate what Kroki hosts." The probe actually uncovered three buckets that fundamentally restructured the story: PNG-supported (the target), SVG-only (surprise-large — 8 languages, including a currently-advertised-but-broken `d2`), and backend-unavailable (1). Had the research been deferred or batched with implementation, the d2 surprise would have landed mid-implementation rather than in a clean prep commit. Reinforcement for the plan's "research first, implement second" rhythm.
 
 ### 2026-04-20 — fix: breathing row scoped per content kind after a uniform-bump iteration
 
