@@ -59,7 +59,6 @@ const SUPPORTED_TAGS = [
 	"dot",
 	"plantuml",
 	"puml",
-	"d2",
 	// blockdiag family
 	"blockdiag",
 	"seqdiag",

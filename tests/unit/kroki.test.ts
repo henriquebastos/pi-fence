@@ -384,14 +384,25 @@ describe("createKrokiRenderer", () => {
 		});
 
 		it("passes unaliased tags through unchanged", async () => {
+			// `blockdiag` is a canonical Kroki tag that has no alias entry,
+			// so the renderer must pass it through to /blockdiag/png without
+			// a rewrite. Any other unaliased canonical tag would serve this
+			// assertion; blockdiag picked because it's a real endpoint pi-fence
+			// advertises post-S4, unlike the previous `d2` example which
+			// mis-advertised since S2 (Kroki's public endpoint refuses PNG
+			// for d2 — see docs/product/kroki-support.md).
 			const http = new FakeHttpClient();
-			http.setResponse("POST", "https://kroki.io/d2/png", pngResponse(Buffer.alloc(8)));
+			http.setResponse(
+				"POST",
+				"https://kroki.io/blockdiag/png",
+				pngResponse(Buffer.alloc(8)),
+			);
 			const kroki = createKrokiRenderer(http);
 
-			const result = await kroki.render("d2", "a -> b");
+			const result = await kroki.render("blockdiag", "{ A -> B }");
 
 			expect(result.ok).toBe(true);
-			expect(http.requests[0].url).toBe("https://kroki.io/d2/png");
+			expect(http.requests[0].url).toBe("https://kroki.io/blockdiag/png");
 		});
 
 		it("also honours the canonical name (`graphviz` -> /graphviz/png)", async () => {

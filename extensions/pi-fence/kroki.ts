@@ -68,7 +68,6 @@ export const KROKI_CANONICAL_TAGS: readonly string[] = [
 	"mermaid",
 	"graphviz",
 	"plantuml",
-	"d2",
 	// blockdiag family
 	"blockdiag",
 	"seqdiag",
