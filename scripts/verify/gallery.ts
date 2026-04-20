@@ -1,18 +1,19 @@
 /**
- * HTML gallery renderer for CVx.E2.S2.
+ * HTML gallery renderer for CVx.E2.S2 + follow-up polish.
  *
  * Pure function: given a list of rendered cards, emit a single
  * self-contained HTML document. No external scripts, no CDN CSS.
- * Styling is inline; content is local relative paths.
+ * Inline CSS and a small inline `<script>` provide:
+ *   - a flex-wrapping grid of cards, one per render combo;
+ *   - a per-card toggle between the rendered PNG and the committed
+ *     golden (when a golden is supplied);
+ *   - click-to-zoom: clicking a card's image opens the full-size
+ *     PNG in a lightbox overlay.
  *
+ * The renderer stays a pure function — given the same card list it
+ * produces the same HTML — so it's unit-testable and cache-friendly.
  * Consumers: `pnpm render:verify` writes the produced HTML to
- * `scripts/out/render-verify/index.html` after a run, so a human can
- * open one file and scan every render in the batch.
- *
- * The renderer stays deliberately simple (a flex-wrapping grid of
- * cards). Future stories can add navigation, side-by-side diffs
- * against the golden, zoom-on-click, and so on; S2's job is just
- * "one document, every render visible."
+ * `scripts/out/render-verify/index.html` after a run.
  */
 
 export interface GalleryCard {
@@ -20,27 +21,16 @@ export interface GalleryCard {
 	scenarioName: string;
 	/** Variant name; appears beside the scenario name in the card. */
 	variantName: string;
-	/** Path to the PNG, relative to the gallery HTML's directory. */
+	/** Path to the rendered PNG, relative to the gallery HTML's directory. */
 	pngRelativePath: string;
+	/** Optional path to the committed golden PNG, relative to the gallery
+	 *  HTML's directory. When present, the card shows a toggle between
+	 *  rendered and golden. */
+	goldenRelativePath?: string;
 	cols: number;
 	rows: number;
 }
 
-/**
- * Render the full HTML document. Takes an array of cards (possibly
- * empty); returns a string containing the full `<!doctype html>…`.
- *
- * Design notes:
- *   - `<!doctype html>` and `<meta charset>` up top for browser parity.
- *   - Inline `<style>` keeps the output a single file. Flex-wrap
- *     grid behaves well from narrow (phone) to wide viewports; each
- *     card caps at a readable max-width.
- *   - Text content uses `&#8226;`, `&times;` etc. as HTML entities
- *     to avoid needing any escaping logic for the tiny set of
- *     special characters we emit.
- *   - Card PNG uses `object-fit: contain` so an over-wide render
- *     shrinks to fit the card width without cropping.
- */
 export function renderGalleryHtml(cards: readonly GalleryCard[]): string {
 	const generatedAt = new Date().toISOString();
 	const cardHtml = cards.length === 0
@@ -59,6 +49,7 @@ export function renderGalleryHtml(cards: readonly GalleryCard[]): string {
     --card-border: #2a2a2a;
     --fg: #e5e5e5;
     --muted: #a0a0a0;
+    --accent: #7a9fff;
   }
   html, body {
     margin: 0;
@@ -112,6 +103,32 @@ export function renderGalleryHtml(cards: readonly GalleryCard[]): string {
     border-radius: 4px;
     background: #000;
     object-fit: contain;
+    cursor: zoom-in;
+  }
+  .card .toggle-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .toggle-golden {
+    background: transparent;
+    color: var(--fg);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .toggle-golden:hover {
+    border-color: var(--accent);
+  }
+  .toggle-golden[data-showing="rendered"]::before {
+    content: "Showing rendered — click for golden";
+  }
+  .toggle-golden[data-showing="golden"]::before {
+    content: "Showing golden — click for rendered";
+    color: var(--accent);
   }
   .empty {
     color: var(--muted);
@@ -124,6 +141,27 @@ export function renderGalleryHtml(cards: readonly GalleryCard[]): string {
     padding: 1px 6px;
     border-radius: 3px;
   }
+  /* Lightbox for click-to-zoom. Hidden until a card image is clicked. */
+  #lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    cursor: zoom-out;
+    padding: 24px;
+  }
+  #lightbox.open {
+    display: flex;
+  }
+  #lightbox img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+  }
 </style>
 </head>
 <body>
@@ -134,15 +172,72 @@ export function renderGalleryHtml(cards: readonly GalleryCard[]): string {
 <div class="grid">
 ${cardHtml}
 </div>
+<div id="lightbox" role="dialog" aria-label="Full-size render"><img src="" alt="" /></div>
+<script>
+  (function () {
+    var lightbox = document.getElementById("lightbox");
+    if (!lightbox) return;
+    var lbImg = lightbox.querySelector("img");
+    var grid = document.querySelector(".grid");
+    if (grid) {
+      grid.addEventListener("click", function (e) {
+        var target = e.target;
+        // Toggle-golden button: swap the sibling img's src between
+        // rendered and golden paths, tracked on the button via
+        // data-showing.
+        if (target && target.classList && target.classList.contains("toggle-golden")) {
+          var card = target.closest(".card");
+          if (!card) return;
+          var img = card.querySelector("img.render");
+          if (!img) return;
+          var showing = target.getAttribute("data-showing") || "rendered";
+          var rendered = target.getAttribute("data-rendered");
+          var golden = target.getAttribute("data-golden");
+          if (showing === "rendered") {
+            img.src = golden;
+            target.setAttribute("data-showing", "golden");
+          } else {
+            img.src = rendered;
+            target.setAttribute("data-showing", "rendered");
+          }
+          e.preventDefault();
+          return;
+        }
+        // Click-to-zoom on card images: open lightbox with the
+        // image's current src (respects the current rendered/golden
+        // toggle state).
+        if (target && target.tagName === "IMG" && target.classList.contains("render")) {
+          lbImg.src = target.src;
+          lbImg.alt = target.alt;
+          lightbox.classList.add("open");
+          e.preventDefault();
+        }
+      });
+    }
+    lightbox.addEventListener("click", function () {
+      lightbox.classList.remove("open");
+      lbImg.src = "";
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") {
+        lightbox.classList.remove("open");
+        lbImg.src = "";
+      }
+    });
+  })();
+</script>
 </body>
 </html>`;
 }
 
 function renderCardHtml(card: GalleryCard): string {
+	const toggleHtml = card.goldenRelativePath
+		? `    <div class="toggle-row"><button class="toggle-golden" data-showing="rendered" data-rendered="${escapeAttr(card.pngRelativePath)}" data-golden="${escapeAttr(card.goldenRelativePath)}" type="button"></button></div>\n`
+		: "";
 	return `  <div class="card">
     <h2>${escapeHtml(card.scenarioName)}</h2>
     <div class="caption">${escapeHtml(card.variantName)} • ${card.cols}×${card.rows} • <code>${escapeHtml(card.pngRelativePath)}</code></div>
-    <img src="${escapeAttr(card.pngRelativePath)}" alt="${escapeAttr(`${card.scenarioName} / ${card.variantName}`)}" />
+${toggleHtml}    <img class="render" src="${escapeAttr(card.pngRelativePath)}" alt="${escapeAttr(`${card.scenarioName} / ${card.variantName}`)}" />
   </div>`;
 }
 

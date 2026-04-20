@@ -22,6 +22,7 @@
  *   2   pipeline failure (browser launch, etc.)
  */
 
+import { existsSync } from "node:fs";
 import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -208,13 +209,25 @@ async function main(): Promise<void> {
 	// Write the gallery. Paths inside index.html are relative to
 	// args.out so the document travels cleanly (e.g. if someone
 	// copies `scripts/out/render-verify/` into a review folder).
-	const cards: GalleryCard[] = results.map((r) => ({
-		scenarioName: r.scenarioName,
-		variantName: r.variantName,
-		pngRelativePath: relative(args.out, r.pngPath),
-		cols: r.cols,
-		rows: r.rows,
-	}));
+	// When a committed golden exists for a combo, surface its path
+	// too so the gallery can show the rendered/golden toggle.
+	const cards: GalleryCard[] = results.map((r) => {
+		const goldenPath = join(
+			GOLDEN_DIR,
+			r.scenarioName,
+			`${r.variantName}.png`,
+		);
+		return {
+			scenarioName: r.scenarioName,
+			variantName: r.variantName,
+			pngRelativePath: relative(args.out, r.pngPath),
+			goldenRelativePath: existsSync(goldenPath)
+				? relative(args.out, goldenPath)
+				: undefined,
+			cols: r.cols,
+			rows: r.rows,
+		};
+	});
 	const galleryPath = join(args.out, "index.html");
 	await mkdir(args.out, { recursive: true });
 	await writeFile(galleryPath, renderGalleryHtml(cards), "utf8");

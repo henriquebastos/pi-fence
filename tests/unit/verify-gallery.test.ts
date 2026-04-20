@@ -74,6 +74,48 @@ describe("renderGalleryHtml", () => {
 		expect(html).toMatch(/<img[^>]+src="x\/y\/render\.png"/);
 	});
 
+	it("includes a golden toggle and click-to-zoom when a card has a goldenRelativePath", () => {
+		const cards: GalleryCard[] = [
+			{
+				scenarioName: "x",
+				variantName: "y",
+				pngRelativePath: "x/y/render.png",
+				goldenRelativePath: "../golden/x/y.png",
+				cols: 80,
+				rows: 24,
+			},
+		];
+		const html = renderGalleryHtml(cards);
+		// Toggle references both paths.
+		expect(html).toContain("x/y/render.png");
+		expect(html).toContain("../golden/x/y.png");
+		// The toggle button label mentions 'golden' and 'rendered' so
+		// a reviewer knows what they're switching between.
+		expect(html.toLowerCase()).toContain("golden");
+		// Click-to-zoom: a script block listens for card clicks. We
+		// assert a simple signal — there's a <script> and it wires to
+		// the card class.
+		expect(html).toContain("<script>");
+		expect(html).toContain("card");
+	});
+
+	it("omits the golden toggle button element when goldenRelativePath is absent", () => {
+		const cards: GalleryCard[] = [
+			{
+				scenarioName: "x",
+				variantName: "y",
+				pngRelativePath: "x/y/render.png",
+				cols: 80,
+				rows: 24,
+			},
+		];
+		const html = renderGalleryHtml(cards);
+		// The toggle-golden CSS class may appear in the <style> block
+		// (harmless when no button uses it). What must NOT appear is a
+		// rendered <button class="toggle-golden">; that's the signal.
+		expect(html).not.toMatch(/<button[^>]*class="toggle-golden"/);
+	});
+
 	it("is self-contained (no external scripts or stylesheets)", () => {
 		const html = renderGalleryHtml([
 			{
