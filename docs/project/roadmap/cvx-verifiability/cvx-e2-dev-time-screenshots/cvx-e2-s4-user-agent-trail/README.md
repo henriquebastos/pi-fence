@@ -1,6 +1,6 @@
 [< CVx.E2 — Dev-time Render Screenshots](../README.md)
 
-# S4 — `mermaid-user-agent-trail`: the full user→agent→fence visual 🛠️ Planned
+# S4 — `mermaid-user-agent-trail`: the full user→agent→fence visual ✅ Done
 
 S1–S3 verified pi-fence's renderer **in isolation** — the `pi-fence:output` panel painted standalone, no surrounding chat context. That's the right unit for "does our renderer emit the right bytes?" but not "does what a user sees in pi actually look right?" S4 closes that gap: a scenario that paints the full three-part visual a pi user experiences when they ask for a diagram — their prompt bubble, the assistant's fenced reply, and the pi-fence:output panel below — composed through **pi-coding-agent's own `UserMessageComponent` / `AssistantMessageComponent` / `CustomMessageComponent`**, not a mimic.
 

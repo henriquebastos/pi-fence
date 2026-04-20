@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refined (test layer — CVx.E2.S4 `mermaid-user-agent-trail` scenario)
+
+Closes the last open CVx story by wiring a scenario that renders the full user → assistant → pi-fence:output visual through pi-coding-agent's real interactive-mode components, so the gallery and the pixel-diff gate catch regressions at the composition level (bubble stacking, padding, theme bleed) not just the pi-fence renderer in isolation.
+
+- **New scenario `mermaid-user-agent-trail`** in `scripts/verify/scenarios.ts`. Composes pi-coding-agent's `UserMessageComponent` (prompt bubble), `AssistantMessageComponent` (assistant reply with a fenced mermaid block), and `CustomMessageComponent` wrapping pi-fence's own `createPiFenceMessageRenderer`. Root is a pi-tui `Container` painted through the existing `paintComponent` harness — same pipeline every other scenario uses; no new infrastructure.
+- **Theme bootstrap via `initTheme("dark")`** inside `build`. Necessary because the pi-coding-agent components call `theme.fg` / `theme.bg` on pi's runtime theme singleton (a `Proxy` that throws `Theme not initialized.` if never initialised). Scenario-local, idempotent across repeated calls, no hidden test-runner setup. The builtin `dark` theme loads by name with no filesystem side-effect beyond pi-coding-agent's bundled `dark.json`.
+- **Determinism pins.** `timestamp: 0` and zero `usage` on the synthetic `AssistantMessage` guard against drift if `AssistantMessageComponent` ever surfaces those fields in chrome. Two consecutive `pnpm render:verify --update` runs on the calibration machine produce byte-identical PNGs; three consecutive `pnpm test:live` runs report zero diff pixels on the new combo.
+- **Single `default` variant (120×60).** Narrow variant deliberately deferred — S4's purpose is the composition-level shape, width variants on this scenario can follow if one proves bug-prone. Live suite case count 4 → 5 render-image cases.
+- **Teeth check.** Swapping the user-prompt text produces a 4568-pixel diff against the committed golden, well above `DIFF_BUDGET=100`; reverting the text restores byte-identical output and the case returns to green. Confirms the new combo's diff gate actually bites, matching the S1 / S2 teeth-check pattern.
+- **Golden calibration environment:** macOS 26.4.1 arm64, Chromium 1217 (playwright-core's pinned revision). Committed at `tests/fixtures/golden/mermaid-user-agent-trail/default.png`.
+- **Fast suite 181 → 182** (+1 scenario-registry invariant: byte stream contains Kitty APC + single-`default` variant). Live suite 4 → 5 render-image cases, each asserting both pixel-diff and the 5000ms per-combo timing budget (new combo lands at ~421ms, ~12× under).
+- **No new dev deps.** `pi-coding-agent` is already a peer dependency; the scenario uses its public exports only.
+
 ### Fixed (render-verify — image layer now overlays the text grid)
 
 The "big gap between the label and the mermaid image" in `pnpm render:verify` output: `@xterm/addon-image` (beta ≥ 0.10) creates a canvas and appends it to `.xterm-screen` expecting it to overlay the text grid, but ships no CSS defining that positioning. The canvas inherits `position: static` and flows as a regular block element BELOW the screen in the page flow. Images drawn at buffer row 2 end up rendered at pixel row `screenHeight + (2 * cellHeight)` instead of `2 * cellHeight`.

@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E2.S4` (`mermaid-user-agent-trail` scenario) is the one open specced story. Spec commit `db753a6` landed the three-file folder; implementation hasn't started. A fresh session reading the [roadmap](../project/roadmap/README.md) will find S4 as the only `Planned` row and should follow its [plan](../project/roadmap/cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s4-user-agent-trail/plan.md) step by step.
+No story is currently in flight. The CVx batch is fully closed: CVx.E1.S1 + CVx.E2.S1–S4 are all ✅ Done. The roadmap's only remaining `Planned` rows are on the feature CVs (CV0.E1.S4–S5, CV0.E2, CV1+) — the next session should pick one based on the user's pressure.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). CVx lane state: CVx.E1.S1 + CVx.E2.S1–S3 are ✅; `CVx.E2.S4` is 🛠️ specced but not implemented; CVx.E1.S2–S3 and any further CVx.E1 work remain unspec’d but welcome when there's pressure.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. CVx.E1.S2–S3 and any further CVx.E1 work remain unspec’d but welcome when there's pressure.
 
 `CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) are specced and ready if the "every language Kroki serves" criterion becomes the priority. The likely next CV-line move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
@@ -679,6 +679,44 @@ Four of the eight follow-ups from `a99e859`'s close. Four feature commits + this
 
 **Meta on batching:** one docs commit covering four feature commits follows the retroactive-batching exception (none of the follow-ups is a story; each feature commit is self-contained). The CVx close entry set the expectation that these four would be picked up; the batched worklog entry here closes the loop on all of them at once.
 
+### 2026-04-20 — close CVx.E2.S4 (`mermaid-user-agent-trail` scenario) — the CVx.E2 epic's Planned row is now empty
+
+**Goal:** register the composition-level scenario specced in `db753a6` — the full user → assistant → pi-fence:output visual painted through pi-coding-agent's real interactive-mode components — so the verifier and the pixel-diff gate catch regressions at the composed shape, not only in pi-fence's renderer in isolation. S4 was the last open story in the CVx batch; closing it brings every specced CVx.E1 + CVx.E2 story to ✅.
+
+**What shipped (two step commits + this close):**
+
+- `a1b8bb5` **step 2: mermaid-user-agent-trail scenario.** `scripts/verify/scenarios.ts` gains `buildMermaidUserAgentTrail`: initialises capabilities + `initTheme("dark")` (required because the pi-coding-agent components read pi's theme singleton via the `theme` proxy, which throws if uninitialised), composes `UserMessageComponent` / `AssistantMessageComponent` / `CustomMessageComponent(customMessage, createPiFenceMessageRenderer(...))` into a pi-tui `Container`, paints through the existing `paintComponent` harness. `timestamp: 0` + zero `usage` pinned on the synthetic `AssistantMessage` for byte-stability. Registered with a single `default` (120×60) variant — narrow deferred per the story's scope. `tests/unit/verify-scenarios.test.ts` gains one scenario-specific invariant: the byte stream contains the Kitty APC (composition correctness signal) and the variants list has exactly one `default` entry. Fast suite 181 → 182.
+- `db3e551` **step 3: golden for `mermaid-user-agent-trail/default`.** Two consecutive `pnpm render:verify --update` runs on the calibration machine (macOS 26.4.1 arm64, Chromium 1217) produce byte-identical PNGs — committed the golden at `tests/fixtures/golden/mermaid-user-agent-trail/default.png`. Teeth check: replacing the user prompt with a completely different string produced a 4568-pixel diff against the golden (well above `DIFF_BUDGET=100`); reverting restored byte-identical output and the combo returned to green. The new render-image case runs at ~421ms, ~12× under the 5000ms timing budget.
+- `close CVx.E2.S4` (this commit): CHANGELOG `[Unreleased]` block + status flips across the roadmap top, the CVx parent, the CVx.E2 epic, and the S4 story README + this worklog entry + focus/next unstale (no open specced story, the next move is a feature CV).
+
+**Plan deviations.**
+
+- Plan listed five steps (step 1 research, step 2 code, step 3 golden, step 4 live verification, step 5 docs). Step 1 happened via reading upstream source directly (pi-coding-agent's component constructors + `theme.ts`) to decide theme bootstrap (path B: `initTheme("dark")`; path A was infeasible because the components use the `theme` proxy for non-markdown things). Step 4 collapsed into step 3 because the live suite's single added case was green on first run with no budget calibration needed. Net: three commits instead of the plan's up-to-five, with the same verification depth.
+- Plan optional invariant ("byte stream contains `Show me a mermaid flowchart`") swapped for a stricter one ("contains Kitty APC + single `default` variant"). Reason: the user-prompt glyphs pass through pi-coding-agent's bubble chrome (markdown + theme bg), so the literal ASCII substring may not survive; the Kitty APC presence is a stronger composition-correctness signal and was already the shape used by S1's happy-path invariant.
+
+**Tests:** fast suite 181 → 182 (+1 trail-scenario invariant). Live suite 4 → 5 render-image cases (all combos pixel-diff + 5000ms timing green). `pnpm test` green; `pnpm test:live` green across runs; `pnpm run check` green (48 markdown files, 0 errors).
+
+**CVx lane state at close:**
+
+- CVx.E1.S1 ✅ Render layer (VirtualTerminal-backed renderer tests).
+- CVx.E2.S1 ✅ Headless image verifier.
+- CVx.E2.S2 ✅ Multi-scenario + gallery + variants plumbing.
+- CVx.E2.S3 ✅ Sentinel readiness + timing budget.
+- CVx.E2.S4 ✅ Composition-level trail scenario.
+
+Every specced CVx story is ✅. The epic-level done criterion for both CVx.E1 and CVx.E2 is met. The lane itself remains open (Verifiability is always advancing, per the parent README), but there is no specced follow-up work waiting.
+
+**Follow-ups this close surfaces (not claimed; none are blocking):**
+
+1. A narrow (or wide) variant on `mermaid-user-agent-trail` if one width proves bug-prone.
+2. Theme variants on any scenario (dark vs. light pi theme flowing through the bubbles) — plumbing is ready, population is future work.
+3. A second trail (`graphviz-user-agent-trail` etc.) once a concrete regression justifies it.
+4. Multi-turn transcripts (user → assistant → user → assistant → fence) — worth its own story; S4 paints one turn.
+5. `AgentSession`-based composition (static compose works today; a live session would catch integration issues the synthetic message does not).
+6. The four still-open follow-ups from `a99e859`'s close (theme variant matrix, cross-OS `DIFF_BUDGET` shrink, parallel combo rendering, `--watch` mode) plus the two `~/me/mirror/backlog.md` backlog items (upstream `VirtualTerminal` export and the addon-image overlay CSS bug report).
+
+**Meta — one-session story shape.** S4's spec commit `db753a6` landed in the previous session; this session picked up that spec and closed the story in two feature commits + this docs close, all on the same day, following the plan's `wip(agent): <why> (S4 step N)` → `close CVx.E2.S4` commit rhythm. No spec churn during implementation. The single plan deviation (steps 4+5 merged) is documented above.
+
 ### 2026-04-20 — addon-image overlay fix (`bb02d33`) + spec CVx.E2.S4 (`db753a6`)
 
 Two commits after the post-close follow-up batch. Logged retroactively as one entry because (a) neither is a story commit, (b) each has a CHANGELOG entry already, and (c) they're related: the fix made the verifier's output faithful enough that the user noticed the isolated-render framing as the remaining gap, which is exactly what S4 addresses.
@@ -691,7 +729,7 @@ Two commits after the post-close follow-up batch. Logged retroactively as one en
 
 **Handoff state at the moment this entry lands:**
 
-- Roadmap top + CVx parent + CVx.E2 epic + story READMEs all consistent: CVx.E1.S1 and CVx.E2.S1–S3 are ✅; CVx.E2.S4 is 🛠️ Planned.
+- Roadmap top + CVx parent + CVx.E2 epic + story READMEs all consistent: CVx.E1.S1 and CVx.E2.S1–S3 are ✅; CVx.E2.S4 is 🛠️ Planned. (Superseded by the next entry — S4 is now ✅ as well.)
 - No uncommitted changes; all gates green.
 - `AGENTS.md` Read-first + roadmap flow lands a fresh session on CVx.E2.S4's plan as the next actionable Planned row.
 - Two non-blocking backlog items still in `~/me/mirror/backlog.md`: upstream `VirtualTerminal` export (pi-tui) and upstream addon-image overlay CSS bug report (xterm.js). Both need Henrique's go-ahead before filing.
