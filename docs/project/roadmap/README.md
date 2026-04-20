@@ -145,7 +145,7 @@
 | Code | Story | Status |
 |------|-------|--------|
 | [CVx.E2.S1](cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s1-headless-image-verifier/README.md) | **`pnpm render:verify` produces a diffable PNG of one named pi-fence scenario, headlessly; a pixel-diff test gates regressions** | ✅ Done |
-| `CVx.E2.S2` | **Multi-scenario × theme × width gallery per run** | Planned |
+| [CVx.E2.S2](cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s2-multi-scenario-gallery/README.md) | **Multi-scenario rendering with a per-run HTML gallery; variants plumbing ready for future theme/width matrices** | 🛠️ Planned |
 | `CVx.E2.S3` | **Sentinel-based readiness; edit-verify loops complete in under five seconds per scenario** | Planned |
 
 ---
