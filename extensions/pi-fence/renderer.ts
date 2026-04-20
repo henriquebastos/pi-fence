@@ -132,6 +132,17 @@ export function createPiFenceMessageRenderer(tui: {
 		const label = formatLabel({ kind, tag, processor });
 		const labelLine = theme.fg(kind === "ok" ? "customMessageLabel" : "error", theme.bold(label));
 
+		// Render each content item pi-fence attached. PNGs via pi-tui's
+		// Image component; text via Text. Anything else is skipped — pi-fence
+		// only produces image/text today. Peeked at up front so the
+		// label→content spacer can size itself against what's coming.
+		const items = Array.isArray(message.content)
+			? (message.content as Array<{ type?: string; text?: string; data?: string; mimeType?: string }>)
+			: [];
+		const hasImage = items.some(
+			(item) => item?.type === "image" && typeof item.data === "string",
+		);
+
 		// No `customMessageBg` tint: pi-tui's Image emits empty-string rows
 		// that the Box would paint with the bg, producing a visible stripe
 		// wherever the image is narrower than the box. Leaving the box
@@ -141,22 +152,20 @@ export function createPiFenceMessageRenderer(tui: {
 		// Argument order is (paddingX, paddingY, bgFn) per pi-tui's Box.
 		const box = new tui.Box(1, 0);
 		box.addChild(new tui.Text(labelLine, 0, 0));
-		// Two blank rows between the label and the content below. One
-		// is not enough in the happy path: Kroki's rendered PNG has its
-		// own top margin (dark pixels indistinguishable from the black
-		// terminal background), which visually absorbs a single blank
-		// cell-grid row. A second row restores a perceptible gap. The
-		// error path is text-only and reads slightly more airy with the
-		// same shape — that's an acceptable uniform tradeoff rather than
-		// branching the spacing per content kind.
-		box.addChild(new tui.Spacer(2));
+		// Breathing gap between the header and the content below. Sized
+		// against the content kind:
+		//
+		//   - Image (happy path): two blank rows. One is not enough —
+		//     Kroki's rendered PNG has its own internal top margin of
+		//     dark pixels indistinguishable from the terminal's black
+		//     background, which visually absorbs a single blank
+		//     cell-grid row. Two rows restore a perceptible gap.
+		//   - Text (error path): one blank row. Text glyphs paint from
+		//     the first row of the content, so a single blank is already
+		//     visible between the red header and the white body — two
+		//     reads as unnecessarily airy.
+		box.addChild(new tui.Spacer(hasImage ? 2 : 1));
 
-		// Render each content item pi-fence attached. PNGs via pi-tui's
-		// Image component; text via Text. Anything else is skipped — pi-fence
-		// only produces image/text today.
-		const items = Array.isArray(message.content)
-			? (message.content as Array<{ type?: string; text?: string; data?: string; mimeType?: string }>)
-			: [];
 		const imageFallback = { fallbackColor: (s: string) => theme.fg("muted", s) };
 		for (const item of items) {
 			if (item?.type === "image" && typeof item.data === "string") {
