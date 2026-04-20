@@ -13,7 +13,7 @@ pi-fence already depends on pi; depending on pi-tui's testing utilities is in-id
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cvx-e1-s1-virtual-terminal-tests/README.md) | **Extension and renderer tests assert on real pi-tui output via `VirtualTerminal`** | 🛠️ Planned |
+| [S1](cvx-e1-s1-virtual-terminal-tests/README.md) | **Extension and renderer tests assert on real pi-tui output via `VirtualTerminal`** | ✅ Done |
 
 Possible future stories (not yet specced, add when pressure appears):
 

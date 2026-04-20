@@ -1,6 +1,6 @@
 [< CVx.E1 — pi-tui Testing Idiom](../README.md)
 
-# S1 — Extension and renderer tests assert on real pi-tui output via `VirtualTerminal` 🛠️ Planned
+# S1 — Extension and renderer tests assert on real pi-tui output via `VirtualTerminal` ✅ Done
 
 The hand-rolled pi-tui fakes in `tests/unit/renderer.test.ts` (~60 lines of `Box` / `Text` / `Spacer` / `Image` shims) gave S1–S3 quick unit coverage but duplicate pi-tui's own `VirtualTerminal` — imperfectly. S1 replaces those fakes with real pi-tui primitives painting into a `VirtualTerminal`, closes a class of "our fake differs from reality" bugs the eight post-S3 render-polish commits walked into, and establishes the **render layer** of the test pyramid as a first-class rung.
 

@@ -138,7 +138,7 @@
 
 | Code | Story | Status |
 |------|-------|--------|
-| [CVx.E1.S1](cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md) | **Extension and renderer tests assert on real pi-tui output via `VirtualTerminal`** | 🛠️ Planned |
+| [CVx.E1.S1](cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md) | **Extension and renderer tests assert on real pi-tui output via `VirtualTerminal`** | ✅ Done |
 
 ### CVx.E2 — Dev-time Render Screenshots
 

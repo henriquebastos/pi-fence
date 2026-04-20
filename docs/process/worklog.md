@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-**[CV0.E1 — Kroki Through The Wire](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/README.md)**.
+Between stories. `CVx.E1.S1` just closed — the render layer now asserts on real pi-tui output. Feature work resumes next.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). `S4` (full text-based Kroki coverage) and `S5` (JSON-body Kroki languages) remain specced and ready to pick up whenever the Epic's "every language Kroki serves" done criterion becomes the priority.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`) and on `CVx.E1.S1` (render-layer test rung). `S4` (full text-based Kroki coverage) and `S5` (JSON-body Kroki languages) remain specced and ready to pick up whenever the Epic's "every language Kroki serves" done criterion becomes the priority.
 
-The likely next move is `CV0.E2` (Graphviz Local), which introduces a second processor alongside Kroki and forces the registry abstraction to earn its keep. `S3`'s `listProcessors(processors)` API already accepts a `FenceProcessor[]`, so adding a second row to `/fence list` is a wiring change, not a formatter change.
+The likely next move is `CV0.E2` (Graphviz Local), which introduces a second processor alongside Kroki and forces the registry abstraction to earn its keep. `S3`'s `listProcessors(processors)` API already accepts a `FenceProcessor[]`, so adding a second row to `/fence list` is a wiring change, not a formatter change. Whichever feature CV comes next will exercise the render-layer rung for real on its first visual touch.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -473,3 +473,35 @@ After reading pi-tui's source on `upstream/main` — specifically `packages/tui/
 
 1. The `AgentSession` terminal-injection seam for `tests/extension/pi-fence.test.ts` is not yet confirmed. The plan treats this as a research sub-step in implementation step 4; if the seam needs an upstream change, that specific assertion becomes a carry-forward without blocking S1.
 2. `VirtualTerminal` vendoring is the default path; if upstream exports it later (trivial PR against pi-mono), pi-fence switches to an import and deletes the vendored file. The vendored file's header comment will document the re-sync policy and the `upstream/main` SHA at vendor time.
+
+### 2026-04-20 — close CVx.E1.S1 (VirtualTerminal-backed renderer and extension tests)
+
+**Goal:** flip the renderer and extension-layer tests from asserting on our hand-rolled pi-tui fakes to asserting on real pi-tui emission via `VirtualTerminal`, so the class of visual regressions that produced the eight post-S3 `wip(agent)` polish commits becomes automation-catchable.
+
+**What shipped (one commit per plan step, SHAs in order):**
+
+- `cbaa8a7` step 1: vendor `VirtualTerminal` + `LoggingVirtualTerminal` from pi-tui. Source: `pi-mono@upstream/main aa1b587b`, file last touched at `41377ee8`. The vendored file imports `Terminal` from `@mariozechner/pi-tui`'s published surface rather than a relative path, and appends `LoggingVirtualTerminal` whose shape is lifted verbatim from pi-tui's `tui-render.test.ts`. Header comment pins the re-sync policy (check once per CV). Self-test in `tests/unit/virtual-terminal.test.ts` covers viewport reflection, dimensions, write capture in order, escape-byte preservation, and `clearWrites()`.
+- `5af5d69` step 2: `forceCapabilities()` helper. Pins pi-tui's capability cache to a Kitty-full shape so render-layer tests deterministically hit the image-protocol path regardless of the host terminal, and returns a disposer for cleanup. Self-test uses `detectCapabilities()` as the reference — pin a shape distinct from detection, dispose, confirm `getCapabilities()` returns the detected value. A no-op disposer fails this assertion (verified by temporarily gutting the disposer; the test went red).
+- `57f21f1` step 3: rewrite `tests/unit/renderer.test.ts`. The hand-rolled `Box` / `Text` / `Spacer` / `Image` fake classes (~100 LOC) are gone. The five component-factory cases now build the tree with real pi-tui primitives, paint it through `TUI` into a `LoggingVirtualTerminal`, and assert on `getViewport()` + `getWrites()`. The happy-path mermaid case asserts the `\x1b_G` Kitty APC prefix lands in the write log; dropping the `Image` child from the renderer makes that assertion fail, matching the test-guide's teeth-check script. Pure-helper describe blocks unchanged.
+- `851932d` step 4: extend `tests/extension/pi-fence.test.ts` mermaid happy path. `buildSessionWithExtension` wraps `pi.registerMessageRenderer` alongside `pi.sendMessage`; the test pulls the captured `pi-fence:output` renderer out, paints it into a `LoggingVirtualTerminal`, and asserts (1) the viewport shows `Rendered mermaid via kroki`, (2) `\x1b_G` appears in the write log, (3) the base64 payload inside that sequence decodes to exactly the fixture PNG bytes — end-to-end proof bytes flow FakeHttpClient → processor → custom message → renderer → pi-tui `Image` → Kitty encoder → terminal write, unchanged.
+
+**Tests:** 154 → 161 (+5 from `virtual-terminal.test.ts`, +2 from `force-capabilities.test.ts`). `renderer.test.ts` stayed at 17 cases while its render-layer half switched from fake-composition to real viewport/write-log assertions. `pi-fence.test.ts` stayed at 4 cases while the mermaid case grew three new assertions. `pnpm test` green on every step; `pnpm run check` green at close. No live cases added, live suite unchanged.
+
+**Known-open carry-forwards resolved:**
+
+1. The `AgentSession` terminal-injection seam that the spec flagged as a step-4 research risk did not need to exist. The real `ExtensionAPI` surface already lets us capture the `registerMessageRenderer` call and replay the renderer standalone, so no upstream change was needed. No carry-forward from this item.
+2. `VirtualTerminal` vendoring is the shipped path. Upstream export is still preferred long-term; when it lands, the vendored file becomes two import lines and a deletion.
+
+**Deviation from the plan worth logging:** the plan's Test Guide said `@xterm/headless` was "already transitive via `@mariozechner/pi-tui`" — it is not. pi-tui lists it under `devDependencies`, not `dependencies`, so a published consumer does not receive it. Added as a pi-fence `devDependency` (`@xterm/headless@^6.0.0`) in step 1's commit. The plan's next revision (or a follow-up clean-up) should remove the "already transitive" claim.
+
+**Principles update:** `docs/product/principles.md` Testing table now lists a **Render** layer between Extension and Integration (live), with `pi-tui in-process + @xterm/headless (dev dep)` as its dependency and `pnpm test` as its runner. The row is the lightweight documentation `CVx.E1.S2` would deepen if pressure appears (broader render-layer doc page, shared matchers, etc.); S1 deliberately kept it to a single row.
+
+**Why I'm confident the assertions have teeth, not vibes:** every new write-log / viewport assertion was verified by a deliberate teeth-check against production code — temporarily break the renderer (skip the Image child, pass the wrong payload to `new Image(...)`, no-op the capability disposer), confirm the assertion goes red with a clear message, restore, confirm green. That's the rung the pyramid was missing before; it is now filled.
+
+**Meta — TDD vertical-slicing:** steps 2 and 4 followed red → green per assertion (write test against non-existent helper / non-existent `registeredRenderers` field, watch vitest fail with a pointed error, then implement). Step 1 was a vendor + self-test pair — the self-test would have been red against an empty file but I never had that moment because the code was lifted verbatim. Step 3 rewrote existing tests against real primitives; the pivot from fake-composition to viewport assertions was itself the red → green cycle (the first run hit a scrolled-out-of-viewport edge that was resolved by sizing the test terminal to fit the worst-case Image height).
+
+**Follow-ups this story surfaces, not claimed:**
+
+1. Upstream PR against pi-mono to export `VirtualTerminal` from pi-tui's public surface. Trivial; eliminates the vendored file entirely.
+2. `CVx.E1.S2` candidates now have real artifacts to factor from: `paintCustomMessage` in `tests/extension/pi-fence.test.ts` and `paint()` in `tests/unit/renderer.test.ts` are nearly-identical helpers that will want extraction once a second render-layer test appears. Premature extraction today (only two call sites) would be noise; surface it as an S2 candidate.
+3. `extractKittyBase64()` in `pi-fence.test.ts` parses only the single-chunk APC form. Multi-chunk images (> 4 KiB base64) would need the continuation logic; real Kroki PNGs are typically well under 4 KiB for simple diagrams, but if a future fixture crosses the threshold, this helper is where to look.
