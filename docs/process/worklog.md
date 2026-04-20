@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-Between stories. `CVx.E2.S1` just closed — `pnpm render:verify` produces diffable PNGs of pi-fence's rendered output headlessly, and the Render Image live layer gates regressions. Feature work resumes next.
+`CVx.E2.S3` is the last open story in the current CVx batch — sentinel-based readiness for the render pipeline (replace the `setTimeout(100)` tail with deterministic observables). Once S3 closes, the CVx lane is caught up to every specced story.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). `CVx.E1.S1` (render-layer test rung) and `CVx.E2.S1` (dev-time image verifier + first live diff gate) are both closed. `CV0.E1.S4` (full text-based Kroki coverage) and `CV0.E1.S5` (JSON-body Kroki languages) remain specced and ready to pick up whenever the Epic's "every language Kroki serves" done criterion becomes the priority.
+`CV0.E1` has closed on its core user-visible stories (`S0`–`S3`). `CVx.E1.S1` (render-layer test rung), `CVx.E2.S1` (dev-time image verifier + first live diff gate), and `CVx.E2.S2` (multi-scenario + gallery + variant plumbing) are closed. `CV0.E1.S4` and `CV0.E1.S5` (Kroki breadth) are specced and ready when the "every language Kroki serves" criterion becomes the priority.
 
-The likely next move is `CV0.E2` (Graphviz Local), which introduces a second processor alongside Kroki and forces the registry abstraction to earn its keep. `S3`'s `listProcessors(processors)` API already accepts a `FenceProcessor[]`, so adding a second row to `/fence list` is a wiring change, not a formatter change. Whichever feature CV comes next will exercise both test rungs (Render + Render Image) on its first visual touch. `CVx.E2.S2` (multi-scenario gallery) is also specced-enough to pick up any time — now that S1's pipeline is factored for `renderMany()`, adding more scenarios is cheap.
+After `CVx.E2.S3` closes, the likely next move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through both test rungs (Render + Render Image) on its first visual touch without writing a verifier from scratch.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -581,3 +581,35 @@ Dev dependencies added across the two spikes: `@wterm/dom@^0.1.9` (+ transitive 
 4. **Upstream pi-mono PR** for `VirtualTerminal` export (still pending per `~/me/mirror/backlog.md`). Unchanged since the previous session.
 
 **Meta — test-first on infrastructure code.** Step 1 had a clear red → green slice: the scenario registry test failed because `scripts/verify/scenarios.ts` didn’t exist, then passed once the module was written. Steps 2 and 3 were tooling / fixture steps (no tests added, behavior proven by direct invocation), step 4 was test-first at the live-suite layer (the pixel-diff test was written expecting the golden to exist at the path step 3 committed), step 5 was docs-only. Six feature commits total + one spec commit; each step left `pnpm test` green.
+
+### 2026-04-20 — close CVx.E2.S2 (multi-scenario + HTML gallery)
+
+**Goal:** widen S1's one-scenario verifier into a usable review surface. Add a second scenario exercising a distinct pi-fence code path, an HTML gallery per run, and enough variant plumbing on the scenario registry that a future story can populate a theme or width matrix without refactoring.
+
+**What shipped (spec + six step commits + close):**
+
+- `e3ef0da` spec CVx.E2.S2. Wrote `README.md` + `plan.md` + `test-guide.md` under `cvx-e2-dev-time-screenshots/cvx-e2-s2-multi-scenario-gallery/`, updated parent roadmap + CVx.E2 epic README with live links and status markers. The spec explicitly descopes populating theme/width variants to a future story; S2 ships the plumbing for them.
+- `f9e0d5c` step 1: `Variant { name, cols, rows }` on `Scenario`; `build(variant)` replaces `build()`; pipeline iterates combos via `expandCombos` + `renderCombos`; output + golden layouts nest under `<scenario>/<variant>/`; S1's golden migrated via `git mv`. Registry unit test expanded to cover the new shape + `DEFAULT_VARIANT`. Spike driver + test file + CLI picked up the signature change minimally (CLI still single-combo for step 1).
+- `714bdcd` step 2: new `mermaid-error-path` scenario. Text-only content, stable synthetic error body ("Parse error on line 1: unknown tag 'flowchrt'"), pinned source containing the triggering typo. Two new unit-test invariants: bytes do NOT contain the Kitty APC (text-only) and DO contain the error label phrase.
+- `0082772` step 3: `scripts/verify/gallery.ts` + `tests/unit/verify-gallery.test.ts`. Pure function `renderGalleryHtml(cards)`; single-file self-contained dark-themed document; four unit cases cover empty-list placeholder, multi-card order preservation, `<img src=>` shape, no-remote-assets invariant. Fast suite 168 → 172.
+- `f5deaf7` step 4: CLI becomes cross-product-aware. `--variant <name>` requires `--scenario`. Unknown variants exit 1 listing valid names. Without filter flags, every registered combo renders. After every run, `scripts/out/render-verify/index.html` is produced from the pipeline's `RenderResult[]` via `renderGalleryHtml`. `--update` walks every rendered combo, writing each PNG over its golden slot.
+- `fd748ee` step 5: golden capture. `pnpm render:verify --update` wrote both goldens (happy-path content-identical to S1; error-path new at ~39 KB). Same calibration environment as S1 (macOS arm64, Chromium 1217, deviceScaleFactor=2). Live suite went from 1 to 2 render-image cases passing.
+- `132e60a` step 6: `docs/getting-started.md` scripts row mentions `--variant` + gallery path. CHANGELOG `[Unreleased]` block captures the full S2 delta.
+- `close CVx.E2.S2` (this commit): status flips across roadmap / CVx / CVx.E2 epic / S2 story README; worklog close entry.
+
+**Tests:** fast suite 166 → 172 (+6 from S2's scenario + gallery unit cases). Live suite +1 render-image case (1 → 2). `pnpm test` green throughout; `pnpm test:live` green at close (6 cases pass: 2 render-image, 4 kroki.live; 6 skipped: shell-runner.live under its own Docker gate). `pnpm run check` green.
+
+**Known carry-forwards:**
+
+1. Each scenario still ships exactly one variant (`default`). The Variant shape, cross-product iteration, nested golden layout, and test enumeration all handle N variants; filling in real theme or width variants is a separate future story.
+2. `DIFF_BUDGET` remains a single global number (100) shared across all combos. Per-combo budgets can come later if one combo empirically proves less stable than another.
+3. The gallery is static (no filtering, no side-by-side vs-golden view, no zoom-on-click). If review load grows, a future story can add interactivity.
+4. Spike script (`scripts/render-image-spike.ts`) stays in the tree, now calling `renderScenario(scenario, scenario.variants[0], outDir)`. Redundant with `pnpm render:verify` but cheap to keep.
+
+**Follow-ups this story surfaces (not claimed):**
+
+1. **CVx.E2.S3** — sentinel-based readiness and the five-second-per-scenario budget. The pipeline currently uses two rAFs + `setTimeout(100)` as the "render settled" signal. S3's job is to replace those with deterministic observables so the `DIFF_BUDGET` can shrink toward zero across Chromium versions, not just on the calibration machine.
+2. **Theme / width variant population.** Concrete candidates: xterm.js terminal-background dark vs. light (two variants), 80-col vs. 120-col (two variants). Orthogonal; could ship in the same follow-up story or separately.
+3. **Gallery polish** — click-to-zoom, side-by-side diff against golden. Only when review load actually demands it.
+
+**Meta — test-first iteration speed.** Every step other than the golden-capture and docs commits started with an additive failing unit test (step 1 broadened the scenarios test, step 2 added the error-path invariants, step 3 wrote gallery tests against a nonexistent module). Each green slice landed in under five minutes between test-red and implementation-green. Seven feature commits total + one spec commit + one close; fast suite green on every commit.

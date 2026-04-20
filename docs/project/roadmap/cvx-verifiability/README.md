@@ -38,7 +38,7 @@ Dev-time tooling (`CVx.E2`) is parallel, not a test layer — it's a script for 
 | Code | Epic | Status |
 |------|------|--------|
 | [CVx.E1](cvx-e1-pi-tui-idiom/README.md) | **pi-tui Testing Idiom** | ✅ S1 Done; further stories open |
-| [CVx.E2](cvx-e2-dev-time-screenshots/README.md) | **Dev-time Render Screenshots** | ✅ S1 Done; S2/S3 open |
+| [CVx.E2](cvx-e2-dev-time-screenshots/README.md) | **Dev-time Render Screenshots** | ✅ S1+S2 Done; S3 open |
 
 `CVx.E1` comes first because it is additive, pure refactor, and delivers value the next time a render bug ships (which, given the recent commit history, is likely soon). `CVx.E2` is larger infrastructure — spike first, spec second — and can proceed in parallel with feature CVs once E1 lands.
 

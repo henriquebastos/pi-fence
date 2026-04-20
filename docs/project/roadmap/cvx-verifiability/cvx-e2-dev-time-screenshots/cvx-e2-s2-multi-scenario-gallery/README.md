@@ -1,6 +1,6 @@
 [< CVx.E2 — Dev-time Render Screenshots](../README.md)
 
-# S2 — Multi-scenario rendering with a per-run HTML gallery 🛠️ Planned
+# S2 — Multi-scenario rendering with a per-run HTML gallery ✅ Done
 
 S1 shipped the verifier for one scenario. S2 grows it into the **first usable review surface**: more than one scenario, a per-run gallery HTML that a human opens once and scans, and enough variant plumbing in place that a future story can add theme or width matrices without refactoring the pipeline.
 
