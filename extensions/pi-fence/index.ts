@@ -46,13 +46,36 @@ const FENCE_SUBCOMMANDS = ["list"] as const;
 //
 // The Kroki processor resolves its own aliases (e.g. `dot` -> `graphviz`)
 // at request time, so both aliases and canonical names appear here.
+//
+// Every canonical tag here matches a Kroki public-endpoint language that
+// returns PNG (see extensions/pi-fence/kroki.ts's KROKI_CANONICAL_TAGS
+// and tests/fixtures/kroki/canonical-sources.ts for the full research
+// context). Languages Kroki hosts but the public endpoint refuses PNG
+// for are deliberately excluded — see docs/product/kroki-support.md.
 const SUPPORTED_TAGS = [
+	// core
 	"mermaid",
 	"graphviz",
 	"dot",
 	"plantuml",
 	"puml",
 	"d2",
+	// blockdiag family
+	"blockdiag",
+	"seqdiag",
+	"actdiag",
+	"nwdiag",
+	"packetdiag",
+	"rackdiag",
+	// domain-specific text diagrams
+	"c4plantuml",
+	"ditaa",
+	"erd",
+	"structurizr",
+	"symbolator",
+	"tikz",
+	"umlet",
+	"wireviz",
 ];
 const MAX_BLOCKS_PER_TURN = 5;
 

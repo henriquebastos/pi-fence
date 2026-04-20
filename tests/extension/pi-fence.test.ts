@@ -28,6 +28,9 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Component } from "@mariozechner/pi-tui";
 
+import { KROKI_ALIASES, KROKI_CANONICAL_TAGS } from "../../extensions/pi-fence/kroki.ts";
+import { formatProcessorLines } from "../../extensions/pi-fence/list.ts";
+
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
 import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
@@ -160,16 +163,21 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 			);
 			expect(listMessages).toHaveLength(1);
 
+			// Derive the expected shape from the production constants instead
+			// of hardcoding a tag list here. That keeps this test a "does the
+			// command reflect the live Kroki config" check rather than a
+			// "this specific tag string appears" check; adding or removing a
+			// language in `KROKI_CANONICAL_TAGS` no longer requires touching
+			// this assertion.
+			const expectedListing = {
+				id: "kroki",
+				status: "registered" as const,
+				tags: KROKI_CANONICAL_TAGS,
+				aliases: KROKI_ALIASES,
+			};
 			expect(listMessages[0].details).toMatchObject({
-				listings: [
-					{
-						id: "kroki",
-						status: "registered",
-						tags: ["mermaid", "graphviz", "plantuml", "d2"],
-						aliases: { dot: "graphviz", puml: "plantuml" },
-					},
-				],
-				lines: ["kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2"],
+				listings: [expectedListing],
+				lines: formatProcessorLines([expectedListing]),
 			});
 
 			// No HTTP calls — `/fence list` is offline.

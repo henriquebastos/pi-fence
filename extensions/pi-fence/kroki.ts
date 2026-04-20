@@ -43,18 +43,48 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 const ERROR_BODY_MAX_CHARS = 500;
 
 /**
- * Canonical tags the Kroki processor handles. Matches the Kroki public
- * endpoint's naming. Aliases that users/LLMs actually write live in
- * `KROKI_ALIASES` below and resolve to one of these at request time.
+ * Canonical tags the Kroki processor handles on the public endpoint.
+ * Matches the Kroki public endpoint's naming. Aliases that users/LLMs
+ * actually write live in `KROKI_ALIASES` below and resolve to one of
+ * these at request time.
  *
  * Exported so the extension's `/fence list` command can advertise the
  * processor's accepted tags without duplicating the list.
+ *
+ * Every entry here renders to PNG on `https://kroki.io/<tag>/png` per
+ * CV0.E1.S4's research pass. Languages Kroki hosts but the public
+ * endpoint refuses PNG for (SVG-only: `d2`, `bpmn`, `bytefield`,
+ * `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`) are documented as
+ * unsupported in `docs/product/kroki-support.md` with a pointer to
+ * self-hosted Kroki (CV2.E2). JSON-body languages (`vega`, `vegalite`,
+ * `excalidraw`) are covered by CV0.E1.S5.
+ *
+ * Ordering groups related languages together (core → blockdiag family
+ * → domain-specific) rather than alphabetising, so a reader scanning
+ * the list sees the provenance of each block.
  */
 export const KROKI_CANONICAL_TAGS: readonly string[] = [
+	// core
 	"mermaid",
 	"graphviz",
 	"plantuml",
 	"d2",
+	// blockdiag family
+	"blockdiag",
+	"seqdiag",
+	"actdiag",
+	"nwdiag",
+	"packetdiag",
+	"rackdiag",
+	// domain-specific text diagrams
+	"c4plantuml",
+	"ditaa",
+	"erd",
+	"structurizr",
+	"symbolator",
+	"tikz",
+	"umlet",
+	"wireviz",
 ];
 
 /**
