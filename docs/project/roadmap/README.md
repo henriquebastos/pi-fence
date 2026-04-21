@@ -45,7 +45,7 @@
 
 | Code | Story | Status |
 |------|-------|--------|
-| `CV0.E2.S1` | **I use local graphviz when I want privacy and offline** | Planned |
+| [CV0.E2.S1](cv0-it-works/cv0-e2-graphviz-local/cv0-e2-s1-local-graphviz/README.md) | **I use local graphviz when I want privacy and offline** | Planned |
 | `CV0.E2.S2` | **I bind a tag to a specific processor in settings** | Planned |
 
 ---
