@@ -352,4 +352,34 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 			viewport.some((line) => line.includes("(no processors registered)")),
 		).toBe(true);
 	});
+
+	it("paints the [unavailable] status bracket and the indented reason line", async () => {
+		// CV0.E2.S1 step 6 — the list renderer paints the formatter's
+		// output verbatim, so both the header line (with [unavailable]) and
+		// the second indented reason/installHint line land in the viewport.
+		const renderer = createPiFenceListRenderer(TUI_PRIMITIVES);
+		const component = renderer(
+			{
+				content: [],
+				details: {
+					lines: [
+						"graphviz-local [unavailable] — graphviz (dot)",
+						"    dot binary not found on PATH. apt install graphviz",
+						"kroki [registered] — mermaid, graphviz (dot)",
+					],
+				},
+			},
+			{ expanded: false },
+			IDENTITY_THEME,
+		);
+
+		const terminal = await paintComponent(component);
+
+		const viewport = terminal.getViewport();
+		expect(viewport.some((line) => line.includes("[unavailable]"))).toBe(true);
+		expect(
+			viewport.some((line) => line.includes("dot binary not found on PATH")),
+		).toBe(true);
+		expect(viewport.some((line) => line.includes("[registered]"))).toBe(true);
+	});
 });

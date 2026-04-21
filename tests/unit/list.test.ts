@@ -3,29 +3,29 @@
  *
  * Two pure functions:
  *
- *   - `listProcessors(processors)` — turns a `FenceProcessor[]` into
- *     `ProcessorListing[]`. Status today is always `"registered"` since
- *     pi-fence wires every processor it advertises. `/fence doctor` will
- *     widen that union later.
+ *   - `listProcessors(processors, availability)` turns a
+ *     `FenceProcessor[]` + availability map into `ProcessorListing[]`.
+ *     Status is `"registered"` when availability is ok,
+ *     `"unavailable"` otherwise. CV0.E2.S1 widened the status union
+ *     so the second-processor scenario (graphviz-local alongside
+ *     Kroki) can surface which processor actually serves a given tag.
  *
- *   - `formatProcessorLines(listings)` — turns listings into one readable
- *     line per processor. No column alignment (see S3 README); the format
- *     is prose, not a table.
+ *   - `formatProcessorLines(listings)` turns listings into readable
+ *     lines. One line per registered processor; two (header +
+ *     indented detail) per unavailable processor.
  *
- * Both are pure functions, so the tests construct lightweight processor
- * objects inline rather than standing up Kroki. The shape we want for
- * future processors (graphviz-local, mermaid-local) is the `FenceProcessor`
- * interface, not any specific implementation.
+ * Both are pure functions, so the tests construct lightweight
+ * processor objects inline rather than standing up Kroki.
  */
 
 import { describe, expect, it } from "vitest";
 
-import type { FenceProcessor } from "../../extensions/pi-fence/processor.ts";
+import type { Availability, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 import { formatProcessorLines, listProcessors } from "../../extensions/pi-fence/list.ts";
 
-// A minimal processor stub for test use — implements the interface without
-// hitting any real renderer. Not exported; tests that need a processor
-// stub outside list tests construct their own.
+// A minimal processor stub for test use \u2014 implements the interface
+// without hitting any real renderer. Not exported; tests that need a
+// processor stub outside list tests construct their own.
 function stubProcessor(
 	id: string,
 	tags: readonly string[],
@@ -35,20 +35,29 @@ function stubProcessor(
 		id,
 		tags,
 		aliases,
+		async available(): Promise<Availability> {
+			// list tests never invoke available() \u2014 the availability map
+			// is passed explicitly to listProcessors. The method exists
+			// only so the stub satisfies the FenceProcessor interface.
+			return { ok: true };
+		},
 		async render() {
-			return { ok: false, error: "stub processor — render() is not exercised in list tests" };
+			return { ok: false, error: "stub processor \u2014 render() is not exercised in list tests" };
 		},
 	};
 }
 
+const allOk = (ids: readonly string[]): Map<string, Availability> =>
+	new Map(ids.map((id) => [id, { ok: true } as Availability]));
+
 describe("listProcessors", () => {
-	it("returns a row per processor with status 'registered'", () => {
+	it("returns a row per processor with status 'registered' when availability is ok", () => {
 		const kroki = stubProcessor("kroki", ["mermaid", "graphviz", "plantuml", "d2"], {
 			dot: "graphviz",
 			puml: "plantuml",
 		});
 
-		const listings = listProcessors([kroki]);
+		const listings = listProcessors([kroki], allOk(["kroki"]));
 
 		expect(listings).toHaveLength(1);
 		expect(listings[0]).toEqual({
@@ -59,21 +68,85 @@ describe("listProcessors", () => {
 		});
 	});
 
+	it("returns status 'unavailable' with reason + installHint when availability is not ok", () => {
+		const local = stubProcessor("graphviz-local", ["graphviz"], { dot: "graphviz" });
+		const availability = new Map<string, Availability>([
+			[
+				"graphviz-local",
+				{
+					ok: false,
+					reason: "dot binary not found on PATH",
+					installHint: "apt install graphviz",
+				},
+			],
+		]);
+
+		const listings = listProcessors([local], availability);
+
+		expect(listings).toHaveLength(1);
+		expect(listings[0]).toEqual({
+			id: "graphviz-local",
+			status: "unavailable",
+			tags: ["graphviz"],
+			aliases: { dot: "graphviz" },
+			unavailableReason: "dot binary not found on PATH",
+			installHint: "apt install graphviz",
+		});
+	});
+
+	it("omits installHint from the listing when the processor did not provide one", () => {
+		const broken = stubProcessor("broken", ["x"]);
+		const availability = new Map<string, Availability>([
+			["broken", { ok: false, reason: "some reason" }],
+		]);
+
+		const listings = listProcessors([broken], availability);
+
+		expect(listings[0].unavailableReason).toBe("some reason");
+		expect(listings[0].installHint).toBeUndefined();
+	});
+
+	it("treats a processor whose id is missing from the availability map as unavailable (defensive)", () => {
+		// Shouldn't happen in production \u2014 probeAvailability populates
+		// every processor \u2014 but a partial map in tests or future code
+		// should degrade gracefully rather than throw.
+		const a = stubProcessor("a", ["x"]);
+
+		const listings = listProcessors([a], new Map());
+
+		expect(listings[0].status).toBe("unavailable");
+		expect(listings[0].unavailableReason).toBeDefined();
+	});
+
 	it("returns an empty array for an empty processor list", () => {
-		expect(listProcessors([])).toEqual([]);
+		expect(listProcessors([], new Map())).toEqual([]);
 	});
 
 	it("preserves order and does not mutate processor fields", () => {
 		const a = stubProcessor("alpha", ["a1", "a2"], { ax: "a1" });
 		const b = stubProcessor("beta", ["b1"], {});
 
-		const listings = listProcessors([a, b]);
+		const listings = listProcessors([a, b], allOk(["alpha", "beta"]));
 
 		expect(listings.map((l) => l.id)).toEqual(["alpha", "beta"]);
-		// The listing tags point to the same readonly slice; the test asserts
-		// they don't get rewritten by the listing builder.
 		expect(a.tags).toEqual(["a1", "a2"]);
 		expect(a.aliases).toEqual({ ax: "a1" });
+	});
+
+	it("mixes registered + unavailable rows in the CV0.E2 two-processor scenario", () => {
+		const local = stubProcessor("graphviz-local", ["graphviz"], { dot: "graphviz" });
+		const kroki = stubProcessor("kroki", ["mermaid", "graphviz"], { dot: "graphviz" });
+		const availability = new Map<string, Availability>([
+			[
+				"graphviz-local",
+				{ ok: false, reason: "dot not found", installHint: "apt install graphviz" },
+			],
+			["kroki", { ok: true }],
+		]);
+
+		const listings = listProcessors([local, kroki], availability);
+
+		expect(listings.map((l) => l.status)).toEqual(["unavailable", "registered"]);
 	});
 });
 
@@ -89,7 +162,7 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
+			"kroki [registered] \u2014 mermaid, graphviz (dot), plantuml (puml), d2",
 		]);
 	});
 
@@ -103,7 +176,7 @@ describe("formatProcessorLines", () => {
 			},
 		]);
 
-		expect(lines).toEqual(["graphviz-local [registered] — graphviz"]);
+		expect(lines).toEqual(["graphviz-local [registered] \u2014 graphviz"]);
 	});
 
 	it("groups multiple aliases for the same canonical tag in one parenthesis", () => {
@@ -116,7 +189,7 @@ describe("formatProcessorLines", () => {
 			},
 		]);
 
-		expect(lines).toEqual(["multi [registered] — graphviz (dot, gv)"]);
+		expect(lines).toEqual(["multi [registered] \u2014 graphviz (dot, gv)"]);
 	});
 
 	it("renders multiple processors in order, one line each", () => {
@@ -136,8 +209,68 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"kroki [registered] — mermaid",
-			"graphviz-local [registered] — graphviz (dot)",
+			"kroki [registered] \u2014 mermaid",
+			"graphviz-local [registered] \u2014 graphviz (dot)",
+		]);
+	});
+
+	it("renders an unavailable processor as two lines: header + indented reason + installHint", () => {
+		const lines = formatProcessorLines([
+			{
+				id: "graphviz-local",
+				status: "unavailable",
+				tags: ["graphviz"],
+				aliases: { dot: "graphviz" },
+				unavailableReason: "dot binary not found on PATH",
+				installHint: "apt install graphviz (Debian/Ubuntu) \u00b7 brew install graphviz (macOS)",
+			},
+		]);
+
+		expect(lines).toEqual([
+			"graphviz-local [unavailable] \u2014 graphviz (dot)",
+			"    dot binary not found on PATH. apt install graphviz (Debian/Ubuntu) \u00b7 brew install graphviz (macOS)",
+		]);
+	});
+
+	it("renders an unavailable processor without installHint as two lines: header + indented reason only", () => {
+		const lines = formatProcessorLines([
+			{
+				id: "broken",
+				status: "unavailable",
+				tags: ["x"],
+				aliases: {},
+				unavailableReason: "availability unknown",
+			},
+		]);
+
+		expect(lines).toEqual([
+			"broken [unavailable] \u2014 x",
+			"    availability unknown",
+		]);
+	});
+
+	it("interleaves registered + unavailable lines for the CV0.E2 two-processor scenario", () => {
+		const lines = formatProcessorLines([
+			{
+				id: "graphviz-local",
+				status: "unavailable",
+				tags: ["graphviz"],
+				aliases: { dot: "graphviz" },
+				unavailableReason: "dot not found",
+				installHint: "apt install graphviz",
+			},
+			{
+				id: "kroki",
+				status: "registered",
+				tags: ["mermaid", "graphviz"],
+				aliases: { dot: "graphviz" },
+			},
+		]);
+
+		expect(lines).toEqual([
+			"graphviz-local [unavailable] \u2014 graphviz (dot)",
+			"    dot not found. apt install graphviz",
+			"kroki [registered] \u2014 mermaid, graphviz (dot)",
 		]);
 	});
 
@@ -146,8 +279,8 @@ describe("formatProcessorLines", () => {
 	});
 
 	it("ignores aliases whose target is not a canonical tag", () => {
-		// Defensive: the FenceProcessor contract forbids this shape, but the
-		// formatter should not crash if a malformed listing reaches it.
+		// Defensive: the FenceProcessor contract forbids this shape, but
+		// the formatter should not crash if a malformed listing reaches it.
 		const lines = formatProcessorLines([
 			{
 				id: "broken",
@@ -157,6 +290,6 @@ describe("formatProcessorLines", () => {
 			},
 		]);
 
-		expect(lines).toEqual(["broken [registered] — a"]);
+		expect(lines).toEqual(["broken [registered] \u2014 a"]);
 	});
 });

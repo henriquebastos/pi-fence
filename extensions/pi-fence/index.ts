@@ -26,7 +26,7 @@ import { NodeLogger } from "../../tests/utilities/logger.ts";
 import { extractFencedBlocks } from "./parser.ts";
 import { createKrokiRenderer, isDarkThemeName } from "./kroki.ts";
 import { formatProcessorLines, listProcessors, type ProcessorListing } from "./list.ts";
-import type { FenceProcessor, FenceResult } from "./processor.ts";
+import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
 import {
 	createPiFenceListRenderer,
 	createPiFenceMessageRenderer,
@@ -133,7 +133,15 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			deps.logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
-				sendListMessage(pi, processors);
+				// Trivial all-ok availability map for the single-processor
+				// (Kroki-only) wiring. CV0.E2.S1 step 7 replaces this with
+				// the output of probeAvailability() once graphviz-local is
+				// registered alongside Kroki and real capability detection
+				// becomes meaningful.
+				const availability: ReadonlyMap<string, Availability> = new Map(
+					processors.map((p) => [p.id, { ok: true } as Availability]),
+				);
+				sendListMessage(pi, processors, availability);
 				return;
 			}
 			notifyUnknownSubcommand(ctx, subcommand);
@@ -207,8 +215,12 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 // /fence command helpers
 // ---------------------------------------------------------------------------
 
-function sendListMessage(pi: ExtensionAPI, processors: readonly FenceProcessor[]): void {
-	const listings: ProcessorListing[] = listProcessors(processors);
+function sendListMessage(
+	pi: ExtensionAPI,
+	processors: readonly FenceProcessor[],
+	availability: ReadonlyMap<string, Availability>,
+): void {
+	const listings: ProcessorListing[] = listProcessors(processors, availability);
 	const lines = formatProcessorLines(listings);
 	const details: PiFenceListDetails & { listings: ProcessorListing[] } = {
 		lines,
