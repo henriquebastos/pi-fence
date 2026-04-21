@@ -19,7 +19,7 @@
  * No byte-comparison against a committed PNG: graphviz's `dot -Tpng`
  * output is not bit-stable across graphviz versions (font metrics,
  * layout algorithm evolution, libcairo version). Magic + size floor
- * are the honest assertions \u2014 same shape the Kroki live suite uses.
+ * are the honest assertions — same shape the Kroki live suite uses.
  */
 
 import { describe, expect, it } from "vitest";
@@ -33,8 +33,8 @@ const containerRunning = await hasContainer(CONTAINER);
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-// Minimal canonical DOT source \u2014 graphviz's render of this produces a
-// PNG in the ~1\u20132 KB range on graphviz 2.x/10.x. The size floor below
+// Minimal canonical DOT source — graphviz's render of this produces a
+// PNG in the ~1–2 KB range on graphviz 2.x/10.x. The size floor below
 // is calibrated with headroom for font-metric variance across graphviz
 // versions; catches the "error PNG" regression (graphviz sometimes emits
 // a tiny ~200-byte PNG on bad input) without being tight enough to flap
@@ -44,7 +44,7 @@ const BAD_SOURCE = "digraph { A ->";
 
 const HAPPY_SIZE_FLOOR_BYTES = 500;
 
-describe.skipIf(!containerRunning)("graphviz-local \u2014 live", () => {
+describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 	const shell = new DockerExecShellRunner(CONTAINER);
 	const graphvizLocal = createGraphvizLocalRenderer(shell);
 

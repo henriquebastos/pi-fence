@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 import type { Availability, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 import { formatProcessorLines, listProcessors } from "../../extensions/pi-fence/list.ts";
 
-// A minimal processor stub for test use \u2014 implements the interface
+// A minimal processor stub for test use — implements the interface
 // without hitting any real renderer. Not exported; tests that need a
 // processor stub outside list tests construct their own.
 function stubProcessor(
@@ -36,13 +36,13 @@ function stubProcessor(
 		tags,
 		aliases,
 		async available(): Promise<Availability> {
-			// list tests never invoke available() \u2014 the availability map
+			// list tests never invoke available() — the availability map
 			// is passed explicitly to listProcessors. The method exists
 			// only so the stub satisfies the FenceProcessor interface.
 			return { ok: true };
 		},
 		async render() {
-			return { ok: false, error: "stub processor \u2014 render() is not exercised in list tests" };
+			return { ok: false, error: "stub processor — render() is not exercised in list tests" };
 		},
 	};
 }
@@ -107,8 +107,8 @@ describe("listProcessors", () => {
 	});
 
 	it("treats a processor whose id is missing from the availability map as unavailable (defensive)", () => {
-		// Shouldn't happen in production \u2014 probeAvailability populates
-		// every processor \u2014 but a partial map in tests or future code
+		// Shouldn't happen in production — probeAvailability populates
+		// every processor — but a partial map in tests or future code
 		// should degrade gracefully rather than throw.
 		const a = stubProcessor("a", ["x"]);
 
@@ -162,7 +162,7 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"kroki [registered] \u2014 mermaid, graphviz (dot), plantuml (puml), d2",
+			"kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
 		]);
 	});
 
@@ -176,7 +176,7 @@ describe("formatProcessorLines", () => {
 			},
 		]);
 
-		expect(lines).toEqual(["graphviz-local [registered] \u2014 graphviz"]);
+		expect(lines).toEqual(["graphviz-local [registered] — graphviz"]);
 	});
 
 	it("groups multiple aliases for the same canonical tag in one parenthesis", () => {
@@ -189,7 +189,7 @@ describe("formatProcessorLines", () => {
 			},
 		]);
 
-		expect(lines).toEqual(["multi [registered] \u2014 graphviz (dot, gv)"]);
+		expect(lines).toEqual(["multi [registered] — graphviz (dot, gv)"]);
 	});
 
 	it("renders multiple processors in order, one line each", () => {
@@ -209,8 +209,8 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"kroki [registered] \u2014 mermaid",
-			"graphviz-local [registered] \u2014 graphviz (dot)",
+			"kroki [registered] — mermaid",
+			"graphviz-local [registered] — graphviz (dot)",
 		]);
 	});
 
@@ -222,13 +222,13 @@ describe("formatProcessorLines", () => {
 				tags: ["graphviz"],
 				aliases: { dot: "graphviz" },
 				unavailableReason: "dot binary not found on PATH",
-				installHint: "apt install graphviz (Debian/Ubuntu) \u00b7 brew install graphviz (macOS)",
+				installHint: "apt install graphviz (Debian/Ubuntu) · brew install graphviz (macOS)",
 			},
 		]);
 
 		expect(lines).toEqual([
-			"graphviz-local [unavailable] \u2014 graphviz (dot)",
-			"    dot binary not found on PATH. apt install graphviz (Debian/Ubuntu) \u00b7 brew install graphviz (macOS)",
+			"graphviz-local [unavailable] — graphviz (dot)",
+			"    dot binary not found on PATH. apt install graphviz (Debian/Ubuntu) · brew install graphviz (macOS)",
 		]);
 	});
 
@@ -244,7 +244,7 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"broken [unavailable] \u2014 x",
+			"broken [unavailable] — x",
 			"    availability unknown",
 		]);
 	});
@@ -268,9 +268,9 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"graphviz-local [unavailable] \u2014 graphviz (dot)",
+			"graphviz-local [unavailable] — graphviz (dot)",
 			"    dot not found. apt install graphviz",
-			"kroki [registered] \u2014 mermaid, graphviz (dot)",
+			"kroki [registered] — mermaid, graphviz (dot)",
 		]);
 	});
 

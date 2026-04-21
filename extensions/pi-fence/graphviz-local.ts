@@ -56,7 +56,7 @@ const ERROR_BODY_MAX_CHARS = 500;
  * shape without breaking this one.
  */
 const INSTALL_HINT =
-	"Install graphviz \u2014 apt install graphviz (Debian/Ubuntu) \u00b7 brew install graphviz (macOS) \u00b7 https://graphviz.org/download/";
+	"Install graphviz — apt install graphviz (Debian/Ubuntu) · brew install graphviz (macOS) · https://graphviz.org/download/";
 
 /**
  * Canonical tags graphviz-local handles. Just `graphviz` today; `dot`

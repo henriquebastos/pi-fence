@@ -8,7 +8,7 @@
  *   - Every error path returns defaults and logs a warn (except the
  *     common missing-file case, which stays silent).
  *   - Shape validation: non-object top level, non-object bindings,
- *     non-string values inside bindings \u2014 all dropped with a warn.
+ *     non-string values inside bindings — all dropped with a warn.
  *   - Unknown top-level keys are tolerated so CV1.E1's future keys
  *     don't break existing files.
  *
@@ -31,7 +31,7 @@ function writeConfig(dir: string, body: string): string {
 	return path;
 }
 
-describe("loadPiFenceConfig \u2014 missing files", () => {
+describe("loadPiFenceConfig — missing files", () => {
 	afterEach(() => cleanupTempDirs());
 
 	it("returns defaults when neither file exists", async () => {
@@ -58,7 +58,7 @@ describe("loadPiFenceConfig \u2014 missing files", () => {
 	});
 });
 
-describe("loadPiFenceConfig \u2014 file-present paths", () => {
+describe("loadPiFenceConfig — file-present paths", () => {
 	afterEach(() => cleanupTempDirs());
 
 	it("reads the global config when only global is present", async () => {
@@ -161,7 +161,7 @@ describe("loadPiFenceConfig \u2014 file-present paths", () => {
 	});
 });
 
-describe("loadPiFenceConfig \u2014 malformed files", () => {
+describe("loadPiFenceConfig — malformed files", () => {
 	afterEach(() => cleanupTempDirs());
 
 	it("returns defaults + logs warn on malformed JSON", async () => {
@@ -242,7 +242,7 @@ describe("loadPiFenceConfig \u2014 malformed files", () => {
 		});
 
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
-		// Three dropped entries \u2192 three warns.
+		// Three dropped entries → three warns.
 		expect(warns.filter((e) => e.message.includes("non-string value"))).toHaveLength(3);
 	});
 
@@ -287,12 +287,12 @@ describe("loadPiFenceConfig \u2014 malformed files", () => {
 		});
 
 		expect(config.bindings).toEqual({ graphviz: "kroki" });
-		// No warn for the unknown keys \u2014 forward-compat.
+		// No warn for the unknown keys — forward-compat.
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
 		expect(warns).toHaveLength(0);
 	});
 
-	it("is robust to a malformed global file plus a valid project file \u2014 returns the project bindings", async () => {
+	it("is robust to a malformed global file plus a valid project file — returns the project bindings", async () => {
 		const globalDir = makeTempDir();
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(globalDir, "malformed{");

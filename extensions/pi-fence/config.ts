@@ -7,11 +7,11 @@
  * wire time and the tests can override paths via `os.tmpdir()`.
  *
  * Precedence (per briefing D6): project overrides global overrides
- * code defaults. S2's scope is one key deep \u2014 `bindings` \u2014 so merges
+ * code defaults. S2's scope is one key deep — `bindings` — so merges
  * happen only at the top level and inside `bindings`. Richer config
  * (endpoints, enable flags, timeouts) earns its place in CV1.E1.
  *
- * Every error path returns defaults and logs a warn \u2014 a malformed or
+ * Every error path returns defaults and logs a warn — a malformed or
  * unreadable config file must never take the extension down at
  * startup. The common case (no files present) returns defaults
  * silently.
@@ -92,8 +92,8 @@ export async function loadPiFenceConfig(
 
 /**
  * Read one config file at `path`. Returns defaults and logs a warn on
- * every error path except a missing file (which is the common case \u2014
- * most users never write a config file \u2014 and stays silent).
+ * every error path except a missing file (which is the common case —
+ * most users never write a config file — and stays silent).
  */
 async function readConfigFile(
 	path: string,

@@ -616,10 +616,10 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			// lines array reflects the section structure.
 			expect(details.lines).toContain("Bindings");
 			expect(details.lines).toContain("Ignored bindings");
-			expect(details.lines.some((l) => l.includes("mermaid \u2192 kroki"))).toBe(true);
+			expect(details.lines.some((l) => l.includes("mermaid → kroki"))).toBe(true);
 			expect(
 				details.lines.some((l) =>
-					l.includes("graphviz \u2192 nonexistent (unknown processor)"),
+					l.includes("graphviz → nonexistent (unknown processor)"),
 				),
 			).toBe(true);
 		},
