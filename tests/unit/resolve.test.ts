@@ -13,6 +13,7 @@ import type { Availability, FenceProcessor, FenceResult } from "../../extensions
 import {
 	collectSupportedTags,
 	probeAvailability,
+	resolveBindings,
 	resolveProcessor,
 } from "../../extensions/pi-fence/resolve.ts";
 
@@ -144,6 +145,215 @@ describe("resolveProcessor", () => {
 
 	it("returns null when the processor array is empty", () => {
 		expect(resolveProcessor([], new Map(), "graphviz")).toBeNull();
+	});
+});
+
+describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
+	const local = makeFakeProcessor({
+		id: "graphviz-local",
+		tags: ["graphviz"],
+		aliases: { dot: "graphviz" },
+	});
+	const kroki = makeFakeProcessor({
+		id: "kroki",
+		tags: ["graphviz", "mermaid", "plantuml"],
+		aliases: { dot: "graphviz", puml: "plantuml" },
+	});
+
+	it("binding wins over capability order when bound processor is available", () => {
+		// Both processors available. Without a binding, registration order
+		// (graphviz-local first) wins for the 'graphviz' tag. With a
+		// binding 'graphviz → kroki', Kroki wins instead.
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+		const bindings = { graphviz: "kroki" };
+
+		expect(
+			resolveProcessor([local, kroki], availability, "graphviz", bindings)?.id,
+		).toBe("kroki");
+	});
+
+	it("binding falls through when bound processor is unavailable", () => {
+		// User bound 'graphviz → graphviz-local' but dot is not installed.
+		// Bindings are preferences, not hard requirements: fall back to
+		// capability-based rule (Kroki wins).
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: false, reason: "dot not found" }],
+			["kroki", { ok: true }],
+		]);
+		const bindings = { graphviz: "graphviz-local" };
+
+		expect(
+			resolveProcessor([local, kroki], availability, "graphviz", bindings)?.id,
+		).toBe("kroki");
+	});
+
+	it("binding falls through when the processor id is unknown", () => {
+		// Typo in the config. Capability-based rule still applies.
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+		const bindings = { graphviz: "nonexistent-typo" };
+
+		expect(
+			resolveProcessor([local, kroki], availability, "graphviz", bindings)?.id,
+		).toBe("graphviz-local");
+	});
+
+	it("binding on an alias tag also honoured", () => {
+		// Bindings key on tag names as-written. Users can bind either the
+		// canonical tag (graphviz) or the alias (dot) — both map through
+		// to the same processor at resolution time because `dot` is a key
+		// on each processor's aliases map.
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+		const bindings = { dot: "kroki" };
+
+		expect(resolveProcessor([local, kroki], availability, "dot", bindings)?.id).toBe(
+			"kroki",
+		);
+	});
+
+	it("behaves identically to S1 when bindings is undefined", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+
+		expect(resolveProcessor([local, kroki], availability, "graphviz")?.id).toBe(
+			"graphviz-local",
+		);
+	});
+
+	it("behaves identically to S1 when bindings is an empty object", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+
+		expect(resolveProcessor([local, kroki], availability, "graphviz", {})?.id).toBe(
+			"graphviz-local",
+		);
+	});
+
+	it("returns null when the binding + capability both fail to produce a match", () => {
+		const availability = new Map<string, Availability>([
+			["kroki", { ok: true }],
+		]);
+		const solo = makeFakeProcessor({ id: "kroki", tags: ["mermaid"] });
+		const bindings = { mermaid: "nonexistent" };
+
+		// Bound to unknown → fall through. Capability sees Kroki claims
+		// mermaid and is available → returns Kroki.
+		expect(resolveProcessor([solo], availability, "mermaid", bindings)?.id).toBe("kroki");
+
+		// Now bind mermaid to kroki and ask for graphviz — no claimer.
+		expect(
+			resolveProcessor([solo], availability, "graphviz", { mermaid: "kroki" }),
+		).toBeNull();
+	});
+});
+
+describe("resolveBindings", () => {
+	const local = makeFakeProcessor({
+		id: "graphviz-local",
+		tags: ["graphviz"],
+		aliases: { dot: "graphviz" },
+	});
+	const kroki = makeFakeProcessor({
+		id: "kroki",
+		tags: ["mermaid", "graphviz"],
+	});
+
+	it("categorises an effective binding (registered + available)", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+
+		const rows = resolveBindings([local, kroki], availability, {
+			graphviz: "kroki",
+		});
+
+		expect(rows).toEqual([
+			{ status: "effective", tag: "graphviz", processorId: "kroki" },
+		]);
+	});
+
+	it("categorises ignored-unknown-processor", () => {
+		const availability = new Map<string, Availability>([["kroki", { ok: true }]]);
+
+		const rows = resolveBindings([kroki], availability, {
+			graphviz: "nonexistent",
+		});
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				processorId: "nonexistent",
+				reason: "unknown-processor",
+			},
+		]);
+	});
+
+	it("categorises ignored-processor-unavailable", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: false, reason: "dot not found" }],
+			["kroki", { ok: true }],
+		]);
+
+		const rows = resolveBindings([local, kroki], availability, {
+			graphviz: "graphviz-local",
+		});
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				processorId: "graphviz-local",
+				reason: "processor-unavailable",
+			},
+		]);
+	});
+
+	it("preserves iteration order of bindings", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+
+		const rows = resolveBindings([local, kroki], availability, {
+			mermaid: "kroki",
+			graphviz: "kroki",
+			dot: "kroki",
+		});
+
+		expect(rows.map((r) => r.tag)).toEqual(["mermaid", "graphviz", "dot"]);
+	});
+
+	it("returns an empty array for empty bindings", () => {
+		expect(resolveBindings([local], new Map(), {})).toEqual([]);
+	});
+
+	it("mixes effective + ignored rows in one call", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: false, reason: "nope" }],
+			["kroki", { ok: true }],
+		]);
+
+		const rows = resolveBindings([local, kroki], availability, {
+			graphviz: "graphviz-local", // ignored: unavailable
+			mermaid: "kroki", // effective
+			puml: "nonexistent", // ignored: unknown
+		});
+
+		expect(rows.map((r) => r.status)).toEqual(["ignored", "effective", "ignored"]);
 	});
 });
 

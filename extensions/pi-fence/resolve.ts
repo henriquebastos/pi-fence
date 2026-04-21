@@ -24,22 +24,42 @@
 import type { Availability, FenceProcessor } from "./processor.ts";
 
 /**
- * Return the first processor in registration order that can serve `tag`
- * on this session. A processor can serve a tag iff:
- *   - its `available()` probe returned `{ ok: true }` at wire time, AND
- *   - its `tags` array includes the tag OR its `aliases` map has the
- *     tag as a key.
+ * Return the first processor that can serve `tag` on this session.
  *
- * Returns `null` when no processor matches — the caller decides how to
- * present the shape (today: skip the block silently with a warn log,
- * because the extension's allowlist is derived from the same processor
- * set so an unresolvable tag should be impossible; belt-and-braces).
+ * Resolution rule (CV0.E2.S2):
+ *   1. User binding wins. If `bindings[tag]` names a registered
+ *      processor whose availability is ok, return that processor.
+ *   2. Otherwise, capability-based order. Iterate `processors` in
+ *      registration order; return the first whose availability is ok
+ *      AND whose tags/aliases cover the tag.
+ *   3. Null if neither produces a match.
+ *
+ * Bindings are preferences, not hard requirements. A binding to an
+ * unknown processor id OR to an unavailable processor falls through
+ * to capability-based resolution rather than returning null. Strict
+ * mode (respect unavailable, refuse capability fallback) is a future
+ * story — see `resolveBindings` below for the separate helper that
+ * surfaces why a binding was ignored.
+ *
+ * Pure. The caller logs at wire time; `resolve.ts` has no logger.
  */
 export function resolveProcessor(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
+	bindings?: Readonly<Record<string, string>>,
 ): FenceProcessor | null {
+	// 1. Binding takes precedence when the bound processor is registered
+	//    AND available. Otherwise fall through to capability order.
+	const boundId = bindings?.[tag];
+	if (boundId !== undefined) {
+		const bound = processors.find((p) => p.id === boundId);
+		if (bound && availability.get(bound.id)?.ok === true) {
+			return bound;
+		}
+	}
+
+	// 2. Capability-based: first available match in registration order.
 	for (const processor of processors) {
 		if (availability.get(processor.id)?.ok !== true) continue;
 		if (processor.tags.includes(tag) || processor.aliases[tag] !== undefined) {
@@ -47,6 +67,56 @@ export function resolveProcessor(
 		}
 	}
 	return null;
+}
+
+/**
+ * Surface per-binding resolution state for `/fence list`. Returns one
+ * row per entry in `bindings`, preserving iteration order. Each row
+ * says whether the binding is `effective` (registered + available, so
+ * resolveProcessor would honour it) or `ignored` (with a reason).
+ *
+ * Separate from `resolveProcessor` because `/fence list` needs the
+ * full categorisation once at render time; the per-block resolver
+ * only needs the positive lookup per tag.
+ */
+export type BindingResolution =
+	| { status: "effective"; tag: string; processorId: string }
+	| {
+			status: "ignored";
+			tag: string;
+			processorId: string;
+			reason: "unknown-processor" | "processor-unavailable";
+		};
+
+export function resolveBindings(
+	processors: readonly FenceProcessor[],
+	availability: ReadonlyMap<string, Availability>,
+	bindings: Readonly<Record<string, string>>,
+): BindingResolution[] {
+	const out: BindingResolution[] = [];
+	for (const [tag, processorId] of Object.entries(bindings)) {
+		const processor = processors.find((p) => p.id === processorId);
+		if (!processor) {
+			out.push({
+				status: "ignored",
+				tag,
+				processorId,
+				reason: "unknown-processor",
+			});
+			continue;
+		}
+		if (availability.get(processor.id)?.ok !== true) {
+			out.push({
+				status: "ignored",
+				tag,
+				processorId,
+				reason: "processor-unavailable",
+			});
+			continue;
+		}
+		out.push({ status: "effective", tag, processorId });
+	}
+	return out;
 }
 
 /**
