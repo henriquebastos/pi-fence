@@ -1,6 +1,6 @@
 [< CV0.E2 — Graphviz Local](../README.md)
 
-# S2 — I bind a tag to a specific processor in settings
+# S2 — I bind a tag to a specific processor in settings ✅ Done
 
 CV0.E2.S1 shipped capability-based resolution: graphviz-local wins `graphviz`/`dot` when `dot` is on PATH, Kroki handles everything else. That rule is the right default for most users. S2 adds the user-level override: the user who has both `dot` installed *and* a preference for Kroki (or vice versa) expresses it in a settings file and pi-fence honours it.
 

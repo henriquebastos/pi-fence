@@ -12,7 +12,7 @@ The second processor. CV0.E1 shipped with a single Kroki processor whose logic s
 | Code | Story | Status |
 |------|-------|--------|
 | [S1](cv0-e2-s1-local-graphviz/README.md) | **I use local graphviz when I want privacy and offline** | ✅ Done |
-| [S2](cv0-e2-s2-tag-binding/README.md) | **I bind a tag to a specific processor in settings** | Planned |
+| [S2](cv0-e2-s2-tag-binding/README.md) | **I bind a tag to a specific processor in settings** | ✅ Done |
 
 `S1` delivers capability-based resolution: register `graphviz-local` before `kroki`, probe each processor's `available()` once at session start, and let the first available processor that claims the tag render it. That's the whole rule — no user-facing config, no per-tag override. A user who has `dot` installed stops hitting `kroki.io` for DOT blocks; a user who does not is unchanged.
 

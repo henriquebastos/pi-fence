@@ -6,11 +6,16 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CV0.E2.S2` specced and ready to implement. S1 closed; the registry pattern is live. S2 adds user-level per-tag binding on top of it — the first pi-fence story that reads `~/.pi/agent/pi-fence.config.json`.
+`CV0.E2` fully closed. Both stories done: S1 (local graphviz + capability-based resolution) and S2 (user-level per-tag bindings from config). The registry pattern is live with two processors and user-level overrides, matching the Epic's Done criterion end-to-end.
 
 ## Next
 
-Follow `cv0-e2-s2-tag-binding/plan.md` step by step. Six steps: config loader → bindings-aware resolve → /fence list sections → extension wiring → docs → close. Expected test-count delta: ~+15 fast-suite cases; no new live cases. No new deps — the spec locked in an inline ~50-LOC loader over adopting `@zenobius/pi-extension-config` for CV0.E2's scope; revisit when CV1.E1's broader config surface lands.
+No story is currently in flight. The remaining Planned rows are:
+
+- `CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw). Specced, orthogonal to CV0.E2.
+- Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs).
+
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 all ✅ Done; no CVx story is Planned. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Still Planned: `CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw; specced, orthogonal to CV0.E2), `CV0.E2.S2` (not specced), and everything CV1+. CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
@@ -960,3 +965,50 @@ Epic-level done criterion is met for S1's share: two processors collaborate, gra
 - CV0.E2 state: S1 ✅ Done, S2 Planned (this spec), which takes the Epic from '1 of 2 specced' to '2 of 2 specced'. Implementation starts immediately in the same session per the user's 'build the entire epic' directive.
 - AGENTS.md one-feature-one-docs-adjacent rule honoured: this docs commit follows the spec commit immediately (matches the `fa1b4c3` → `9f7acbd` pattern from S1).
 - No uncommitted changes; all gates green.
+
+### 2026-04-20 — close CV0.E2.S2 — per-tag processor binding from settings; CV0.E2 epic complete
+
+**Goal.** Honour the remaining half of CV0.E2's Done criterion: a user who prefers a specific processor for a given tag can express that in `~/.pi/agent/pi-fence.config.json` or `<cwd>/.pi/pi-fence.config.json` and pi-fence routes accordingly. First pi-fence story to read its own config file; the file surface stays tiny (one key, `bindings`) so CV0.E2 ships without the broader configuration surface deferred to CV1.E1.
+
+**What shipped (five step commits + this close):**
+
+- `f1c45c9` **step 1: pi-fence.config.json loader.** New `extensions/pi-fence/config.ts` (~50 LOC) + `tests/unit/config.test.ts` (15 cases). Reads two optional files (global + project), merges with project precedence, handles every error path (missing, malformed JSON, non-object top level, non-object `bindings`, non-string values inside bindings) by logging a warn + returning defaults. Never throws. Unknown top-level keys tolerated silently for CV1.E1 forward-compat. Decision recorded: inline loader over `@zenobius/pi-extension-config` given the ~50-LOC vs. library-plus-two-transitive-deps tradeoff at S2's scope.
+- `bf2db7a` **step 2: bindings-aware resolution.** `resolveProcessor` gains an optional `bindings` arg: binding to a registered + available processor wins over capability-based order; binding to unknown/unavailable falls through. New `resolveBindings(processors, availability, bindings)` helper categorises entries into effective / ignored with a reason. Both pure; `resolve.ts` stays logger-free. 13 new unit cases covering the full branch matrix.
+- `7f38fe9` **step 3: /fence list surfaces bindings.** `formatProcessorLines` gains an optional `bindings` second arg and emits two new sections when present: `Bindings` (effective rows) and `Ignored bindings` (with the reason in parentheses). Both hidden when empty, so a user without bindings sees the same output as S1. Renderer paints verbatim — no new branch. 7 new unit + renderer cases. Also: `list.ts` rewritten via Write to normalise literal `\u2014` escapes to real em-dashes (cosmetic fix for earlier Write-tool artefacts).
+- `0365c77` **step 4: wire bindings through the extension.** `createPiFenceExtension` calls `loadPiFenceConfig` at wire time and captures the returned bindings in the closure alongside availability. Every binding entry gets a log line at wire-time: info for effective, warn for ignored. `resolveProcessor` calls in the agent_end render loop now pass bindings. `sendListMessage` passes bindings rows through to `formatProcessorLines` and includes them in the details payload so the custom message carries full binding data. `PiFenceDeps.configOptions?: LoadConfigOptions` added for tests. Five new extension-layer scenarios covering global-only config, project-overrides-global, binding-to-unknown-ignored, binding-to-unavailable-falls-through, and /fence list surfacing the Bindings sections.
+- `cd7e6b6` **step 5: user-facing docs.** README gains a per-tag bindings paragraph + deep link to getting-started; Status line widens to include 'per-tag user bindings'. `docs/getting-started.md` gains a new 'Binding a tag to a specific processor' section covering the canonical config shape, the two file paths + precedence, the exact-lookup rule (bind both `graphviz` and `dot` if you want alias coverage), the preferences-not-requirements semantics with the `/fence list` Ignored bindings sample, and the missing/malformed file behaviour. CHANGELOG `[Unreleased]` gains an 'Added (CV0.E2.S2)' block above the S1 entry.
+- `489f848` **chore: normalise literal \uXXXX escape sequences in source.** Cleanup pass over eight source files that had literal six-character `\u2014` / `\u2013` / `\u2192` / `\u00b7` sequences from earlier Write-tool calls where my content input included escape sequences rather than actual Unicode characters. Functionally equivalent at runtime (TS parses string-literal `\u2014` to U+2014 em-dash in both cases), but visually ugly in source. A single python3 pass replaces each escape with its character.
+- `close CV0.E2.S2` (this commit): status flips across the roadmap top, Epic README, and story README; worklog entry; focus/next updated to reflect that CV0.E2 is fully closed.
+
+**Plan deviations.**
+
+- **Bindings exact-lookup vs alias-aware expansion**, decided on encounter during step 4. The spec's canonical config example already listed both `graphviz` and `dot` explicitly, which the plan read as 'users list both'. My first pass wrote an extension-layer test using binding `{ graphviz: kroki }` with a ```dot``` block — the test failed because `bindings['dot']` was undefined and capability resolution kicked in. Fix options: (a) alias-aware expansion (look up canonical via processor.aliases), (b) list both keys in config explicitly. Went with (b): simpler data model, matches the Epic README's config example verbatim, no per-processor alias disagreement to resolve. Rule now documented in `docs/getting-started.md`: 'Binding lookup is exact, not alias-aware — list both `graphviz` and `dot` if you want both routed through the same processor.' Followup: alias-aware binding could ship if a user explicitly asks for it; no current pressure.
+- **Cleanup commit inserted between step 5 and close.** Not in the plan — surfaced during step 3 when I noticed list.ts had 12 literal `\u2014` escape sequences in comments and string literals from my earlier Write-tool input shape. Batched into one `chore:` commit across all affected files. Shipped as its own commit rather than folded into step 5 so the docs-follows-feature pattern stayed visible.
+
+**Tests:** fast suite 239 → 279 (+40: 15 config loader, 13 resolve + resolveBindings, 7 formatter, 1 renderer viewport, 5 extension-layer scenarios). Live suite unchanged (no new live cases — S2 is file I/O + pure functions). `pnpm run check` green (55 markdown files, 0 errors) across every commit.
+
+**Design decisions that survived implementation:**
+
+1. **Inline ~50-LOC config loader**, no adoption of `@zenobius/pi-extension-config`. One file, one key — library adoption does not pay for itself at this scope. Reconsider with CV1.E1's broader config surface (endpoints, per-processor timeouts, enable flags).
+2. **Bindings are preferences, not hard requirements.** Binding to unavailable/unknown processor falls back to capability-based resolution + logs a warn. Strict mode (refuse fallback, fail the render) is a follow-up when a privacy-conscious user expresses the need.
+3. **File-based bindings only.** Env-var overrides (`PI_FENCE_BINDINGS` per D6) deferred; earn their place with CV1.E1's broader config surface.
+4. **Binding lookup is exact, not alias-aware** (new decision, see plan deviations above). Users list both `graphviz` and `dot` explicitly if they want both routed the same way.
+5. **`FenceProcessor` interface unchanged in S2.** All the new shape lives in `resolve.ts` (the `bindings` arg on `resolveProcessor` + the new `resolveBindings` helper) and `list.ts` (the formatter's bindings sections). No new processor-level contract.
+
+**CV0.E2 state at Epic close:**
+
+- `CV0.E2.S1` ✅ Done (closed in `d31e946`).
+- `CV0.E2.S2` ✅ Done (this close).
+
+Epic-level done criterion is met: two processors collaborate end-to-end; graphviz-local wins `graphviz`/`dot` when `dot` is on PATH; Kroki handles everything else and falls back for graphviz on machines without `dot`; `/fence list` shows which processor serves each tag; users who want a different pairing express it in `pi-fence.config.json`. The registry pattern that CV0.E1 pointed at is live.
+
+**Follow-ups this close surfaces (not claimed; none are blocking):**
+
+1. **Alias-aware binding expansion.** Today users list both `graphviz` and `dot` to cover DOT blocks; an alias-aware rule would let `{ graphviz: 'kroki' }` also cover `dot`. Worth considering when a real user surfaces the friction.
+2. **Strict-mode bindings.** A binding to an unavailable processor fails the render (error panel) rather than falling through to capability. Privacy-conscious users ("I will not accept Kroki for this tag ever") benefit.
+3. **Env-var overrides** (`PI_FENCE_BINDINGS=graphviz=kroki,dot=kroki`). D6's third precedence layer. Defer to CV1.E1 where multiple config knobs make the pattern pay off.
+4. **`@zenobius/pi-extension-config` adoption.** Revisit when CV1.E1 broadens the config surface — library pays for itself once there are more than one or two keys + the per-extension pattern across pi-leash / pi-image-gen / pi-worktrees is more than paper-thin shared pain.
+5. **Config file migrations.** No schema change history yet; premature today. A future CV1 or later can add a `version` key when it actually matters.
+6. **Per-block meta overrides** (```` ```mermaid processor=kroki ```` per the briefing D6). Separate surface. When the LLM emits a meta-bearing info string, pi-fence's parser already preserves it; S2 doesn't read it yet. Earns a slot when a real use case surfaces.
+
+**Meta — Epic shipped in one session.** Two stories (both specced AND implemented in this same session): S1 spec + 10 step commits + close, S2 spec + 5 step commits + cleanup + close. Plus three docs-catch-up commits (one per spec, plus the post-Epic cleanup). 22 total commits under the `build the entire epic` directive. Both stories honoured AGENTS.md's rhythm: feature commit → docs commit immediately for specs; step commits without intermediate docs for in-story work with a close entry consolidating all of it. The spec held up — one deviation per story, called out explicitly, none of them plan-breaking.
