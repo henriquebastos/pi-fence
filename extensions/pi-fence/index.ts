@@ -29,6 +29,7 @@ import { NodeLogger } from "../../tests/utilities/logger.ts";
 import type { ShellRunner } from "../../tests/utilities/shell-runner.ts";
 import { NodeShellRunner } from "../../tests/utilities/shell-runner.ts";
 
+import { loadPiFenceConfig, type LoadConfigOptions } from "./config.ts";
 import { extractFencedBlocks } from "./parser.ts";
 import { createGraphvizLocalRenderer } from "./graphviz-local.ts";
 import { createKrokiRenderer, isDarkThemeName } from "./kroki.ts";
@@ -37,7 +38,9 @@ import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
 import {
 	collectSupportedTags,
 	probeAvailability,
+	resolveBindings,
 	resolveProcessor,
+	type BindingResolution,
 } from "./resolve.ts";
 import {
 	createPiFenceListRenderer,
@@ -67,6 +70,14 @@ export interface PiFenceDeps {
 	 * processors instead of relying on the default registration order.
 	 */
 	processors?: FenceProcessor[];
+	/**
+	 * Options forwarded to `loadPiFenceConfig`. Tests override
+	 * `globalConfigPath` / `projectConfigPath` / `home` / `cwd` to point
+	 * into `os.tmpdir()`-scoped paths. Production callers pass
+	 * `undefined` and the loader defaults to `<home>/.pi/agent/` +
+	 * `<cwd>/.pi/`.
+	 */
+	configOptions?: LoadConfigOptions;
 }
 
 /**
@@ -120,6 +131,30 @@ export async function createPiFenceExtension(
 		}
 	}
 
+	// Wire-time config load. User-level per-tag bindings override the
+	// capability-based resolution rule. Missing / malformed / unreadable
+	// config files return defaults + a warn log — never crash.
+	const config = await loadPiFenceConfig({
+		logger: deps.logger,
+		...(deps.configOptions ?? {}),
+	});
+	const bindings: Readonly<Record<string, string>> = config.bindings;
+	const bindingRows = resolveBindings(processors, availability, bindings);
+	for (const row of bindingRows) {
+		if (row.status === "effective") {
+			deps.logger.info("pi-fence", "binding effective", {
+				tag: row.tag,
+				processorId: row.processorId,
+			});
+		} else {
+			deps.logger.warn("pi-fence", "binding ignored", {
+				tag: row.tag,
+				processorId: row.processorId,
+				reason: row.reason,
+			});
+		}
+	}
+
 	// The parser's fenced-block allowlist is derived from the registered
 	// processors' canonical tags + alias keys. Adding a new processor in
 	// a future story grows the allowlist automatically; no more duplicate
@@ -153,7 +188,7 @@ export async function createPiFenceExtension(
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			deps.logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
-				sendListMessage(pi, processors, availability);
+				sendListMessage(pi, processors, availability, bindingRows);
 				return;
 			}
 			notifyUnknownSubcommand(ctx, subcommand);
@@ -199,7 +234,7 @@ export async function createPiFenceExtension(
 		}
 
 		for (const block of toRender) {
-			const processor = resolveProcessor(processors, availability, block.tag);
+			const processor = resolveProcessor(processors, availability, block.tag, bindings);
 			if (!processor) {
 				// Shouldn't happen — supportedTags is derived from the same
 				// processor set the parser uses, so an unresolvable tag means
@@ -243,12 +278,17 @@ function sendListMessage(
 	pi: ExtensionAPI,
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
+	bindingRows: readonly BindingResolution[],
 ): void {
 	const listings: ProcessorListing[] = listProcessors(processors, availability);
-	const lines = formatProcessorLines(listings);
-	const details: PiFenceListDetails & { listings: ProcessorListing[] } = {
+	const lines = formatProcessorLines(listings, bindingRows);
+	const details: PiFenceListDetails & {
+		listings: ProcessorListing[];
+		bindings: readonly BindingResolution[];
+	} = {
 		lines,
 		listings,
+		bindings: bindingRows,
 	};
 	pi.sendMessage({
 		customType: LIST_MESSAGE_TYPE,

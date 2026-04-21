@@ -28,6 +28,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Component } from "@mariozechner/pi-tui";
 
+import type { LoadConfigOptions } from "../../extensions/pi-fence/config.ts";
 import {
 	GRAPHVIZ_LOCAL_ALIASES,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
@@ -40,6 +41,10 @@ import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
+
+// Node std imports for the bindings fixtures (temp-dir config files).
+import { writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { paintComponent } from "../utilities/render.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
 import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
@@ -338,6 +343,290 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 	);
 });
 
+describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"global config binds graphviz to kroki — dot block goes through kroki even when dot is installed",
+		async () => {
+			// Shell: graphviz-local probes as available. Config: binds
+			// graphviz → kroki. Expect kroki to serve the block despite
+			// graphviz-local being available — the binding overrides
+			// capability-based resolution.
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			// No dot -Tpng programmed — if it's called, the shell throws,
+			// which would surface as an error-kind output. The test asserts
+			// kroki handled it so this shouldn't fire.
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			// Bind both canonical + alias tags — binding lookup is exact,
+			// not alias-aware, per the S2 plan's scope decision. Users who
+			// want to route `dot` through kroki list both `graphviz` and
+			// `dot` in their config (the Epic README's example config
+			// shows both exactly for this reason).
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { graphviz: "kroki", dot: "kroki" } }),
+			);
+
+			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() /* no project config */ },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki",
+				kind: "ok",
+			});
+
+			// Kroki served it — one HTTP request.
+			expect(http.requests).toHaveLength(1);
+			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png?theme=dark");
+
+			// graphviz-local got its wire-time probe and nothing else — the
+			// binding steered around the render-time shell-out.
+			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"project config overrides global config",
+		async () => {
+			// Global: graphviz → kroki. Project: graphviz → graphviz-local.
+			// Expect graphviz-local to win (project precedence).
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { graphviz: "kroki" } }),
+			);
+
+			const cwd = makeTempDir();
+			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			writeFileSync(
+				join(cwd, ".pi", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { graphviz: "graphviz-local" } }),
+			);
+
+			const http = new FakeHttpClient(); // no Kroki response needed; project says local wins
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```graphviz\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "graphviz",
+				processor: "graphviz-local",
+			});
+
+			// graphviz-local served it — one probe + one render shell-out.
+			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(1);
+			// No Kroki HTTP — project-level binding steered to local.
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"binding to an unknown processor id is ignored and logs a warn — capability-based resolution applies",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { dot: "nonexistent" } }),
+			);
+
+			const http = new FakeHttpClient();
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			// Capability-based fallback: graphviz-local is first registered
+			// + available, so it wins.
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "graphviz-local",
+			});
+
+			// Ignored-binding logged at warn level.
+			const logger = captured.logger!;
+			const warns = logger
+				.bySubsystem("pi-fence")
+				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+			expect(warns).toHaveLength(1);
+			expect(warns[0].meta).toMatchObject({
+				tag: "dot",
+				processorId: "nonexistent",
+				reason: "unknown-processor",
+			});
+		},
+		20_000,
+	);
+
+	it(
+		"binding to an unavailable processor falls through to capability — logs ignore-reason",
+		async () => {
+			// Default test shell: dot -V fails. graphviz-local is
+			// unavailable. Config binds graphviz to graphviz-local anyway.
+			// Expect the binding to be ignored (bindings are preferences,
+			// not hard requirements) and Kroki to serve via capability.
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { graphviz: "graphviz-local" } }),
+			);
+
+			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				undefined, // default shell — dot unavailable
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki",
+			});
+
+			// Kroki served it via capability fallback.
+			expect(http.requests).toHaveLength(1);
+
+			// Ignored-binding warn recorded.
+			const logger = captured.logger!;
+			const warns = logger
+				.bySubsystem("pi-fence")
+				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+			expect(warns).toHaveLength(1);
+			expect(warns[0].meta).toMatchObject({
+				tag: "graphviz",
+				processorId: "graphviz-local",
+				reason: "processor-unavailable",
+			});
+		},
+		20_000,
+	);
+
+	it(
+		"/fence list surfaces the Bindings + Ignored bindings sections",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					bindings: {
+						mermaid: "kroki",
+						graphviz: "nonexistent",
+					},
+				}),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithCommand(
+				http,
+				"/fence list",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(m) => m.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+
+			const details = listMessages[0].details as {
+				lines: string[];
+				bindings: Array<{
+					status: "effective" | "ignored";
+					tag: string;
+					processorId: string;
+					reason?: string;
+				}>;
+			};
+
+			// bindings rows carried on the details payload.
+			expect(details.bindings).toHaveLength(2);
+			expect(details.bindings.find((b) => b.tag === "mermaid")).toMatchObject({
+				status: "effective",
+				processorId: "kroki",
+			});
+			expect(details.bindings.find((b) => b.tag === "graphviz")).toMatchObject({
+				status: "ignored",
+				processorId: "nonexistent",
+				reason: "unknown-processor",
+			});
+
+			// lines array reflects the section structure.
+			expect(details.lines).toContain("Bindings");
+			expect(details.lines).toContain("Ignored bindings");
+			expect(details.lines.some((l) => l.includes("mermaid \u2192 kroki"))).toBe(true);
+			expect(
+				details.lines.some((l) =>
+					l.includes("graphviz \u2192 nonexistent (unknown processor)"),
+				),
+			).toBe(true);
+		},
+		20_000,
+	);
+});
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -464,6 +753,7 @@ function expectImageBytes(content: unknown, expectedBytes: Buffer): void {
 async function buildSessionWithExtension(
 	http: FakeHttpClient,
 	shell?: FakeShellRunner,
+	configOptions?: LoadConfigOptions,
 ): Promise<{
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
@@ -518,7 +808,12 @@ async function buildSessionWithExtension(
 				stderr: "dot: not found",
 				exitCode: 127,
 			});
-		await createPiFenceExtension(pi, { http, shell: shellToUse, logger });
+		await createPiFenceExtension(pi, {
+			http,
+			shell: shellToUse,
+			logger,
+			...(configOptions !== undefined ? { configOptions } : {}),
+		});
 	};
 
 	const settingsManager = SettingsManager.create(agentDir, agentDir);
@@ -554,9 +849,10 @@ async function runExtensionWithAssistantText(
 	http: FakeHttpClient,
 	assistantText: string,
 	shell?: FakeShellRunner,
+	configOptions?: LoadConfigOptions,
 ): Promise<Captured> {
 	const { session, sentCustomMessages, registeredRenderers, model, logger } =
-		await buildSessionWithExtension(http, shell);
+		await buildSessionWithExtension(http, shell, configOptions);
 
 	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
@@ -583,10 +879,12 @@ async function runExtensionWithCommand(
 	http: FakeHttpClient,
 	command: string,
 	shell?: FakeShellRunner,
+	configOptions?: LoadConfigOptions,
 ): Promise<Captured> {
 	const { session, sentCustomMessages, registeredRenderers } = await buildSessionWithExtension(
 		http,
 		shell,
+		configOptions,
 	);
 
 	try {
