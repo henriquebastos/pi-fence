@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-No story is currently in flight. CV0.E1.S4 closed (full text-based Kroki coverage shipped); the CVx batch remains fully closed. The roadmap's only remaining `Planned` rows are `CV0.E1.S5` (JSON-body Kroki languages — specced), `CV0.E2` (Graphviz Local — not specced), and everything CV1+.
+`CV0.E2.S1` specced and ready to implement. The Epic folder and story folder landed in `fa1b4c3`; the first feature commit lands at step 1 of the plan (`FenceProcessor.available()` becomes a required method, Kroki gets a trivial impl, contract helper gains a shape assertion). CV0.E1 remains closed on its core user-visible stories (`S0`–`S4`); the CVx batch remains fully closed.
 
 ## Next
 
-`CV0.E1` has closed on its core user-visible stories (`S0`–`S4`). CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. CVx.E1.S2–S3 and any further CVx.E1 work remain unspec’d but welcome when there's pressure.
+Follow `cv0-e2-s1-local-graphviz/plan.md` step by step. Ten steps from contract change to close. Expected test-count delta on close: ~+12 fast-suite cases, +4 live cases. One decision is deferred to step 3 during implementation: whether PNG-safe binary stdout from `ShellRunner` is delivered via a new `stdoutBuffer` field on `ShellResult` or via a sibling `shell.runBinary(...)` method — whichever is smaller after reading `ShellRunner`'s current shape wins; the self-test for the runner is updated in the same step.
 
-`CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw) is specced and ready if the "every language Kroki serves" criterion is still the priority. The likely next CV-line move is `CV0.E2` (Graphviz Local) — a second processor that pressure-tests the registry abstraction. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+Still Planned behind `CV0.E2.S1`: `CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw; specced, orthogonal to CV0.E2), `CV0.E2.S2` (explicit per-tag binding in settings; not yet specced, picks up after S1 closes), and everything CV1+. CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -862,3 +862,31 @@ Two commits after the post-close follow-up batch. Logged retroactively as one en
 - `AGENTS.md` Read-first + roadmap flow lands a fresh session on CVx.E2.S4's plan as the next actionable Planned row.
 - Two non-blocking backlog items still in `~/me/mirror/backlog.md`: upstream `VirtualTerminal` export (pi-tui) and upstream addon-image overlay CSS bug report (xterm.js). Both need Henrique's go-ahead before filing.
 - CVx post-close follow-ups still open (from `a99e859`'s list): theme variant matrix, `DIFF_BUDGET` cross-OS tightening, parallel combo rendering, `--watch` mode.
+
+### 2026-04-20 — spec CV0.E2.S1 (`fa1b4c3`) — local graphviz with capability-based resolution
+
+**Trigger.** With `CV0.E1` closed on its core stories and the post-S4 shape-variation + gallery follow-ups shipped, the next CV-line move is `CV0.E2` — the Epic that pressure-tests the registry abstraction by plugging a second processor alongside Kroki. The top-level roadmap had `CV0.E2` as plain text since the initial draft; specing `S1` was the trigger to also seed the Epic folder and its `README.md`.
+
+**Design discussion ahead of implementation.** Three decisions were surfaced in chat and locked in before writing the plan, rather than as open questions inside it:
+
+1. `FenceProcessor.available()` becomes a **required** method on the interface (not optional). Kroki gets `async () => ({ ok: true })`. Rationale: D4 in the briefing explicitly says every processor exposes capability detection; S1 is the first story where the *user-visible* behaviour depends on that exposure, so this is where the interface change earns its place. The alternative (optional method, `Kroki` omits it) drifts from D4's "each processor exposes" wording for no real saving — Kroki's impl is one line.
+2. Resolution is **capability-based only**: iterate `processors` in registration order (graphviz-local first, Kroki second), return the first one whose tags/aliases cover the block's tag AND whose `available()` was ok at wire-time. Explicit per-tag binding via settings defers to `CV0.E2.S2`, which is the first story that reads `~/.pi/agent/pi-fence.config.json`. Rationale: smallest thing that honours the Epic Done criterion; keeps `S1` config-less.
+3. `ProcessorStatus` widens from `"registered"` to `"registered" | "unavailable"` **now, not deferred to `/fence doctor`**. Rationale: with two processors both claiming `graphviz`/`dot`, the user needs to be able to see which one actually served their render. The formatter emits a second indented line with reason + install hint for unavailable rows; the renderer stays dumb (no new branch on kind). Deferring this to `/fence doctor` would leave S1 shipping a feature the user can't verify.
+
+**One decision flagged for resolution during implementation:** PNG bytes must survive round-trip through `ShellResult`. `ShellRunner.run` currently returns stdout as a UTF-8 string, which corrupts binary output. Step 3 of the plan resolves this as either (a) widening `ShellResult` with a `stdoutBuffer` field or (b) adding a sibling `shell.runBinary(...)` method — whichever is smaller after reading `ShellRunner`'s current shape wins, and the self-test for the runner is updated in the same step. Tracked as a plan deviation candidate in the S1 close entry.
+
+**What shipped (one spec commit + this docs catch-up):**
+
+- `fa1b4c3` **spec CV0.E2.S1 — local graphviz with capability-based resolution.** Five files: new Epic README at `docs/project/roadmap/cv0-it-works/cv0-e2-graphviz-local/README.md` (stories table, deliverable vision showing both branches, architecture diagram with the new `resolve(tag)` step, scope/deferred/accepted-limitations, repo-layout-after-Epic); new story folder `cv0-e2-s1-local-graphviz/` with `README.md` (done criterion split between "with graphviz installed" and "without"), `plan.md` (eight numbered deliverables, ten-step implementation table, mandatory Tests section covering contract / unit / extension / integration-live / render-image, verification, key files, explicit out-of-scope list), and `test-guide.md` (automated tests + six-step manual script + rollback); one edit to the top-level roadmap README turning the `CV0.E2.S1` row from a plain-text code token into a link to the new story README. Kept the `### CV0.E2 — Graphviz Local` heading as plain text because `link-check.ts`'s slugifier processes raw heading content, which breaks the `#cv0e2--graphviz-local` anchor that `CV0.E1`'s README references — verified live: the initial draft wrapped the heading in a link and `pnpm run check` immediately flagged the broken anchor; reverted to plain text and check passes. No code, no tests, no CHANGELOG (specs aren't user-visible).
+- This worklog entry: handoff state, design decisions locked in, decision deferred, expected test-count delta on close.
+
+**Tests:** 181 → 181 unchanged (spec is code-free). `pnpm run check` green across 53 files (3 new markdown files from the E2 spec folder, 0 errors).
+
+**Handoff state at the moment this entry lands:**
+
+- Roadmap top + Epic README + story README all consistent: `CV0.E2.S1` is Planned, linked, has plan + test-guide. `CV0.E2.S2` still plain-text (no folder yet; gets its own spec commit when S1 closes and the config seam earns its place).
+- No uncommitted changes; all gates green.
+- `AGENTS.md` Read-first + roadmap flow lands a fresh session on `CV0.E2.S1`'s plan as the next actionable Planned row.
+- Backlog items from the CVx batch still non-blocking: upstream `VirtualTerminal` export (pi-tui) and upstream addon-image overlay CSS bug report (xterm.js).
+
+**Meta — decisions-in-chat, not in plan.md.** The three decisions above were discussed in chat before I wrote any file. Each had a concrete alternative I laid out and a recommendation; the user responded `go` and I committed the spec with those decisions locked in. That matches what CVx.E2.S4's spec did (`db753a6`) and reads better than plans full of open questions the implementer has to re-decide. The one question that genuinely benefits from implementation-time information (binary stdout via `stdoutBuffer` vs `runBinary`) stays in the plan as a decision-on-encounter, because it's contingent on code shape the spec author shouldn't pretend to know up front.
