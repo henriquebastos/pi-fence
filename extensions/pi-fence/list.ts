@@ -10,37 +10,34 @@
  *     processor's `reason` + optional `installHint` are carried on the
  *     listing so the formatter can surface them.
  *
- *   - `formatProcessorLines(listings)` turns listings into an array of
- *     readable strings. Registered processors render as one line:
+ *   - `formatProcessorLines(listings, bindings?)` turns listings +
+ *     optional binding-resolution rows (from `resolveBindings` in
+ *     `resolve.ts`) into an array of readable strings. Registered
+ *     processors render as one line; unavailable processors render as
+ *     two (header + indented reason). After the processor block, two
+ *     optional sections render:
  *
- *         <id> [registered] \u2014 <tags>
+ *         Bindings
+ *           <tag> → <processorId>
  *
- *     Unavailable processors render as two: the header line with an
- *     `[unavailable]` status bracket, followed by an indented second
- *     line with the reason and install hint:
+ *         Ignored bindings
+ *           <tag> → <processorId> (unknown processor)
+ *           <tag> → <processorId> (processor unavailable)
  *
- *         <id> [unavailable] \u2014 <tags>
- *             <reason>. <installHint>
+ *     Both sections are hidden when their bucket is empty.
  *
- *     Example with the CV0.E2.S1 two-processor shape on a machine
- *     without `dot`:
- *
- *         graphviz-local [unavailable] \u2014 graphviz (dot)
- *             dot binary not found on PATH. Install graphviz \u2014 apt
- *             install graphviz (Debian/Ubuntu) \u00b7 \u2026
- *         kroki          [registered]  \u2014 mermaid, graphviz (dot), \u2026
- *
- * No column alignment across processors' status brackets \u2014 rows stay
- * per-processor-self-contained, matching S3's formatting decision. If a
- * future story introduces enough processors that visual alignment earns
- * its keep, revisit then; today a prose-like shape keeps the formatter
- * trivial and the test surface small.
+ * No column alignment across processors' status brackets — rows stay
+ * per-processor-self-contained, matching S3's formatting decision. If
+ * a future story introduces enough processors that visual alignment
+ * earns its keep, revisit then; today a prose-like shape keeps the
+ * formatter trivial and the test surface small.
  *
  * Zero pi-SDK, zero pi-tui dependencies. Both functions are trivially
  * unit-testable against constructed processor + availability pairs.
  */
 
 import type { Availability, FenceProcessor } from "./processor.ts";
+import type { BindingResolution } from "./resolve.ts";
 
 export type ProcessorStatus = "registered" | "unavailable";
 
@@ -57,13 +54,13 @@ export interface ProcessorListing {
 
 /**
  * Build a listing row per processor. Order is preserved. The processor's
- * own `tags` and `aliases` are surfaced without copying \u2014 the listing
+ * own `tags` and `aliases` are surfaced without copying — the listing
  * holds readonly references so a downstream formatter cannot mutate the
  * processor's advertised configuration.
  *
  * Status comes from `availability.get(id)`. A missing entry in the map
  * is treated the same as `{ ok: false, reason: "availability unknown" }`
- * \u2014 shouldn't happen in production (`probeAvailability` populates the
+ * — shouldn't happen in production (`probeAvailability` populates the
  * map for every processor) but the defensive branch keeps the formatter
  * honest when a test constructs a partial map.
  */
@@ -99,26 +96,59 @@ export function listProcessors(
 }
 
 /**
- * Format listings as readable lines. Empty input returns a single
- * "(no processors registered)" line so the custom message always has
- * visible content.
- *
- * Each registered processor contributes one line. Each unavailable
- * processor contributes two: the header + an indented reason line.
- * The array of strings is painted verbatim by the list renderer \u2014
- * one Text child per line.
+ * Format listings + bindings as readable lines. Empty listings + empty
+ * bindings returns a single "(no processors registered)" line so the
+ * custom message always has visible content. The array of strings is
+ * painted verbatim by the list renderer — one Text child per line,
+ * including blank separators between sections.
  */
-export function formatProcessorLines(listings: readonly ProcessorListing[]): string[] {
-	if (listings.length === 0) {
+export function formatProcessorLines(
+	listings: readonly ProcessorListing[],
+	bindings?: readonly BindingResolution[],
+): string[] {
+	const hasBindings = bindings !== undefined && bindings.length > 0;
+
+	if (listings.length === 0 && !hasBindings) {
 		return ["(no processors registered)"];
 	}
+
 	const out: string[] = [];
-	for (const listing of listings) {
-		out.push(formatHeader(listing));
-		if (listing.status === "unavailable") {
-			out.push(formatUnavailableDetail(listing));
+	if (listings.length === 0) {
+		out.push("(no processors registered)");
+	} else {
+		for (const listing of listings) {
+			out.push(formatHeader(listing));
+			if (listing.status === "unavailable") {
+				out.push(formatUnavailableDetail(listing));
+			}
 		}
 	}
+
+	if (hasBindings) {
+		const effective = bindings!.filter((b) => b.status === "effective");
+		const ignored = bindings!.filter((b) => b.status === "ignored");
+
+		if (effective.length > 0) {
+			out.push("");
+			out.push("Bindings");
+			for (const row of effective) {
+				out.push(`${BINDING_INDENT}${row.tag} → ${row.processorId}`);
+			}
+		}
+
+		if (ignored.length > 0) {
+			out.push("");
+			out.push("Ignored bindings");
+			for (const row of ignored) {
+				if (row.status !== "ignored") continue;
+				const reason = formatIgnoredReason(row.reason);
+				out.push(
+					`${BINDING_INDENT}${row.tag} → ${row.processorId} (${reason})`,
+				);
+			}
+		}
+	}
+
 	return out;
 }
 
@@ -128,10 +158,17 @@ export function formatProcessorLines(listings: readonly ProcessorListing[]): str
 
 function formatHeader(listing: ProcessorListing): string {
 	const tagPart = formatTagList(listing.tags, listing.aliases);
-	return `${listing.id} [${listing.status}] \u2014 ${tagPart}`;
+	return `${listing.id} [${listing.status}] — ${tagPart}`;
 }
 
 const UNAVAILABLE_DETAIL_INDENT = "    ";
+const BINDING_INDENT = "  ";
+
+function formatIgnoredReason(
+	reason: "unknown-processor" | "processor-unavailable",
+): string {
+	return reason === "unknown-processor" ? "unknown processor" : "processor unavailable";
+}
 
 function formatUnavailableDetail(listing: ProcessorListing): string {
 	const reason = listing.unavailableReason ?? "unavailable";
@@ -142,7 +179,7 @@ function formatUnavailableDetail(listing: ProcessorListing): string {
 /**
  * Render canonical tags joined by ", ", with aliases that resolve to a
  * canonical tag shown in parentheses after it. Aliases whose target is
- * not a canonical tag are silently dropped \u2014 the `FenceProcessor`
+ * not a canonical tag are silently dropped — the `FenceProcessor`
  * contract forbids that shape, but the formatter stays defensive.
  */
 function formatTagList(

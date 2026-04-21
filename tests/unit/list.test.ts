@@ -290,6 +290,121 @@ describe("formatProcessorLines", () => {
 			},
 		]);
 
-		expect(lines).toEqual(["broken [registered] \u2014 a"]);
+		expect(lines).toEqual(["broken [registered] — a"]);
+	});
+});
+
+describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
+	const kroki = {
+		id: "kroki" as const,
+		status: "registered" as const,
+		tags: ["mermaid", "graphviz"],
+		aliases: { dot: "graphviz" },
+	};
+	const local = {
+		id: "graphviz-local" as const,
+		status: "registered" as const,
+		tags: ["graphviz"],
+		aliases: { dot: "graphviz" },
+	};
+
+	it("emits the Bindings section for effective rows", () => {
+		const lines = formatProcessorLines(
+			[local, kroki],
+			[
+				{ status: "effective", tag: "graphviz", processorId: "kroki" },
+				{ status: "effective", tag: "dot", processorId: "kroki" },
+			],
+		);
+
+		expect(lines).toEqual([
+			"graphviz-local [registered] — graphviz (dot)",
+			"kroki [registered] — mermaid, graphviz (dot)",
+			"",
+			"Bindings",
+			"  graphviz → kroki",
+			"  dot → kroki",
+		]);
+	});
+
+	it("emits the Ignored bindings section with per-row reasons", () => {
+		const lines = formatProcessorLines(
+			[kroki],
+			[
+				{
+					status: "ignored",
+					tag: "graphviz",
+					processorId: "graphviz-local",
+					reason: "processor-unavailable",
+				},
+				{
+					status: "ignored",
+					tag: "mermaid",
+					processorId: "nonexistent",
+					reason: "unknown-processor",
+				},
+			],
+		);
+
+		expect(lines).toEqual([
+			"kroki [registered] — mermaid, graphviz (dot)",
+			"",
+			"Ignored bindings",
+			"  graphviz → graphviz-local (processor unavailable)",
+			"  mermaid → nonexistent (unknown processor)",
+		]);
+	});
+
+	it("emits both sections together when bindings split across buckets", () => {
+		const lines = formatProcessorLines(
+			[local, kroki],
+			[
+				{ status: "effective", tag: "graphviz", processorId: "kroki" },
+				{
+					status: "ignored",
+					tag: "mermaid",
+					processorId: "nonexistent",
+					reason: "unknown-processor",
+				},
+			],
+		);
+
+		expect(lines).toEqual([
+			"graphviz-local [registered] — graphviz (dot)",
+			"kroki [registered] — mermaid, graphviz (dot)",
+			"",
+			"Bindings",
+			"  graphviz → kroki",
+			"",
+			"Ignored bindings",
+			"  mermaid → nonexistent (unknown processor)",
+		]);
+	});
+
+	it("hides both sections when bindings is undefined", () => {
+		const lines = formatProcessorLines([local]);
+
+		expect(lines).toEqual(["graphviz-local [registered] — graphviz (dot)"]);
+	});
+
+	it("hides both sections when bindings is an empty array", () => {
+		const lines = formatProcessorLines([local], []);
+
+		expect(lines).toEqual(["graphviz-local [registered] — graphviz (dot)"]);
+	});
+
+	it("handles bindings-only with no processors (defensive)", () => {
+		// Shouldn't happen in production but shouldn't crash either.
+		const lines = formatProcessorLines(
+			[],
+			[{ status: "effective", tag: "graphviz", processorId: "kroki" }],
+		);
+
+		expect(lines).toEqual([
+			"(no processors registered)",
+			"",
+			"Bindings",
+			"  graphviz → kroki",
+		]);
 	});
 });

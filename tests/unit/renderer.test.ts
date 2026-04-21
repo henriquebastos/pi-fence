@@ -353,6 +353,42 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 		).toBe(true);
 	});
 
+	it("paints the Bindings section emitted by the formatter (CV0.E2.S2)", async () => {
+		// Renderer paints verbatim. If the formatter emits a 'Bindings'
+		// header + indented rows, the renderer must land them in the
+		// viewport without special-casing.
+		const renderer = createPiFenceListRenderer(TUI_PRIMITIVES);
+		const component = renderer(
+			{
+				content: [],
+				details: {
+					lines: [
+						"graphviz-local [registered] — graphviz (dot)",
+						"kroki [registered] — mermaid, graphviz (dot)",
+						"",
+						"Bindings",
+						"  graphviz → kroki",
+						"",
+						"Ignored bindings",
+						"  mermaid → nonexistent (unknown processor)",
+					],
+				},
+			},
+			{ expanded: false },
+			IDENTITY_THEME,
+		);
+
+		const terminal = await paintComponent(component);
+
+		const viewport = terminal.getViewport();
+		expect(viewport.some((line) => line.includes("Bindings"))).toBe(true);
+		expect(viewport.some((line) => line.includes("graphviz → kroki"))).toBe(true);
+		expect(viewport.some((line) => line.includes("Ignored bindings"))).toBe(true);
+		expect(
+			viewport.some((line) => line.includes("mermaid → nonexistent (unknown processor)")),
+		).toBe(true);
+	});
+
 	it("paints the [unavailable] status bracket and the indented reason line", async () => {
 		// CV0.E2.S1 step 6 — the list renderer paints the formatter's
 		// output verbatim, so both the header line (with [unavailable]) and
