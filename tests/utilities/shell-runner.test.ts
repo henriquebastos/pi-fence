@@ -98,6 +98,19 @@ describe("NodeShellRunner", () => {
 		expect(result.stderr).toBe("");
 	});
 
+	it("populates stdoutBuffer losslessly alongside the UTF-8 stdout string", async () => {
+		// Binary-safe contract landed with CV0.E2.S1 step 3 so graphviz-local
+		// can read PNG bytes out of `dot -Tpng` stdout without UTF-8 lossiness.
+		// The echoed ASCII case below is round-trip-equal to its UTF-8 encoding;
+		// the real binary proof lives in the graphviz-local live test, which
+		// asserts PNG magic bytes against a live `dot -Tpng` inside the
+		// pi-fence-live-deps container.
+		const result = await shell.run("/bin/echo", ["hello"]);
+		expect(Buffer.isBuffer(result.stdoutBuffer)).toBe(true);
+		expect(result.stdoutBuffer?.toString("utf8")).toBe("hello\n");
+		expect(result.stdoutBuffer?.length).toBe(6);
+	});
+
 	it("captures a non-zero exit code without throwing", async () => {
 		const result = await shell.run("/bin/sh", ["-c", "exit 3"]);
 		expect(result.exitCode).toBe(3);

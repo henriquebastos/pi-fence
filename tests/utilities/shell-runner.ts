@@ -27,7 +27,29 @@
 import { execFile } from "node:child_process";
 
 export interface ShellResult {
+	/**
+	 * stdout as a UTF-8 decoded string. Lossy for binary payloads —
+	 * high-bit bytes become replacement characters. Binary-consuming
+	 * callers must read `stdoutBuffer` instead.
+	 */
 	stdout: string;
+	/**
+	 * stdout as raw bytes. Always populated by `NodeShellRunner` and
+	 * `DockerExecShellRunner` (which wraps Node). Optional on
+	 * `FakeShellRunner` results — tests that don't care about binary
+	 * fidelity (the majority: exit codes, stderr strings, call capture)
+	 * leave it unset and callers fall back to encoding `stdout` as
+	 * UTF-8. Tests that assert on PNG bytes (graphviz-local) set
+	 * `stdoutBuffer` explicitly in the programmed response.
+	 *
+	 * Introduced in CV0.E2.S1 for the graphviz-local processor whose
+	 * `render()` returns raw PNG bytes from `dot -Tpng` stdout. Option
+	 * (b) from the S1 spec's deferred-decision list: widen `ShellResult`
+	 * rather than add a sibling `runBinary()` method — zero blast
+	 * radius on existing callers, ~30 LOC of plumbing, memory cost is
+	 * negligible for the PNG sizes pi-fence handles.
+	 */
+	stdoutBuffer?: Buffer;
 	stderr: string;
 	exitCode: number;
 }
@@ -59,13 +81,22 @@ export class NodeShellRunner implements ShellRunner {
 				{
 					cwd: opts.cwd,
 					signal: opts.signal,
-					encoding: "utf8",
+					// Binary-safe: execFile's "buffer" encoding yields Buffer
+					// stdout/stderr instead of lossy UTF-8 strings. We decode
+					// into `stdout` for text-path callers and keep the raw
+					// bytes in `stdoutBuffer` for binary-path callers
+					// (graphviz-local reads PNG bytes from `dot -Tpng` stdout).
+					encoding: "buffer",
 					// Buffer up to 50 MB of output. Rendered PNGs from Kroki
 					// or local `dot` usually come as stdout; 50 MB is a
 					// generous ceiling before something is clearly wrong.
 					maxBuffer: 50 * 1024 * 1024,
 				},
-				(err, stdout, stderr) => {
+				(err, stdoutBuf, stderrBuf) => {
+					const stdoutBuffer = toBuffer(stdoutBuf);
+					const stderrBuffer = toBuffer(stderrBuf);
+					const stdout = stdoutBuffer.toString("utf8");
+					const stderr = stderrBuffer.toString("utf8");
 					// execFile's err may be an ExecFileException with .code
 					// for non-zero exits. We unpack both cases so the caller
 					// gets a uniform ShellResult rather than a thrown error
@@ -75,21 +106,13 @@ export class NodeShellRunner implements ShellRunner {
 						// Non-zero-exit errors carry `code` as a number.
 						const code = (err as NodeJS.ErrnoException & { code?: number | string }).code;
 						if (typeof code === "number") {
-							resolve({
-								stdout: typeof stdout === "string" ? stdout : stdout.toString("utf8"),
-								stderr: typeof stderr === "string" ? stderr : stderr.toString("utf8"),
-								exitCode: code,
-							});
+							resolve({ stdout, stdoutBuffer, stderr, exitCode: code });
 							return;
 						}
 						reject(err);
 						return;
 					}
-					resolve({
-						stdout: typeof stdout === "string" ? stdout : stdout.toString("utf8"),
-						stderr: typeof stderr === "string" ? stderr : stderr.toString("utf8"),
-						exitCode: 0,
-					});
+					resolve({ stdout, stdoutBuffer, stderr, exitCode: 0 });
 				},
 			);
 
@@ -147,6 +170,18 @@ export class FakeShellRunner implements ShellRunner {
 			`FakeShellRunner: no programmed response for ${cmd} ${args.join(" ")} and no default set`,
 		);
 	}
+}
+
+/**
+ * Coerce `execFile`'s callback stdout/stderr into a Buffer. With
+ * `encoding: "buffer"` the callback yields Buffer instances; the
+ * defensive `string`/`nullish` branches exist so a future Node
+ * behaviour change doesn't silently produce corrupted bytes.
+ */
+function toBuffer(x: unknown): Buffer {
+	if (Buffer.isBuffer(x)) return x;
+	if (typeof x === "string") return Buffer.from(x, "utf8");
+	return Buffer.alloc(0);
 }
 
 function keyFor(cmd: string, args: string[]): string {
