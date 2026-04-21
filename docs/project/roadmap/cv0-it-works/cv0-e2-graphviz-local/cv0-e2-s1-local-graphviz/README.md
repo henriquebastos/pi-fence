@@ -1,6 +1,6 @@
 [< CV0.E2 — Graphviz Local](../README.md)
 
-# S1 — I use local graphviz when I want privacy and offline
+# S1 — I use local graphviz when I want privacy and offline ✅ Done
 
 CV0.E1 shipped with every `dot` block leaving the machine on the way to `kroki.io`. S1 adds a second processor — a graphviz-local renderer that shells out to the local `dot` binary — and lets it take over the `graphviz`/`dot` tag when the binary is installed. Nothing else changes: Kroki still handles every other tag, and a machine without `dot` sees exactly the CV0.E1 behaviour.
 
