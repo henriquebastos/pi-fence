@@ -2,7 +2,7 @@
 
 # Getting Started
 
-> **Status:** `CV0.E1` has shipped its core user-visible stories ([S0](project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s0-testing-foundation/README.md)–[S3](project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s3-fence-list/README.md)) plus [CVx.E1.S1](project/roadmap/cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md) (render-layer testing). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. Local rendering, `/fence doctor`, and configuration are still on the [roadmap](project/roadmap/README.md).
+> **Status:** `CV0.E1` closed with full Kroki text coverage; `CV0.E2.S1` closed with local graphviz — `graphviz`/`dot` blocks render locally when `dot` is on your PATH, no kroki.io round-trip for that tag. Full render-layer testing via [CVx.E1.S1](project/roadmap/cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. `/fence doctor`, explicit per-tag bindings, and configuration are still on the [roadmap](project/roadmap/README.md).
 
 ## Install
 
@@ -38,20 +38,44 @@ The assistant answers with the obvious fenced block (```` ```mermaid ````, ```` 
 
 Supported tags today: every text-body Kroki language the public endpoint serves as PNG — `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`. Full reference with minimal source examples, per-language quirks, and a list of languages pi-fence deliberately does *not* advertise yet: [docs/product/kroki-support.md](product/kroki-support.md).
 
-Type `/fence list` to see every registered processor, its status, and the tags it accepts:
+Type `/fence list` to see every registered processor, its availability, and the tags it accepts:
 
 ```text
 Processors
 
+graphviz-local [registered] — graphviz (dot)
 kroki [registered] — mermaid, graphviz (dot), plantuml (puml), blockdiag, seqdiag, actdiag, nwdiag, packetdiag, rackdiag, c4plantuml, ditaa, erd, structurizr, symbolator, tikz, umlet, wireviz
+```
+
+On a machine without `graphviz` installed, the first line becomes two:
+
+```text
+graphviz-local [unavailable] — graphviz (dot)
+    dot binary not found on PATH (…). Install graphviz — apt install graphviz (Debian/Ubuntu) · brew install graphviz (macOS) · https://graphviz.org/download/
+kroki [registered] — mermaid, graphviz (dot), plantuml (puml), …
 ```
 
 The listing is offline — no network call happens when you type `/fence list`.
 
+## Going offline for DOT
+
+With `graphviz` installed locally, every ```` ```dot ```` or ```` ```graphviz ```` block the assistant writes renders via the local `dot` binary rather than `kroki.io`. The diagram source never leaves your machine for that tag. Install:
+
+```bash
+sudo apt install graphviz        # Debian / Ubuntu
+brew install graphviz            # macOS
+# Other platforms: https://graphviz.org/download/
+```
+
+Then `/reload` inside pi (pi-fence probes `dot -V` once per session, at startup; new installs are picked up on the next reload). `/fence list` should now show `graphviz-local [registered]`.
+
+Mermaid, PlantUML, blockdiag, and every other tag still hit `kroki.io`. Local rendering for those languages is on the [roadmap](project/roadmap/README.md) (CV2.E1 for mermaid via `mmdc`).
+
 If you don't see an image, check:
 
 - Your terminal supports inline images.
-- You have network access (the processor uses [kroki.io](https://kroki.io)).
+- For kroki.io-served tags: you have network access.
+- For `dot` tags: `graphviz` is on your PATH (`dot -V` should print a version).
 
 ## Next
 

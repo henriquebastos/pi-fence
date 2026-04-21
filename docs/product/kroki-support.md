@@ -20,7 +20,7 @@ Each entry is verified by a live integration test at `tests/integration/kroki.li
 | Tag | Aliases pi-fence accepts | Notes |
 |-----|--------------------------|-------|
 | `mermaid` | — | Flowcharts, sequence diagrams, state diagrams, class diagrams, etc. |
-| `graphviz` | `dot` | DOT language; aliases to `/graphviz/png`. |
+| `graphviz` | `dot` | DOT language; aliases to `/graphviz/png`. **Local precedence:** if `graphviz` is installed on the host (`dot` on PATH), pi-fence's `graphviz-local` processor renders this tag via the local binary instead of kroki.io. See [getting-started](../getting-started.md#going-offline-for-dot). |
 | `plantuml` | `puml` | Full PlantUML. Aliases to `/plantuml/png`. |
 | `blockdiag` | — | Box-and-arrow block diagrams. |
 | `seqdiag` | — | Sequence diagrams in the blockdiag family. |
