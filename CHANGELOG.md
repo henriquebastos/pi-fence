@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV0.E2.S2 — per-tag processor binding from settings)
+
+CV0.E2's second and closing story. Users can now override pi-fence's default capability-based resolution per tag via a small config file, honouring D6 in the briefing at a minimum viable slice.
+
+- **Two optional config files**, merged with project-over-global precedence:
+  - Global: `~/.pi/agent/pi-fence.config.json`.
+  - Project: `<cwd>/.pi/pi-fence.config.json`.
+- **One config key for now** — `bindings`:
+
+  ```json
+  {
+    "bindings": {
+      "graphviz": "kroki",
+      "dot": "kroki"
+    }
+  }
+  ```
+
+  Binding lookup is exact, not alias-aware — list both `graphviz` and `dot` if you want both routed through the same processor. Unknown top-level keys are tolerated silently (forward-compat with CV1.E1's future keys).
+- **Bindings are preferences, not hard requirements**. A binding to an unavailable processor (e.g. `graphviz → graphviz-local` on a machine without `dot`) falls through to capability-based resolution; Kroki serves the block. `/fence list` shows the ignored binding in an `Ignored bindings` section with the reason (`processor unavailable` or `unknown processor`). Strict mode (respect unavailable, refuse fallback) defers to a follow-up story.
+- **`/fence list` gains `Bindings` + `Ignored bindings` sections** when the config has any bindings. Empty config → same output as S1.
+- **Inline `~50-LOC loader`** at `extensions/pi-fence/config.ts`. No new runtime deps. Every error path (missing file, malformed JSON, non-object top level, non-string values inside bindings) logs a warn and continues with defaults; a bad config can never take the extension down at startup. The briefing's D6 library adoption note (`@zenobius/pi-extension-config`) earns its reconsideration when CV1.E1 broadens the config surface.
+- **`FenceProcessor` interface unchanged**. S2 touches `extensions/pi-fence/resolve.ts` only: `resolveProcessor` gains an optional `bindings` arg; new `resolveBindings` helper categorises each binding into effective / ignored with the reason for `/fence list`.
+
+Test coverage grows by +40 cases (238 → 279 fast suite): 15 config-loader cases, 13 bindings-aware resolve + resolveBindings cases, 7 formatter section cases, 1 renderer viewport case, 5 extension-layer scenarios (global binding respected, project-overrides-global, unknown processor ignored, unavailable processor falls through, `/fence list` surfaces sections).
+
+Docs: `README.md` (Processor registry section gains a binding paragraph + link to getting-started; Slash commands `/fence list` entry notes the Bindings section). `docs/getting-started.md` (new "Binding a tag to a specific processor" section with the canonical config shape + exact-lookup rule + preferences-not-requirements note + missing/malformed behaviour).
+
 ### Added (CV0.E2.S1 — local graphviz with capability-based resolution)
 
 The second processor. pi-fence stops assuming a single processor and gains the registry pattern it has always pointed at. Behaviour delta:

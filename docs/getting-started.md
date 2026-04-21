@@ -2,7 +2,7 @@
 
 # Getting Started
 
-> **Status:** `CV0.E1` closed with full Kroki text coverage; `CV0.E2.S1` closed with local graphviz — `graphviz`/`dot` blocks render locally when `dot` is on your PATH, no kroki.io round-trip for that tag. Full render-layer testing via [CVx.E1.S1](project/roadmap/cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. `/fence doctor`, explicit per-tag bindings, and configuration are still on the [roadmap](project/roadmap/README.md).
+> **Status:** `CV0.E1` closed with full Kroki text coverage; `CV0.E2` closed with local graphviz + user-level per-tag bindings. Full render-layer testing via [CVx.E1.S1](project/roadmap/cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. `/fence doctor`, richer per-processor configuration, and the error-feedback loop to the LLM are still on the [roadmap](project/roadmap/README.md).
 
 ## Install
 
@@ -70,6 +70,51 @@ brew install graphviz            # macOS
 Then `/reload` inside pi (pi-fence probes `dot -V` once per session, at startup; new installs are picked up on the next reload). `/fence list` should now show `graphviz-local [registered]`.
 
 Mermaid, PlantUML, blockdiag, and every other tag still hit `kroki.io`. Local rendering for those languages is on the [roadmap](project/roadmap/README.md) (CV2.E1 for mermaid via `mmdc`).
+
+## Binding a tag to a specific processor
+
+The default resolution rule picks the first available processor that claims a tag in registration order — local-first for `graphviz`/`dot`, Kroki for everything else. If you want a different pairing (say, Kroki for `dot` even though you have `graphviz` installed), write a small config file:
+
+```json
+{
+  "bindings": {
+    "graphviz": "kroki",
+    "dot": "kroki"
+  }
+}
+```
+
+pi-fence reads two optional files and merges them (project overrides global):
+
+1. **Global** — `~/.pi/agent/pi-fence.config.json`.
+2. **Project** — `<cwd>/.pi/pi-fence.config.json`.
+
+`/reload` inside pi after editing. `/fence list` then shows a `Bindings` section:
+
+```text
+Bindings
+
+  graphviz → kroki
+  dot → kroki
+```
+
+**Binding lookup is exact**, not alias-aware. If you want both `graphviz` and `dot` blocks to route through the same processor, list both keys — see the example above. This matches how most config formats work (one key per tag) and keeps the semantics predictable.
+
+**Bindings are preferences, not hard requirements.** If you bind `graphviz → graphviz-local` on a machine where `dot` isn't installed, pi-fence falls back to capability-based resolution (Kroki serves the block) and logs the fallback at warn level. `/fence list` shows the ignored binding in an `Ignored bindings` section with the reason:
+
+```text
+Ignored bindings
+
+  graphviz → graphviz-local (processor unavailable)
+```
+
+Same for bindings that point to an unknown processor id — typos are noted in the `Ignored bindings` section rather than silently breaking.
+
+### Missing / malformed config files
+
+- If neither file exists, the defaults apply (capability-based resolution only).
+- If a file is malformed JSON or its shape is wrong, pi-fence logs one warn line and continues with the remaining valid config — a bad config must never take the extension down.
+- Unknown top-level keys are tolerated silently so future config surface (endpoint overrides, processor enable flags — CV1.E1) doesn't break existing files.
 
 If you don't see an image, check:
 
