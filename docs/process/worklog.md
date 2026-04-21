@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CV0.E2.S1` closed. Two processors collaborate end-to-end: graphviz-local wins the `graphviz`/`dot` tag when `dot` is on PATH (zero HTTP traffic to kroki.io for that tag); Kroki serves everything else, including graphviz on machines without `dot`. The registry pattern is live.
+`CV0.E2.S2` specced and ready to implement. S1 closed; the registry pattern is live. S2 adds user-level per-tag binding on top of it — the first pi-fence story that reads `~/.pi/agent/pi-fence.config.json`.
 
 ## Next
 
-`CV0.E2.S2` — explicit per-tag processor binding in settings — is the remaining CV0.E2 story. It is not yet specced; the spec earns the next commit whenever the pressure for user-level override materialises or the Epic close is targeted.
+Follow `cv0-e2-s2-tag-binding/plan.md` step by step. Six steps: config loader → bindings-aware resolve → /fence list sections → extension wiring → docs → close. Expected test-count delta: ~+15 fast-suite cases; no new live cases. No new deps — the spec locked in an inline ~50-LOC loader over adopting `@zenobius/pi-extension-config` for CV0.E2's scope; revisit when CV1.E1's broader config surface lands.
 
 Still Planned: `CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw; specced, orthogonal to CV0.E2), `CV0.E2.S2` (not specced), and everything CV1+. CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
@@ -937,3 +937,26 @@ Epic-level done criterion is met for S1's share: two processors collaborate, gra
 5. **Render Image scenario for the fall-through path.** A `graphviz-local-vs-kroki-fallback` composition-level scenario showing the two-processor `/fence list` output alongside a rendered block. The existing composition scenarios are rendered-block-centric; this would be the first `/fence list`-centric scenario. Earned when a real regression on the /fence list layout warrants it.
 
 **Meta — ten-step story shipped in one session.** Eight wip(agent) step commits + one docs step + one close, all same-day, following the plan's commit rhythm without deviation beyond the two called out above. The spec + plan + test-guide triad (committed two commits ago in `fa1b4c3`) held up end-to-end: every step's commit message could quote the plan row verbatim, and the Tests section's predicted test-count delta (+12 / +4 live) landed as +58 fast + +5 live — the plan under-counted because it didn't anticipate the shared-contract cross-count, the resolve-module test expansion, or the stdoutBuffer self-test. Not a spec problem; a reminder that the numerical prediction in the Tests section is a starting estimate, not a target. Worth noting for future plan-shaping.
+
+### 2026-04-20 — spec CV0.E2.S2 (`c56e8e0`) — per-tag processor binding from settings
+
+**Trigger.** S1 closed, leaving the Epic with one remaining story (`S2`) that had been plain-text 'not yet specced' since the Epic README first landed. Speccing it now is the natural Epic-close move — S1 delivered the foundation (registry + capability-based resolution); S2 adds the user-level override on top of it.
+
+**Design discussion ahead of implementation.** Three decisions surfaced in chat before writing the plan:
+
+1. **Inline loader vs adopting `@zenobius/pi-extension-config`.** The briefing's D6 names the library. But reading D6's full context: the library's pull was pi-worktrees' adoption and the shared pain of multiple extensions rolling per-file glue. pi-fence's S2 surface is one file, one key (\`bindings\`). ~50 LOC inline is smaller than the wire-up + two transitive deps (nconf, standard-schema) adoption would cost. Decision: inline now, revisit with CV1.E1's broader config surface (endpoints, enable flags, timeouts) when the library's layered-resolution / env-override / migration primitives start paying off against real surface area.
+2. **Bindings are preferences, not hard requirements.** When a user binds `graphviz: graphviz-local` on a machine without `dot`, pi-fence falls back to capability-based resolution (Kroki wins) and logs info. Alternative (strict mode) would surface a broken render when the bound processor isn't available. Strict mode would change user-visible contract (broken diagrams become visible errors instead of silent fallbacks) in a way that deserves its own story; captured as a follow-up rather than smuggled into S2.
+3. **File-based bindings only; env overrides defer.** D6 names `PI_FENCE_*` env overrides as a precedence layer. For a one-knob surface (bindings), env is low-value — a user either cares enough to edit a JSON file or doesn't. When CV1.E1 brings multiple knobs (endpoint, timeouts, etc.), env earns its place as the 'per-invocation override' pattern; S2 ships the file-based foundation.
+
+**What shipped (one spec commit + this docs catch-up):**
+
+- `c56e8e0` **spec CV0.E2.S2 — per-tag processor binding from settings.** Three new files under `cv0-e2-s2-tag-binding/`: README (done criterion split between 'bound to kroki while dot installed' and 'bound to graphviz-local while dot missing', in/out scope), plan (six numbered deliverables + six-step implementation table + mandatory Tests section), test-guide (seven-step manual script covering default / global config / project-override-global / unknown-processor / unavailable-processor / malformed-JSON / removal → defaults). Two link edits promoting `CV0.E2.S2` from plain-text to a link in the top-level roadmap and the Epic README's stories table. No code, no tests, no CHANGELOG.
+- This worklog entry + focus/next updated to point at S2's plan.
+
+**Tests:** 239 unchanged (spec is code-free). `pnpm run check` green (55 markdown files, 0 errors).
+
+**Handoff state at the moment this entry lands:**
+
+- CV0.E2 state: S1 ✅ Done, S2 Planned (this spec), which takes the Epic from '1 of 2 specced' to '2 of 2 specced'. Implementation starts immediately in the same session per the user's 'build the entire epic' directive.
+- AGENTS.md one-feature-one-docs-adjacent rule honoured: this docs commit follows the spec commit immediately (matches the `fa1b4c3` → `9f7acbd` pattern from S1).
+- No uncommitted changes; all gates green.
