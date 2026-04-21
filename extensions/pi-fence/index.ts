@@ -1,17 +1,21 @@
 /**
  * pi-fence — fenced code block processor extension.
  *
- * S1 implementation: interception-only; a single hardcoded Kroki processor
- * handles fenced `mermaid` blocks. Error feedback to the LLM (CV1.E2),
- * user-configurable processor binding (CV1.E1), local graphviz (CV0.E2),
- * and the rest of the roadmap land on top of this foundation.
+ * CV0.E2.S1 wiring: capability-based registry with two processors. The
+ * graphviz-local processor shells out to the local `dot` binary when
+ * available; Kroki handles everything else (and graphviz itself on
+ * machines without `dot`). Resolution is capability-based and
+ * registration-order-preferred; explicit per-tag bindings from settings
+ * defer to CV0.E2.S2.
  *
  * Module exports:
- *   - default (ExtensionFactory): wires production deps and calls
+ *   - default (ExtensionFactory): wires production deps and awaits
  *     createPiFenceExtension. This is what pi auto-discovers.
- *   - createPiFenceExtension(pi, deps): the test-friendly seam. Tests pass
- *     a FakeHttpClient and FakeLogger to avoid network and capture log
- *     output.
+ *   - createPiFenceExtension(pi, deps): test-friendly seam. Tests pass a
+ *     FakeHttpClient + FakeShellRunner + FakeLogger to avoid I/O and
+ *     capture outputs. Now async: probeAvailability runs every
+ *     processor's available() once at wire time and the map is cached
+ *     for the session.
  */
 
 import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui";
@@ -22,11 +26,19 @@ import type { HttpClient } from "../../tests/utilities/http-client.ts";
 import { NodeHttpClient } from "../../tests/utilities/http-client.ts";
 import type { Logger } from "../../tests/utilities/logger.ts";
 import { NodeLogger } from "../../tests/utilities/logger.ts";
+import type { ShellRunner } from "../../tests/utilities/shell-runner.ts";
+import { NodeShellRunner } from "../../tests/utilities/shell-runner.ts";
 
 import { extractFencedBlocks } from "./parser.ts";
+import { createGraphvizLocalRenderer } from "./graphviz-local.ts";
 import { createKrokiRenderer, isDarkThemeName } from "./kroki.ts";
 import { formatProcessorLines, listProcessors, type ProcessorListing } from "./list.ts";
 import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import {
+	collectSupportedTags,
+	probeAvailability,
+	resolveProcessor,
+} from "./resolve.ts";
 import {
 	createPiFenceListRenderer,
 	createPiFenceMessageRenderer,
@@ -41,56 +53,34 @@ const LIST_MESSAGE_TYPE = "pi-fence:list";
 // future stories (`/fence doctor`, `/fence trace`).
 const FENCE_SUBCOMMANDS = ["list"] as const;
 
-// Tags pi-fence claims on fenced blocks in the assistant's output. Order
-// is for readability; matching is by exact string membership.
-//
-// The Kroki processor resolves its own aliases (e.g. `dot` -> `graphviz`)
-// at request time, so both aliases and canonical names appear here.
-//
-// Every canonical tag here matches a Kroki public-endpoint language that
-// returns PNG (see extensions/pi-fence/kroki.ts's KROKI_CANONICAL_TAGS
-// and tests/fixtures/kroki/canonical-sources.ts for the full research
-// context). Languages Kroki hosts but the public endpoint refuses PNG
-// for are deliberately excluded — see docs/product/kroki-support.md.
-const SUPPORTED_TAGS = [
-	// core
-	"mermaid",
-	"graphviz",
-	"dot",
-	"plantuml",
-	"puml",
-	// blockdiag family
-	"blockdiag",
-	"seqdiag",
-	"actdiag",
-	"nwdiag",
-	"packetdiag",
-	"rackdiag",
-	// domain-specific text diagrams
-	"c4plantuml",
-	"ditaa",
-	"erd",
-	"structurizr",
-	"symbolator",
-	"tikz",
-	"umlet",
-	"wireviz",
-];
 const MAX_BLOCKS_PER_TURN = 5;
 
 export interface PiFenceDeps {
 	http: HttpClient;
+	shell: ShellRunner;
 	logger: Logger;
-	processor?: FenceProcessor;
+	/**
+	 * Test-only override: pin the processor set. Production callers pass
+	 * `undefined` and get the default `[graphviz-local, kroki]` pair.
+	 * Tests that want deterministic resolution (the extension-layer
+	 * cases for local-available vs local-unavailable) pass explicit
+	 * processors instead of relying on the default registration order.
+	 */
+	processors?: FenceProcessor[];
 }
 
 /**
  * Wire pi-fence's hooks, commands, and renderer into the given ExtensionAPI.
  *
  * Separated from the default export so tests can supply fake deps. The
- * default export below wires production deps and calls through.
+ * default export below wires production deps and calls through. Async
+ * because `probeAvailability` runs every processor's `available()` once
+ * at wire time; the result is captured and reused for the session.
  */
-export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): void {
+export async function createPiFenceExtension(
+	pi: ExtensionAPI,
+	deps: PiFenceDeps,
+): Promise<void> {
 	// Latest pi theme name captured from event-handler contexts. Read at
 	// render time by the Kroki appearance resolver so live theme changes
 	// take effect without reconstructing the processor. Defaults to
@@ -99,12 +89,42 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 	// extension renders anything.
 	let currentThemeName: string | undefined;
 
-	const processor =
-		deps.processor ??
+	// Default processor array in registration-order precedence:
+	// graphviz-local first (wins graphviz/dot when `dot` is on PATH),
+	// Kroki second (fallback for graphviz + default for every other tag).
+	// Capability-based only in S1; explicit per-tag binding from settings
+	// defers to S2.
+	const processors: FenceProcessor[] = deps.processors ?? [
+		createGraphvizLocalRenderer(deps.shell, deps.logger),
 		createKrokiRenderer(deps.http, undefined, deps.logger, () =>
 			isDarkThemeName(currentThemeName) ? "dark" : "light",
-		);
-	const processors: FenceProcessor[] = [processor];
+		),
+	];
+
+	// Wire-time capability probe. The returned map is captured in the
+	// closure and reused by both the /fence list command and the
+	// agent_end resolver. A processor that crashes during available()
+	// is caught by probeAvailability and marked unavailable with the
+	// thrown message — one misbehaving processor cannot take the
+	// extension down at registration.
+	const availability = await probeAvailability(processors);
+	for (const processor of processors) {
+		const status = availability.get(processor.id);
+		if (status?.ok) {
+			deps.logger.debug("pi-fence", "processor available", { id: processor.id });
+		} else {
+			deps.logger.info("pi-fence", "processor unavailable", {
+				id: processor.id,
+				reason: status && !status.ok ? status.reason : "availability unknown",
+			});
+		}
+	}
+
+	// The parser's fenced-block allowlist is derived from the registered
+	// processors' canonical tags + alias keys. Adding a new processor in
+	// a future story grows the allowlist automatically; no more duplicate
+	// tag list to maintain.
+	const supportedTags = collectSupportedTags(processors);
 
 	// Custom message renderers — compose pi-tui primitives around the
 	// image/error content pi's runtime draws.
@@ -133,14 +153,6 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			deps.logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
-				// Trivial all-ok availability map for the single-processor
-				// (Kroki-only) wiring. CV0.E2.S1 step 7 replaces this with
-				// the output of probeAvailability() once graphviz-local is
-				// registered alongside Kroki and real capability detection
-				// becomes meaningful.
-				const availability: ReadonlyMap<string, Availability> = new Map(
-					processors.map((p) => [p.id, { ok: true } as Availability]),
-				);
 				sendListMessage(pi, processors, availability);
 				return;
 			}
@@ -171,7 +183,7 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 		const assistantText = extractAssistantText(event.messages);
 		if (!assistantText) return;
 
-		const blocks = extractFencedBlocks(assistantText, SUPPORTED_TAGS);
+		const blocks = extractFencedBlocks(assistantText, supportedTags);
 		deps.logger.debug("pi-fence", "agent_end parsed", {
 			assistantTextBytes: assistantText.length,
 			blocks: blocks.length,
@@ -187,6 +199,18 @@ export function createPiFenceExtension(pi: ExtensionAPI, deps: PiFenceDeps): voi
 		}
 
 		for (const block of toRender) {
+			const processor = resolveProcessor(processors, availability, block.tag);
+			if (!processor) {
+				// Shouldn't happen — supportedTags is derived from the same
+				// processor set the parser uses, so an unresolvable tag means
+				// every claimer is unavailable. Log and skip rather than
+				// propagate an error panel; the user sees the raw fenced block
+				// in the transcript, which is the pre-pi-fence baseline.
+				deps.logger.warn("pi-fence", "no available processor for tag", {
+					tag: block.tag,
+				});
+				continue;
+			}
 			deps.logger.debug("pi-fence", "rendering block", {
 				tag: block.tag,
 				processor: processor.id,
@@ -332,9 +356,10 @@ function buildCustomMessage(
 // Default export: production wiring
 // ---------------------------------------------------------------------------
 
-export default function (pi: ExtensionAPI): void {
-	createPiFenceExtension(pi, {
+export default async function (pi: ExtensionAPI): Promise<void> {
+	await createPiFenceExtension(pi, {
 		http: new NodeHttpClient(),
+		shell: new NodeShellRunner(),
 		logger: new NodeLogger(),
 	});
 }

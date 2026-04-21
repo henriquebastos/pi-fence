@@ -21,41 +21,53 @@
 import { describe, expect, it } from "vitest";
 
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
-import type { FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
+import type { Availability, FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
 import { FakeHttpClient } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import type { LogEntry } from "../utilities/logger.ts";
+import { FakeShellRunner } from "../utilities/shell-runner.ts";
 import { FakeExtensionAPI } from "../utilities/extension-api.ts";
 
 function stubProcessor(
 	id: string,
 	tags: readonly string[],
 	aliases: Readonly<Record<string, string>> = {},
+	availability: Availability = { ok: true },
 ): FenceProcessor {
 	return {
 		id,
 		tags,
 		aliases,
+		async available(): Promise<Availability> {
+			return availability;
+		},
 		async render(): Promise<FenceResult> {
 			return { ok: false, error: "stub processor — render() is not exercised in command tests" };
 		},
 	};
 }
 
-function setupExtension(processor: FenceProcessor): { api: FakeExtensionAPI; logger: FakeLogger } {
+async function setupExtension(
+	processor: FenceProcessor,
+): Promise<{ api: FakeExtensionAPI; logger: FakeLogger }> {
 	const api = new FakeExtensionAPI();
 	const logger = new FakeLogger();
-	createPiFenceExtension(api as never, {
+	await createPiFenceExtension(api as never, {
 		http: new FakeHttpClient(),
+		// Default shell is never invoked by these tests (the stub
+		// processor doesn't shell out) but PiFenceDeps.shell became
+		// required in CV0.E2.S1 step 7, so we pass a dead fake that
+		// throws if anything ever calls it.
+		shell: new FakeShellRunner(),
 		logger,
-		processor,
+		processors: [processor],
 	});
 	return { api, logger };
 }
 
 describe("/fence command — registration", () => {
-	it("registers the /fence command with a description", () => {
-		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
+	it("registers the /fence command with a description", async () => {
+		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		const entry = api.registeredCommands.get("fence") as
 			| { description?: string; handler: unknown }
@@ -65,8 +77,8 @@ describe("/fence command — registration", () => {
 		expect(entry?.description?.length ?? 0).toBeGreaterThan(0);
 	});
 
-	it("registers the pi-fence:list message renderer", () => {
-		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
+	it("registers the pi-fence:list message renderer", async () => {
+		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		expect(api.registeredRenderers.has("pi-fence:list")).toBe(true);
 	});
@@ -78,7 +90,7 @@ describe("/fence list — subcommand", () => {
 			dot: "graphviz",
 			puml: "plantuml",
 		});
-		const { api, logger } = setupExtension(kroki);
+		const { api, logger } = await setupExtension(kroki);
 
 		await api.invokeCommand("fence", "list");
 
@@ -118,7 +130,7 @@ describe("/fence list — subcommand", () => {
 	});
 
 	it("tolerates surrounding whitespace in the arg string", async () => {
-		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		await api.invokeCommand("fence", "  list  ");
 
@@ -128,7 +140,7 @@ describe("/fence list — subcommand", () => {
 
 describe("/fence — no subcommand / unknown subcommand", () => {
 	it("notifies with a warning listing the available subcommands when called with no args", async () => {
-		const { api, logger } = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api, logger } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		await api.invokeCommand("fence", "");
 
@@ -146,7 +158,7 @@ describe("/fence — no subcommand / unknown subcommand", () => {
 	});
 
 	it("notifies with a warning on an unknown subcommand and does not send a message", async () => {
-		const { api } = setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
 
 		await api.invokeCommand("fence", "bogus");
 

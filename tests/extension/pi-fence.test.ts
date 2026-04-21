@@ -28,6 +28,10 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Component } from "@mariozechner/pi-tui";
 
+import {
+	GRAPHVIZ_LOCAL_ALIASES,
+	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
+} from "../../extensions/pi-fence/graphviz-local.ts";
 import { KROKI_ALIASES, KROKI_CANONICAL_TAGS } from "../../extensions/pi-fence/kroki.ts";
 import { formatProcessorLines } from "../../extensions/pi-fence/list.ts";
 
@@ -35,6 +39,7 @@ import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
 import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
+import { FakeShellRunner } from "../utilities/shell-runner.ts";
 import { paintComponent } from "../utilities/render.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
 import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
@@ -153,8 +158,13 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 	});
 
 	it(
-		"emits a pi-fence:list custom message describing the Kroki processor",
+		"emits a pi-fence:list custom message describing both processors — graphviz-local unavailable + kroki registered",
 		async () => {
+			// Default test shell has `dot -V` failing with exit 127 so
+			// graphviz-local probes as unavailable and Kroki still serves
+			// every tag. Asserts the full CV0.E2 two-processor shape:
+			// graphviz-local first with [unavailable] status + reason +
+			// installHint; kroki second with [registered].
 			const http = new FakeHttpClient();
 			const captured = await runExtensionWithCommand(http, "/fence list");
 
@@ -163,22 +173,38 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 			);
 			expect(listMessages).toHaveLength(1);
 
-			// Derive the expected shape from the production constants instead
-			// of hardcoding a tag list here. That keeps this test a "does the
-			// command reflect the live Kroki config" check rather than a
-			// "this specific tag string appears" check; adding or removing a
-			// language in `KROKI_CANONICAL_TAGS` no longer requires touching
-			// this assertion.
-			const expectedListing = {
+			const details = listMessages[0].details as {
+				listings: Array<{
+					id: string;
+					status: "registered" | "unavailable";
+					tags: readonly string[];
+					aliases: Readonly<Record<string, string>>;
+					unavailableReason?: string;
+					installHint?: string;
+				}>;
+				lines: string[];
+			};
+
+			expect(details.listings).toHaveLength(2);
+			expect(details.listings[0]).toMatchObject({
+				id: "graphviz-local",
+				status: "unavailable",
+				tags: GRAPHVIZ_LOCAL_CANONICAL_TAGS,
+				aliases: GRAPHVIZ_LOCAL_ALIASES,
+			});
+			expect(details.listings[0].unavailableReason).toBeDefined();
+			expect(details.listings[0].installHint).toContain("graphviz");
+			expect(details.listings[1]).toMatchObject({
 				id: "kroki",
-				status: "registered" as const,
+				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
 				aliases: KROKI_ALIASES,
-			};
-			expect(listMessages[0].details).toMatchObject({
-				listings: [expectedListing],
-				lines: formatProcessorLines([expectedListing]),
 			});
+
+			// Lines array matches what formatProcessorLines produces for the
+			// same listings — drives the assertion off the formatter so future
+			// formatter tweaks update here automatically.
+			expect(details.lines).toEqual(formatProcessorLines(details.listings));
 
 			// No HTTP calls — `/fence list` is offline.
 			expect(http.requests).toHaveLength(0);
@@ -186,6 +212,127 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 			expect(
 				captured.sentCustomMessages.filter((m) => m.customType === "pi-fence:output"),
 			).toHaveLength(0);
+		},
+		20_000,
+	);
+});
+
+describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"renders a `dot` block via graphviz-local when `dot` is on PATH — zero HTTP traffic",
+		async () => {
+			// Shell programmed so:
+			//   - `dot -V` exits 0 (graphviz-local probes as available).
+			//   - `dot -Tpng` reads source on stdin, responds with PNG bytes.
+			// HTTP is not programmed with any response; the test asserts
+			// kroki.io never gets a request.
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0 (0)",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+			const http = new FakeHttpClient();
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Architecture:\n\n```dot\ndigraph { web -> api; api -> db }\n```",
+				shell,
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "graphviz-local",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+
+			// Privacy/offline claim: no HTTP left the host for this tag.
+			expect(http.requests).toHaveLength(0);
+
+			// Shell-out shape: one probe (`dot -V`) + one render (`dot -Tpng`).
+			expect(shell.calls).toHaveLength(2);
+			expect(shell.calls[0]).toMatchObject({ cmd: "dot", args: ["-V"] });
+			expect(shell.calls[1]).toMatchObject({
+				cmd: "dot",
+				args: ["-Tpng"],
+				input: "digraph { web -> api; api -> db }",
+			});
+		},
+		20_000,
+	);
+
+	it(
+		"falls through to Kroki for a `dot` block when graphviz-local is unavailable",
+		async () => {
+			// Default test shell reports `dot` as not-found — graphviz-local
+			// probes as unavailable and Kroki serves the graphviz tag per
+			// the registration-order fallback rule. HTTP is programmed with
+			// a /graphviz/png response.
+			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Architecture:\n\n```dot\ndigraph { web -> api; api -> db }\n```",
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+
+			// Kroki served it — one HTTP request to /graphviz/png.
+			expect(http.requests).toHaveLength(1);
+			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png?theme=dark");
+		},
+		20_000,
+	);
+
+	it(
+		"leaves mermaid blocks to Kroki regardless of graphviz-local availability",
+		async () => {
+			// Mermaid is a Kroki-only tag. Whether or not graphviz-local is
+			// available should not affect this path at all.
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png?theme=dark": TINY_PNG });
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				shell,
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "mermaid",
+				processor: "kroki",
+			});
+
+			// Only the wire-time `dot -V` probe shelled out; no render-time
+			// shell call because mermaid is not graphviz-local's tag.
+			expect(shell.calls).toHaveLength(1);
+			expect(shell.calls[0].args).toEqual(["-V"]);
 		},
 		20_000,
 	);
@@ -314,7 +461,10 @@ function expectImageBytes(content: unknown, expectedBytes: Buffer): void {
  * agent_end pipeline through a canned stream) and `runExtensionWithCommand`
  * (which dispatches a slash command, bypassing streamFn entirely).
  */
-async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
+async function buildSessionWithExtension(
+	http: FakeHttpClient,
+	shell?: FakeShellRunner,
+): Promise<{
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
 	registeredRenderers: Map<string, CapturedRenderer>;
@@ -332,7 +482,7 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 	const model = getModel("anthropic", "claude-sonnet-4-5");
 	if (!model) throw new Error("anthropic/claude-sonnet-4-5 model not found in built-in registry");
 
-	const extensionFactory = (pi: ExtensionAPI) => {
+	const extensionFactory = async (pi: ExtensionAPI): Promise<void> => {
 		const originalSendMessage = pi.sendMessage.bind(pi);
 		pi.sendMessage = ((
 			message: Parameters<ExtensionAPI["sendMessage"]>[0],
@@ -355,7 +505,20 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 			);
 		}) as ExtensionAPI["registerMessageRenderer"];
 
-		createPiFenceExtension(pi, { http, logger });
+		// Default shell: `dot -V` fails with exit 127 so graphviz-local
+		// probes as unavailable at wire time, leaving Kroki as the sole
+		// processor for every tag — matches CV0.E1 behaviour for the
+		// inherited test cases that don't specifically exercise
+		// graphviz-local. Tests that need graphviz-local available pass
+		// an explicit `shell` through `buildSessionWithExtension`.
+		const shellToUse =
+			shell ??
+			new FakeShellRunner({
+				stdout: "",
+				stderr: "dot: not found",
+				exitCode: 127,
+			});
+		await createPiFenceExtension(pi, { http, shell: shellToUse, logger });
 	};
 
 	const settingsManager = SettingsManager.create(agentDir, agentDir);
@@ -390,9 +553,10 @@ async function buildSessionWithExtension(http: FakeHttpClient): Promise<{
 async function runExtensionWithAssistantText(
 	http: FakeHttpClient,
 	assistantText: string,
+	shell?: FakeShellRunner,
 ): Promise<Captured> {
 	const { session, sentCustomMessages, registeredRenderers, model, logger } =
-		await buildSessionWithExtension(http);
+		await buildSessionWithExtension(http, shell);
 
 	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
@@ -415,8 +579,15 @@ async function runExtensionWithAssistantText(
  * straight to the registered handler without involving the LLM, so no
  * stream is needed.
  */
-async function runExtensionWithCommand(http: FakeHttpClient, command: string): Promise<Captured> {
-	const { session, sentCustomMessages, registeredRenderers } = await buildSessionWithExtension(http);
+async function runExtensionWithCommand(
+	http: FakeHttpClient,
+	command: string,
+	shell?: FakeShellRunner,
+): Promise<Captured> {
+	const { session, sentCustomMessages, registeredRenderers } = await buildSessionWithExtension(
+		http,
+		shell,
+	);
 
 	try {
 		await session.prompt(command);
