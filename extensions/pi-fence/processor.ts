@@ -18,6 +18,23 @@ export type FenceResult =
 	| { ok: true; png: Buffer }
 	| { ok: false; error: string };
 
+/**
+ * One-shot capability probe result. Landed with CV0.E2.S1 when the second
+ * processor (graphviz-local) made availability a real user-visible concern
+ * — a machine without `dot` on PATH should still render `graphviz` blocks,
+ * just via Kroki instead. Kroki's own impl is the trivial `{ ok: true }`
+ * because its failure mode (unreachable endpoint) surfaces per-render as
+ * an error panel rather than up-front unavailability; a future `/fence
+ * doctor` story revisits.
+ *
+ * `reason` is required on the not-ok branch so `/fence list` has something
+ * human to show; `installHint` is optional but encouraged for processors
+ * whose unavailability has a known fix.
+ */
+export type Availability =
+	| { ok: true }
+	| { ok: false; reason: string; installHint?: string };
+
 export interface FenceProcessor {
 	/** Stable id used for logs, settings, and future registry lookups. */
 	readonly id: string;
@@ -36,6 +53,19 @@ export interface FenceProcessor {
 	 * configuration.
 	 */
 	readonly aliases: Readonly<Record<string, string>>;
+
+	/**
+	 * One-shot capability probe. The extension calls this once at wire time
+	 * and caches the result for the session; no processor should assume it
+	 * will be called per-render. Processors whose availability can change
+	 * mid-session are visible only after `/reload` until a future `/fence
+	 * doctor --refresh` story lands.
+	 *
+	 * Must never throw — a spawn failure, a bad PATH, or any other probe
+	 * hazard maps to `{ ok: false, reason, installHint? }`. The contract
+	 * helper asserts the shape; live tests cover the real probe.
+	 */
+	available(): Promise<Availability>;
 
 	/** Render the source for the given tag. Returns data on both success and failure paths. */
 	render(tag: string, source: string, signal?: AbortSignal): Promise<FenceResult>;

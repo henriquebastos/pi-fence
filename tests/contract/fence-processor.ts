@@ -79,6 +79,38 @@ export function runFenceProcessorContract(
 			}
 		});
 
+		it("exposes an available() probe returning an Availability shape", async () => {
+			// Shape-only. The contract helper does not know whether this
+			// processor *should* be available on the test machine — the Kroki
+			// contract test wires a processor whose probe always returns ok;
+			// the graphviz-local contract test (CV0.E2.S1 step 4) wires one
+			// against a canned-good FakeShellRunner so its probe also returns
+			// ok. Live availability (unavailable reason + install hint) is
+			// asserted in per-processor live tests, not here.
+			const processor = factory();
+			const availability = await processor.available();
+			expect(availability).toBeTypeOf("object");
+			expect(availability).not.toBeNull();
+			expect(typeof availability.ok).toBe("boolean");
+			if (!availability.ok) {
+				expect(typeof availability.reason).toBe("string");
+				expect(availability.reason.length).toBeGreaterThan(0);
+				if (availability.installHint !== undefined) {
+					expect(typeof availability.installHint).toBe("string");
+				}
+			}
+		});
+
+		it("never throws from available()", async () => {
+			// A probe that crashes is strictly worse than one that returns
+			// `{ ok: false }` — crashes propagate out of the wire-time loop
+			// and take the whole extension down. Assert the contract
+			// explicitly so a future processor author can't regress this by
+			// forgetting to wrap their probe in a try/catch.
+			const processor = factory();
+			await expect(processor.available()).resolves.toBeDefined();
+		});
+
 		it("returns a Promise from render()", () => {
 			const processor = factory();
 			const promise = processor.render(cases.tag, cases.goodSource);

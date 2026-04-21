@@ -163,6 +163,18 @@ export function createKrokiRenderer(
 		tags: KROKI_CANONICAL_TAGS,
 		aliases: KROKI_ALIASES,
 
+		// Kroki's endpoint is available at wire time by definition — the
+		// processor is just an HTTP client, and network reachability is
+		// a per-render concern surfaced as an error panel, not an up-front
+		// `unavailable` status. Real endpoint-health probing (HEAD on the
+		// endpoint, classify connection / DNS / 5xx) lands with the future
+		// `/fence doctor` story; today's one-liner matches Kroki's contract
+		// with the rest of the registry and keeps `/fence list` honest for
+		// the graphviz-local alongside-Kroki shape CV0.E2 introduces.
+		async available(): Promise<{ ok: true }> {
+			return { ok: true };
+		},
+
 		async render(tag, source, signal): Promise<FenceResult> {
 			if (signal?.aborted) {
 				logger.warn("kroki", "Aborted before request", { tag });
