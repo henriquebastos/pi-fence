@@ -42,35 +42,47 @@ export function validatePiFenceConfig(
 	label: string,
 	logger?: Logger,
 ): PiFenceConfig {
-	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+	if (!isRecordLike(parsed)) {
 		logger?.warn("config", `${label} config top-level is not an object`, {
 			got: Array.isArray(parsed) ? "array" : typeof parsed,
 		});
 		return DEFAULT_CONFIG;
 	}
 
-	const obj = parsed as Record<string, unknown>;
-	const bindings: Record<string, string> = {};
+	return {
+		bindings: validateBindings(parsed.bindings, label, logger),
+	};
+}
 
-	if (obj.bindings !== undefined) {
-		const rawBindings = obj.bindings;
-		if (!rawBindings || typeof rawBindings !== "object" || Array.isArray(rawBindings)) {
-			logger?.warn("config", `${label} config 'bindings' is not an object`, {
-				got: Array.isArray(rawBindings) ? "array" : typeof rawBindings,
-			});
-		} else {
-			for (const [key, value] of Object.entries(rawBindings as Record<string, unknown>)) {
-				if (typeof value !== "string") {
-					logger?.warn("config", `non-string value in ${label} bindings`, {
-						key,
-						got: typeof value,
-					});
-					continue;
-				}
-				bindings[key] = value;
-			}
-		}
+function validateBindings(
+	rawBindings: unknown,
+	label: string,
+	logger?: Logger,
+): Record<string, string> {
+	const bindings: Record<string, string> = {};
+	if (rawBindings === undefined) {
+		return bindings;
+	}
+	if (!isRecordLike(rawBindings)) {
+		logger?.warn("config", `${label} config 'bindings' is not an object`, {
+			got: Array.isArray(rawBindings) ? "array" : typeof rawBindings,
+		});
+		return bindings;
 	}
 
-	return { bindings };
+	for (const [key, value] of Object.entries(rawBindings)) {
+		if (typeof value === "string") {
+			bindings[key] = value;
+			continue;
+		}
+		logger?.warn("config", `non-string value in ${label} bindings`, {
+			key,
+			got: typeof value,
+		});
+	}
+	return bindings;
+}
+
+function isRecordLike(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
