@@ -120,7 +120,7 @@ These are the environment-dependent boundaries the extension runtime injects tod
 
 | Former hotspot | Outcome |
 |----------------|---------|
-| Production imports from `tests/utilities/` | Cleared in `S3`. Runtime seams now live under `extensions/pi-fence/io/`. |
+| Production imports from `tests/utilities/` | Cleared in `S3`. Runtime seams now live under `extensions/pi-fence/io/`, and `CVx.E4.S1` adds a dependency-cruiser rule so `extensions/**` importing from `tests/**` fails automatically. |
 | Mixed config file I/O + pure config logic in `config.ts` | Cleared in `S3`. Pure logic lives in `config.ts`; file discovery/reads live in `io/config-loader.ts`. |
 | `index.ts` as composition root + orchestration hotspot | Cleared in `S4`. Policy lives in `command.ts`, `agent-end.ts`, and `messages.ts`. |
 | Internal names lagging behind the architecture vocabulary | Cleared in `S5`. Runtime deps and processor factories now use boundary-accurate names. |

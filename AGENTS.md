@@ -26,9 +26,10 @@ Front door for agents and new contributors. Short on purpose — redirects, does
 1. `pnpm test` — fast suite (unit + contract + extension).
 2. `pnpm run check` — `check:links` + `check:markdown`. Auto-fix most markdown with `pnpm run fix:markdown`.
 3. `pnpm run typecheck` — `tsc --noEmit` across production code, tests, and repo scripts.
-4. `pnpm test:live` — only when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures. Requires Docker (`pnpm run live:up`) or network.
+4. `pnpm run typecheck:deps` — dependency-cruiser architectural boundary check (`extensions/**` must not import from `tests/**`).
+5. `pnpm test:live` — only when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures. Requires Docker (`pnpm run live:up`) or network.
 
-`pnpm run verify:fast` is the umbrella command for steps 1–3. Every commit leaves the fast gate passing. CI runs the same fast gate on push/PR ([.github/workflows/ci.yml](.github/workflows/ci.yml)); live runs separately ([.github/workflows/live.yml](.github/workflows/live.yml)).
+`pnpm run verify:fast` is the umbrella command for steps 1–4. Every commit leaves the fast gate passing. CI runs the same fast gate on push/PR ([.github/workflows/ci.yml](.github/workflows/ci.yml)); live runs separately ([.github/workflows/live.yml](.github/workflows/live.yml)).
 
 No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all that "builds" the package.
 

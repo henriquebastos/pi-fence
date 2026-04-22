@@ -46,7 +46,7 @@
     "fix:markdown": "markdownlint-cli2 --fix",
     "typecheck": "tsc --noEmit",
     "typecheck:deps": "depcruise --config .dependency-cruiser.cjs extensions tests scripts",
-    "verify:fast": "pnpm test && pnpm run check && pnpm run typecheck",
+    "verify:fast": "pnpm test && pnpm run check && pnpm run typecheck && pnpm run typecheck:deps",
     "test": "vitest run --exclude 'tests/integration/**' --exclude 'tests/render-image/**'",
     "test:watch": "vitest --exclude 'tests/integration/**' --exclude 'tests/render-image/**'",
     "test:live": "vitest run tests/integration tests/render-image",
