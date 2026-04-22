@@ -3,7 +3,7 @@
 # CVx.E3 — Refactor Confidence
 
 **Roadmap:** [CVx](../../README.md)
-**Last updated:** 2026-04-21 — S1 Planned
+**Last updated:** 2026-04-21 — S1 Done
 
 CVx.E1 and CVx.E2 proved what pi-fence renders. The next missing confidence rung is structural: can we clean the code up without guessing, drifting, or breaking hidden contracts? This Epic makes refactoring deliberate.
 
@@ -13,7 +13,7 @@ Internal-first on purpose: no new end-user behavior, no new processors, no visua
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cvx-e3-s1-static-confidence-gate/README.md) | **I can trust the fast gate before starting a cleanup pass** | Planned |
+| [S1](cvx-e3-s1-static-confidence-gate/README.md) | **I can trust the fast gate before starting a cleanup pass** | ✅ Done |
 | `S2` | **The architecture map names pure modules, adapters, runtime seams, composition root, and hotspots before code moves** | Planned |
 | `S3` | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | Planned |
 | `S4` | **The extension entrypoint becomes a thin composition root over focused modules and policies** | Planned |

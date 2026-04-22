@@ -153,7 +153,7 @@
 
 | Code | Story | Status |
 |------|-------|--------|
-| [CVx.E3.S1](cvx-verifiability/cvx-e3-refactor-confidence/cvx-e3-s1-static-confidence-gate/README.md) | **I can trust the fast gate before starting a cleanup pass** | Planned |
+| [CVx.E3.S1](cvx-verifiability/cvx-e3-refactor-confidence/cvx-e3-s1-static-confidence-gate/README.md) | **I can trust the fast gate before starting a cleanup pass** | ✅ Done |
 | `CVx.E3.S2` | **The architecture map names pure modules, adapters, runtime seams, composition root, and hotspots before code moves** | Planned |
 | `CVx.E3.S3` | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | Planned |
 | `CVx.E3.S4` | **The extension entrypoint becomes a thin composition root over focused modules and policies** | Planned |

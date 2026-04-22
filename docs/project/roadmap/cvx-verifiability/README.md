@@ -6,7 +6,7 @@
 
 **Type:** `verifiability`
 **Status:** in progress (Verifiability is *always* advancing; this lane tracks the explicit investments)
-**Last updated:** 2026-04-21 — CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; CVx.E3.S1 is Planned
+**Last updated:** 2026-04-21 — CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1 are ✅ Done
 
 ## Why a cross-cutting lane, not a numbered CV
 
@@ -39,7 +39,7 @@ Dev-time tooling (`CVx.E2`) is parallel, not a test layer — it's a script for 
 |------|------|--------|
 | [CVx.E1](cvx-e1-pi-tui-idiom/README.md) | **pi-tui Testing Idiom** | ✅ S1 Done; further stories open |
 | [CVx.E2](cvx-e2-dev-time-screenshots/README.md) | **Dev-time Render Screenshots** | ✅ S1–S4 Done |
-| [CVx.E3](cvx-e3-refactor-confidence/README.md) | **Refactor Confidence** | 🛠️ S1 Planned |
+| [CVx.E3](cvx-e3-refactor-confidence/README.md) | **Refactor Confidence** | 🛠️ S1 Done; further stories open |
 
 `CVx.E1` comes first because it is additive, pure refactor, and delivers value the next time a render bug ships (which, given the recent commit history, is likely soon). `CVx.E2` is larger infrastructure — spike first, spec second — and can proceed in parallel with feature CVs once E1 lands. `CVx.E3` is the structural-confidence follow-through once render fidelity is no longer the blind spot: safer refactoring first, architecture clarity second, internal API polish third — with composability coming specifically from dependency injection at runtime boundaries, not from injecting everything indiscriminately.
 

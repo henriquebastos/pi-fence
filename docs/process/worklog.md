@@ -6,18 +6,17 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CV0.E2` fully closed. Both stories done: S1 (local graphviz + capability-based resolution) and S2 (user-level per-tag bindings from config). The registry pattern is live with two processors and user-level overrides, matching the Epic's Done criterion end-to-end.
+`CVx.E3` is now active. `S1` is closed: the fast gate includes static type checking, `pnpm run verify:fast` is the contributor-facing umbrella, and CI enforces the same static check the local gate does. The next refactor-confidence moves are structural rather than tooling-first.
 
 ## Next
 
-No story is currently in flight. The remaining Planned rows are:
+No story is currently in flight. The next Planned rows are:
 
-- `CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw). Specced, orthogonal to CV0.E2.
+- `CVx.E3.S2` — architecture map + hotspot inventory for pure modules, adapters, runtime seams, and the composition root. Not specced yet.
+- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). Specced, orthogonal to CVx.E3.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs).
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 all ✅ Done; no CVx story is Planned. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
-
-Still Planned: `CV0.E1.S5` (JSON-body Kroki languages — Vega, Vega-Lite, Excalidraw; specced, orthogonal to CV0.E2), `CV0.E2.S2` (not specced), and everything CV1+. CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 are ✅ Done; no CVx story is Planned. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1012,3 +1011,33 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 6. **Per-block meta overrides** (```` ```mermaid processor=kroki ```` per the briefing D6). Separate surface. When the LLM emits a meta-bearing info string, pi-fence's parser already preserves it; S2 doesn't read it yet. Earns a slot when a real use case surfaces.
 
 **Meta — Epic shipped in one session.** Two stories (both specced AND implemented in this same session): S1 spec + 10 step commits + close, S2 spec + 5 step commits + cleanup + close. Plus three docs-catch-up commits (one per spec, plus the post-Epic cleanup). 22 total commits under the `build the entire epic` directive. Both stories honoured AGENTS.md's rhythm: feature commit → docs commit immediately for specs; step commits without intermediate docs for in-story work with a close entry consolidating all of it. The spec held up — one deviation per story, called out explicitly, none of them plan-breaking.
+
+### 2026-04-21 — close CVx.E3.S1 — static confidence gate for refactoring
+
+**Goal.** Make the repository's fast gate truthful before any cleanup pass: static type drift should fail locally and in CI, and contributors should have one canonical fast-confidence command to run before refactoring.
+
+**What shipped (spec + two step commits + this close):**
+
+- `c1776fb` **spec CVx.E3.S1.** Added the new CVx.E3 Epic (`Refactor Confidence`) plus the S1 story folder (`README.md`, `plan.md`, `test-guide.md`), and linked the new Epic/story from the roadmap top and the CVx parent README.
+- `9000ebb` **step 1: make the fast gate prove static health.** `package.json` now exposes `pnpm run typecheck` (`tsc --noEmit`) and `pnpm run verify:fast` (`pnpm test && pnpm run check && pnpm run typecheck`); `typescript` is a direct devDependency so the gate is repo-owned rather than ambient-tooling-dependent; `tsconfig.json` now includes `scripts/**/*.ts`; compile drift was removed by tightening pi renderer typings to exported pi theme/component types, switching the extension test's canned stream helper to `createAssistantMessageEventStream()`, and normalising `NodeHttpClient` request bodies to a fetch-compatible type without changing runtime behavior.
+- `690b26d` **step 2: document and enforce the refactor-safe gate.** `AGENTS.md`, `docs/getting-started.md`, and `docs/product/principles.md` now all name the same fast gate; `.github/workflows/ci.yml` runs `pnpm run typecheck` alongside the existing fast checks.
+- `close CVx.E3.S1` (this commit): status flips across roadmap / CVx / CVx.E3 / story README, this worklog entry, and refreshed `Current focus` / `Next`.
+
+**Plan deviations.**
+
+- None worth calling a design change. The one extra implementation detail not called out explicitly in the spec was adding `typescript` as a direct devDependency so `pnpm run typecheck` is deterministic on a clean clone rather than relying on an ambient `tsc` shim.
+
+**Tests:** fast suite stays `279` passing; live suite stays `37` total with `26` passing and `11` skipped cleanly under dependency gates. New static gate: `pnpm run typecheck` green. Full local fast umbrella: `pnpm run verify:fast` green. Because step 1 touched the `HttpClient` seam's compile shape, `pnpm test:live` was rerun and stayed green/skip-clean.
+
+**Design decisions that survived implementation:**
+
+1. **Typecheck is explicit and repo-owned.** `typescript` is a direct devDependency and `pnpm run typecheck` is the single source of truth for static checking.
+2. **Compile fixes stayed boundary-light.** S1 fixed typings and command surface only; it did not move runtime seams, split `index.ts`, or introduce new adapter layers just to please the compiler.
+3. **Use exported pi types where the drift actually was.** Renderer/theme typing now leans on pi's public type surface instead of bespoke local string-shape approximations, which lowers the chance of the fast gate silently drifting out of sync with upstream.
+
+**Carry-forwards from S1 into the rest of CVx.E3:**
+
+1. `CVx.E3.S2` still needs to name the architecture map and hotspot inventory explicitly.
+2. `CVx.E3.S3` still owns moving `HttpClient`, `ShellRunner`, and `Logger` under production code.
+3. `CVx.E3.S4` still owns shrinking `extensions/pi-fence/index.ts` into a thin composition root.
+4. Future code-quality analyzers (`typescript-eslint`, `dependency-cruiser`, `knip`, `semgrep` / `ast-grep`) remain deferred until the architecture is explicit enough to encode with signal rather than noise.

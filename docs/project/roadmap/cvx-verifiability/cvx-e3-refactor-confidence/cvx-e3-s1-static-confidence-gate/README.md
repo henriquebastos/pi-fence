@@ -1,6 +1,6 @@
 [< CVx.E3 — Refactor Confidence](../README.md)
 
-# S1 — Static confidence gate for refactoring 🛠️ Planned
+# S1 — Static confidence gate for refactoring ✅ Done
 
 pi-fence's fast gate currently proves a lot: runtime tests pass, docs links resolve, markdown structure stays sane. But it does **not** yet prove that the repository is statically type-safe at the moment a contributor starts a cleanup pass. That is exactly the kind of blind spot that turns a "safe refactor" into a confidence game.
 
