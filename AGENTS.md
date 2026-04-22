@@ -35,8 +35,8 @@ No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all th
 ## Story workflow
 
 1. **Spec** — draft the story file. Every story file starts with a visible metadata block carrying `**Status:** Draft|Ready|In progress|Done` so a reader can see whether the spec is still forming, ready to execute, actively being implemented, or closed. Every story file must also contain, at minimum: `Summary`, `Done criterion`, `Scope`, `Plan`, `Tests`, and `Verification`. The `Tests` section is mandatory and names layers touched, events covered, fakes added, live tests, and anything deferred. Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story file as the working template — imitate the section shape, don't invent one. Parent docs link downward; they do not copy story-level detail.
-2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm run verify:fast` (and `pnpm test:live` when the story touches a live-only seam). When implementation starts, flip the story file metadata to `**Status:** In progress`.
-3. **Close** — flip the story file metadata to `**Status:** Done`, update status in the epic file, the CV `README.md`, and the top-level roadmap `README.md`, append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards), and update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
+2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm run verify:fast` (and `pnpm test:live` when the story touches a live-only seam). When implementation starts, flip the story file metadata to `**Status:** In progress`. A story is not considered done until its implementation exists in committed history. Do not start the next story with uncommitted carry-over from the previous one.
+3. **Close** — close only from a clean working tree after the story's implementation commits already exist. Flip the story file metadata to `**Status:** Done`, update status in the epic file, the CV `README.md`, and the top-level roadmap `README.md`, append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards), and update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
 
 Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog.md](docs/process/worklog.md).
 
@@ -44,6 +44,7 @@ Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog
 
 - Messages in English, focused on **why**. No AI or self-referential language.
 - Atomic where practical — one independent change per commit.
+- Never begin implementation of a new story on a dirty worktree. Finish or discard the current story's uncommitted work first.
 - Prefixes used in this repo: `spec <CODE>`, `step N: <why>`, `close <CODE>`, `wip(agent): <why>`.
 - Before the first commit on a new clone, confirm `git config user.name` / `user.email` match the intended identity.
 

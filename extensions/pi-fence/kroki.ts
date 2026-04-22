@@ -22,8 +22,8 @@
  *   - Endpoint is configurable at construction; defaults to https://kroki.io.
  */
 
-import type { HttpClient } from "../../tests/utilities/http-client.ts";
-import type { Logger } from "../../tests/utilities/logger.ts";
+import type { HttpClient } from "./io/http-client.ts";
+import type { Logger } from "./io/logger.ts";
 import type { FenceProcessor, FenceResult } from "./processor.ts";
 
 /**
@@ -148,9 +148,9 @@ export type KrokiResult = FenceResult;
 // Retained as a narrower alias over the shared FenceProcessor. Not strictly
 // necessary but keeps existing call sites typed as "a kroki renderer" when
 // they care about provenance.
-export type KrokiRenderer = FenceProcessor;
+export type KrokiProcessor = FenceProcessor;
 
-export function createKrokiRenderer(
+export function createKrokiProcessor(
 	http: HttpClient,
 	endpoint: string = DEFAULT_ENDPOINT,
 	logger: Logger = NULL_LOGGER,

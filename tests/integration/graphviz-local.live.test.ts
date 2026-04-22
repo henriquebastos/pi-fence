@@ -24,7 +24,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createGraphvizLocalRenderer } from "../../extensions/pi-fence/graphviz-local.ts";
+import { createGraphvizLocalProcessor } from "../../extensions/pi-fence/graphviz-local.ts";
 import { hasContainer } from "../utilities/live-deps.ts";
 import { DockerExecShellRunner } from "../utilities/shell-runner.ts";
 
@@ -46,7 +46,7 @@ const HAPPY_SIZE_FLOOR_BYTES = 500;
 
 describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 	const shell = new DockerExecShellRunner(CONTAINER);
-	const graphvizLocal = createGraphvizLocalRenderer(shell);
+	const graphvizLocal = createGraphvizLocalProcessor(shell);
 
 	it("available() returns ok inside the container", async () => {
 		const result = await graphvizLocal.available();

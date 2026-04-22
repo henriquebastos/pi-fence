@@ -15,12 +15,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import {
-	FakeShellRunner,
-	NodeShellRunner,
-	type ShellResult,
-	type ShellRunner,
-} from "./shell-runner.ts";
+import { NodeShellRunner, type ShellResult, type ShellRunner } from "../../extensions/pi-fence/io/shell-runner.ts";
+import { FakeShellRunner } from "./shell-runner.ts";
 
 describe("FakeShellRunner", () => {
 	it("returns the default response when no match is programmed", async () => {

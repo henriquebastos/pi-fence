@@ -9,6 +9,7 @@ The map of this project. If you open the repo tomorrow, this is the starting poi
 What we're building and why.
 
 - [Briefing](project/briefing.md) — foundational architectural decisions (D1–D8)
+- [Architecture map](project/architecture.md) — current module boundaries, seams, composition root, hotspots
 - [Roadmap](project/roadmap/README.md) — Community Values, Epics, Stories
 - [Decisions](project/decisions.md) — incremental decisions made during construction
 

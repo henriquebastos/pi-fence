@@ -6,7 +6,7 @@
  * (`tests/integration/kroki.live.test.ts`).
  */
 
-import { createKrokiRenderer } from "../../extensions/pi-fence/kroki.ts";
+import { createKrokiProcessor } from "../../extensions/pi-fence/kroki.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { runFenceProcessorContract } from "./fence-processor.ts";
 
@@ -14,7 +14,7 @@ const TINY_PNG = Buffer.from([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad, 0xbe, 0xef,
 ]);
 
-function makeKroki(): ReturnType<typeof createKrokiRenderer> {
+function makeKroki(): ReturnType<typeof createKrokiProcessor> {
 	const http = new FakeHttpClient();
 	// Good source for the happy path.
 	http.setResponse("POST", "https://kroki.io/mermaid/png", (req): HttpResponse => {
@@ -32,7 +32,7 @@ function makeKroki(): ReturnType<typeof createKrokiRenderer> {
 			body: TINY_PNG,
 		};
 	});
-	return createKrokiRenderer(http);
+	return createKrokiProcessor(http);
 }
 
 runFenceProcessorContract("kroki", makeKroki, {

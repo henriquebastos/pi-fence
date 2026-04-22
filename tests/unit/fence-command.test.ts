@@ -55,7 +55,7 @@ async function setupExtension(
 	await createPiFenceExtension(api as never, {
 		http: new FakeHttpClient(),
 		// Default shell is never invoked by these tests (the stub
-		// processor doesn't shell out) but PiFenceDeps.shell became
+		// processor doesn't shell out) but PiFenceRuntimeDeps.shell became
 		// required in CV0.E2.S1 step 7, so we pass a dead fake that
 		// throws if anything ever calls it.
 		shell: new FakeShellRunner(),

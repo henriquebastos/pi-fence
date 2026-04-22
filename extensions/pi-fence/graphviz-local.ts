@@ -34,8 +34,8 @@
  *     deferred to a later story.
  */
 
-import type { ShellRunner } from "../../tests/utilities/shell-runner.ts";
-import type { Logger } from "../../tests/utilities/logger.ts";
+import type { ShellRunner } from "./io/shell-runner.ts";
+import type { Logger } from "./io/logger.ts";
 import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
 
 const NULL_LOGGER: Logger = {
@@ -76,7 +76,7 @@ export const GRAPHVIZ_LOCAL_ALIASES: Readonly<Record<string, string>> = {
 	dot: "graphviz",
 };
 
-export function createGraphvizLocalRenderer(
+export function createGraphvizLocalProcessor(
 	shell: ShellRunner,
 	logger: Logger = NULL_LOGGER,
 ): FenceProcessor {

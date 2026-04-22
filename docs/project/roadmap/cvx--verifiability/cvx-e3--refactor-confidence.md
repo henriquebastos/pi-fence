@@ -1,7 +1,7 @@
 # CVx.E3 — Refactor Confidence
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-21 — S1 Done
+**Last updated:** 2026-04-22 — S3–S5 Done
 
 CVx.E1 and CVx.E2 proved what pi-fence renders. The next missing confidence rung is structural: can we clean the code up without guessing, drifting, or breaking hidden contracts? This Epic makes refactoring deliberate.
 
@@ -12,12 +12,14 @@ Internal-first on purpose: no new end-user behavior, no new processors, no visua
 | Code | Story | Status |
 |------|-------|--------|
 | [S1](cvx-e3-s1--static-confidence-gate.md) | **I can trust the fast gate before starting a cleanup pass** | ✅ Done |
-| `S2` | **The architecture map names pure modules, adapters, runtime seams, composition root, and hotspots before code moves** | Planned |
-| `S3` | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | Planned |
-| `S4` | **The extension entrypoint becomes a thin composition root over focused modules and policies** | Planned |
-| `S5` | **Internal module APIs and naming make the boundary-injected architecture easy to compose** | Planned |
+| [S2](cvx-e3-s2--architecture-map.md) | **The architecture map names pure modules, adapters, runtime seams, composition root, and hotspots before code moves** | ✅ Done |
+| [S3](cvx-e3-s3--production-owned-runtime-seams.md) | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | ✅ Done |
+| [S4](cvx-e3-s4--thin-composition-root.md) | **The extension entrypoint becomes a thin composition root over focused modules and policies** | ✅ Done |
+| [S5](cvx-e3-s5--internal-api-polish.md) | **Internal module APIs and naming make the boundary-injected architecture easy to compose** | ✅ Done |
 
 The sequence is intentional and mirrors the product decision behind this Epic: **safer refactoring first, architecture clarity second, API polish third**.
+
+Current map: [Architecture map](../../architecture.md).
 
 1. `S1` closes the most dangerous blind spot: the fast gate currently proves tests and docs structure, but not static type health.
 2. `S2` turns the current "ambient cleanup backlog" into an explicit map of responsibilities, hotspots, and architectural vocabulary: which modules are pure, which are adapters, which are runtime seams, and where the composition root begins and ends.
@@ -30,7 +32,7 @@ The sequence is intentional and mirrors the product decision behind this Epic: *
 A contributor returns to pi-fence after a few weeks away and can orient quickly.
 
 1. `pnpm run verify:fast` tells them whether the repo is safe to change.
-2. An architecture note explains which module owns parsing, resolution, config, commands, rendering, runtime seams, adapters, and the composition root.
+2. An [architecture note](../../architecture.md) explains which module owns parsing, resolution, config, commands, rendering, runtime seams, adapters, and the composition root.
 3. Production code reads production dependencies from production paths, and inner modules receive those dependencies explicitly rather than reaching into ambient process state.
 4. The extension entrypoint is small enough to scan in one pass because it primarily wires concrete implementations to boundary interfaces.
 5. Naming and internal module APIs make intent obvious enough that cleanup can be incremental instead of heroic.

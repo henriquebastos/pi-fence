@@ -34,10 +34,10 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createKrokiRenderer } from "../../extensions/pi-fence/kroki.ts";
+import { createKrokiProcessor } from "../../extensions/pi-fence/kroki.ts";
 import { KROKI_TEXT_LANGUAGES } from "../fixtures/kroki/canonical-sources.ts";
 import { hasNetwork } from "../utilities/live-deps.ts";
-import { NodeHttpClient } from "../utilities/http-client.ts";
+import { NodeHttpClient } from "../../extensions/pi-fence/io/http-client.ts";
 
 const KROKI_ENDPOINT = "https://kroki.io";
 const networkUp = await hasNetwork(KROKI_ENDPOINT);
@@ -53,7 +53,7 @@ const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const PER_LANGUAGE_TIMEOUT_MS = 30_000;
 
 describe.skipIf(!networkUp)("kroki renderer \u2014 live", () => {
-	const kroki = createKrokiRenderer(new NodeHttpClient(), KROKI_ENDPOINT);
+	const kroki = createKrokiProcessor(new NodeHttpClient(), KROKI_ENDPOINT);
 
 	describe("happy-path PNG round-trip per language", () => {
 		for (const spec of KROKI_TEXT_LANGUAGES) {

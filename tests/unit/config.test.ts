@@ -1,5 +1,5 @@
 /**
- * Unit tests for `extensions/pi-fence/config.ts`.
+ * Unit tests for `extensions/pi-fence/io/config-loader.ts`.
  *
  * Covers the loader's contract:
  *   - Two optional files: global (~/.pi/agent/pi-fence.config.json) +
@@ -21,7 +21,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { loadPiFenceConfig } from "../../extensions/pi-fence/config.ts";
+import {
+	DEFAULT_CONFIG,
+	mergePiFenceConfigs,
+	validatePiFenceConfig,
+} from "../../extensions/pi-fence/config.ts";
+import { loadPiFenceConfig } from "../../extensions/pi-fence/io/config-loader.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
 
@@ -30,6 +35,31 @@ function writeConfig(dir: string, body: string): string {
 	writeFileSync(path, body);
 	return path;
 }
+
+describe("config core", () => {
+	it("merges bindings left-to-right with later configs winning", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: { graphviz: "kroki", mermaid: "one" } },
+			{ bindings: { mermaid: "two" } },
+			{ bindings: { plantuml: "three" } },
+		);
+
+		expect(merged).toEqual({
+			bindings: {
+				graphviz: "kroki",
+				mermaid: "two",
+				plantuml: "three",
+			},
+		});
+	});
+
+	it("returns defaults when validation sees a non-object top level", () => {
+		const logger = new FakeLogger();
+
+		expect(validatePiFenceConfig(["nope"], "global", logger)).toBe(DEFAULT_CONFIG);
+		expect(logger.byLevel("warn")[0]?.message).toContain("not an object");
+	});
+});
 
 describe("loadPiFenceConfig — missing files", () => {
 	afterEach(() => cleanupTempDirs());

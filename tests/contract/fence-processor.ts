@@ -12,7 +12,7 @@
  * Usage, typically from `tests/contract/kroki.contract.test.ts` (lands
  * with step 7):
  *
- *     runFenceProcessorContract("kroki", () => createKrokiRenderer(http), {
+ *     runFenceProcessorContract("kroki", () => createKrokiProcessor(http), {
  *       tag: "mermaid",
  *       goodSource: "flowchart LR\\nA --> B",
  *       badSource: "not actually mermaid",

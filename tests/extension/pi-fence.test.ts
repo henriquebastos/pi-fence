@@ -28,7 +28,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Component } from "@mariozechner/pi-tui";
 
-import type { LoadConfigOptions } from "../../extensions/pi-fence/config.ts";
+import type { LoadConfigOptions } from "../../extensions/pi-fence/io/config-loader.ts";
 import {
 	GRAPHVIZ_LOCAL_ALIASES,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,

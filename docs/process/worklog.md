@@ -6,17 +6,16 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E3` is now active. `S1` is closed: the fast gate includes static type checking, `pnpm run verify:fast` is the contributor-facing umbrella, and CI enforces the same static check the local gate does. The next refactor-confidence moves are structural rather than tooling-first.
+`CVx.E3` is complete. The refactor-confidence lane now leaves behind a production-owned seam layer under `extensions/pi-fence/io/`, a thin `index.ts` composition root, extracted policy modules for `/fence` and `agent_end`, and architecture vocabulary that matches the code.
 
 ## Next
 
 No story is currently in flight. Under the simplified roadmap hierarchy:
 
-- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute and still orthogonal to CVx.E3.
-- `CVx.E3.S2` — architecture map + hotspot inventory for pure modules, adapters, runtime seams, and the composition root. First not-done refactor-confidence story, but not specced yet.
+- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1081,3 +1080,98 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 3. **Examples beat abstraction when they shorten understanding.** Before/After snippets are encouraged only when they are faster than prose, not as mandatory ceremony.
 
 **Tests.** `pnpm run verify:fast` green (`279` tests passing, link check green, markdown lint green, typecheck green).
+
+### 2026-04-22 — close CVx.E3.S2 — architecture map + hotspot inventory
+
+**Goal.** Write down the current architecture truthfully before moving seams or splitting orchestration.
+
+**What shipped.**
+
+- New durable note at `docs/project/architecture.md`, linked from `docs/README.md` and from `CVx.E3` itself.
+- The note now names the repo's working vocabulary explicitly: pure module, adapter, runtime seam, composition root, hotspot, plus the supporting distinction between the extension runtime lane and the repo-tooling lane.
+- Current extension-runtime map captured module-by-module:
+  - pure modules: `parser.ts`, `resolve.ts`, `list.ts`
+  - boundary contracts: `processor.ts`
+  - adapters: `kroki.ts`, `graphviz-local.ts`, `renderer.ts`
+  - mixed hotspot: `config.ts`
+  - composition-root/orchestration hotspot: `index.ts`
+- Hotspot inventory written down with follow-through ownership:
+  1. `index.ts` → `CVx.E3.S4`
+  2. production imports from `tests/utilities/` → `CVx.E3.S3`
+  3. `config.ts` mixed pure/runtime concerns → `CVx.E3.S3` then `S4`
+  4. verifier/test-harness couplings stay in the tooling lane unless a real shared API is earned later
+- Story status flips: `CVx.E3.S2` is now Done.
+
+**Design decisions that survived the mapping pass.**
+
+1. **Do not inject pure modules just for symmetry.** The architecture note makes explicit that `parser.ts`, `resolve.ts`, and `list.ts` are already in the right shape.
+2. **Treat production imports from `tests/utilities/` as a placement problem first.** The runtime already uses DI; the seam home is what lies today.
+3. **Keep the tooling lane separate from the extension runtime lane.** `scripts/verify/**` reusing test harness pieces is a repo-tooling concern, not proof that every helper belongs in production code.
+
+**Tests.** `pnpm run verify:fast` green, unchanged at `279` tests passing.
+
+**Carry-forward.** `CVx.E3.S3` is now precise enough to spec narrowly: promote `HttpClient`, `ShellRunner`, and `Logger` into production-owned modules, and move config file discovery/read I/O to the edge without inventing a generic filesystem abstraction.
+
+### 2026-04-22 — spec CVx.E3.S3 — production-owned runtime seams
+
+**Goal.** Turn S2's hotspot inventory into a narrow seam-move plan rather than a vague cleanup intention.
+
+**What shipped.**
+
+- New story file: `docs/project/roadmap/cvx--verifiability/cvx-e3-s3--production-owned-runtime-seams.md`.
+- `CVx.E3` now links `S3` directly and marks it **Ready**.
+- The spec narrows S3 to three real runtime seams plus one targeted config boundary:
+  1. `HttpClient`
+  2. `ShellRunner`
+  3. `Logger`
+  4. config file discovery/read I/O split from pure config validation/merge logic
+
+**Design decisions recorded in the spec.**
+
+1. **Production-owned seam modules live under `extensions/pi-fence/io/`.** Interfaces and Node implementations move there together.
+2. **Test fakes stay in `tests/utilities/`.** They become test implementations of production-owned contracts rather than the seam home.
+3. **`DockerExecShellRunner` stays test-owned.** It is a live-test helper, not shipped runtime surface.
+4. **Config gets a targeted loader split, not a generic filesystem abstraction.** S3 earns an explicit config I/O boundary; it does not invent repo-wide infrastructure.
+5. **`S4` still owns composition-root slimming.** S3 moves seam ownership only.
+
+**Tests.** Spec-only; runtime behavior unchanged. `pnpm run verify:fast` still green at `279` passing tests.
+
+### 2026-04-22 — close CVx.E3.S3 / S4 / S5 and close CVx.E3
+
+**Goal.** Finish the refactor-confidence lane end-to-end: make runtime seam ownership truthful, reduce `index.ts` to a composition root, then align internal names with the resulting architecture.
+
+**What shipped.**
+
+1. **`S3` — production-owned seams.**
+   - Added `extensions/pi-fence/io/http-client.ts`, `shell-runner.ts`, `logger.ts`, and `config-loader.ts`.
+   - `extensions/pi-fence/kroki.ts`, `graphviz-local.ts`, and `index.ts` now import runtime seams from production-owned paths.
+   - `extensions/pi-fence/config.ts` is now pure config core; file discovery/reads moved to `io/config-loader.ts`.
+   - `tests/utilities/` keeps `FakeHttpClient`, `FakeShellRunner`, `FakeLogger`, and `DockerExecShellRunner` as test-owned implementations/helpers over the production contracts.
+   - Structural grep is now clean: no production imports from `tests/utilities/` remain under `extensions/pi-fence/`.
+2. **`S4` — thin composition root.**
+   - Extracted `extensions/pi-fence/messages.ts` for message types and payload builders.
+   - Extracted `extensions/pi-fence/command.ts` for `/fence` command policy.
+   - Extracted `extensions/pi-fence/agent-end.ts` for assistant-turn interception/render policy.
+   - `extensions/pi-fence/index.ts` now reads as a composition root: choose concrete deps, create default processors, probe availability, load config, register renderers, register policies.
+3. **`S5` — internal API polish.**
+   - `PiFenceDeps` became `PiFenceRuntimeDeps`.
+   - Processor factories now use processor vocabulary: `createKrokiProcessor`, `createGraphvizLocalProcessor`.
+   - The architecture note now describes the runtime lane in its final post-epic shape rather than as a backlog map.
+4. **Epic close.**
+   - `CVx.E3.S3`, `S4`, and `S5` are now Done.
+   - `CVx.E3` is now Done.
+   - `CVx — Verifiability` is now Done.
+
+**Verification.**
+
+1. `pnpm run verify:fast` green at `281` passing fast-suite tests, link check green, markdown lint green, typecheck green.
+2. `pnpm test:live` green/skip-clean at `26` passing and `11` skipped.
+
+**Design decisions that survived implementation.**
+
+1. **Boundary ownership now matches repository ownership.** Runtime seams live under production code; tests implement them from the test lane.
+2. **Config split stayed targeted.** pi-fence earned a config loader, not a generic filesystem service.
+3. **The composition root stayed explicit.** `index.ts` still wires the runtime; it just no longer owns every policy inline.
+4. **Naming followed the architecture after the shape stabilised.** Processor vocabulary and runtime-deps naming landed last, when the better names were obvious instead of speculative.
+
+**Carry-forward.** The next ready story in the repo is `CV0.E1.S5`.

@@ -30,7 +30,7 @@ import { describe, expect, it } from "vitest";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import {
-	createGraphvizLocalRenderer,
+	createGraphvizLocalProcessor,
 	GRAPHVIZ_LOCAL_ALIASES,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 } from "../../extensions/pi-fence/graphviz-local.ts";
@@ -50,7 +50,7 @@ describe("graphviz-local — shape", () => {
 
 	it("exposes id, tags, aliases on the factory output", () => {
 		const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		expect(processor.id).toBe("graphviz-local");
 		expect(processor.tags).toEqual(["graphviz"]);
@@ -58,7 +58,7 @@ describe("graphviz-local — shape", () => {
 	});
 });
 
-describe("createGraphvizLocalRenderer — available()", () => {
+describe("createGraphvizLocalProcessor — available()", () => {
 	it("returns ok when `dot -V` exits 0", async () => {
 		// graphviz prints its version on stderr and exits 0.
 		const shell = new FakeShellRunner();
@@ -67,7 +67,7 @@ describe("createGraphvizLocalRenderer — available()", () => {
 			stderr: "dot - graphviz version 2.50.0 (0)",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.available();
 
@@ -80,7 +80,7 @@ describe("createGraphvizLocalRenderer — available()", () => {
 			stderr: "some broken dot install",
 			exitCode: 127,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.available();
 
@@ -98,7 +98,7 @@ describe("createGraphvizLocalRenderer — available()", () => {
 		// throws on any call — simulates execFile's ENOENT when `dot`
 		// isn't installed at all.
 		const shell = new FakeShellRunner();
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.available();
 
@@ -119,7 +119,7 @@ describe("createGraphvizLocalRenderer — available()", () => {
 				throw "string thrown as non-Error";
 			}
 		}
-		const processor = createGraphvizLocalRenderer(new ThrowingShellRunner());
+		const processor = createGraphvizLocalProcessor(new ThrowingShellRunner());
 
 		await expect(processor.available()).resolves.toBeDefined();
 		const result = await processor.available();
@@ -127,7 +127,7 @@ describe("createGraphvizLocalRenderer — available()", () => {
 	});
 });
 
-describe("createGraphvizLocalRenderer — render()", () => {
+describe("createGraphvizLocalProcessor — render()", () => {
 	it("shells out to `dot -Tpng` with the source on stdin", async () => {
 		const shell = new FakeShellRunner({
 			stdout: "",
@@ -135,7 +135,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		await processor.render("graphviz", "digraph { A -> B }");
 
@@ -156,7 +156,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		await processor.render("dot", "digraph { A -> B }");
 
@@ -172,7 +172,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "digraph {}");
 
@@ -193,7 +193,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "digraph {}");
 
@@ -209,7 +209,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "Error: <stdin>:1: syntax error near '->'",
 			exitCode: 1,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "digraph { A -> }");
 
@@ -225,7 +225,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "",
 			exitCode: 5,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "digraph {}");
 
@@ -242,7 +242,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: longErr,
 			exitCode: 1,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "oops");
 
@@ -258,7 +258,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 		// propagate — the extension's per-block render loop relies on
 		// processors honouring this contract.
 		const shell = new FakeShellRunner();
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "digraph {}");
 
@@ -275,7 +275,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 		const controller = new AbortController();
 		controller.abort();
 
@@ -289,7 +289,7 @@ describe("createGraphvizLocalRenderer — render()", () => {
 	});
 });
 
-describe("createGraphvizLocalRenderer — logging", () => {
+describe("createGraphvizLocalProcessor — logging", () => {
 	it("logs debug on request and info on success", async () => {
 		const shell = new FakeShellRunner({
 			stdout: "",
@@ -298,7 +298,7 @@ describe("createGraphvizLocalRenderer — logging", () => {
 			exitCode: 0,
 		});
 		const logger = new FakeLogger();
-		const processor = createGraphvizLocalRenderer(shell, logger);
+		const processor = createGraphvizLocalProcessor(shell, logger);
 
 		await processor.render("graphviz", "digraph {}");
 
@@ -314,7 +314,7 @@ describe("createGraphvizLocalRenderer — logging", () => {
 			exitCode: 1,
 		});
 		const logger = new FakeLogger();
-		const processor = createGraphvizLocalRenderer(shell, logger);
+		const processor = createGraphvizLocalProcessor(shell, logger);
 
 		await processor.render("graphviz", "digraph {}");
 
@@ -325,7 +325,7 @@ describe("createGraphvizLocalRenderer — logging", () => {
 	it("logs error on shell-runner throw", async () => {
 		const shell = new FakeShellRunner();
 		const logger = new FakeLogger();
-		const processor = createGraphvizLocalRenderer(shell, logger);
+		const processor = createGraphvizLocalProcessor(shell, logger);
 
 		await processor.render("graphviz", "digraph {}");
 
@@ -340,7 +340,7 @@ describe("createGraphvizLocalRenderer — logging", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		const processor = createGraphvizLocalRenderer(shell);
+		const processor = createGraphvizLocalProcessor(shell);
 
 		const result = await processor.render("graphviz", "digraph {}");
 

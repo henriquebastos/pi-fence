@@ -20,7 +20,7 @@ import { describe, expect, it } from "vitest";
 
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
-import { createKrokiRenderer, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
+import { createKrokiProcessor, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
 	return {
@@ -38,7 +38,7 @@ function pngResponse(bytes: Buffer): HttpResponse {
 	};
 }
 
-describe("createKrokiRenderer — logging", () => {
+describe("createKrokiProcessor — logging", () => {
 	it("logs a debug entry with the resolved URL when the request goes out", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse(
@@ -47,7 +47,7 @@ describe("createKrokiRenderer — logging", () => {
 			pngResponse(Buffer.from([0x89, 0x50])),
 		);
 		const logger = new FakeLogger();
-		const kroki = createKrokiRenderer(http, undefined, logger);
+		const kroki = createKrokiProcessor(http, undefined, logger);
 
 		await kroki.render("mermaid", "flowchart LR\nA --> B");
 
@@ -65,7 +65,7 @@ describe("createKrokiRenderer — logging", () => {
 			pngResponse(Buffer.from([0x89, 0x50])),
 		);
 		const logger = new FakeLogger();
-		const kroki = createKrokiRenderer(http, undefined, logger);
+		const kroki = createKrokiProcessor(http, undefined, logger);
 
 		await kroki.render("mermaid", "x");
 
@@ -85,7 +85,7 @@ describe("createKrokiRenderer — logging", () => {
 			textResponse(400, "syntax error"),
 		);
 		const logger = new FakeLogger();
-		const kroki = createKrokiRenderer(http, undefined, logger);
+		const kroki = createKrokiProcessor(http, undefined, logger);
 
 		await kroki.render("mermaid", "bad source");
 
@@ -100,7 +100,7 @@ describe("createKrokiRenderer — logging", () => {
 			throw new Error("network went away");
 		});
 		const logger = new FakeLogger();
-		const kroki = createKrokiRenderer(http, undefined, logger);
+		const kroki = createKrokiProcessor(http, undefined, logger);
 
 		await kroki.render("mermaid", "x");
 
@@ -112,7 +112,7 @@ describe("createKrokiRenderer — logging", () => {
 	it("works without a logger (back-compat with the two-arg factory)", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(Buffer.from([0x89])));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		const result = await kroki.render("mermaid", "x");
 
@@ -163,7 +163,7 @@ describe("isDarkThemeName", () => {
 	});
 });
 
-describe("createKrokiRenderer — appearance/theme", () => {
+describe("createKrokiProcessor — appearance/theme", () => {
 	it("appends ?theme=dark when the appearance resolver returns dark", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse(
@@ -171,7 +171,7 @@ describe("createKrokiRenderer — appearance/theme", () => {
 			"https://kroki.io/mermaid/png?theme=dark",
 			pngResponse(Buffer.from([0x89, 0x50])),
 		);
-		const kroki = createKrokiRenderer(http, undefined, undefined, () => "dark");
+		const kroki = createKrokiProcessor(http, undefined, undefined, () => "dark");
 
 		const result = await kroki.render("mermaid", "x");
 
@@ -186,7 +186,7 @@ describe("createKrokiRenderer — appearance/theme", () => {
 			"https://kroki.io/mermaid/png",
 			pngResponse(Buffer.from([0x89, 0x50])),
 		);
-		const kroki = createKrokiRenderer(http, undefined, undefined, () => "light");
+		const kroki = createKrokiProcessor(http, undefined, undefined, () => "light");
 
 		await kroki.render("mermaid", "x");
 
@@ -207,7 +207,7 @@ describe("createKrokiRenderer — appearance/theme", () => {
 		);
 
 		let appearance: "light" | "dark" = "light";
-		const kroki = createKrokiRenderer(http, undefined, undefined, () => appearance);
+		const kroki = createKrokiProcessor(http, undefined, undefined, () => appearance);
 
 		await kroki.render("mermaid", "first");
 		appearance = "dark";
@@ -227,7 +227,7 @@ describe("createKrokiRenderer — appearance/theme", () => {
 			"https://kroki.io/mermaid/png",
 			pngResponse(Buffer.from([0x89])),
 		);
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		await kroki.render("mermaid", "x");
 
@@ -235,11 +235,11 @@ describe("createKrokiRenderer — appearance/theme", () => {
 	});
 });
 
-describe("createKrokiRenderer", () => {
+describe("createKrokiProcessor", () => {
 	it("posts the source to {endpoint}/{tag}/png with the right headers", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(Buffer.from([0x89, 0x50, 0x4e, 0x47])));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		await kroki.render("mermaid", "flowchart LR\nA --> B");
 
@@ -254,7 +254,7 @@ describe("createKrokiRenderer", () => {
 		const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad]);
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(pngBytes));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
@@ -267,7 +267,7 @@ describe("createKrokiRenderer", () => {
 	it("returns ok:false with truncated body on 4xx", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", textResponse(400, "bad mermaid syntax"));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		const result = await kroki.render("mermaid", "not valid mermaid");
 
@@ -280,7 +280,7 @@ describe("createKrokiRenderer", () => {
 	it("returns ok:false on 5xx", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", textResponse(500, "internal kroki error"));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
@@ -294,7 +294,7 @@ describe("createKrokiRenderer", () => {
 		const longBody = "x".repeat(5000);
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", textResponse(400, longBody));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		const result = await kroki.render("mermaid", "irrelevant");
 
@@ -310,7 +310,7 @@ describe("createKrokiRenderer", () => {
 				throw new Error("ECONNREFUSED");
 			}
 		}
-		const kroki = createKrokiRenderer(new ThrowingHttp());
+		const kroki = createKrokiProcessor(new ThrowingHttp());
 
 		const result = await kroki.render("mermaid", "flowchart LR");
 
@@ -323,7 +323,7 @@ describe("createKrokiRenderer", () => {
 	it("honours a custom endpoint passed at construction", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "http://localhost:8000/mermaid/png", pngResponse(Buffer.alloc(8)));
-		const kroki = createKrokiRenderer(http, "http://localhost:8000");
+		const kroki = createKrokiProcessor(http, "http://localhost:8000");
 
 		const result = await kroki.render("mermaid", "flowchart LR");
 
@@ -334,7 +334,7 @@ describe("createKrokiRenderer", () => {
 	it("yields ok:false when the caller's signal is already aborted", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(Buffer.alloc(8)));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		const controller = new AbortController();
 		controller.abort();
@@ -350,7 +350,7 @@ describe("createKrokiRenderer", () => {
 	it("passes the source body through unchanged — no re-encoding", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(Buffer.alloc(8)));
-		const kroki = createKrokiRenderer(http);
+		const kroki = createKrokiProcessor(http);
 
 		// Source with whitespace quirks the caller might care about.
 		const source = "  flowchart LR\n    A --> B\n\n  ";
@@ -363,7 +363,7 @@ describe("createKrokiRenderer", () => {
 		it("resolves `dot` to Kroki's `/graphviz/png` endpoint", async () => {
 			const http = new FakeHttpClient();
 			http.setResponse("POST", "https://kroki.io/graphviz/png", pngResponse(Buffer.alloc(8)));
-			const kroki = createKrokiRenderer(http);
+			const kroki = createKrokiProcessor(http);
 
 			const result = await kroki.render("dot", "digraph { A -> B }");
 
@@ -375,7 +375,7 @@ describe("createKrokiRenderer", () => {
 		it("resolves `puml` to Kroki's `/plantuml/png` endpoint", async () => {
 			const http = new FakeHttpClient();
 			http.setResponse("POST", "https://kroki.io/plantuml/png", pngResponse(Buffer.alloc(8)));
-			const kroki = createKrokiRenderer(http);
+			const kroki = createKrokiProcessor(http);
 
 			const result = await kroki.render("puml", "@startuml\nA -> B\n@enduml");
 
@@ -397,7 +397,7 @@ describe("createKrokiRenderer", () => {
 				"https://kroki.io/blockdiag/png",
 				pngResponse(Buffer.alloc(8)),
 			);
-			const kroki = createKrokiRenderer(http);
+			const kroki = createKrokiProcessor(http);
 
 			const result = await kroki.render("blockdiag", "{ A -> B }");
 
@@ -410,7 +410,7 @@ describe("createKrokiRenderer", () => {
 			// or LLM who writes `graphviz` directly must get the same endpoint.
 			const http = new FakeHttpClient();
 			http.setResponse("POST", "https://kroki.io/graphviz/png", pngResponse(Buffer.alloc(8)));
-			const kroki = createKrokiRenderer(http);
+			const kroki = createKrokiProcessor(http);
 
 			const result = await kroki.render("graphviz", "digraph { A -> B }");
 

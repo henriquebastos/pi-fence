@@ -9,13 +9,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-	FakeLogger,
-	type LogEntry,
-	type Logger,
-	NodeLogger,
-	shouldLog,
-} from "./logger.ts";
+import { NodeLogger, shouldLog, type LogEntry, type Logger } from "../../extensions/pi-fence/io/logger.ts";
+import { FakeLogger } from "./logger.ts";
 
 describe("FakeLogger", () => {
 	it("captures entries at every level", () => {

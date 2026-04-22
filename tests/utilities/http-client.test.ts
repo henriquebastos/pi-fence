@@ -12,12 +12,8 @@
 
 import { describe, expect, it } from "vitest";
 
-import {
-	FakeHttpClient,
-	type HttpClient,
-	type HttpRequest,
-	type HttpResponse,
-} from "./http-client.ts";
+import type { HttpClient, HttpRequest, HttpResponse } from "../../extensions/pi-fence/io/http-client.ts";
+import { FakeHttpClient } from "./http-client.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
 	return {

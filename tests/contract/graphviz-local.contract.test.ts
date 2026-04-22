@@ -18,7 +18,7 @@
 
 import { FakeShellRunner, type ShellResult } from "../utilities/shell-runner.ts";
 import {
-	createGraphvizLocalRenderer,
+	createGraphvizLocalProcessor,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 } from "../../extensions/pi-fence/graphviz-local.ts";
 import { runFenceProcessorContract } from "./fence-processor.ts";
@@ -38,7 +38,7 @@ const BAD_SOURCE = "digraph { A ->";
  * the only way to route. Same pattern kroki.contract.test.ts uses for
  * FakeHttpClient: it peeks at `req.body` to choose the response.
  */
-function makeGraphvizLocal(): ReturnType<typeof createGraphvizLocalRenderer> {
+function makeGraphvizLocal(): ReturnType<typeof createGraphvizLocalProcessor> {
 	const badShellResult: ShellResult = {
 		stdout: "",
 		stderr: "Error: <stdin>:1: syntax error, unexpected end of file",
@@ -76,7 +76,7 @@ function makeGraphvizLocal(): ReturnType<typeof createGraphvizLocalRenderer> {
 		},
 	};
 
-	return createGraphvizLocalRenderer(shell);
+	return createGraphvizLocalProcessor(shell);
 }
 
 runFenceProcessorContract("graphviz-local", makeGraphvizLocal, {

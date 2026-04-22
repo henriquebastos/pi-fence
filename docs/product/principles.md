@@ -85,7 +85,7 @@ Story specs without a `Tests` section are incomplete and should not be approved.
 
 **Design before code.** No code without a documented story spec. The implementation plan lives in the story file's `Plan` section. When it's wrong, update the story file before implementing around it.
 
-**Small stories with immediate validation.** Each story ends with a verifiable "it works" moment — a test, a command, a visible result. Don't declare done without validation.
+**Small stories with immediate validation.** Each story ends with a verifiable "it works" moment — a test, a command, a visible result. Don't declare done without validation, and don't declare a story done until that validated work is committed.
 
 **Refactoring in cycle.** After implement + test, evaluate refactoring. Document what was refactored *and* what was evaluated but left as-is, with criteria for revisiting.
 
@@ -94,6 +94,8 @@ Story specs without a `Tests` section are incomplete and should not be approved.
 **Commits focus on "why".** Descriptive messages in English. Explain the reason for the change, not just what changed. No self-referential or AI-authorship language.
 
 **Atomic commits where practical.** One independent change per commit.
+
+**Do not start the next story on a dirty worktree.** A new story starts only after the previous story's implementation is committed (or the uncommitted work is explicitly discarded). Story boundaries live in history, not just in intention.
 
 ---
 
