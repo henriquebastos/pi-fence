@@ -21,6 +21,8 @@ Front door for agents and new contributors. Short on purpose — redirects, does
 
 [docs/project/roadmap/README.md](docs/project/roadmap/README.md) is the source of truth for CV order and done/not-done state. Each CV `README.md` is the source of truth for Epic order. Each Epic file is the source of truth for Story order. Next story = the first not-done Story in the first not-done Epic of the current CV; when a Story file exists, prefer one whose top metadata block says `**Status:** Ready`. Each CV has its own folder under `docs/project/roadmap/` with `README.md`; Epics and Stories are single markdown files inside that CV folder, named with their code prefix and slug.
 
+When the next workflow step is obvious, do it. Do not stop at chat prose if the task clearly calls for a repo artifact such as a story spec, roadmap update, worklog entry, or similar bookkeeping needed to continue. Be conservative with ambiguous design choices and destructive actions, not with routine workflow continuation.
+
 ## Verification gate (before every commit)
 
 1. `pnpm test` — fast suite (unit + contract + extension).
