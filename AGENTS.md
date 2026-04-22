@@ -10,7 +10,7 @@ Front door for agents and new contributors. Short on purpose — redirects, does
 
 ## What's pending
 
-[docs/project/roadmap/README.md](docs/project/roadmap/README.md) is the source of truth. Next story = first `Planned` row of the current CV. Each story has its own folder with `README.md` + `plan.md` + `test-guide.md`.
+[docs/project/roadmap/README.md](docs/project/roadmap/README.md) is the source of truth for CV order and done/not-done state. Each CV `README.md` is the source of truth for Epic order. Each Epic file is the source of truth for Story order. Next story = the first not-done Story in the first not-done Epic of the current CV; when a Story file exists, prefer one whose top metadata block says `**Status:** Ready`. Each CV has its own folder under `docs/project/roadmap/` with `README.md`; Epics and Stories are single markdown files inside that CV folder, named with their code prefix and slug.
 
 ## Verification gate (before every commit)
 
@@ -25,9 +25,9 @@ No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all th
 
 ## Story workflow
 
-1. **Spec** — draft the story folder's `README.md` + `plan.md` + `test-guide.md`. `plan.md` must have a `Tests` section (layers, events covered, fakes added, live tests, anything deferred). Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story's three files as the working template — imitate the section shape, don't invent one. No separate template file exists; the shipped stories are the template.
-2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm run verify:fast` (and `pnpm test:live` when the story touches a live-only seam).
-3. **Close** — flip status in the story `README.md`, the Epic `README.md`, and the top-level roadmap table; append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards); update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
+1. **Spec** — draft the story file. Every story file starts with a visible metadata block carrying `**Status:** Draft|Ready|In progress|Done` so a reader can see whether the spec is still forming, ready to execute, actively being implemented, or closed. Every story file must also contain, at minimum: `Summary`, `Done criterion`, `Scope`, `Plan`, `Tests`, and `Verification`. The `Tests` section is mandatory and names layers touched, events covered, fakes added, live tests, and anything deferred. Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story file as the working template — imitate the section shape, don't invent one. Parent docs link downward; they do not copy story-level detail.
+2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm run verify:fast` (and `pnpm test:live` when the story touches a live-only seam). When implementation starts, flip the story file metadata to `**Status:** In progress`.
+3. **Close** — flip the story file metadata to `**Status:** Done`, update status in the epic file, the CV `README.md`, and the top-level roadmap `README.md`, append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards), and update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
 
 Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog.md](docs/process/worklog.md).
 

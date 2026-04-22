@@ -1,0 +1,14 @@
+# CV3.E2 — Utility Processors
+
+**CV:** [CV3 — Beyond Diagrams](README.md)
+
+## Summary
+
+Small utility renderers demonstrate that fenced blocks are a general text-to-visual platform.
+
+## Stories
+
+| Code | Story | State |
+|------|-------|-------|
+| `CV3.E2.S1` | **`qr` blocks render as QR code images** | Not done |
+| `CV3.E2.S2` | **`color` / `palette` blocks show color swatches** | Not done |

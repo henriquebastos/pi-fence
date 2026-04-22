@@ -131,7 +131,7 @@ Defaults cover the first-install experience: Kroki endpoint at `https://kroki.io
    - Windows contributors run live tests via Docker Desktop.
    - Mac/Linux contributors the same.
    - Image is tagged `:latest` for convenience and `:<sha>` for CI determinism; local scripts can pin to a version file.
-7. **Every plan.md has a mandatory `Tests` section** listing: layers touched, events/interactions covered, fakes added, live tests added, anything deferred.
+7. **Every story spec has a mandatory `Tests` section** listing: layers touched, events/interactions covered, fakes added, live tests added, anything deferred.
 8. **No test touches the real filesystem outside `os.tmpdir()`** or the real `~/.pi/agent/`. Tests create per-test temp dirs and clean up in `afterEach`.
 
 **Why this shape.**
@@ -140,15 +140,15 @@ Defaults cover the first-install experience: Kroki endpoint at `https://kroki.io
 - **Four layers separate concerns cleanly.** Unit tests stay fast; contract tests let third-party processor authors verify conformance; extension tests exercise the event-hook path end-to-end without an LLM; live tests guard against real-world rendering drift.
 - **Docker for live deps beats per-host install scripts** on reproducibility (byte-identical `dot` output across machines), on Windows support (Docker Desktop makes live tests work there too), on maintenance (one Dockerfile vs. a brew/apt/dnf matrix), and on host safety (no global `mmdc` install polluting dev machines). The cost (one-time image pull per version) is bounded.
 - **Fakes over mocks** keeps tests talking to real code paths, with all the shape fidelity that comes with it. Refactors that rename a function don’t break tests that mocked it; they do break tests that imported it.
-- **Mandatory `Tests` section in plans** is the tripwire against the user's original concern about stories shipping without coverage. It surfaces gaps at plan-review time, not at commit-review time.
+- **Mandatory `Tests` section in story specs** is the tripwire against the user's original concern about stories shipping without coverage. It surfaces gaps at spec-review time, not at commit-review time.
 - **Verifiability as a CV type** elevates this work to first-class roadmap status. A story that skips its tests is not merely against a style guide; it fails to advance a named community value.
 
 **Consequences.**
 
-- `CV0.E1.S0` (“Testing foundation”) is inserted before `S1` in the Epic. It ships the `tests/` tree, the Dockerfile, the utility interfaces, exemplar tests at each layer, and the mandatory-Tests-section convention in plan templates.
+- `CV0.E1.S0` (“Testing foundation”) is inserted before `S1` in the Epic. It ships the `tests/` tree, the Dockerfile, the utility interfaces, exemplar tests at each layer, and the mandatory-Tests-section convention in story specs.
 - The `Verifiability` type is added to the CV types table in both `briefing.md` and `roadmap/README.md` (legend) with a note that it is cross-cutting.
 - `principles.md` now carries an expanded Testing section naming the layers, the fake/mock distinction, the live-deps policy, the DI rule, the no-host-fs rule, and the mandatory `Tests` section in plans.
 - `S1`'s plan will be updated (in Draft 2 of this change set) to include a Tests section and reorder its implementation steps so tests come first.
-- Future story plans without a `Tests` section are incomplete and get sent back before approval.
+- Future story specs without a `Tests` section are incomplete and get sent back before approval.
 - The Docker image is a separate deliverable tracked under CV0.E1.S0. It is **not** a dependency of `pnpm test` — that would re-couple what the layer split was meant to separate.
 - This entry supersedes nothing; it extends the framework. No earlier decision is retired.

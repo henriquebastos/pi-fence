@@ -2,7 +2,7 @@
 
 # Getting Started
 
-> **Status:** `CV0.E1` closed with full Kroki text coverage; `CV0.E2` closed with local graphviz + user-level per-tag bindings. Full render-layer testing via [CVx.E1.S1](project/roadmap/cvx-verifiability/cvx-e1-pi-tui-idiom/cvx-e1-s1-virtual-terminal-tests/README.md). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. `/fence doctor`, richer per-processor configuration, and the error-feedback loop to the LLM are still on the [roadmap](project/roadmap/README.md).
+> **Status:** `CV0.E1` closed with full Kroki text coverage; `CV0.E2` closed with local graphviz + user-level per-tag bindings. Full render-layer testing via [CVx.E1.S1](project/roadmap/cvx--verifiability/cvx-e1-s1--virtual-terminal-tests.md). The package is not yet published to npm; install from source today, `pi install npm:pi-fence` will work once the first release cuts. `/fence doctor`, richer per-processor configuration, and the error-feedback loop to the LLM are still on the [roadmap](project/roadmap/README.md).
 
 ## Install
 

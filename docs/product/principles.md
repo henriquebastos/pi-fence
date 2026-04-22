@@ -69,7 +69,7 @@ Test files live under `tests/<layer>/`. Fixtures under `tests/fixtures/`. Shared
 
 **Static typing is part of the fast gate.** `pnpm run typecheck` runs `tsc --noEmit` across production code, tests, and repo scripts. `pnpm run verify:fast` is the contributor-facing umbrella for the full local fast gate: `pnpm test`, `pnpm run check`, and `pnpm run typecheck`.
 
-**Every story's plan.md has a mandatory `Tests` section** enumerating, at minimum:
+**Every story spec has a mandatory `Tests` section** enumerating, at minimum:
 
 1. Which test layers the story touches.
 2. Which events / interactions / side effects are covered.
@@ -77,13 +77,13 @@ Test files live under `tests/<layer>/`. Fixtures under `tests/fixtures/`. Shared
 4. Which live tests are added or updated.
 5. Anything deferred and why.
 
-Plans without a `Tests` section are incomplete and should not be approved.
+Story specs without a `Tests` section are incomplete and should not be approved.
 
 ---
 
 ## Process
 
-**Design before code.** No code without a documented plan. The plan lives in the Story's `plan.md`. When it's wrong, update it before implementing around it.
+**Design before code.** No code without a documented story spec. The implementation plan lives in the story file's `Plan` section. When it's wrong, update the story file before implementing around it.
 
 **Small stories with immediate validation.** Each story ends with a verifiable "it works" moment — a test, a command, a visible result. Don't declare done without validation.
 

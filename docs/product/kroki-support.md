@@ -10,7 +10,7 @@ Last updated: 2026-04-20 (CV0.E1.S4).
 
 1. **17 text-body languages render today** on the public endpoint. They're all listed below with minimal canonical sources.
 2. **8 text-body languages** are hosted by Kroki but refused as PNG on the public endpoint (Kroki answers `400: Unsupported output format: png … Must be one of svg.`). pi-fence's inline-PNG path via the Kitty graphics protocol can't serve them yet — see the deferred table and follow-up paths below.
-3. **3 JSON-body languages** (Vega, Vega-Lite, Excalidraw) need a different request shape. They're scoped to [CV0.E1.S5](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s5-kroki-json-body-languages/README.md) and not yet implemented.
+3. **3 JSON-body languages** (Vega, Vega-Lite, Excalidraw) need a different request shape. They're scoped to [CV0.E1.S5](../project/roadmap/cv0--it-works/cv0-e1-s5--kroki-json-body-languages.md) and not yet implemented.
 4. **1 language** (diagrams.net) has backend infrastructure unavailable on Kroki's public endpoint — Kroki answers `503: Connection refused`. Same status as the SVG-only set: deferred until self-hosted Kroki (CV2.E2) ships.
 
 ## Supported on public Kroki (PNG) — rendered by pi-fence today
@@ -74,7 +74,7 @@ pi-fence requests `?theme=dark` from Kroki when pi's current theme is a dark one
 Kroki hosts these languages but the public endpoint refuses PNG output (`400: Unsupported output format: png for <tag>. Must be one of svg.`). pi-fence's rendering pipeline is PNG-only today (via the Kitty graphics protocol the terminal expects), so these can't render inline without either:
 
 1. An **SVG→PNG rasterization step** inside pi-fence (not yet specced; would be its own story).
-2. **Self-hosted Kroki** with alternate backends enabled — covered by [CV2.E2](../project/roadmap/README.md#cv2--work-offline-portability).
+2. **Self-hosted Kroki** with alternate backends enabled — covered by [CV2 — Work Offline](../project/roadmap/cv2--work-offline/README.md).
 
 | Tag | Kroki-documented behaviour | Notes |
 |-----|---------------------------|-------|
@@ -87,7 +87,7 @@ Kroki hosts these languages but the public endpoint refuses PNG output (`400: Un
 | `svgbob` | SVG-only on public endpoint | ASCII-art → SVG. |
 | `wavedrom` | SVG-only on public endpoint | Digital timing diagrams. |
 
-If you want one of these languages specifically, run your own Kroki locally with the relevant backend enabled and point pi-fence at it. Configuration hooks for that land in [CV1.E1.S2](../project/roadmap/README.md#cv1--take-control-control).
+If you want one of these languages specifically, run your own Kroki locally with the relevant backend enabled and point pi-fence at it. Configuration hooks for that land in [CV1 — Take Control](../project/roadmap/cv1--take-control/README.md).
 
 ## Backend unavailable on public Kroki
 
@@ -97,7 +97,7 @@ If you want one of these languages specifically, run your own Kroki locally with
 
 ## JSON-body languages — scoped to CV0.E1.S5
 
-These languages take a JSON body, not text. They need a different request shape (`Content-Type: application/json`) than pi-fence's current text-body flow; that's [CV0.E1.S5](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/cv0-e1-s5-kroki-json-body-languages/README.md).
+These languages take a JSON body, not text. They need a different request shape (`Content-Type: application/json`) than pi-fence's current text-body flow; that's [CV0.E1.S5](../project/roadmap/cv0--it-works/cv0-e1-s5--kroki-json-body-languages.md).
 
 | Tag | Notes |
 |-----|-------|
@@ -130,4 +130,4 @@ No other test or wiring needs touching. The pi-fence renderer is language-agnost
 
 ---
 
-**See also:** [Roadmap](../project/roadmap/README.md) · [CV0.E1 — Kroki Through The Wire](../project/roadmap/cv0-it-works/cv0-e1-kroki-through-the-wire/README.md) · [Principles — Testing](principles.md#testing)
+**See also:** [Roadmap](../project/roadmap/README.md) · [CV0.E1 — Kroki Through The Wire](../project/roadmap/cv0--it-works/cv0-e1--kroki-through-the-wire.md) · [Principles — Testing](principles.md#testing)
