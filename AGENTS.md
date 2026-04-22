@@ -2,6 +2,15 @@
 
 Front door for agents and new contributors. Short on purpose — redirects, doesn't duplicate.
 
+## Communication
+
+1. **Answer concisely.** Be brief, direct, and specific.
+2. **Prefer dense phrasing over filler.** Remove unnecessary hedging, throat-clearing, and extra words when clarity survives.
+3. **Keep technical content exact.** Do not paraphrase identifiers, paths, commands, flags, APIs, or code blocks.
+4. **Prefer concrete examples over abstract explanation.** Show the change, not just the idea.
+5. **Use short Before/After snippets when they clarify intent faster than prose.**
+6. **Do not sacrifice clarity for brevity.** Compress aggressively, but keep the result readable.
+
 ## Read first, in order
 
 1. [docs/product/principles.md](docs/product/principles.md) — code, testing, process, conventions (the rules).
