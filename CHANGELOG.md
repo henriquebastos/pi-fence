@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CVx.E5.S1 — coverage and CRAP feedback)
+
+Coverage and CRAP feedback now have two distinct loops, matching the repo's production-vs-broader-analysis split.
+
+- **`pnpm test` now includes coverage for `extensions/**`** via Vitest's Istanbul provider. That same extension-focused coverage summary now appears inside `pnpm run verify:fast` because the fast gate still starts with `pnpm test`.
+- **`pnpm run verify:fast` now prints a focused CRAP summary for `extensions/**`** before docs/type/dependency checks. It reuses `coverage/coverage-final.json` from `pnpm test` rather than rerunning the suite.
+- **`pnpm run crap:ext`** exposes that same focused extension-only CRAP summary as a standalone command.
+- **`pnpm run crap`** is the broader, non-blocking inspection pass. It reruns the non-live suite with coverage for `extensions/**`, `scripts/**`, `tests/unit/**`, `tests/contract/**`, `tests/extension/**`, and `tests/utilities/**`, then writes JSON + HTML reports under `crap-report/nonlive/`.
+- **Provider choice is explicit: Istanbul, not V8.** Rationale: `crap-score` consumes Istanbul JSON directly and Istanbul matched function coverage correctly in this repo during evaluation.
+- **Generated outputs are ignored**: `coverage/` and `crap-report/` stay local build artifacts.
+
 ### Added (CV0.E2.S2 — per-tag processor binding from settings)
 
 CV0.E2's second and closing story. Users can now override pi-fence's default capability-based resolution per tag via a small config file, honouring D6 in the briefing at a minimum viable slice.

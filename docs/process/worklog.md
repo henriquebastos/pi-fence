@@ -1292,6 +1292,50 @@ Low-signal / noisy findings:
 
 **Carry-forward.** The next ready story in the repo is `CV0.E1.S5`.
 
+### 2026-04-22 — close CVx.E5.S1 and close CVx.E5 / CVx
+
+**Goal.** Add coverage feedback where contributors already look for it, while keeping the fast gate focused on shipped extension code and keeping broader CRAP analysis available as non-blocking inspection.
+
+**What shipped.**
+
+1. **Explicit coverage provider choice: Istanbul.**
+   - `pnpm test` now runs the fast suite with coverage enabled.
+   - Coverage is intentionally scoped to `extensions/**`, so the fast gate answers the production-lane question first.
+   - Istanbul was chosen over V8 because `crap-score` consumes Istanbul JSON directly and Istanbul matched function coverage correctly in this repo during evaluation.
+2. **Focused CRAP feedback inside the fast gate.**
+   - `pnpm run verify:fast` now reuses `coverage/coverage-final.json` from `pnpm test` and prints a focused extension-only CRAP summary before docs, type, and dependency-boundary checks.
+   - `pnpm run crap:ext` exposes the same focused extension-only summary as a standalone command.
+   - `scripts/crap-ext-report.ts` keeps that focused path stdout-only rather than writing local report artifacts.
+3. **Broader non-live CRAP reporting.**
+   - `pnpm run crap` now runs a broader non-live coverage pass across `extensions/**`, `scripts/**`, and non-live `tests/**`, then writes JSON + HTML reports under `crap-report/nonlive/`.
+   - Internal naming now reflects the distinction clearly: `coverage:nonlive` for the broader pass, `crap:ext:report` for the focused stdout-only helper.
+4. **Contributor-facing docs aligned.**
+   - `AGENTS.md`, `README.md`, and `docs/getting-started.md` now describe the split between the fast gate's extension-focused coverage/CRAP feedback and the broader non-live CRAP inspection command.
+5. **Story / epic / CV close.**
+   - `CVx.E5.S1` is now Done.
+   - `CVx.E5` is now Done.
+   - `CVx — Verifiability` is now Done again.
+
+**Implementation commits.**
+
+1. `1270180` — spec CVx.E5.S1
+2. `7de98ec` — add focused and broader CRAP feedback
+
+**Verification.**
+
+1. `pnpm run verify:fast` green at `283` passing tests, extension-only coverage summary printed from `pnpm test`, focused `CRAP(ext)` summary printed on stdout, link check green, markdown lint green, typecheck green, dependency-boundary check green.
+2. `pnpm run crap` green; JSON + HTML reports written under `crap-report/nonlive/`.
+3. `pnpm test:live` not required — no live-only seam changed.
+
+**Design decisions that survived implementation.**
+
+1. **Do not dilute the fast gate.** `pnpm test` reports coverage for `extensions/**` only, even though broader non-live coverage is available for inspection.
+2. **Keep the focused CRAP pass artifact-free.** The fast gate prints the top extension hotspots on stdout instead of generating another report directory contributors have to clean up or interpret.
+3. **Keep the broader CRAP pass separate.** Tooling and harness code still benefit from CRAP analysis, but that wider lens stays outside the normal commit gate.
+4. **Prefer the provider that matches the analyzer reliably.** Istanbul's mapping correctness mattered more here than any marginal runtime win from V8.
+
+**Carry-forward.** The next ready story in the repo is `CV0.E1.S5`.
+
 ### 2026-04-22 — close CVx.E4.S3 and close CVx.E4 / CVx
 
 **Goal.** Make the Sonar report pipeline itself readable enough that its report becomes a trustworthy planning input, then remove the remaining repo-local Sonar noise it exposed.

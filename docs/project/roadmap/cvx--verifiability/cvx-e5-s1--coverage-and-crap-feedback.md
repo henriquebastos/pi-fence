@@ -1,6 +1,6 @@
 # CVx.E5.S1 — Coverage and CRAP feedback
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CVx.E5 — Coverage Feedback](cvx-e5--coverage-feedback.md)
 **Date:** 2026-04-22 (spec)

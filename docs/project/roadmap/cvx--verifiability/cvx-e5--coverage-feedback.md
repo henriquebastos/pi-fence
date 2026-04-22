@@ -1,7 +1,7 @@
 # CVx.E5 — Coverage Feedback
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-22 — S1 In progress
+**Last updated:** 2026-04-22 — S1 Done
 
 `CVx.E4` proved that selective analyzers belong in this repo when their signal is specific and actionable. The next gap is coverage feedback.
 
@@ -19,7 +19,7 @@ The intent is feedback, not a new style crusade and not a blanket "100% or bust"
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cvx-e5-s1--coverage-and-crap-feedback.md) | **Fast-gate coverage focuses on `extensions/**`, while CRAP feedback spans the full fast-test codebase** | In progress |
+| [S1](cvx-e5-s1--coverage-and-crap-feedback.md) | **Fast-gate coverage focuses on `extensions/**`, while CRAP feedback spans the broader non-live codebase** | ✅ Done |
 
 ## Deliverable vision
 

@@ -198,6 +198,20 @@ pnpm test:all      # fast + live (live suite skips when container absent)
 pnpm test:watch    # vitest --watch on the fast suite
 ```
 
+### Coverage + CRAP feedback
+
+```bash
+pnpm test          # fast suite + coverage focused on extensions/**
+pnpm run crap:ext  # focused CRAP summary for extensions/**
+pnpm run crap      # broader CRAP report over extensions/, scripts/, and non-live tests/
+```
+
+`pnpm test` uses Vitest's Istanbul provider because it is the coverage input shape `crap-score` consumes directly and it matched function coverage correctly in this repo during evaluation. The fast-suite coverage summary is intentionally scoped to `extensions/**` so the normal gate answers the production-lane question first.
+
+`pnpm run verify:fast` now reuses the `coverage/coverage-final.json` produced by `pnpm test` and adds a focused extension-only CRAP summary on stdout before docs, type, and dependency-boundary checks. That keeps the fast gate focused on shipped extension code without rerunning the suite.
+
+`pnpm run crap` is separate and non-blocking: it reruns the fast suite with a broader coverage include set (`extensions/**`, `scripts/**`, `tests/unit/**`, `tests/contract/**`, `tests/extension/**`, `tests/utilities/**`) and then writes JSON + HTML reports under `crap-report/nonlive/`.
+
 ### SonarQube experiment
 
 `CVx.E4.S2` treats SonarQube as a non-blocking experiment. It is **not** part of the fast gate.
@@ -229,10 +243,13 @@ This experiment is intentionally separate from `pnpm run verify:fast` so generic
 
 | Script | Purpose |
 |--------|---------|
-| `pnpm test` | Fast suite (unit, contract, render, extension, utility). |
+| `pnpm test` | Fast suite (unit, contract, render, extension, utility) with coverage focused on `extensions/**`. |
+| `pnpm run crap:ext` | Focused CRAP summary for `extensions/**`, built from the coverage output produced by `pnpm test` and printed to stdout. |
 | `pnpm run typecheck` | Static TypeScript gate (`tsc --noEmit`) across production code, tests, and scripts. |
-| `pnpm run verify:fast` | Umbrella fast gate: `pnpm test` + `pnpm run check` + `pnpm run typecheck` + `pnpm run typecheck:deps`. |
+| `pnpm run verify:fast` | Umbrella fast gate: `pnpm test` + focused extension CRAP + `pnpm run check` + `pnpm run typecheck` + `pnpm run typecheck:deps`. |
 | `pnpm test:watch` | vitest in watch mode. |
+| `pnpm run coverage:nonlive` | Broader non-live coverage pass for `extensions/**`, `scripts/**`, and non-live `tests/**`; used as the input to `crap-score`. |
+| `pnpm run crap` | Generate JSON + HTML CRAP reports under `crap-report/nonlive/` from the broader non-live coverage input. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
 | `pnpm render:verify` | Produces PNGs + an HTML gallery of pi-fence scenarios via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/<variant>/render.png` + `scripts/out/render-verify/index.html`. Flags: `--list`, `--scenario <name>`, `--variant <name>`, `--update`. |
