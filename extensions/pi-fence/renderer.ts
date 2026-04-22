@@ -29,6 +29,9 @@
  *     ```
  */
 
+import type { Theme } from "@mariozechner/pi-coding-agent";
+import type { Component } from "@mariozechner/pi-tui";
+
 const COLLAPSED_SOURCE_LINES = 10;
 
 // ---------------------------------------------------------------------------
@@ -106,6 +109,8 @@ export interface PiFenceOutputDetails {
  * version of this factory assumed pi's runtime drew the content for us —
  * that was wrong, and produced a visible chrome with no image.
  */
+type ThemeLike = Pick<Theme, "fg" | "bg" | "bold">;
+
 export function createPiFenceMessageRenderer(tui: {
 	Box: new (paddingX: number, paddingY: number, bg?: (text: string) => string) => PiTuiContainer;
 	Text: new (text: string, x: number, y: number) => PiTuiComponent;
@@ -121,7 +126,7 @@ export function createPiFenceMessageRenderer(tui: {
 	return (
 		message: { content: unknown; details?: unknown },
 		options: { expanded: boolean },
-		theme: { fg: (color: string, text: string) => string; bold: (text: string) => string; bg: (color: string, text: string) => string },
+		theme: ThemeLike,
 	): PiTuiContainer => {
 		const details = (message.details ?? {}) as Partial<PiFenceOutputDetails>;
 		const tag = details.tag ?? "unknown";
@@ -246,7 +251,7 @@ export function createPiFenceListRenderer(tui: {
 	return (
 		message: { content: unknown; details?: unknown },
 		_options: { expanded: boolean },
-		theme: { fg: (color: string, text: string) => string; bold: (text: string) => string; bg: (color: string, text: string) => string },
+		theme: ThemeLike,
 	): PiTuiContainer => {
 		const details = (message.details ?? {}) as Partial<PiFenceListDetails>;
 		const lines = details.lines && details.lines.length > 0 ? details.lines : [EMPTY_LISTING_LINE];
@@ -265,9 +270,7 @@ export function createPiFenceListRenderer(tui: {
 // Minimal shape types for pi-tui primitives
 // ---------------------------------------------------------------------------
 
-interface PiTuiComponent {
-	render(width: number): string[];
-}
+interface PiTuiComponent extends Component {}
 
 interface PiTuiContainer extends PiTuiComponent {
 	addChild(child: PiTuiComponent): void;

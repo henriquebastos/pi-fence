@@ -15,8 +15,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { AssistantMessageEventStream, getModel } from "@mariozechner/pi-ai";
-import type { AssistantMessage } from "@mariozechner/pi-ai";
+import { createAssistantMessageEventStream, getModel } from "@mariozechner/pi-ai";
+import type { AssistantMessage, Model } from "@mariozechner/pi-ai";
 import {
 	AuthStorage,
 	createAgentSession,
@@ -758,7 +758,7 @@ async function buildSessionWithExtension(
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
 	registeredRenderers: Map<string, CapturedRenderer>;
-	model: NonNullable<ReturnType<typeof getModel>>;
+	model: Model<any>;
 	logger: FakeLogger;
 }> {
 	const logger = new FakeLogger();
@@ -898,15 +898,19 @@ async function runExtensionWithCommand(
 	return { sentCustomMessages, registeredRenderers };
 }
 
-function cannedAssistantStream(_model: NonNullable<ReturnType<typeof getModel>>, text: string) {
-	return (activeModel: NonNullable<ReturnType<typeof getModel>>): AssistantMessageEventStream => {
+function cannedAssistantStream(_model: Model<any>, text: string) {
+	return (
+		activeModel: Model<any>,
+		_context: unknown,
+		_options?: unknown,
+	) => {
 		// Real providers construct an AssistantMessageEventStream (a class,
 		// not a plain async iterable) and push events into it while mutating
 		// `output.content[i]` in place. We mirror the minimum of that
 		// protocol for a text-only response. The completion event is
 		// `type: "done"`, after which `stream.end()` releases any waiting
 		// consumers.
-		const stream = new AssistantMessageEventStream();
+		const stream = createAssistantMessageEventStream();
 		const textBlock = { type: "text" as const, text: "" };
 		const output: AssistantMessage = {
 			role: "assistant",

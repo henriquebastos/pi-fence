@@ -55,7 +55,7 @@ export class NodeHttpClient implements HttpClient {
 		const response = await fetch(input.url, {
 			method: input.method,
 			headers: input.headers,
-			body: input.body,
+			body: toFetchBody(input.body),
 			signal: input.signal,
 		});
 
@@ -136,4 +136,9 @@ export class FakeHttpClient implements HttpClient {
 
 function keyFor(method: string, url: string): string {
 	return `${method.toUpperCase()}\0${url}`;
+}
+
+function toFetchBody(body: HttpRequest["body"]): Exclude<RequestInit["body"], null> | undefined {
+	if (body === undefined) return undefined;
+	return typeof body === "string" ? body : new Uint8Array(body);
 }
