@@ -107,80 +107,115 @@ function isExternal(target: string): boolean {
 
 function main(): number {
 	const files = collectMarkdownFiles(ROOT);
-	const contents = new Map<string, string>();
-	const slugs = new Map<string, Set<string>>();
-
-	for (const f of files) {
-		const c = readFileSync(f, "utf8");
-		contents.set(f, c);
-		slugs.set(f, new Set(extractHeadingSlugs(c)));
-	}
-
-	const broken: BrokenLink[] = [];
-
-	for (const file of files) {
-		const content = contents.get(file)!;
-		for (const { target, line } of extractLinks(content)) {
-			if (isExternal(target)) continue;
-			// Pure fragment: targets same file, skip (common and usually fine).
-			if (target.startsWith("#")) continue;
-
-			const [rawPath, rawFragment] = target.split("#", 2);
-			const fragment = rawFragment ?? null;
-			const resolvedPath = rawPath
-				? resolve(dirname(file), rawPath)
-				: file;
-
-			try {
-				statSync(resolvedPath);
-			} catch {
-				broken.push({
-					file,
-					line,
-					target,
-					reason: `path does not exist: ${relative(ROOT, resolvedPath)}`,
-				});
-				continue;
-			}
-
-			if (fragment && slugs.has(resolvedPath)) {
-				const headings = slugs.get(resolvedPath)!;
-				if (!headings.has(fragment)) {
-					broken.push({
-						file,
-						line,
-						target,
-						reason: `fragment '#${fragment}' not found in ${relative(ROOT, resolvedPath)}`,
-					});
-				}
-			}
-		}
-	}
-
+	const { contents, slugs } = loadMarkdownIndex(files);
+	const broken = findBrokenLinks(files, contents, slugs);
 	if (broken.length === 0) {
 		const relFiles = files.length === 1 ? "1 file" : `${files.length} files`;
 		console.log(`✓ link check passed (${relFiles})`);
 		return 0;
 	}
+	reportBrokenLinks(broken);
+	return 1;
+}
 
-	// Group by source file for readable output.
+function loadMarkdownIndex(files: readonly string[]): {
+	contents: Map<string, string>;
+	slugs: Map<string, Set<string>>;
+} {
+	const contents = new Map<string, string>();
+	const slugs = new Map<string, Set<string>>();
+	for (const file of files) {
+		const content = readFileSync(file, "utf8");
+		contents.set(file, content);
+		slugs.set(file, new Set(extractHeadingSlugs(content)));
+	}
+	return { contents, slugs };
+}
+
+function findBrokenLinks(
+	files: readonly string[],
+	contents: ReadonlyMap<string, string>,
+	slugs: ReadonlyMap<string, Set<string>>,
+): BrokenLink[] {
+	const broken: BrokenLink[] = [];
+	for (const file of files) {
+		const content = contents.get(file);
+		if (content === undefined) {
+			continue;
+		}
+		for (const { target, line } of extractLinks(content)) {
+			const result = validateLink(file, target, line, slugs);
+			if (result) {
+				broken.push(result);
+			}
+		}
+	}
+	return broken;
+}
+
+function validateLink(
+	file: string,
+	target: string,
+	line: number,
+	slugs: ReadonlyMap<string, Set<string>>,
+): BrokenLink | null {
+	if (isExternal(target) || target.startsWith("#")) {
+		return null;
+	}
+
+	const [rawPath, rawFragment] = target.split("#", 2);
+	const fragment = rawFragment ?? null;
+	const resolvedPath = rawPath ? resolve(dirname(file), rawPath) : file;
+	if (!pathExists(resolvedPath)) {
+		return {
+			file,
+			line,
+			target,
+			reason: `path does not exist: ${relative(ROOT, resolvedPath)}`,
+		};
+	}
+	if (!fragment) {
+		return null;
+	}
+
+	const headings = slugs.get(resolvedPath);
+	if (headings && !headings.has(fragment)) {
+		return {
+			file,
+			line,
+			target,
+			reason: `fragment '#${fragment}' not found in ${relative(ROOT, resolvedPath)}`,
+		};
+	}
+	return null;
+}
+
+function pathExists(path: string): boolean {
+	try {
+		statSync(path);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function reportBrokenLinks(broken: readonly BrokenLink[]): void {
 	const byFile = new Map<string, BrokenLink[]>();
-	for (const b of broken) {
-		const arr = byFile.get(b.file) ?? [];
-		arr.push(b);
-		byFile.set(b.file, arr);
+	for (const entry of broken) {
+		const entries = byFile.get(entry.file) ?? [];
+		entries.push(entry);
+		byFile.set(entry.file, entries);
 	}
 
 	console.error(`✗ link check failed (${broken.length} broken link${broken.length === 1 ? "" : "s"})\n`);
 	for (const [file, entries] of byFile) {
 		console.error(posix.normalize(relative(ROOT, file)) + ":");
-		for (const e of entries) {
-			console.error(`  line ${e.line}: ${e.target}`);
-			console.error(`    ${e.reason}`);
+		for (const entry of entries) {
+			console.error(`  line ${entry.line}: ${entry.target}`);
+			console.error(`    ${entry.reason}`);
 		}
 		console.error("");
 	}
-	return 1;
 }
 
 process.exit(main());
