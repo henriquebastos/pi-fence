@@ -6,17 +6,16 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E4.S1` is complete. The repo now enforces its first architectural boundary automatically: production code under `extensions/**` must not import from `tests/**`. The next analyzer move is the non-blocking SonarQube experiment in `CVx.E4.S2`.
+`CVx` is complete again. The verifiability lane now has both architecture-specific enforcement (`dependency-cruiser`) and a documented, non-blocking SonarQube experiment. The next ready implementation story is back in the feature lane: `CV0.E1.S5`.
 
 ## Next
 
 No story is currently in flight. Under the simplified roadmap hierarchy:
 
-- `CVx.E4.S2` — SonarQube experiment. **Ready** to execute.
 - `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1 are ✅ Done; `CVx.E4.S2` is specced and pending. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S2 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1188,6 +1187,51 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 3. **Use the normal contributor gate.** Architectural dependency checks now run where contributors already look for green confidence rather than hiding in a separate optional command.
 
 **Carry-forward.** `CVx.E4.S2` remains next: a non-blocking SonarQube experiment whose value should be judged by signal, not by tool prestige.
+
+### 2026-04-22 — close CVx.E4.S2 and close CVx.E4 / CVx
+
+**Goal.** Make SonarQube experimentation reproducible without letting it become a blocking gate, then judge whether its output is worth future policy.
+
+**What shipped.**
+
+1. Added `@sonar/scan` and `sonar-project.properties`.
+2. Added `pnpm run sonar:scan`.
+3. Documented the local experiment path in `docs/getting-started.md`:
+   - start a local SonarQube server
+   - create a token
+   - run the scan against `SONAR_HOST_URL`
+4. Added a separate manual GitHub Actions workflow, `sonarqube-experiment`, so the same scan can run in CI without becoming part of the fast gate.
+5. `CVx.E4.S2` is now Done.
+6. `CVx.E4` is now Done.
+7. `CVx — Verifiability` is now Done again.
+
+**Experiment run and findings.**
+
+Local run used `sonarqube:community` under Docker/Colima with reduced JVM settings for the embedded Elasticsearch process, then `pnpm run sonar:scan` against that local server.
+
+High-signal findings:
+
+1. **Known complexity hotspots were rediscovered honestly.** SonarQube flagged cognitive-complexity issues in `extensions/pi-fence/agent-end.ts`, `extensions/pi-fence/config.ts`, `extensions/pi-fence/list.ts`, `scripts/check-links.ts`, and `scripts/verify.ts`. Those are real hotspots or hotspot-adjacent files rather than random noise.
+2. **Zero-coverage visibility is useful as a dashboard metric.** It is not useful enough here to block commits, but it is useful as a reminder that SonarQube's coverage story is only as good as the coverage ingestion we choose to wire later.
+
+Low-signal / noisy findings:
+
+1. **Some test-file rules are actively misleading.** SonarQube flagged the contract-test driver files with “Add some tests to this file or delete it” even though those files are valid contract-test entrypoints in this repo's testing style.
+2. **Several suggestions are preference-level rather than repo-policy-level.** `replaceAll()` preferences, top-level-`await` nudges, and similar minor style recommendations are not strong enough to become mandatory workflow here.
+3. **Generic smell counts flatten lanes together.** Tooling-lane scripts and runtime-lane code are reported in one pool, which is useful for browsing but weak as a blocking signal.
+
+**Judgment.**
+
+1. Keep SonarQube as an **experiment/reporting tool**, not a fast-gate requirement.
+2. Its hotspot/complexity view is useful enough to revisit when planning refactors.
+3. Its default rule set is too noisy and too generic to adopt wholesale as policy in this repo.
+4. If any SonarQube-derived rule becomes policy later, it should be adopted selectively and explicitly, not by turning on “whatever Sonar says”.
+
+**Verification.**
+
+1. `pnpm run verify:fast` green at `281` passing tests, link check green, markdown lint green, typecheck green, dependency-boundary check green.
+2. `pnpm run sonar:scan` completed successfully against the local SonarQube server.
+3. `pnpm test:live` not required — no runtime behavior changed.
 
 ### 2026-04-22 — close CVx.E3.S3 / S4 / S5 and close CVx.E3
 
