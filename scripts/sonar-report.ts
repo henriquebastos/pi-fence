@@ -67,10 +67,12 @@ async function writeJson(path: string, value: unknown): Promise<void> {
 	await writeFile(path, `${JSON.stringify(value, null, "\t")}\n`, "utf8");
 }
 
-main().catch((err) => {
+try {
+	await main();
+} catch (err) {
 	process.stderr.write(`[sonar:report] ${err instanceof Error ? err.message : String(err)}\n`);
 	if (err instanceof Error && err.stack) {
 		process.stderr.write(`${err.stack}\n`);
 	}
 	process.exit(1);
-});
+}

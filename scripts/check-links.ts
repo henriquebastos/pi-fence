@@ -66,8 +66,8 @@ function slugify(heading: string): string {
 	return heading
 		.trim()
 		.toLowerCase()
-		.replace(/[^\p{L}\p{N}\s-]/gu, "")
-		.replace(/\s/g, "-");
+		.replaceAll(/[^\p{L}\p{N}\s-]/gu, "")
+		.replaceAll(/\s/g, "-");
 }
 
 /** Extract heading slugs from a markdown file, in document order. */
