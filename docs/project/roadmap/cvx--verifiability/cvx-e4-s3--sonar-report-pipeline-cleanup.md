@@ -1,6 +1,6 @@
 # CVx.E4.S3 — Sonar report pipeline cleanup
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CVx.E4 — Quality Analyzers](cvx-e4--quality-analyzers.md)
 **Depends on:** [CVx.E4.S2 — SonarQube experiment](cvx-e4-s2--sonarqube-experiment.md)

@@ -6,17 +6,16 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E4.S3` is now specced. The Sonar experiment works, but its own report pipeline is still too noisy under Sonar. The next move is to refactor that pipeline until the findings are signal rather than self-inflicted clutter.
+`CV0.E1.S5` is now the next ready story. `CVx.E4.S3` is closed, the Sonar report pipeline is split into readable modules, and the latest Sonar run reports zero open issues under the repo's current rule set.
 
 ## Next
 
 No story is currently in flight. Under the simplified roadmap hierarchy:
 
-- `CVx.E4.S3` — Sonar report pipeline cleanup. **Ready** to execute.
 - `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S2 are ✅ Done; `CVx.E4.S3` is specced and pending. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S3 are ✅ Done. `CVx — Verifiability` is done again. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1290,5 +1289,54 @@ Low-signal / noisy findings:
 2. **Config split stayed targeted.** pi-fence earned a config loader, not a generic filesystem service.
 3. **The composition root stayed explicit.** `index.ts` still wires the runtime; it just no longer owns every policy inline.
 4. **Naming followed the architecture after the shape stabilised.** Processor vocabulary and runtime-deps naming landed last, when the better names were obvious instead of speculative.
+
+**Carry-forward.** The next ready story in the repo is `CV0.E1.S5`.
+
+### 2026-04-22 — close CVx.E4.S3 and close CVx.E4 / CVx
+
+**Goal.** Make the Sonar report pipeline itself readable enough that its report becomes a trustworthy planning input, then remove the remaining repo-local Sonar noise it exposed.
+
+**What shipped.**
+
+1. Split `scripts/sonar-report.ts` into a thin entrypoint plus focused modules under `scripts/sonar/`:
+   - `api.ts`
+   - `index.ts`
+   - `render-markdown.ts`
+   - `report-task.ts`
+   - `summary.ts`
+   - `types.ts`
+2. Kept `pnpm run sonar` behavior and report bundle shape unchanged while making the internal API explicitly typed.
+3. Tightened the report to current unresolved findings by fetching Sonar issues with `resolved=false`.
+4. Cleared the report pipeline's own findings and then fixed the remaining repo-local Sonar findings across runtime, tooling, and contract-test harness files.
+5. `CVx.E4.S3` is now Done.
+6. `CVx.E4` is now Done.
+7. `CVx — Verifiability` is now Done again.
+
+**Implementation commits.**
+
+1. `2012019` — split Sonar report responsibilities into focused modules
+2. `b500a5a` — trim low-noise tooling findings in the report path
+3. `54193d2` — trim easy runtime findings
+4. `1120330` — trim small runtime + contract-test findings
+5. `3d7b52e` — modernise script entrypoints and string helpers
+6. `aef1fd6` — simplify browser verifier findings
+7. `be36319` — simplify config validation flow
+8. `97889f1` — simplify assistant text extraction
+9. `8c22736` — split render-verify orchestration
+10. `a6c9a6d` — split link-checker validation stages
+11. `6bf8f0c` — simplify processor list formatting
+
+**Verification.**
+
+1. `pnpm run verify:fast` green at `283` passing tests, link check green, markdown lint green, typecheck green, dependency-boundary check green.
+2. `pnpm run sonar` green; `scripts/out/sonar/latest/summary.json` now records `issuesTotal: 0`.
+3. `pnpm test:live` not required — no live-only seam changed.
+
+**Design decisions that survived implementation.**
+
+1. **Do not suppress the report pipeline.** The cleanup improved the reporting code instead of excluding it from Sonar.
+2. **Prefer small module boundaries over one giant script.** `scripts/sonar/index.ts` now presents a compact public surface while `types.ts` keeps the shared Sonar contracts together.
+3. **Treat false positives as harness-shape problems first.** The contract-test files gained direct harness assertions instead of adding exclusions.
+4. **Keep cleanup incremental.** The repo reached zero open Sonar issues through small validated passes rather than one large churn commit.
 
 **Carry-forward.** The next ready story in the repo is `CV0.E1.S5`.
