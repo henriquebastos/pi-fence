@@ -10,11 +10,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Next
 
-No story is currently in flight. The next Planned rows are:
+No story is currently in flight. Under the simplified roadmap hierarchy:
 
-- `CVx.E3.S2` — architecture map + hotspot inventory for pure modules, adapters, runtime seams, and the composition root. Not specced yet.
-- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). Specced, orthogonal to CVx.E3.
-- Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs).
+- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute and still orthogonal to CVx.E3.
+- `CVx.E3.S2` — architecture map + hotspot inventory for pure modules, adapters, runtime seams, and the composition root. First not-done refactor-confidence story, but not specced yet.
+- Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
 CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
@@ -1041,3 +1041,27 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 2. `CVx.E3.S3` still owns moving `HttpClient`, `ShellRunner`, and `Logger` under production code.
 3. `CVx.E3.S4` still owns shrinking `extensions/pi-fence/index.ts` into a thin composition root.
 4. Future code-quality analyzers (`typescript-eslint`, `dependency-cruiser`, `knip`, `semgrep` / `ast-grep`) remain deferred until the architecture is explicit enough to encode with signal rather than noise.
+
+### 2026-04-21 — roadmap hierarchy simplified; story status made visible
+
+**Goal.** Reduce repeated roadmap tracking and make the document hierarchy explicit: roadmap root for CVs, CV README for Epics, Epic file for Stories, Story file for execution detail — with status visible where editors show it.
+
+**What shipped.**
+
+- `5ba78c6` **docs: simplify roadmap hierarchy and story status.** Rebuilt `docs/project/roadmap/` around one folder per CV, one README per CV, one file per Epic, and one file per Story. The roadmap root now lists only CVs and their done/not-done state. Each CV README lists only Epics. Each Epic file lists only Stories. Story docs were flattened from three files into one file each, keeping the same planning/testing detail under stable section headings.
+- Added missing summary nodes for the unspecced lanes so the hierarchy is complete today, not just for CV0/CVx: `cv1--take-control/README.md`, `cv2--work-offline/README.md`, `cv3--beyond-diagrams/README.md`, `cv4--platform/README.md`, plus their Epic files.
+- Story status moved from hidden YAML frontmatter to the visible metadata line directly below the H1 (`**Status:** Draft|Ready|In progress|Done`). That keeps the design-phase signal visible in editor tabs/previews without depending on frontmatter rendering.
+- `AGENTS.md`, `docs/product/principles.md`, and `docs/project/decisions.md` now describe the new hierarchy and the single-file story shape. Cross-links in `docs/getting-started.md`, `docs/product/kroki-support.md`, and roadmap docs were updated to the new paths.
+
+**Design decisions that survived implementation.**
+
+1. **Hierarchy boundaries are strict.** Roadmap root owns CV summaries only; CV README owns Epic summaries only; Epic file owns Story summaries only. Deeper detail lives only on the node it belongs to.
+2. **Story status is visible prose, not hidden metadata.** The status line is part of the readable document chrome so humans can tell at a glance whether a story is Draft, Ready, In progress, or Done.
+3. **A CV is done only when every Story in its Epics is done.** The summary nodes aggregate child state; they do not carry independent progress semantics.
+
+**Tests.** `pnpm run verify:fast` green after the migration. Link check expanded from `32` to `44` markdown files as the new CV/Epic entry points were added.
+
+**Carry-forwards.**
+
+1. If status maintenance still feels too manual later, any future automation should derive summary-node state from child docs rather than inventing another place to type statuses by hand.
+2. The next ready implementation story remains `CV0.E1.S5`; the next unspecced structural story remains `CVx.E3.S2`. The new hierarchy makes that distinction explicit rather than implicit.
