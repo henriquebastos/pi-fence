@@ -48,6 +48,8 @@ interface Args {
 	help: boolean;
 }
 
+type RenderVerifyResults = Awaited<ReturnType<typeof renderCombos>>;
+
 function parseArgs(argv: readonly string[]): Args {
 	const args: Args = {
 		out: DEFAULT_OUT,
@@ -135,53 +137,73 @@ function selectCombos(args: Args): Combo[] {
 }
 
 async function main(): Promise<void> {
-	let args: Args;
-	try {
-		args = parseArgs(process.argv.slice(2));
-	} catch (err) {
-		process.stderr.write(
-			`[render:verify] ${err instanceof Error ? err.message : String(err)}\n`,
-		);
-		printUsage();
-		process.exit(1);
-	}
-
+	const args = parseArgsOrExit(process.argv.slice(2));
 	if (args.help) {
 		printUsage();
 		return;
 	}
-
 	if (args.list) {
-		const scenarios = listScenarios();
-		process.stdout.write("Registered scenarios:\n");
-		for (const scenario of scenarios) {
-			process.stdout.write(`  ${scenario.name} — ${scenario.description}\n`);
-			const variantNames = scenario.variants.map((v) => v.name).join(", ");
-			process.stdout.write(`    variants: ${variantNames}\n`);
-		}
+		printScenarioList();
 		return;
 	}
 
-	let combos: Combo[];
+	const combos = selectCombosOrExit(args);
+	logSelectedCombos(combos);
+	const results = await renderCombosOrExit(combos, args.out);
+	logResults(results);
+	await writeGallery(args.out, results);
+	if (args.update) {
+		await updateGoldens(results);
+	}
+}
+
+function parseArgsOrExit(argv: readonly string[]): Args {
 	try {
-		combos = selectCombos(args);
+		return parseArgs(argv);
+	} catch (err) {
+		process.stderr.write(
+			`[render:verify] ${err instanceof Error ? err.message : String(err)}\n`,
+		);
+		printUsage();
+		process.exit(1);
+	}
+}
+
+function printScenarioList(): void {
+	process.stdout.write("Registered scenarios:\n");
+	for (const scenario of listScenarios()) {
+		process.stdout.write(`  ${scenario.name} — ${scenario.description}\n`);
+		const variantNames = scenario.variants.map((v) => v.name).join(", ");
+		process.stdout.write(`    variants: ${variantNames}\n`);
+	}
+}
+
+function selectCombosOrExit(args: Args): Combo[] {
+	try {
+		return selectCombos(args);
 	} catch (err) {
 		process.stderr.write(
 			`[render:verify] ${err instanceof Error ? err.message : String(err)}\n`,
 		);
 		process.exit(1);
 	}
+}
 
+function logSelectedCombos(combos: Combo[]): void {
 	process.stderr.write(
 		`[render:verify] rendering ${combos.length} combo${combos.length === 1 ? "" : "s"}:\n`,
 	);
 	for (const { scenario, variant } of combos) {
 		process.stderr.write(`[render:verify]   ${scenario.name} / ${variant.name}\n`);
 	}
+}
 
-	let results;
+async function renderCombosOrExit(
+	combos: Combo[],
+	outDir: string,
+): Promise<RenderVerifyResults> {
 	try {
-		results = await renderCombos(combos, args.out);
+		return await renderCombos(combos, outDir);
 	} catch (err) {
 		process.stderr.write(
 			`[render:verify] pipeline error: ${err instanceof Error ? err.message : String(err)}\n`,
@@ -191,7 +213,9 @@ async function main(): Promise<void> {
 		}
 		process.exit(2);
 	}
+}
 
+function logResults(results: RenderVerifyResults): void {
 	let totalMs = 0;
 	for (const result of results) {
 		totalMs += result.durationMs;
@@ -205,42 +229,49 @@ async function main(): Promise<void> {
 	process.stderr.write(
 		`[render:verify] total: ${results.length} combo${results.length === 1 ? "" : "s"} in ${totalMs}ms\n`,
 	);
+}
 
-	// Write the gallery. Paths inside index.html are relative to
-	// args.out so the document travels cleanly (e.g. if someone
-	// copies `scripts/out/render-verify/` into a review folder).
-	// When a committed golden exists for a combo, surface its path
-	// too so the gallery can show the rendered/golden toggle.
-	const cards: GalleryCard[] = results.map((r) => {
-		const goldenPath = join(
-			GOLDEN_DIR,
-			r.scenarioName,
-			`${r.variantName}.png`,
-		);
-		return {
-			scenarioName: r.scenarioName,
-			variantName: r.variantName,
-			pngRelativePath: relative(args.out, r.pngPath),
-			goldenRelativePath: existsSync(goldenPath)
-				? relative(args.out, goldenPath)
-				: undefined,
-			cols: r.cols,
-			rows: r.rows,
-		};
-	});
-	const galleryPath = join(args.out, "index.html");
-	await mkdir(args.out, { recursive: true });
+async function writeGallery(
+	outDir: string,
+	results: RenderVerifyResults,
+): Promise<void> {
+	const cards = buildGalleryCards(outDir, results);
+	const galleryPath = join(outDir, "index.html");
+	await mkdir(outDir, { recursive: true });
 	await writeFile(galleryPath, renderGalleryHtml(cards), "utf8");
 	process.stderr.write(`[render:verify] wrote gallery: ${galleryPath}\n`);
+}
 
-	if (args.update) {
-		for (const result of results) {
-			const scenarioGoldenDir = join(GOLDEN_DIR, result.scenarioName);
-			await mkdir(scenarioGoldenDir, { recursive: true });
-			const goldenPath = join(scenarioGoldenDir, `${result.variantName}.png`);
-			await copyFile(result.pngPath, goldenPath);
-			process.stderr.write(`[render:verify] updated golden: ${goldenPath}\n`);
-		}
+function buildGalleryCards(
+	outDir: string,
+	results: RenderVerifyResults,
+): GalleryCard[] {
+	return results.map((result) => {
+		const goldenPath = join(
+			GOLDEN_DIR,
+			result.scenarioName,
+			`${result.variantName}.png`,
+		);
+		return {
+			scenarioName: result.scenarioName,
+			variantName: result.variantName,
+			pngRelativePath: relative(outDir, result.pngPath),
+			goldenRelativePath: existsSync(goldenPath)
+				? relative(outDir, goldenPath)
+				: undefined,
+			cols: result.cols,
+			rows: result.rows,
+		};
+	});
+}
+
+async function updateGoldens(results: RenderVerifyResults): Promise<void> {
+	for (const result of results) {
+		const scenarioGoldenDir = join(GOLDEN_DIR, result.scenarioName);
+		await mkdir(scenarioGoldenDir, { recursive: true });
+		const goldenPath = join(scenarioGoldenDir, `${result.variantName}.png`);
+		await copyFile(result.pngPath, goldenPath);
+		process.stderr.write(`[render:verify] updated golden: ${goldenPath}\n`);
 	}
 }
 
