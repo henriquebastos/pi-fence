@@ -268,11 +268,11 @@ ${toggleHtml}    <img class="render" src="${escapeAttr(card.pngRelativePath)}" a
 
 function escapeHtml(s: string): string {
 	return s
-		.replaceAll(/&/g, "&amp;")
-		.replaceAll(/</g, "&lt;")
-		.replaceAll(/>/g, "&gt;");
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;");
 }
 
 function escapeAttr(s: string): string {
-	return escapeHtml(s).replaceAll(/"/g, "&quot;");
+	return escapeHtml(s).replaceAll('"', "&quot;");
 }

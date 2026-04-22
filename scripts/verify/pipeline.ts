@@ -164,22 +164,22 @@ async function renderScenarioInBrowser(
 				expectedImages: number;
 			}) => {
 				// xterm.js's UMD bundle unpacks its exports onto globals, so
-				// window.Terminal is the constructor directly. addon-image's
-				// UMD differs: window.ImageAddon is the module object
+				// globalThis.Terminal is the constructor directly. addon-image's
+				// UMD differs: globalThis.ImageAddon is the module object
 				// { ImageAddon: <class> }, so we dereference once more.
-				const w = window as unknown as {
+				type Disposable = { dispose(): void };
+				type ImageAddonInstance = {
+					onImageAdded: (cb: () => void) => Disposable;
+				};
+				const w = globalThis as unknown as {
 					Terminal: new (opts?: unknown) => {
 						loadAddon(addon: unknown): void;
 						open(el: HTMLElement): void;
 						write(data: string, cb?: () => void): void;
-						onRender(cb: () => void): { dispose(): void };
+						onRender(cb: () => void): Disposable;
 					};
 					ImageAddon: {
-						ImageAddon: new () => {
-							onImageAdded: {
-								(cb: () => void): { dispose(): void };
-							} | ((cb: () => void) => { dispose(): void });
-						};
+						ImageAddon: new () => ImageAddonInstance;
 					};
 				};
 
@@ -214,11 +214,7 @@ async function renderScenarioInBrowser(
 				const imageDisposable =
 					args.expectedImages === 0
 						? null
-						: (
-								imageAddon.onImageAdded as (cb: () => void) => {
-									dispose(): void;
-								}
-							)(() => {
+						: imageAddon.onImageAdded(() => {
 								imagesSeen++;
 								if (
 									imagesSeen >= args.expectedImages &&

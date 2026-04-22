@@ -50,7 +50,7 @@ export function countKittyImages(bytes: string): number {
 		// bounded by the APC terminator. Some APCs have no payload and
 		// no `;`; in that case the params run to the APC suffix.
 		const effectiveParamsEnd =
-			paramsStart < 0 ? end : paramsEnd < 0 || paramsEnd > end ? end : paramsEnd;
+			paramsEnd < 0 || paramsEnd > end ? end : paramsEnd;
 		const params = bytes.slice(paramsStart, effectiveParamsEnd);
 
 		const action = extractActionParam(params);
