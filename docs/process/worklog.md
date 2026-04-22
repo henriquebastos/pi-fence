@@ -1065,3 +1065,19 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 
 1. If status maintenance still feels too manual later, any future automation should derive summary-node state from child docs rather than inventing another place to type statuses by hand.
 2. The next ready implementation story remains `CV0.E1.S5`; the next unspecced structural story remains `CVx.E3.S2`. The new hierarchy makes that distinction explicit rather than implicit.
+
+### 2026-04-21 — AGENTS communication guidance tightened
+
+**Goal.** Make the repo's communication preference explicit so future agent output stays concise, dense, and concrete by default.
+
+**What shipped.**
+
+- `17ceb88` **docs: tighten agent communication guidance.** Added a `## Communication` section to `AGENTS.md` with six rules: answer concisely; prefer dense phrasing over filler; keep technical content exact; prefer concrete examples over abstract explanation; use short Before/After snippets when they clarify intent faster than prose; do not sacrifice clarity for brevity.
+
+**Design decisions.**
+
+1. **Conciseness is now explicit, not implied.** The rule lives near the top of `AGENTS.md` so it influences every task, not just coding tasks.
+2. **Exactness outranks compression for technical content.** Paths, commands, identifiers, flags, APIs, and code blocks remain verbatim even when prose is compressed.
+3. **Examples beat abstraction when they shorten understanding.** Before/After snippets are encouraged only when they are faster than prose, not as mandatory ceremony.
+
+**Tests.** `pnpm run verify:fast` green (`279` tests passing, link check green, markdown lint green, typecheck green).
