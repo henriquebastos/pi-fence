@@ -216,7 +216,7 @@ export SONAR_TOKEN=<your-token>
 pnpm run sonar:scan
 ```
 
-`pnpm run sonar:scan` uses the committed `sonar-project.properties` file and the local `@sonar/scan` package. This experiment is intentionally separate from `pnpm run verify:fast` so generic Sonar findings do not block normal commits.
+`pnpm run sonar:scan` uses the committed `sonar-project.properties` file and the local `@sonar/scan` package. This experiment is intentionally separate from `pnpm run verify:fast` so generic Sonar findings do not block normal commits. The repo also exposes a manual GitHub Actions workflow, `sonarqube-experiment`, for teams that want to point the same scan at a configured server without making it a required CI gate.
 
 ### Scripts reference
 
