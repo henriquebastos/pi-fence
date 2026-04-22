@@ -213,10 +213,17 @@ Then open <http://localhost:9000>, sign in with the local default admin account,
 ```bash
 export SONAR_HOST_URL=http://localhost:9000
 export SONAR_TOKEN=<your-token>
-pnpm run sonar:scan
+pnpm run sonar
 ```
 
-`pnpm run sonar:scan` uses the committed `sonar-project.properties` file and the local `@sonar/scan` package. This experiment is intentionally separate from `pnpm run verify:fast` so generic Sonar findings do not block normal commits. The repo also exposes a manual GitHub Actions workflow, `sonarqube-experiment`, for teams that want to point the same scan at a configured server without making it a required CI gate.
+`pnpm run sonar` is the convenience command: it runs the repo-pinned scanner and then generates a local report bundle under `scripts/out/sonar/latest/`. Low-level commands remain available when needed:
+
+```bash
+pnpm run sonar:scan    # scanner only
+pnpm run sonar:report  # report only, reusing the latest .scannerwork/report-task.txt
+```
+
+This experiment is intentionally separate from `pnpm run verify:fast` so generic Sonar findings do not block normal commits. The repo also exposes a manual GitHub Actions workflow, `sonarqube-experiment`, for teams that want to point the same scan at a configured server without making it a required CI gate.
 
 ### Scripts reference
 
@@ -230,7 +237,9 @@ pnpm run sonar:scan
 | `pnpm test:all` | Fast + live. |
 | `pnpm render:verify` | Produces PNGs + an HTML gallery of pi-fence scenarios via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/<variant>/render.png` + `scripts/out/render-verify/index.html`. Flags: `--list`, `--scenario <name>`, `--variant <name>`, `--update`. |
 | `pnpm run check` | Link check + markdown lint. |
-| `pnpm run sonar:scan` | Run the non-blocking SonarQube experiment against `SONAR_HOST_URL` with `SONAR_TOKEN`, using `sonar-project.properties`. |
+| `pnpm run sonar` | Run the non-blocking SonarQube experiment end-to-end: scan, wait for CE completion, and write a report bundle under `scripts/out/sonar/latest/`. |
+| `pnpm run sonar:scan` | Run the SonarQube scanner only against `SONAR_HOST_URL` with `SONAR_TOKEN`, using `sonar-project.properties`. |
+| `pnpm run sonar:report` | Generate report artifacts from the latest Sonar scan recorded in `.scannerwork/report-task.txt`. |
 | `pnpm run check:links` | Link check only. |
 | `pnpm run check:markdown` | Markdown lint only. |
 | `pnpm run fix:markdown` | Auto-fix markdown lint issues. |

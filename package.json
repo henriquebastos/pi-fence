@@ -59,7 +59,9 @@
     "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
     "render:verify": "tsx scripts/verify.ts",
     "render:gallery": "tsx scripts/render-gallery.ts",
-    "sonar:scan": "pnpm exec sonar"
+    "sonar": "pnpm run sonar:scan && pnpm run sonar:report",
+    "sonar:scan": "pnpm exec sonar",
+    "sonar:report": "tsx scripts/sonar-report.ts"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
