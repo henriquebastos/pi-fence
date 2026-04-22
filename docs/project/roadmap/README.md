@@ -149,6 +149,16 @@
 | [CVx.E2.S3](cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s3-sentinel-readiness/README.md) | **Sentinel-based readiness; edit-verify loops complete in under five seconds per scenario** | ✅ Done |
 | [CVx.E2.S4](cvx-verifiability/cvx-e2-dev-time-screenshots/cvx-e2-s4-user-agent-trail/README.md) | **`mermaid-user-agent-trail` scenario — full user→assistant→pi-fence:output visual via pi-coding-agent's own components** | ✅ Done |
 
+### [CVx.E3 — Refactor Confidence](cvx-verifiability/cvx-e3-refactor-confidence/README.md)
+
+| Code | Story | Status |
+|------|-------|--------|
+| [CVx.E3.S1](cvx-verifiability/cvx-e3-refactor-confidence/cvx-e3-s1-static-confidence-gate/README.md) | **I can trust the fast gate before starting a cleanup pass** | Planned |
+| `CVx.E3.S2` | **The architecture map names pure modules, adapters, runtime seams, composition root, and hotspots before code moves** | Planned |
+| `CVx.E3.S3` | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | Planned |
+| `CVx.E3.S4` | **The extension entrypoint becomes a thin composition root over focused modules and policies** | Planned |
+| `CVx.E3.S5` | **Internal module APIs and naming make the boundary-injected architecture easy to compose** | Planned |
+
 ---
 
 ## Radar
