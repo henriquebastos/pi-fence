@@ -58,7 +58,8 @@
     "live:build": "tsx scripts/live-container.ts build",
     "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
     "render:verify": "tsx scripts/verify.ts",
-    "render:gallery": "tsx scripts/render-gallery.ts"
+    "render:gallery": "tsx scripts/render-gallery.ts",
+    "sonar:scan": "pnpm exec sonar"
   },
   "peerDependencies": {
     "@mariozechner/pi-coding-agent": "*",
@@ -74,6 +75,7 @@
     "dependency-cruiser": "^17.2.0",
     "@xterm/headless": "^6.0.0",
     "@xterm/xterm": "6.1.0-beta.197",
+    "@sonar/scan": "^4.3.6",
     "markdownlint-cli2": "^0.22.0",
     "pixelmatch": "^7.1.0",
     "playwright-core": "^1.59.1",

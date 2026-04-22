@@ -158,7 +158,7 @@ pnpm install
 ### Run the fast verification gate
 
 ```bash
-pnpm run verify:fast   # pnpm test + pnpm run check + pnpm run typecheck
+pnpm run verify:fast   # pnpm test + pnpm run check + pnpm run typecheck + pnpm run typecheck:deps
 ```
 
 Equivalent individual commands:
@@ -167,6 +167,7 @@ Equivalent individual commands:
 pnpm test              # unit, contract, extension, utility self-tests
 pnpm run check         # docs link + markdown lint
 pnpm run typecheck     # tsc --noEmit across extensions, tests, and scripts
+pnpm run typecheck:deps # dependency-cruiser architectural boundaries
 ```
 
 Expect all green on a clean clone.
@@ -197,18 +198,39 @@ pnpm test:all      # fast + live (live suite skips when container absent)
 pnpm test:watch    # vitest --watch on the fast suite
 ```
 
+### SonarQube experiment
+
+`CVx.E4.S2` treats SonarQube as a non-blocking experiment. It is **not** part of the fast gate.
+
+Local setup with Docker:
+
+```bash
+docker run -d --name pi-fence-sonarqube -p 9000:9000 sonarqube:community
+```
+
+Then open <http://localhost:9000>, sign in with the local default admin account, create a user token, and run:
+
+```bash
+export SONAR_HOST_URL=http://localhost:9000
+export SONAR_TOKEN=<your-token>
+pnpm run sonar:scan
+```
+
+`pnpm run sonar:scan` uses the committed `sonar-project.properties` file and the local `@sonar/scan` package. This experiment is intentionally separate from `pnpm run verify:fast` so generic Sonar findings do not block normal commits.
+
 ### Scripts reference
 
 | Script | Purpose |
 |--------|---------|
 | `pnpm test` | Fast suite (unit, contract, render, extension, utility). |
 | `pnpm run typecheck` | Static TypeScript gate (`tsc --noEmit`) across production code, tests, and scripts. |
-| `pnpm run verify:fast` | Umbrella fast gate: `pnpm test` + `pnpm run check` + `pnpm run typecheck`. |
+| `pnpm run verify:fast` | Umbrella fast gate: `pnpm test` + `pnpm run check` + `pnpm run typecheck` + `pnpm run typecheck:deps`. |
 | `pnpm test:watch` | vitest in watch mode. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
 | `pnpm render:verify` | Produces PNGs + an HTML gallery of pi-fence scenarios via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/<variant>/render.png` + `scripts/out/render-verify/index.html`. Flags: `--list`, `--scenario <name>`, `--variant <name>`, `--update`. |
 | `pnpm run check` | Link check + markdown lint. |
+| `pnpm run sonar:scan` | Run the non-blocking SonarQube experiment against `SONAR_HOST_URL` with `SONAR_TOKEN`, using `sonar-project.properties`. |
 | `pnpm run check:links` | Link check only. |
 | `pnpm run check:markdown` | Markdown lint only. |
 | `pnpm run fix:markdown` | Auto-fix markdown lint issues. |
