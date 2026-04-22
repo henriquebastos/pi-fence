@@ -1,7 +1,7 @@
 # CVx.E4 — Quality Analyzers
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-22 — S1 Ready, S2 Ready
+**Last updated:** 2026-04-22 — S1 Done, S2 Ready
 
 `CVx.E3` made the architecture explicit and reduced the main runtime hotspots. The next confidence step is to encode those boundaries in tools that catch drift automatically.
 
@@ -16,7 +16,7 @@ The order is deliberate. Architectural rules should become executable first. Bro
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cvx-e4-s1--dependency-cruiser-boundaries.md) | **Architectural import boundaries are enforced automatically with dependency-cruiser** | Ready |
+| [S1](cvx-e4-s1--dependency-cruiser-boundaries.md) | **Architectural import boundaries are enforced automatically with dependency-cruiser** | ✅ Done |
 | [S2](cvx-e4-s2--sonarqube-experiment.md) | **SonarQube runs as a non-blocking experiment so we can judge its signal before adopting any gate** | Ready |
 
 ## Deliverable vision (epic scope)

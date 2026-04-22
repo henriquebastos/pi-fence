@@ -1,6 +1,6 @@
 # CVx.E4.S1 — dependency-cruiser architectural boundaries
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CVx.E4 — Quality Analyzers](cvx-e4--quality-analyzers.md)
 **Depends on:** [CVx.E3 — Refactor Confidence](cvx-e3--refactor-confidence.md)

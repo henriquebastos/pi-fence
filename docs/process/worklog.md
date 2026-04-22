@@ -6,18 +6,17 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E3` is complete, and `CVx.E4` is now specced. The next verifiability move is analyzer-backed enforcement: `dependency-cruiser` first for architectural boundaries, then a non-blocking SonarQube experiment.
+`CVx.E4.S1` is complete. The repo now enforces its first architectural boundary automatically: production code under `extensions/**` must not import from `tests/**`. The next analyzer move is the non-blocking SonarQube experiment in `CVx.E4.S2`.
 
 ## Next
 
 No story is currently in flight. Under the simplified roadmap hierarchy:
 
-- `CVx.E4.S1` — dependency-cruiser architectural boundaries. **Ready** to execute.
-- `CVx.E4.S2` — SonarQube experiment. **Ready** to execute after `S1`.
+- `CVx.E4.S2` — SonarQube experiment. **Ready** to execute.
 - `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 are ✅ Done; `CVx.E4.S1`–`S2` are specced and pending. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1 are ✅ Done; `CVx.E4.S2` is specced and pending. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1157,6 +1156,38 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 4. Any future SonarQube-derived policy should be based on signal observed in this repo, not on default rule volume.
 
 **Tests.** Spec-only; runtime behavior unchanged.
+
+### 2026-04-22 — close CVx.E4.S1 — dependency-cruiser architectural boundaries
+
+**Goal.** Make the repo's clearest architectural rule executable instead of relying on memory and review quality.
+
+**What shipped.**
+
+1. Added `.dependency-cruiser.cjs` with the first high-signal rule:
+   - production code under `extensions/**` must not import from `tests/**`
+2. Added `dependency-cruiser` as a dev dependency and exposed the local command:
+   - `pnpm run typecheck:deps`
+3. Folded the dependency-boundary check into the normal fast gate:
+   - `pnpm run verify:fast` now runs `pnpm run typecheck:deps` after tests, docs checks, and `tsc --noEmit`
+4. CI now runs the same dependency-boundary command.
+5. Contributor-facing docs now describe the new gate:
+   - `AGENTS.md`
+   - `docs/product/principles.md`
+6. The architecture note now records that the old `extensions/** -> tests/**` hotspot is machine-checked, not just narratively banned.
+
+**Verification.**
+
+1. `pnpm run typecheck:deps` green.
+2. `pnpm run verify:fast` green at `281` passing tests, link check green, markdown lint green, typecheck green, dependency-boundary check green.
+3. `pnpm test:live` not required — no I/O seam behavior changed.
+
+**Design decisions that survived implementation.**
+
+1. **Start with the repo's clearest rule.** The first enforced boundary is the one `CVx.E3` already proved valuable: no production imports from `tests/**`.
+2. **Keep the rule set narrow and readable.** No speculative layer matrix landed with the first analyzer.
+3. **Use the normal contributor gate.** Architectural dependency checks now run where contributors already look for green confidence rather than hiding in a separate optional command.
+
+**Carry-forward.** `CVx.E4.S2` remains next: a non-blocking SonarQube experiment whose value should be judged by signal, not by tool prestige.
 
 ### 2026-04-22 — close CVx.E3.S3 / S4 / S5 and close CVx.E3
 
