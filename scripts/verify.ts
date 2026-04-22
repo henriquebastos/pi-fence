@@ -244,10 +244,12 @@ async function main(): Promise<void> {
 	}
 }
 
-main().catch((err) => {
+try {
+	await main();
+} catch (err) {
 	process.stderr.write(
 		`[render:verify] fatal: ${err instanceof Error ? err.message : String(err)}\n`,
 	);
 	if (err instanceof Error && err.stack) process.stderr.write(`${err.stack}\n`);
 	process.exit(2);
-});
+}

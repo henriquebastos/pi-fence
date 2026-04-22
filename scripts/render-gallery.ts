@@ -173,7 +173,8 @@ async function fetchAll(
 		for (;;) {
 			const i = cursor++;
 			if (i >= specs.length) return;
-			const spec = specs[i]!;
+			const spec = specs[i];
+			if (spec === undefined) return;
 			process.stderr.write(`  [${i + 1}/${specs.length}] fetching ${spec.tag}... `);
 			const result = await fetchOne(spec);
 			if ("pngBase64" in result) {
@@ -368,12 +369,10 @@ async function cropTrailingBlack(
 
 const invokedDirectly = import.meta.url === `file://${process.argv[1]}`;
 if (invokedDirectly) {
-	main()
-		.then((code) => {
-			process.exitCode = code;
-		})
-		.catch((err) => {
-			console.error(err instanceof Error ? err.stack ?? err.message : String(err));
-			process.exitCode = 2;
-		});
+	try {
+		process.exitCode = await main();
+	} catch (err) {
+		console.error(err instanceof Error ? err.stack ?? err.message : String(err));
+		process.exitCode = 2;
+	}
 }

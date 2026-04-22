@@ -40,8 +40,10 @@ if (invokedDirectly) {
 		console.error("Usage: pnpm refresh-fixtures <tag> [name]");
 		process.exit(1);
 	}
-	refresh(tag, name).catch((err) => {
+	try {
+		await refresh(tag, name);
+	} catch (err) {
 		console.error(err instanceof Error ? err.message : String(err));
 		process.exit(1);
-	});
+	}
 }
