@@ -143,7 +143,7 @@ How to work on pi-fence itself. You need this only if you're contributing; end u
 
 - **Node 22** or newer. Matches the base image used by the live-deps container.
 - **pnpm 10.x**. `packageManager` is pinned in `package.json`; `corepack enable` once per machine lets Node resolve the right pnpm automatically.
-- **Docker Desktop or the docker CLI**. Optional — only needed when running `pnpm test:live`. The fast suite (`pnpm test`) requires neither Docker nor network.
+- **Docker Desktop or the docker CLI**. Optional — only needed when running `pnpm test:live`. The fast gate (`pnpm run verify:fast`) requires neither Docker nor network.
 - **macOS or Linux** for the full test matrix. Windows contributors can run the fast suite without issue; live tests on Windows require Docker Desktop and are not yet verified in CI.
 
 ### Clone and install
@@ -155,14 +155,21 @@ corepack enable    # one-time
 pnpm install
 ```
 
-### Run the fast test suite
+### Run the fast verification gate
 
 ```bash
-pnpm run check     # docs link + markdown lint
-pnpm test          # unit, contract, extension, utility self-tests
+pnpm run verify:fast   # pnpm test + pnpm run check + pnpm run typecheck
 ```
 
-Expect both green on a clean clone.
+Equivalent individual commands:
+
+```bash
+pnpm test              # unit, contract, extension, utility self-tests
+pnpm run check         # docs link + markdown lint
+pnpm run typecheck     # tsc --noEmit across extensions, tests, and scripts
+```
+
+Expect all green on a clean clone.
 
 ### Run the live test suite
 
@@ -176,7 +183,7 @@ pnpm test:live     # run the live suite
 pnpm live:down     # stop and remove the container
 ```
 
-Without Docker, `pnpm test:live` reports the live suite as **skipped** and exits 0. The fast suite is unaffected.
+Without Docker, `pnpm test:live` reports the live suite as **skipped** and exits 0. The fast gate is unaffected.
 
 ### Run everything
 
@@ -195,6 +202,8 @@ pnpm test:watch    # vitest --watch on the fast suite
 | Script | Purpose |
 |--------|---------|
 | `pnpm test` | Fast suite (unit, contract, render, extension, utility). |
+| `pnpm run typecheck` | Static TypeScript gate (`tsc --noEmit`) across production code, tests, and scripts. |
+| `pnpm run verify:fast` | Umbrella fast gate: `pnpm test` + `pnpm run check` + `pnpm run typecheck`. |
 | `pnpm test:watch` | vitest in watch mode. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
@@ -214,7 +223,7 @@ pnpm test:watch    # vitest --watch on the fast suite
 
 Two GitHub Actions workflows are committed but dormant until the repo goes public:
 
-- `.github/workflows/ci.yml` — fast suite on Ubuntu + macOS, triggered on push and PR to `main`.
+- `.github/workflows/ci.yml` — the fast gate (`pnpm run check`, `pnpm run typecheck`, `pnpm test`) on Ubuntu + macOS, triggered on push and PR to `main`.
 - `.github/workflows/live.yml` — live suite on Ubuntu, runs nightly and on `workflow_dispatch`.
 
 ### Test layout

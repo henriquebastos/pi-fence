@@ -63,9 +63,11 @@ Test files live under `tests/<layer>/`. Fixtures under `tests/fixtures/`. Shared
 
 **Skip cleanly when deps are absent.** A contributor on a machine without Docker, without network, without the live-deps container running, should still be able to clone the repo and see `pnpm test` go green. Live tests self-check their preconditions and emit `describe.skipIf(...)` — not a failure — when the precondition isn't met.
 
-**Every commit leaves tests passing.**
+**Every commit leaves the fast gate passing.**
 
 **Docs are checked too.** Link integrity is verified by `pnpm run check:links`, which walks the `docs/` tree and validates that every relative markdown link resolves to a real file and every `#fragment` points to a real heading. Structural linting — list numbering, blank-line rules, heading increments, duplicate headings — is handled by `markdownlint-cli2` via `pnpm run check:markdown`. Auto-fix most issues with `pnpm run fix:markdown`. `pnpm run check` is the umbrella that runs both.
+
+**Static typing is part of the fast gate.** `pnpm run typecheck` runs `tsc --noEmit` across production code, tests, and repo scripts. `pnpm run verify:fast` is the contributor-facing umbrella for the full local fast gate: `pnpm test`, `pnpm run check`, and `pnpm run typecheck`.
 
 **Every story's plan.md has a mandatory `Tests` section** enumerating, at minimum:
 

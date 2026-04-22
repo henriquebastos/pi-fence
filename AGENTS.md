@@ -16,16 +16,17 @@ Front door for agents and new contributors. Short on purpose — redirects, does
 
 1. `pnpm test` — fast suite (unit + contract + extension).
 2. `pnpm run check` — `check:links` + `check:markdown`. Auto-fix most markdown with `pnpm run fix:markdown`.
-3. `pnpm test:live` — only when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures. Requires Docker (`pnpm run live:up`) or network.
+3. `pnpm run typecheck` — `tsc --noEmit` across production code, tests, and repo scripts.
+4. `pnpm test:live` — only when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures. Requires Docker (`pnpm run live:up`) or network.
 
-Every commit leaves tests passing. CI runs the fast gate on push/PR ([.github/workflows/ci.yml](.github/workflows/ci.yml)); live runs separately ([.github/workflows/live.yml](.github/workflows/live.yml)).
+`pnpm run verify:fast` is the umbrella command for steps 1–3. Every commit leaves the fast gate passing. CI runs the same fast gate on push/PR ([.github/workflows/ci.yml](.github/workflows/ci.yml)); live runs separately ([.github/workflows/live.yml](.github/workflows/live.yml)).
 
 No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all that "builds" the package.
 
 ## Story workflow
 
 1. **Spec** — draft the story folder's `README.md` + `plan.md` + `test-guide.md`. `plan.md` must have a `Tests` section (layers, events covered, fakes added, live tests, anything deferred). Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story's three files as the working template — imitate the section shape, don't invent one. No separate template file exists; the shipped stories are the template.
-2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm test`.
+2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm run verify:fast` (and `pnpm test:live` when the story touches a live-only seam).
 3. **Close** — flip status in the story `README.md`, the Epic `README.md`, and the top-level roadmap table; append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards); update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
 
 Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog.md](docs/process/worklog.md).

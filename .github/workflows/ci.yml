@@ -1,6 +1,6 @@
 # Fast CI — runs on every push and pull request.
 #
-# Executes: docs lint, markdown lint, fast test suite.
+# Executes: docs checks, static typecheck, fast test suite.
 # Excluded: live tests under tests/integration/ and the Render Image
 # layer under tests/render-image/ (both live in live.yml, which also
 # handles Docker + Chromium provisioning).
@@ -47,6 +47,9 @@ jobs:
 
       - name: Lint docs
         run: pnpm run check
+
+      - name: Run static typecheck
+        run: pnpm run typecheck
 
       - name: Run fast test suite
         run: pnpm test
