@@ -5,6 +5,7 @@ dist/
 .env
 .env.local
 coverage/
+.scannerwork/
 
 # Spike/tooling outputs (PNG screenshots, byte-stream captures, etc.)
 scripts/out/
