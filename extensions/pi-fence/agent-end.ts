@@ -102,21 +102,31 @@ function tryCaptureThemeName(
 }
 
 function extractAssistantText(messages: unknown): string {
-	if (!Array.isArray(messages)) return "";
+	if (!Array.isArray(messages)) {
+		return "";
+	}
+
 	let text = "";
 	for (const message of messages as Array<{ role?: string; content?: unknown }>) {
-		if (message?.role !== "assistant") continue;
-		const content = message.content;
-		if (typeof content === "string") {
-			text += content + "\n";
-			continue;
+		if (message?.role === "assistant") {
+			text += extractAssistantContentText(message.content);
 		}
-		if (Array.isArray(content)) {
-			for (const part of content as Array<{ type?: string; text?: string }>) {
-				if (part?.type === "text" && typeof part.text === "string") {
-					text += part.text + "\n";
-				}
-			}
+	}
+	return text;
+}
+
+function extractAssistantContentText(content: unknown): string {
+	if (typeof content === "string") {
+		return `${content}\n`;
+	}
+	if (!Array.isArray(content)) {
+		return "";
+	}
+
+	let text = "";
+	for (const part of content as Array<{ type?: string; text?: string }>) {
+		if (part?.type === "text" && typeof part.text === "string") {
+			text += `${part.text}\n`;
 		}
 	}
 	return text;
