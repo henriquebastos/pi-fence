@@ -6,16 +6,17 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx` is complete again. The verifiability lane now has both architecture-specific enforcement (`dependency-cruiser`) and a documented, non-blocking SonarQube experiment. The next ready implementation story is back in the feature lane: `CV0.E1.S5`.
+`CVx.E4.S3` is now specced. The Sonar experiment works, but its own report pipeline is still too noisy under Sonar. The next move is to refactor that pipeline until the findings are signal rather than self-inflicted clutter.
 
 ## Next
 
 No story is currently in flight. Under the simplified roadmap hierarchy:
 
+- `CVx.E4.S3` — Sonar report pipeline cleanup. **Ready** to execute.
 - `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S2 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S2 are ✅ Done; `CVx.E4.S3` is specced and pending. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1187,6 +1188,25 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 3. **Use the normal contributor gate.** Architectural dependency checks now run where contributors already look for green confidence rather than hiding in a separate optional command.
 
 **Carry-forward.** `CVx.E4.S2` remains next: a non-blocking SonarQube experiment whose value should be judged by signal, not by tool prestige.
+
+### 2026-04-22 — spec CVx.E4.S3 — Sonar report pipeline cleanup
+
+**Goal.** Turn the Sonar report pipeline itself into code we can trust and read comfortably before using its findings as a planning input.
+
+**What shipped.**
+
+1. New story file: `docs/project/roadmap/cvx--verifiability/cvx-e4-s3--sonar-report-pipeline-cleanup.md`.
+2. `CVx.E4` now links `S3` directly and marks it **Ready**.
+3. `CVx` roadmap surfaces are back to **Not done** because the analyzer lane now has one more cleanup story.
+
+**Design decisions recorded in the spec.**
+
+1. Keep `pnpm run sonar` behavior unchanged while refactoring internals.
+2. Split the current single-file report pipeline by responsibility: task parsing, API access, summary derivation, and markdown rendering.
+3. Improve the reporting code itself rather than excluding it from Sonar just to silence the findings.
+4. Treat this as a small focused cleanup story, not a broad repo-wide Sonar response.
+
+**Tests.** Spec-only; runtime behavior unchanged.
 
 ### 2026-04-22 — close CVx.E4.S2 and close CVx.E4 / CVx
 
