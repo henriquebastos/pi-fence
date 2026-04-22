@@ -6,6 +6,8 @@
  * (`tests/integration/kroki.live.test.ts`).
  */
 
+import { describe, expect, it } from "vitest";
+
 import { createKrokiProcessor } from "../../extensions/pi-fence/kroki.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { runFenceProcessorContract } from "./fence-processor.ts";
@@ -34,6 +36,12 @@ function makeKroki(): ReturnType<typeof createKrokiProcessor> {
 	});
 	return createKrokiProcessor(http);
 }
+
+describe("kroki contract harness", () => {
+	it("builds the processor under test", () => {
+		expect(makeKroki().tags).toContain("mermaid");
+	});
+});
 
 runFenceProcessorContract("kroki", makeKroki, {
 	tag: "mermaid",

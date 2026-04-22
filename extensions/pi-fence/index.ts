@@ -148,7 +148,9 @@ function registerPiFenceRenderers(pi: ExtensionAPI): void {
 	);
 }
 
-export default async function (pi: ExtensionAPI): Promise<void> {
+export default async function activatePiFence(
+	pi: ExtensionAPI,
+): Promise<void> {
 	await createPiFenceExtension(pi, {
 		http: new NodeHttpClient(),
 		shell: new NodeShellRunner(),

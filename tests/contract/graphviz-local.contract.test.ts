@@ -16,6 +16,8 @@
  * to return.
  */
 
+import { describe, expect, it } from "vitest";
+
 import { FakeShellRunner, type ShellResult } from "../utilities/shell-runner.ts";
 import {
 	createGraphvizLocalProcessor,
@@ -78,6 +80,12 @@ function makeGraphvizLocal(): ReturnType<typeof createGraphvizLocalProcessor> {
 
 	return createGraphvizLocalProcessor(shell);
 }
+
+describe("graphviz-local contract harness", () => {
+	it("builds the processor under test", () => {
+		expect(makeGraphvizLocal().tags).toContain(GRAPHVIZ_LOCAL_CANONICAL_TAGS[0]);
+	});
+});
 
 runFenceProcessorContract("graphviz-local", makeGraphvizLocal, {
 	tag: GRAPHVIZ_LOCAL_CANONICAL_TAGS[0],

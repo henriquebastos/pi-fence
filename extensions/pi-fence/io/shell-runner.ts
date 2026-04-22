@@ -51,7 +51,7 @@ export class NodeShellRunner implements ShellRunner {
 							resolve({ stdout, stdoutBuffer, stderr, exitCode: code });
 							return;
 						}
-						reject(err instanceof Error ? err : new Error(String(err)));
+						reject(toError(err));
 						return;
 					}
 					resolve({ stdout, stdoutBuffer, stderr, exitCode: 0 });
@@ -69,4 +69,13 @@ function toBuffer(x: unknown): Buffer {
 	if (Buffer.isBuffer(x)) return x;
 	if (typeof x === "string") return Buffer.from(x, "utf8");
 	return Buffer.alloc(0);
+}
+
+function toError(value: unknown): Error {
+	if (value instanceof Error) return value;
+	if (typeof value === "string") return new Error(value);
+	if (value && typeof value === "object") {
+		return new Error(JSON.stringify(value));
+	}
+	return new Error("unknown shell runner error");
 }
