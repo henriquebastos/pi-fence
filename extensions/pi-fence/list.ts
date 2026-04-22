@@ -84,14 +84,7 @@ export function listProcessors(
 			status && !status.ok && status.installHint !== undefined
 				? status.installHint
 				: undefined;
-		return {
-			id: processor.id,
-			status: "unavailable" as const,
-			tags: processor.tags,
-			aliases: processor.aliases,
-			unavailableReason: reason,
-			...(installHint !== undefined ? { installHint } : {}),
-		};
+		return buildUnavailableListing(processor, reason, installHint);
 	});
 }
 
@@ -106,59 +99,58 @@ export function formatProcessorLines(
 	listings: readonly ProcessorListing[],
 	bindings?: readonly BindingResolution[],
 ): string[] {
-	const hasBindings = bindings !== undefined && bindings.length > 0;
-
-	if (listings.length === 0 && !hasBindings) {
+	const bindingLines = formatBindingLines(bindings ?? []);
+	if (listings.length === 0 && bindingLines.length === 0) {
 		return ["(no processors registered)"];
 	}
 
-	const out: string[] = [];
-	if (listings.length === 0) {
-		out.push("(no processors registered)");
-	} else {
-		for (const listing of listings) {
-			out.push(formatHeader(listing));
-			if (listing.status === "unavailable") {
-				out.push(formatUnavailableDetail(listing));
-			}
-		}
-	}
-
-	if (hasBindings) {
-		const effective = bindings!.filter((b) => b.status === "effective");
-		const ignored = bindings!.filter((b) => b.status === "ignored");
-
-		if (effective.length > 0) {
-			out.push("");
-			out.push("Bindings");
-			for (const row of effective) {
-				out.push(`${BINDING_INDENT}${row.tag} → ${row.processorId}`);
-			}
-		}
-
-		if (ignored.length > 0) {
-			out.push("");
-			out.push("Ignored bindings");
-			for (const row of ignored) {
-				if (row.status !== "ignored") continue;
-				const reason = formatIgnoredReason(row.reason);
-				out.push(
-					`${BINDING_INDENT}${row.tag} → ${row.processorId} (${reason})`,
-				);
-			}
-		}
-	}
-
-	return out;
+	return [...formatListingLines(listings), ...bindingLines];
 }
 
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
 
+function buildUnavailableListing(
+	processor: FenceProcessor,
+	reason: string,
+	installHint: string | undefined,
+): ProcessorListing {
+	const listing: ProcessorListing = {
+		id: processor.id,
+		status: "unavailable",
+		tags: processor.tags,
+		aliases: processor.aliases,
+		unavailableReason: reason,
+	};
+	if (installHint !== undefined) {
+		listing.installHint = installHint;
+	}
+	return listing;
+}
+
 function formatHeader(listing: ProcessorListing): string {
 	const tagPart = formatTagList(listing.tags, listing.aliases);
 	return `${listing.id} [${listing.status}] — ${tagPart}`;
+}
+
+function formatListingLines(listings: readonly ProcessorListing[]): string[] {
+	if (listings.length === 0) {
+		return ["(no processors registered)"];
+	}
+
+	const lines: string[] = [];
+	for (const listing of listings) {
+		lines.push(...formatListingBlock(listing));
+	}
+	return lines;
+}
+
+function formatListingBlock(listing: ProcessorListing): string[] {
+	if (listing.status === "unavailable") {
+		return [formatHeader(listing), formatUnavailableDetail(listing)];
+	}
+	return [formatHeader(listing)];
 }
 
 const UNAVAILABLE_DETAIL_INDENT = "    ";
@@ -176,6 +168,39 @@ function formatUnavailableDetail(listing: ProcessorListing): string {
 	return `${UNAVAILABLE_DETAIL_INDENT}${reason}${hint}`;
 }
 
+function formatBindingLines(bindings: readonly BindingResolution[]): string[] {
+	if (bindings.length === 0) {
+		return [];
+	}
+
+	const effective = bindings.filter((binding) => binding.status === "effective");
+	const ignored = bindings.filter((binding) => binding.status === "ignored");
+	return [
+		...formatBindingSection("Bindings", effective, formatEffectiveBinding),
+		...formatBindingSection("Ignored bindings", ignored, formatIgnoredBinding),
+	];
+}
+
+function formatBindingSection<T>(
+	title: string,
+	rows: readonly T[],
+	formatRow: (row: T) => string,
+): string[] {
+	if (rows.length === 0) {
+		return [];
+	}
+	return ["", title, ...rows.map(formatRow)];
+}
+
+function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effective" }>): string {
+	return `${BINDING_INDENT}${row.tag} → ${row.processorId}`;
+}
+
+function formatIgnoredBinding(row: Extract<BindingResolution, { status: "ignored" }>): string {
+	const reason = formatIgnoredReason(row.reason);
+	return `${BINDING_INDENT}${row.tag} → ${row.processorId} (${reason})`;
+}
+
 /**
  * Render canonical tags joined by ", ", with aliases that resolve to a
  * canonical tag shown in parentheses after it. Aliases whose target is
@@ -188,10 +213,11 @@ function formatTagList(
 ): string {
 	const aliasesByCanonical = new Map<string, string[]>();
 	for (const [alias, target] of Object.entries(aliases)) {
-		if (!tags.includes(target)) continue;
-		const list = aliasesByCanonical.get(target) ?? [];
-		list.push(alias);
-		aliasesByCanonical.set(target, list);
+		if (tags.includes(target)) {
+			const list = aliasesByCanonical.get(target) ?? [];
+			list.push(alias);
+			aliasesByCanonical.set(target, list);
+		}
 	}
 
 	return tags
