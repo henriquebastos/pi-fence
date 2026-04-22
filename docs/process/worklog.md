@@ -6,16 +6,18 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E3` is complete. The refactor-confidence lane now leaves behind a production-owned seam layer under `extensions/pi-fence/io/`, a thin `index.ts` composition root, extracted policy modules for `/fence` and `agent_end`, and architecture vocabulary that matches the code.
+`CVx.E3` is complete, and `CVx.E4` is now specced. The next verifiability move is analyzer-backed enforcement: `dependency-cruiser` first for architectural boundaries, then a non-blocking SonarQube experiment.
 
 ## Next
 
 No story is currently in flight. Under the simplified roadmap hierarchy:
 
+- `CVx.E4.S1` — dependency-cruiser architectural boundaries. **Ready** to execute.
+- `CVx.E4.S2` — SonarQube experiment. **Ready** to execute after `S1`.
 - `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 are ✅ Done. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 are ✅ Done; `CVx.E4.S1`–`S2` are specced and pending. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
@@ -1135,6 +1137,26 @@ Epic-level done criterion is met: two processors collaborate end-to-end; graphvi
 5. **`S4` still owns composition-root slimming.** S3 moves seam ownership only.
 
 **Tests.** Spec-only; runtime behavior unchanged. `pnpm run verify:fast` still green at `279` passing tests.
+
+### 2026-04-22 — spec CVx.E4.S1 / S2 — quality analyzers
+
+**Goal.** Spec the next verifiability lane now that `CVx.E3` made the architecture stable enough to encode.
+
+**What shipped.**
+
+1. New epic file: `docs/project/roadmap/cvx--verifiability/cvx-e4--quality-analyzers.md`.
+2. New story file: `docs/project/roadmap/cvx--verifiability/cvx-e4-s1--dependency-cruiser-boundaries.md`.
+3. New story file: `docs/project/roadmap/cvx--verifiability/cvx-e4-s2--sonarqube-experiment.md`.
+4. `CVx` roadmap surfaces now show `CVx.E4` as the next not-done Epic.
+
+**Design decisions recorded in the specs.**
+
+1. `dependency-cruiser` comes first and is the enforcement tool for architecture-specific rules.
+2. The first enforced rule should be the repo's clearest high-signal boundary: no production imports from `tests/**`.
+3. SonarQube is explicitly an experiment, not a fast-gate addition.
+4. Any future SonarQube-derived policy should be based on signal observed in this repo, not on default rule volume.
+
+**Tests.** Spec-only; runtime behavior unchanged.
 
 ### 2026-04-22 — close CVx.E3.S3 / S4 / S5 and close CVx.E3
 
