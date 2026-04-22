@@ -51,7 +51,7 @@ export class NodeShellRunner implements ShellRunner {
 							resolve({ stdout, stdoutBuffer, stderr, exitCode: code });
 							return;
 						}
-						reject(err);
+						reject(err instanceof Error ? err : new Error(String(err)));
 						return;
 					}
 					resolve({ stdout, stdoutBuffer, stderr, exitCode: 0 });

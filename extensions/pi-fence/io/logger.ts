@@ -65,8 +65,9 @@ export class NodeLogger implements Logger {
 		message: string,
 		meta?: Record<string, unknown>,
 	): void {
-		if (!shouldLog(thresholdFromEnv(), level)) return;
-		const metaStr = meta !== undefined ? ` ${JSON.stringify(meta)}` : "";
-		process.stderr.write(`[pi-fence:${subsystem}] ${level}: ${message}${metaStr}\n`);
+		if (shouldLog(thresholdFromEnv(), level)) {
+			const metaStr = meta !== undefined ? ` ${JSON.stringify(meta)}` : "";
+			process.stderr.write(`[pi-fence:${subsystem}] ${level}: ${message}${metaStr}\n`);
+		}
 	}
 }

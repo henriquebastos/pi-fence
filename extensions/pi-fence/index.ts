@@ -53,7 +53,7 @@ export async function createPiFenceExtension(
 
 	const config = await loadPiFenceConfig({
 		logger: deps.logger,
-		...(deps.configOptions ?? {}),
+		...deps.configOptions,
 	});
 	const bindings: Readonly<Record<string, string>> = config.bindings;
 	const bindingRows = resolveBindings(processors, availability, bindings);

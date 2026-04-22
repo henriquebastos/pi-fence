@@ -43,7 +43,7 @@ export interface FencedBlock {
  */
 export function extractFencedBlocks(markdown: string, tags: string[]): FencedBlock[] {
 	const allowlist = new Set(tags);
-	const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+	const lines = markdown.replaceAll(/\r\n?/g, "\n").split("\n");
 	const blocks: FencedBlock[] = [];
 
 	let i = 0;
@@ -127,7 +127,7 @@ function parseOpener(line: string): Opener | null {
  */
 function findCloser(lines: string[], from: number, char: "`" | "~", minLength: number): number {
 	const charEscaped = char === "`" ? "`" : "~";
-	const pattern = new RegExp(`^ {0,3}${charEscaped}{${minLength},}\\s*$`);
+	const pattern = new RegExp(String.raw`^ {0,3}${charEscaped}{${minLength},}\s*$`);
 	for (let j = from; j < lines.length; j++) {
 		if (pattern.test(lines[j])) return j;
 	}
