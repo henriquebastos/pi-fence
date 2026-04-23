@@ -13,7 +13,7 @@ async function readScripts(): Promise<Record<string, string>> {
 }
 
 describe("package.json scripts", () => {
-	it("exposes the canonical feedback, lint, link, and inspect families", async () => {
+	it("exposes the canonical feedback, lint, and inspect families", async () => {
 		const scripts = await readScripts();
 
 		expect(scripts.feedback).toBe("pnpm run feedback:fast");
@@ -31,6 +31,7 @@ describe("package.json scripts", () => {
 		expect(scripts["lint:markdown:links"]).toBe("tsx scripts/lint-markdown-links.ts");
 		expect(scripts["lint:markdown:body"]).toBe("markdownlint-cli2");
 		expect(scripts["lint:markdown:fix"]).toBe("markdownlint-cli2 --fix");
+		expect(scripts.inspect).toBe("tsx scripts/inspect.ts");
 		expect(scripts["inspect:coverage:nonlive"]).toContain("--coverage.reportsDirectory=coverage/nonlive");
 		expect(scripts["inspect:crap"]).toBe(
 			"pnpm run inspect:coverage:nonlive && pnpm run inspect:crap:nonlive",
