@@ -99,7 +99,7 @@ describe("listProcessors", () => {
 		const listings = listProcessors(
 			[kroki],
 			allOk(["kroki"]),
-			new Set(["kroki"]),
+			{ disabled: new Set(["kroki"]) },
 		);
 
 		expect(listings).toHaveLength(1);
@@ -179,6 +179,38 @@ describe("formatProcessorLines", () => {
 		expect(lines).toEqual([
 			"kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
 		]);
+	});
+
+	it("includes endpoint in parentheses for kroki when non-default", () => {
+		const lines = formatProcessorLines(
+			[
+				{
+					id: "kroki",
+					status: "registered",
+					tags: ["mermaid"],
+					aliases: {},
+					endpoint: "http://localhost:8000",
+				},
+			],
+		);
+
+		expect(lines).toEqual([
+			"kroki [registered] (http://localhost:8000) \u2014 mermaid",
+		]);
+	});
+
+	it("omits endpoint when it is the default kroki.io", () => {
+		const lines = formatProcessorLines([
+			{
+				id: "kroki",
+				status: "registered",
+				tags: ["mermaid"],
+				aliases: {},
+			},
+		]);
+
+		// No parenthetical endpoint.
+		expect(lines[0]).not.toContain("(");
 	});
 
 	it("renders a disabled processor with [disabled] badge", () => {

@@ -19,8 +19,13 @@ export function sendPiFenceListMessage(
 	availability: ReadonlyMap<string, Availability>,
 	bindingRows: readonly BindingResolution[],
 	disabled?: ReadonlySet<string>,
+	endpoints?: Readonly<Record<string, string>>,
 ): void {
-	const listings: ProcessorListing[] = listProcessors(processors, availability, disabled);
+	const listings: ProcessorListing[] = listProcessors(
+		processors,
+		availability,
+		{ disabled, endpoints },
+	);
 	const lines = formatProcessorLines(listings, bindingRows);
 	const details: PiFenceListDetails & {
 		listings: ProcessorListing[];

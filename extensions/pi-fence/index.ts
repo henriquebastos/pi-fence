@@ -65,6 +65,10 @@ export async function createPiFenceExtension(
 	logBindingResolution(bindingRows, deps.logger);
 	logDisabled(disabled, deps.logger);
 
+	// Build the endpoints map for /fence list display.
+	const endpoints: Record<string, string> = {};
+	if (config.kroki?.endpoint) endpoints.kroki = config.kroki.endpoint;
+
 	const supportedTags = collectSupportedTags(processors);
 	registerPiFenceRenderers(pi);
 	registerFenceCommand({
@@ -74,6 +78,7 @@ export async function createPiFenceExtension(
 		availability,
 		bindingRows,
 		disabled,
+		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
 	});
 	registerPiFenceAgentEndHandler({
 		pi,

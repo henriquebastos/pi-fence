@@ -50,6 +50,8 @@ export interface ProcessorListing {
 	unavailableReason?: string;
 	/** Present iff status === "unavailable" and the processor provided one. */
 	installHint?: string;
+	/** Custom endpoint URL when non-default. Shown in `/fence list` output. */
+	endpoint?: string;
 }
 
 /**
@@ -64,18 +66,28 @@ export interface ProcessorListing {
  * map for every processor) but the defensive branch keeps the formatter
  * honest when a test constructs a partial map.
  */
+export interface ListProcessorsOptions {
+	disabled?: ReadonlySet<string>;
+	/** Per-processor endpoint overrides to display in the listing. */
+	endpoints?: Readonly<Record<string, string>>;
+}
+
 export function listProcessors(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
-	disabled?: ReadonlySet<string>,
+	opts?: ListProcessorsOptions,
 ): ProcessorListing[] {
+	const { disabled, endpoints } = opts ?? {};
+
 	return processors.map((processor) => {
+		const endpoint = endpoints?.[processor.id];
 		if (disabled?.has(processor.id)) {
 			return {
 				id: processor.id,
 				status: "disabled" as const,
 				tags: processor.tags,
 				aliases: processor.aliases,
+				...(endpoint ? { endpoint } : {}),
 			};
 		}
 		const status = availability.get(processor.id);
@@ -85,6 +97,7 @@ export function listProcessors(
 				status: "registered" as const,
 				tags: processor.tags,
 				aliases: processor.aliases,
+				...(endpoint ? { endpoint } : {}),
 			};
 		}
 		const reason =
@@ -139,8 +152,9 @@ function buildUnavailableListing(
 }
 
 function formatHeader(listing: ProcessorListing): string {
+	const endpointPart = listing.endpoint ? ` (${listing.endpoint})` : "";
 	const tagPart = formatTagList(listing.tags, listing.aliases);
-	return `${listing.id} [${listing.status}] — ${tagPart}`;
+	return `${listing.id} [${listing.status}]${endpointPart} — ${tagPart}`;
 }
 
 function formatListingLines(listings: readonly ProcessorListing[]): string[] {
