@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV3.E2.S1 — QR code image processor)
+
+- **`qr` processor** renders `qr` fenced blocks as QR code PNG images. The block content is the text to encode — URLs, Wi-Fi configs, arbitrary strings. Powered by the `qrcode` npm package, always available, no external service.
+- Six processors now ship: `graphviz-local`, `mermaid-local`, `table`, `highlight`, `qr`, `kroki`.
+
 ### Added (CV3.E1.S2 — SQL/regex/jq syntax highlighting)
 
 - **`highlight` processor** applies ANSI syntax highlighting to `sql`, `regex`, and `jq` fenced blocks. Hand-written tokenizers, standard 16-color ANSI codes, zero external dependencies.

@@ -1645,3 +1645,20 @@ Refactored NULL_LOGGER: consolidated four identical inline copies into a single 
 **Refactoring.** Extracted scan helpers (`scanCharClass`, `scanDelimited`, `scanDoubleQuotedString`, `scanLineComment`, `scanDotAccessor`, `scanNumber`, `scanWord`) from the three tokenizers. `highlightJq` CRAP 27→13, `highlightRegex` 26→below top-10. All extension CRAP ≤25.
 
 **Carry-forward.** CV3.E1 done. Next: CV3.E2.S1 (QR code image processor).
+
+---
+
+### 2026-04-23 — CV3.E2.S1 closed
+
+**What shipped.** `qr` processor renders `qr` fenced blocks as QR code PNG images via the `qrcode` npm package. Always available (bundled dep). Six processors now ship.
+
+**Implementation commits.**
+
+1. `9561b2a` — spec CV3.E2.S1
+2. `0c9a69a` — step 1: qr processor + unit tests
+3. `9f515f2` — step 2: contract test
+4. `8e3bee4` — step 3: wire into extension + extension test
+
+**Test count.** 461 fast-suite (was 441; +20).
+
+**Carry-forward.** Next: CV3.E2.S2 (color/palette swatch processor).

@@ -48,6 +48,10 @@ pi-fence also renders structured data as formatted tables. Ask for CSV or JSONL 
 
 When the assistant emits a ```` ```csv ```` or ```` ```jsonl ```` block, pi-fence formats it as a Unicode box-drawing table — no image, no external service, pure local rendering.
 
+## QR codes
+
+Ask the assistant to put a URL, Wi-Fi config, or any text in a ```` ```qr ```` block and pi-fence renders it as an inline QR code image. No external service — the QR code is generated locally.
+
 ## Syntax highlighting (SQL / regex / jq)
 
 pi-fence applies ANSI syntax highlighting to `sql`, `regex`, and `jq` blocks. Keywords, strings, comments, operators, and other tokens get distinct colors for readability. No external tools required — pure local rendering with standard terminal colors.
