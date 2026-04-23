@@ -172,55 +172,23 @@ function highlightRegex(source: string): string {
 
 		// Character class [...]
 		if (ch === "[") {
-			let j = i + 1;
-			// Handle negation
-			if (j < source.length && source[j] === "^") j++;
-			// Handle ] as first char in class
-			if (j < source.length && source[j] === "]") j++;
-			while (j < source.length && source[j] !== "]") {
-				if (source[j] === "\\" && j + 1 < source.length) j++; // skip escaped
-				j++;
-			}
-			if (j < source.length) j++; // include closing ]
-			result += ansi(CYAN, source.slice(i, j));
-			i = j;
-			continue;
-		}
-
-		// Groups
-		if (ch === "(" || ch === ")") {
-			result += ansi(RED, ch);
-			i++;
-			continue;
-		}
-
-		// Quantifiers
-		if (ch === "*" || ch === "+" || ch === "?") {
-			result += ansi(MAGENTA, ch);
-			i++;
+			const end = scanCharClass(source, i);
+			result += ansi(CYAN, source.slice(i, end));
+			i = end;
 			continue;
 		}
 
 		// Curly quantifiers {n,m}
 		if (ch === "{") {
-			let j = i + 1;
-			while (j < source.length && source[j] !== "}") j++;
-			if (j < source.length) j++;
-			result += ansi(MAGENTA, source.slice(i, j));
-			i = j;
+			const end = scanDelimited(source, i, "}");
+			result += ansi(MAGENTA, source.slice(i, end));
+			i = end;
 			continue;
 		}
 
-		// Anchors
-		if (ch === "^" || ch === "$") {
-			result += ansi(BOLD + RED, ch);
-			i++;
-			continue;
-		}
-
-		// Alternation
-		if (ch === "|") {
-			result += ansi(RED, ch);
+		const color = REGEX_SINGLE_CHAR_COLORS[ch];
+		if (color) {
+			result += ansi(color, ch);
 			i++;
 			continue;
 		}
@@ -230,6 +198,33 @@ function highlightRegex(source: string): string {
 	}
 
 	return result;
+}
+
+const REGEX_SINGLE_CHAR_COLORS: Record<string, string> = {
+	"(": RED, ")": RED, "|": RED,
+	"*": MAGENTA, "+": MAGENTA, "?": MAGENTA,
+	"^": BOLD + RED, "$": BOLD + RED,
+};
+
+/** Scan a regex character class `[...]`, returning the index after the closing `]`. */
+function scanCharClass(source: string, start: number): number {
+	let j = start + 1;
+	if (j < source.length && source[j] === "^") j++;
+	if (j < source.length && source[j] === "]") j++;
+	while (j < source.length && source[j] !== "]") {
+		if (source[j] === "\\" && j + 1 < source.length) j++;
+		j++;
+	}
+	if (j < source.length) j++;
+	return j;
+}
+
+/** Scan to a closing delimiter, returning the index after it (or end of string). */
+function scanDelimited(source: string, start: number, closer: string): number {
+	let j = start + 1;
+	while (j < source.length && source[j] !== closer) j++;
+	if (j < source.length) j++;
+	return j;
 }
 
 // ── jq highlighter ──────────────────────────────────────────────────
@@ -259,54 +254,17 @@ function highlightJq(source: string): string {
 
 		// String
 		if (ch === '"') {
-			let j = i + 1;
-			while (j < source.length && source[j] !== '"') {
-				if (source[j] === "\\" && j + 1 < source.length) j++;
-				j++;
-			}
-			if (j < source.length) j++;
-			result += ansi(GREEN, source.slice(i, j));
-			i = j;
+			const end = scanDoubleQuotedString(source, i);
+			result += ansi(GREEN, source.slice(i, end));
+			i = end;
 			continue;
 		}
 
 		// Comment
 		if (ch === "#") {
-			const end = source.indexOf("\n", i);
-			const comment = end === -1 ? source.slice(i) : source.slice(i, end);
+			const comment = scanLineComment(source, i);
 			result += ansi(DIM, comment);
 			i += comment.length;
-			continue;
-		}
-
-		// Pipe and operators
-		if (ch === "|") {
-			result += ansi(BOLD + YELLOW, ch);
-			i++;
-			continue;
-		}
-
-		// Dot accessor
-		if (ch === ".") {
-			// .field or .[n]
-			if (i + 1 < source.length && /[a-zA-Z_[]/.test(source[i + 1])) {
-				let j = i + 1;
-				while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
-				result += ansi(CYAN, source.slice(i, j));
-				i = j;
-			} else {
-				result += ansi(CYAN, ch);
-				i++;
-			}
-			continue;
-		}
-
-		// Number
-		if (/\d/.test(ch) && (i === 0 || /[\s,|:([]/.test(source[i - 1]))) {
-			let j = i;
-			while (j < source.length && /[\d.]/.test(source[j])) j++;
-			result += ansi(MAGENTA, source.slice(i, j));
-			i = j;
 			continue;
 		}
 
@@ -317,17 +275,35 @@ function highlightJq(source: string): string {
 			continue;
 		}
 
+		// Pipe
+		if (ch === "|") {
+			result += ansi(BOLD + YELLOW, ch);
+			i++;
+			continue;
+		}
+
+		// Dot accessor
+		if (ch === ".") {
+			const end = scanDotAccessor(source, i);
+			result += ansi(CYAN, source.slice(i, end));
+			i = end;
+			continue;
+		}
+
+		// Number
+		if (/\d/.test(ch) && (i === 0 || /[\s,|:([]/.test(source[i - 1]))) {
+			const end = scanNumber(source, i);
+			result += ansi(MAGENTA, source.slice(i, end));
+			i = end;
+			continue;
+		}
+
 		// Word (potential builtin)
 		if (/[a-zA-Z_]/.test(ch)) {
-			let j = i;
-			while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
-			const word = source.slice(i, j);
-			if (JQ_BUILTINS.has(word)) {
-				result += ansi(BOLD + BLUE, word);
-			} else {
-				result += word;
-			}
-			i = j;
+			const end = scanWord(source, i);
+			const word = source.slice(i, end);
+			result += JQ_BUILTINS.has(word) ? ansi(BOLD + BLUE, word) : word;
+			i = end;
 			continue;
 		}
 
@@ -336,4 +312,42 @@ function highlightJq(source: string): string {
 	}
 
 	return result;
+}
+
+// ── Shared scan helpers ─────────────────────────────────────────────
+
+function scanDoubleQuotedString(source: string, start: number): number {
+	let j = start + 1;
+	while (j < source.length && source[j] !== '"') {
+		if (source[j] === "\\" && j + 1 < source.length) j++;
+		j++;
+	}
+	if (j < source.length) j++;
+	return j;
+}
+
+function scanLineComment(source: string, start: number): string {
+	const end = source.indexOf("\n", start);
+	return end === -1 ? source.slice(start) : source.slice(start, end);
+}
+
+function scanDotAccessor(source: string, start: number): number {
+	if (start + 1 < source.length && /[a-zA-Z_[]/.test(source[start + 1])) {
+		let j = start + 1;
+		while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
+		return j;
+	}
+	return start + 1;
+}
+
+function scanNumber(source: string, start: number): number {
+	let j = start;
+	while (j < source.length && /[\d.]/.test(source[j])) j++;
+	return j;
+}
+
+function scanWord(source: string, start: number): number {
+	let j = start;
+	while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
+	return j;
 }

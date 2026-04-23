@@ -187,6 +187,36 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 	);
 
 	it(
+		"renders a sql block with ANSI syntax highlighting via the highlight processor",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Here's the query:\n\n```sql\nSELECT name FROM users WHERE age > 30\n```\n\nDone.",
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "sql",
+				processor: "highlight",
+				kind: "ok",
+			});
+
+			const items = outputs[0].content as Array<{ type: string; text?: string }>;
+			expect(items).toHaveLength(1);
+			expect(items[0].type).toBe("text");
+			// Output contains ANSI escape sequences.
+			expect(items[0].text).toContain("\x1b[");
+			expect(items[0].text).toContain("SELECT");
+			expect(items[0].text).toContain("users");
+
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"renders a jsonl block as a text table via the table processor",
 		async () => {
 			const http = new FakeHttpClient();
@@ -245,7 +275,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(4);
+			expect(details.listings).toHaveLength(5);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-local",
 				status: "unavailable",
@@ -264,6 +294,11 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				tags: ["csv", "jsonl"],
 			});
 			expect(details.listings[3]).toMatchObject({
+				id: "highlight",
+				status: "registered",
+				tags: ["sql", "regex", "jq"],
+			});
+			expect(details.listings[4]).toMatchObject({
 				id: "kroki",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,

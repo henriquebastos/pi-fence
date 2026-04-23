@@ -186,6 +186,185 @@ describe("highlight processor — jq", () => {
 	});
 });
 
+describe("highlight processor — SQL edge cases", () => {
+	it("highlights a line comment at end of input (no trailing newline)", async () => {
+		const result = await createHighlightProcessor().render(
+			"sql",
+			"SELECT 1 -- trailing",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("trailing");
+	});
+
+	it("highlights an unterminated block comment", async () => {
+		const result = await createHighlightProcessor().render(
+			"sql",
+			"SELECT /* unclosed",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("unclosed");
+	});
+
+	it("highlights SQL escaped single quotes", async () => {
+		const result = await createHighlightProcessor().render(
+			"sql",
+			"SELECT 'it''s'",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("it");
+	});
+});
+
+describe("highlight processor — jq edge cases", () => {
+	it("highlights comments", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			".x | length # count items",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("count items");
+		expect(result.text).toContain(ESC);
+	});
+
+	it("highlights the // alt operator", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			'.name // "default"',
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("//");
+		expect(result.text).toContain("default");
+	});
+
+	it("highlights bare dot identity", async () => {
+		const result = await createHighlightProcessor().render("jq", ".");
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+
+	it("highlights escaped chars in strings", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			'.x | "hello\\nworld"',
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("hello");
+	});
+
+	it("highlights numbers after operators", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			".x | limit(5; .[])",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("5");
+		expect(result.text).toContain("limit");
+	});
+
+	it("handles unterminated string gracefully", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			'.x | "unterminated',
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("unterminated");
+	});
+
+	it("highlights dot with array index", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			".[0] | .name",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+
+	it("highlights comment at end of input (no trailing newline)", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			".x # trailing",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("trailing");
+	});
+
+	it("renders non-builtin identifiers as plain text", async () => {
+		const result = await createHighlightProcessor().render(
+			"jq",
+			"myFunc | select(.x)",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("myFunc");
+		// myFunc should NOT be highlighted as a builtin.
+		// select should be highlighted.
+		expect(result.text).toContain("select");
+	});
+});
+
+describe("highlight processor — regex edge cases", () => {
+	it("highlights negated character class", async () => {
+		const result = await createHighlightProcessor().render(
+			"regex",
+			"[^abc]+",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+
+	it("highlights escaped char inside character class", async () => {
+		const result = await createHighlightProcessor().render(
+			"regex",
+			"[\\d\\w]+",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+
+	it("handles ] as first char in class", async () => {
+		const result = await createHighlightProcessor().render(
+			"regex",
+			"[]abc]",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+
+	it("handles unterminated character class", async () => {
+		const result = await createHighlightProcessor().render(
+			"regex",
+			"[abc",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+
+	it("handles unterminated curly quantifier", async () => {
+		const result = await createHighlightProcessor().render(
+			"regex",
+			"a{2",
+		);
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain(ESC);
+	});
+});
+
 describe("highlight processor — errors and abort", () => {
 	it("returns error for empty input", async () => {
 		const result = await createHighlightProcessor().render("sql", "");

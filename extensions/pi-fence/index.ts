@@ -25,6 +25,7 @@ import type { Logger } from "./io/logger.ts";
 import { NodeLogger } from "./io/logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
+import { createHighlightProcessor } from "./highlight.ts";
 import { createKrokiProcessor, isDarkThemeName } from "./kroki.ts";
 import { createTableProcessor } from "./table.ts";
 import {
@@ -138,6 +139,7 @@ function createDefaultProcessors(
 		createGraphvizLocalProcessor(deps.shell, deps.logger),
 		createMermaidLocalProcessor(deps.shell, deps.logger),
 		createTableProcessor(),
+		createHighlightProcessor(),
 		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),
