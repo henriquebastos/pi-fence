@@ -1513,3 +1513,27 @@ This closes CV0.E1 (Kroki Through The Wire) and CV0 (It Works). Every language t
 1. Step 4 uncovered a merge bug: `DEFAULT_CONFIG` had `disabled: []` which clobbered global disabled when the project file was absent. Fixed by making `disabled` optional in the type — `undefined` means "not specified".
 
 **Carry-forward.** Next story: CV1.E1.S2 (Kroki endpoint configuration).
+
+---
+
+### 2026-04-22 — CV1.E1.S2 closed
+
+**What shipped.** Users can point pi-fence at a local or self-hosted Kroki instance via `kroki.endpoint` in the config file. `/fence list` shows the effective endpoint when non-default. Config loads before processor construction so the endpoint is available at wire time.
+
+**Implementation commits.**
+
+1. `13a0a6b` — spec CV1.E1.S2
+2. `53fc847` — step 1: config kroki.endpoint — validation, merge, defaults
+3. `0143ee6` — step 2: wire endpoint from config to processor
+4. `ce9d207` — step 3: /fence list shows custom endpoint
+5. `6d79062` — step 4: document Kroki endpoint configuration
+
+**Test count.** 315 fast-suite (was 306; +9 across config, list, extension layers).
+
+**Design decisions that survived implementation.**
+
+1. **Nested `kroki` section, not flat key.** `kroki.endpoint` nests under a processor-named section, leaving room for future per-processor settings (timeout, auth) without polluting the top level.
+2. **`listProcessors` takes an options object.** Replaces the overloaded bare-Set parameter from S1 with `{ disabled, endpoints }`. Cleaner for future additions.
+3. **Config loads before processors.** Reordered in `createPiFenceExtension` so the endpoint is available when `createKrokiProcessor` is constructed.
+
+**Carry-forward.** Next story: CV1.E1.S3 (/fence doctor).
