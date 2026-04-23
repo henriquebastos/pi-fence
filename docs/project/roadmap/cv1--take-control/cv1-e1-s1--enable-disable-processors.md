@@ -1,6 +1,6 @@
 # CV1.E1.S1 — Enable/disable processors in settings
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV1.E1 — Explicit Configuration](cv1-e1--explicit-configuration.md)
 **Depends on:** [CV0.E2.S2 — per-tag bindings](../cv0--it-works/cv0-e2-s2--tag-binding.md) (config infrastructure)

@@ -1484,3 +1484,32 @@ This closes CV0.E1 (Kroki Through The Wire) and CV0 (It Works). Every language t
 3. Excalidraw dropped from scope (SVG-only).
 
 **Carry-forward.** None for this story. Next story is the first not-done story in the first not-done epic of CV1.
+
+---
+
+### 2026-04-22 — CV1.E1.S1 closed
+
+**What shipped.** Users can disable processors by id via `"disabled": ["kroki"]` in the config file. Disabled processors are skipped during resolution, shown with `[disabled]` badge in `/fence list`, and bindings to them report `processor-disabled`. Project `disabled` replaces global entirely; an explicit empty array re-enables; absent key inherits.
+
+**Implementation commits.**
+
+1. `7207fbc` — spec CV1.E1.S1
+2. `cd07b74` — step 1: config disabled key — validation, merge, defaults
+3. `6aa78c9` — step 2: resolveProcessor and resolveBindings respect disabled set
+4. `088eb98` — step 3: listProcessors shows disabled badge
+5. `9f53c07` — step 4: wire disabled set through the full pipeline
+6. `f60661f` — step 5: document processor disable
+
+**Test count.** 306 fast-suite (was 290; +16 across config, resolve, list, extension layers).
+
+**Design decisions that survived implementation.**
+
+1. **`disabled` as optional `string[]`, not a map.** A flat array of processor ids is the simplest shape. Optional vs. defined distinguishes "not specified" from "empty = re-enable everything".
+2. **Project replaces global, not union.** Avoids the union-merge ambiguity where you can't un-disable something. Empty array is the explicit re-enable.
+3. **No library adoption.** Hand-rolled config extended with one new key. `@zenobius/pi-extension-config` deferred until the config surface justifies the dependency.
+
+**Deviations from spec.**
+
+1. Step 4 uncovered a merge bug: `DEFAULT_CONFIG` had `disabled: []` which clobbered global disabled when the project file was absent. Fixed by making `disabled` optional in the type — `undefined` means "not specified".
+
+**Carry-forward.** Next story: CV1.E1.S2 (Kroki endpoint configuration).
