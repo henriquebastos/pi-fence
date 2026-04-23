@@ -149,6 +149,25 @@ Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. 
 docker run -d -p 8000:8000 yuzutech/kroki
 ```
 
+## Diagnosing the setup
+
+Type `/fence doctor` for a full diagnostic summary:
+
+```text
+Config
+  global: ~/.pi/agent/pi-fence.config.json (loaded)
+  project: .pi/pi-fence.config.json (not found)
+
+graphviz-local [unavailable] — graphviz (dot)
+    dot binary not found on PATH. Install graphviz — brew install graphviz (macOS)
+kroki [registered] — mermaid, graphviz (dot), plantuml (puml), …
+
+Issues
+  - graphviz-local is unavailable: brew install graphviz
+```
+
+The output shows which config files pi-fence loaded, the status of every processor, effective bindings, and any actionable issues. It's the `/fence list` output plus config-file status and an issues summary.
+
 ## Disabling a processor
 
 To suppress a processor entirely — say, to stop Kroki from sending diagram source over the network — add a `disabled` array:

@@ -1537,3 +1537,20 @@ This closes CV0.E1 (Kroki Through The Wire) and CV0 (It Works). Every language t
 3. **Config loads before processors.** Reordered in `createPiFenceExtension` so the endpoint is available when `createKrokiProcessor` is constructed.
 
 **Carry-forward.** Next story: CV1.E1.S3 (/fence doctor).
+
+---
+
+### 2026-04-22 — CV1.E1.S3 closed; CV1.E1 done
+
+**What shipped.** `/fence doctor` diagnostic command shows config file load status, processor details, and actionable issues (unavailable, disabled, orphaned tags). New `doctor.ts` pure-logic module. Config loader gains `loadPiFenceConfigWithStatus` returning per-file status.
+
+**Implementation commits.**
+
+1. `9ccc5db` — spec CV1.E1.S3
+2. `1b1f095` — step 1: config loader exposes per-file load status
+3. `2a7a0f5` — step 2: doctor diagnostic logic
+4. `458716e` — step 3: /fence doctor subcommand wired through full pipeline
+
+**Test count.** 329 fast-suite (was 315; +14 across config, doctor, extension layers).
+
+**Carry-forward.** CV1.E1 is done. Next: CV1.E2.S1 (readable error panels).

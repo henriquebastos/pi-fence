@@ -1,6 +1,6 @@
 # CV1.E1.S3 — `/fence doctor`
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV1.E1 — Explicit Configuration](cv1-e1--explicit-configuration.md)
 **Depends on:** [CV1.E1.S2](cv1-e1-s2--kroki-endpoint-config.md)

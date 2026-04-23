@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV1.E1.S3 — /fence doctor)
+
+- **`/fence doctor`** prints a diagnostic summary: config file load status (loaded / not found / malformed), processor availability and status, effective bindings, and actionable issues. Surfaces install hints for unavailable processors and warns when disabled processors orphan tags.
+
 ### Added (CV1.E1.S2 — Kroki endpoint configuration)
 
 Users can now point pi-fence at a local or self-hosted Kroki instance.
