@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV4.E1.S2 — "Write your own processor" guide)
+
+- **[Write Your Own Processor](docs/guides/write-a-processor.md)** guide documents the `FenceProcessor` interface, event bus registration protocol, and a complete minimal example. Linked from getting-started.
+
 ### Added (CV4.E1.S1 — Third-party processor registration via event bus)
 
 - **Third-party processor registration.** Other extensions can register processors with pi-fence by emitting `pi.events.emit("pi-fence:register", processorObject)`. No import of pi-fence code required — the event bus is the only coupling point.

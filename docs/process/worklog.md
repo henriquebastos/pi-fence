@@ -1704,3 +1704,18 @@ This closes CV3.E2 (Utility Processors) and **CV3 (Beyond Diagrams)**.
 3. **Validate at the boundary.** `validateProcessor` runtime-checks the FenceProcessor shape so a malformed emit can't crash pi-fence.
 
 **Carry-forward.** Next: CV4.E1.S2 ("write your own processor" guide).
+
+---
+
+### 2026-04-23 — CV4.E1.S2 closed; CV4.E1 done
+
+**What shipped.** `docs/guides/write-a-processor.md` — the FenceProcessor interface, FenceResult type, event bus protocol, a minimal working example, availability probes, registration timing, and resolution order. Linked from getting-started and docs index.
+
+**Implementation commits.**
+
+1. `450324e` — spec CV4.E1.S2
+2. `8b7c8f8` — step 1+2: guide + links
+
+**Test count.** 505 (unchanged — docs-only story).
+
+**Carry-forward.** CV4.E1 done. Next: CV4.E2.S1 (/fence trace).
