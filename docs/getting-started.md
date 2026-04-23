@@ -115,7 +115,7 @@ Same for bindings that point to an unknown processor id — typos are noted in t
 
 - If neither file exists, the defaults apply (capability-based resolution only).
 - If a file is malformed JSON or its shape is wrong, pi-fence logs one warn line and continues with the remaining valid config — a bad config must never take the extension down.
-- Unknown top-level keys are tolerated silently so future config surface (endpoint overrides, processor enable flags — CV1.E1) doesn't break existing files.
+- Unknown top-level keys are tolerated silently so future config surface doesn't break existing files.
 
 If you don't see an image, check:
 
@@ -123,13 +123,37 @@ If you don't see an image, check:
 - For kroki.io-served tags: you have network access.
 - For `dot` tags: `graphviz` is on your PATH (`dot -V` should print a version).
 
+## Disabling a processor
+
+To suppress a processor entirely — say, to stop Kroki from sending diagram source over the network — add a `disabled` array:
+
+```json
+{
+  "disabled": ["kroki"]
+}
+```
+
+After `/reload`, every Kroki-only tag (`mermaid`, `plantuml`, …) produces no rendered output. Tags that another processor also claims (like `graphviz`/`dot` via `graphviz-local`) still render through that processor.
+
+`/fence list` shows the disabled processor with a `[disabled]` badge.
+
+**Project-level re-enable.** If your global config disables Kroki but a specific project is fine with it, add an explicit empty array in the project config:
+
+```json
+{
+  "disabled": []
+}
+```
+
+The project `disabled` replaces the global one entirely — an empty array means "everything enabled".
+
 ## Next
 
 Future CVs expand this page with:
 
-- Configuration examples (`pi-fence` config file under `~/.pi/agent/`) — CV1.E1.
+- Kroki endpoint configuration (public, local Docker, self-hosted) — CV1.E1.S2.
+- `/fence doctor` — CV1.E1.S3.
 - Offline setup via Docker Kroki — CV2.E2.
-- Adding/removing processors — CV1.E1.
 - Writing your own processor — CV4.E1.
 
 Track progress in the [worklog](process/worklog.md).

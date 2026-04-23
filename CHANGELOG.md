@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV1.E1.S1 — enable/disable processors)
+
+Users can now disable processors by id in the config file.
+
+- **`disabled: ["kroki"]`** in `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (project) suppresses the named processor. Its tags fall through to the next available processor or produce no output if none remain.
+- **Merge semantics:** project `disabled` replaces global entirely. An explicit empty array `[]` at project level re-enables everything the global config disabled. Absent key inherits from the lower-priority layer.
+- **`/fence list`** shows disabled processors with a `[disabled]` badge, distinct from `[unavailable]`.
+- **Bindings to disabled processors** are ignored with reason `processor-disabled`, shown in the `Ignored bindings` section of `/fence list`.
+
 ### Added (CV0.E1.S5 — Vega and Vega-Lite support)
 
 Kroki's JSON-source visualisation languages now render through pi-fence.
