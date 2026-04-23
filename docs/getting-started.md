@@ -123,6 +123,32 @@ If you don't see an image, check:
 - For kroki.io-served tags: you have network access.
 - For `dot` tags: `graphviz` is on your PATH (`dot -V` should print a version).
 
+## Configuring the Kroki endpoint
+
+By default pi-fence posts diagram sources to the public `https://kroki.io` endpoint. To use a local or self-hosted Kroki instance instead:
+
+```json
+{
+  "kroki": {
+    "endpoint": "http://localhost:8000"
+  }
+}
+```
+
+After `/reload`, every Kroki-rendered tag hits your local instance. `/fence list` shows the effective endpoint next to the processor:
+
+```text
+kroki [registered] (http://localhost:8000) — mermaid, graphviz (dot), …
+```
+
+Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. Project config overrides global, so you can point one project at a local Docker Kroki while the rest use the public service.
+
+**Quick local Kroki via Docker:**
+
+```bash
+docker run -d -p 8000:8000 yuzutech/kroki
+```
+
 ## Disabling a processor
 
 To suppress a processor entirely — say, to stop Kroki from sending diagram source over the network — add a `disabled` array:

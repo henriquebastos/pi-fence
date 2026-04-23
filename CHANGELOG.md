@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV1.E1.S2 — Kroki endpoint configuration)
+
+Users can now point pi-fence at a local or self-hosted Kroki instance.
+
+- **`kroki.endpoint`** in the config file (`~/.pi/agent/pi-fence.config.json` or `<cwd>/.pi/pi-fence.config.json`) sets the Kroki base URL. Default: `https://kroki.io`.
+- **`/fence list`** shows the effective endpoint in parentheses next to the Kroki processor when it differs from the default.
+- **Merge:** project `kroki.endpoint` overrides global when present; absent inherits.
+
 ### Added (CV1.E1.S1 — enable/disable processors)
 
 Users can now disable processors by id in the config file.
