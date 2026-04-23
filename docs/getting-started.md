@@ -426,6 +426,12 @@ The command surface is intentionally single-vocabulary: use the names shown abov
 
 ### CI
 
+## Writing your own processor
+
+pi-fence is extensible — any pi extension can register its own processor via the event bus. See the [Write Your Own Processor](guides/write-a-processor.md) guide for the full walkthrough and a minimal working example.
+
+## CI workflows
+
 Two GitHub Actions workflows are committed but dormant until the repo goes public:
 
 - `.github/workflows/ci.yml` — the fast gate (`pnpm run lint:markdown`, `pnpm run lint:types`, `pnpm run lint:deps`, `pnpm test`) on Ubuntu + macOS, triggered on push and PR to `main`.

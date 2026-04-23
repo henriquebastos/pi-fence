@@ -25,6 +25,10 @@ How the work moves forward.
 
 - [Worklog](process/worklog.md) — what was done, what's next
 
+## Guides
+
+- [Write Your Own Processor](guides/write-a-processor.md) — create a third-party processor extension
+
 ## Getting started
 
 - [Getting Started](getting-started.md) — install and try it (once there's something to try)
