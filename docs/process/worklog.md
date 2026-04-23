@@ -1602,3 +1602,27 @@ Refactored NULL_LOGGER: consolidated four identical inline copies into a single 
 **Test count.** 362 fast-suite (was 331; +31).
 
 **Carry-forward.** CV0, CV1, CV2 done. Next session: CV3 (Beyond Diagrams) + CV4 (Platform).
+
+---
+
+### 2026-04-23 — CV3.E1.S1 closed
+
+**What shipped.** First non-image processor: `table` renders `csv` and `jsonl` fenced blocks as Unicode box-drawing tables. `FenceResult` extended with `{ ok: true; text: string }` alongside the existing PNG variant. Pipeline (message builder, agent-end handler) narrows on field presence. Contract helper gains `outputKind` option for text-output processors.
+
+**Implementation commits.**
+
+1. `e1d4155` — spec CV3.E1.S1
+2. `645f27a` — step 1: extend FenceResult with text output variant
+3. `1528dd0` — step 2: table processor (CSV/JSONL parsing, box-drawing)
+4. `7449d08` — step 3: contract test (text-output variant)
+5. `d0a851c` — step 4: wire into extension + extension tests
+
+**Test count.** 395 fast-suite (was 362; +33).
+
+**Design decisions that survived implementation.**
+
+1. **Field presence, not discriminant.** `FenceResult` ok branch narrows via `'png' in result` / `'text' in result`. Avoids a breaking `kind` field on existing processors. Revisit when `component` or `passthrough` variants arrive.
+2. **Table processor always available.** Pure logic, no external deps — `available()` returns `{ ok: true }` unconditionally.
+3. **Union-key JSONL headers.** All keys across all objects form the header row; missing keys render as empty cells. Handles ragged input gracefully.
+
+**Carry-forward.** Next story: CV3.E1.S2 (SQL/regex/jq syntax highlighting).

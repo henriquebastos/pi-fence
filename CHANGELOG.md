@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV3.E1.S1 — CSV/JSONL table processor)
+
+- **`table` processor** renders `csv` and `jsonl` fenced blocks as Unicode box-drawing tables in the terminal. First non-image processor — output is text, not PNG.
+- **`FenceResult` text variant** — processors can now return `{ ok: true; text: string }` alongside the existing `{ ok: true; png: Buffer }`. Pipeline handles both automatically.
+- CSV: comma-separated with RFC 4180 quoted fields, first row as headers.
+- JSONL: union of all object keys as headers, missing keys → empty cells, non-primitive values → JSON-stringified.
+- Four processors now ship: `graphviz-local`, `mermaid-local`, `table`, `kroki`.
+
 ### Added (CV2.E2.S2 — Docker Kroki auto-start)
 
 - **`kroki.docker.autoStart: true`** in the config file starts the Docker Kroki container automatically on session init if it's not already running. The container stays running between sessions.

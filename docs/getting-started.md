@@ -39,6 +39,15 @@ The assistant answers with the obvious fenced block (```` ```mermaid ````, ```` 
 
 Supported tags today: every Kroki language the public endpoint serves as PNG — `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, `vegalite` (alias `vega-lite`). Full reference with minimal source examples, per-language quirks, and a list of languages pi-fence deliberately does *not* advertise yet: [docs/product/kroki-support.md](product/kroki-support.md).
 
+## Structured data (CSV / JSONL)
+
+pi-fence also renders structured data as formatted tables. Ask for CSV or JSONL output:
+
+- *"Show me the top 5 npm packages by weekly downloads as CSV."*
+- *"List the running containers as JSONL."*
+
+When the assistant emits a ```` ```csv ```` or ```` ```jsonl ```` block, pi-fence formats it as a Unicode box-drawing table — no image, no external service, pure local rendering.
+
 Type `/fence list` to see every registered processor, its availability, and the tags it accepts:
 
 ```text
