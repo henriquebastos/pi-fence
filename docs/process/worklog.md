@@ -1681,3 +1681,26 @@ This closes CV3.E2 (Utility Processors) and **CV3 (Beyond Diagrams)**.
 **Test count.** 488 fast-suite (was 461; +27).
 
 **Carry-forward.** CV0, CV1, CV2, CV3 done. Next: CV4 (Platform).
+
+---
+
+### 2026-04-23 — CV4.E1.S1 closed
+
+**What shipped.** Third-party processor registration via pi's event bus. Another extension emits `pi.events.emit("pi-fence:register", processorObject)` and pi-fence validates the shape, probes availability, and adds it to the registry. Dynamic `supportedTags` ensures new tags are intercepted immediately. Confirmation (`pi-fence:registered`) and rejection (`pi-fence:register-error`) events provide feedback.
+
+**Implementation commits.**
+
+1. `2df88df` — spec CV4.E1.S1
+2. `ab87e58` — step 1: register.ts — validation + registry mutation
+3. `8bb0c6b` — step 2: dynamic supportedTags in agent-end handler
+4. `faeed21` — step 3: wire event listener + extension test
+
+**Test count.** 505 fast-suite (was 488; +17).
+
+**Design decisions that survived implementation.**
+
+1. **Dynamic tags, not maintained Set.** Re-derive `collectSupportedTags(processors)` each `agent_end` rather than maintaining an incremental Set. O(processors × tags) is trivial at current scale.
+2. **Insert before kroki.** Third-party processors slot before kroki in resolution order. Local/custom processors win by default; user bindings override.
+3. **Validate at the boundary.** `validateProcessor` runtime-checks the FenceProcessor shape so a malformed emit can't crash pi-fence.
+
+**Carry-forward.** Next: CV4.E1.S2 ("write your own processor" guide).

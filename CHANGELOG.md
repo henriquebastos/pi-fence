@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV4.E1.S1 — Third-party processor registration via event bus)
+
+- **Third-party processor registration.** Other extensions can register processors with pi-fence by emitting `pi.events.emit("pi-fence:register", processorObject)`. No import of pi-fence code required — the event bus is the only coupling point.
+- pi-fence validates the processor shape at the boundary, probes availability, and begins intercepting the new tags immediately.
+- Confirmation event `pi-fence:registered` and rejection event `pi-fence:register-error` provide feedback to the registering extension.
+
 ### Added (CV3.E2.S2 — Color/palette swatch processor)
 
 - **`color` processor** renders `color` and `palette` fenced blocks as ANSI truecolor swatches. Hex (#RGB, #RRGGBB, #RRGGBBAA), `rgb()`, `rgba()`, and 38 named CSS colors. Non-color lines pass through as labels. Each swatch is a colored filled block (██████) next to its value.

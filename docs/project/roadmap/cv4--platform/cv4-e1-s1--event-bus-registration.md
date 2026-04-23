@@ -1,6 +1,6 @@
 # CV4.E1.S1 — Third-party processor registration via event bus
 
-**Status:** Draft
+**Status:** Done
 
 **Epic:** [CV4.E1 — Third-party Processors](cv4-e1--third-party-processors.md)
 **Date:** 2026-04-23 (spec)
