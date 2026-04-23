@@ -13,6 +13,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
 import { registerFenceCommand } from "./command.ts";
 import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
+import { createMermaidLocalProcessor } from "./mermaid-local.ts";
 import {
 	loadPiFenceConfigWithStatus,
 	type LoadConfigOptions,
@@ -110,6 +111,7 @@ function createDefaultProcessors(
 ): FenceProcessor[] {
 	return [
 		createGraphvizLocalProcessor(deps.shell, deps.logger),
+		createMermaidLocalProcessor(deps.shell, deps.logger),
 		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),

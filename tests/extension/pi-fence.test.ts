@@ -190,7 +190,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(2);
+			expect(details.listings).toHaveLength(3);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-local",
 				status: "unavailable",
@@ -200,6 +200,10 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 			expect(details.listings[0].unavailableReason).toBeDefined();
 			expect(details.listings[0].installHint).toContain("graphviz");
 			expect(details.listings[1]).toMatchObject({
+				id: "mermaid-local",
+				status: "unavailable",
+			});
+			expect(details.listings[2]).toMatchObject({
 				id: "kroki",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
@@ -267,14 +271,17 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 			// Privacy/offline claim: no HTTP left the host for this tag.
 			expect(http.requests).toHaveLength(0);
 
-			// Shell-out shape: one probe (`dot -V`) + one render (`dot -Tpng`).
-			expect(shell.calls).toHaveLength(2);
-			expect(shell.calls[0]).toMatchObject({ cmd: "dot", args: ["-V"] });
-			expect(shell.calls[1]).toMatchObject({
+			// Shell-out shape: probes (dot -V, mmdc --version) + one render (dot -Tpng).
+			const dotCalls = shell.calls.filter((c) => c.cmd === "dot");
+			expect(dotCalls).toHaveLength(2); // probe + render
+			expect(dotCalls[0]).toMatchObject({ cmd: "dot", args: ["-V"] });
+			expect(dotCalls[1]).toMatchObject({
 				cmd: "dot",
 				args: ["-Tpng"],
 				input: "digraph { web -> api; api -> db }",
 			});
+			// No HTTP — graphviz-local handled it.
+			expect(http.requests).toHaveLength(0);
 		},
 		20_000,
 	);
@@ -334,10 +341,11 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 				processor: "kroki",
 			});
 
-			// Only the wire-time `dot -V` probe shelled out; no render-time
-			// shell call because mermaid is not graphviz-local's tag.
-			expect(shell.calls).toHaveLength(1);
-			expect(shell.calls[0].args).toEqual(["-V"]);
+			// Wire-time probes: dot -V + mmdc --version. No render-time
+			// shell call because mermaid goes to Kroki, not graphviz-local.
+			const dotCalls = shell.calls.filter((c) => c.cmd === "dot");
+			expect(dotCalls).toHaveLength(1);
+			expect(dotCalls[0].args).toEqual(["-V"]);
 		},
 		20_000,
 	);
