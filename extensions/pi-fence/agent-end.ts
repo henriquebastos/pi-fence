@@ -82,6 +82,27 @@ export function registerPiFenceAgentEndHandler({
 				});
 			}
 			pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
+
+			// Feed the error back to the LLM so it can self-correct (D2).
+			if (!result.ok) {
+				pi.sendMessage(
+					{
+						customType: "pi-fence:error-followup",
+						content: [
+							{
+								type: "text",
+								text: `pi-fence: render error for \`${block.tag}\` via ${processor.id}: ${result.error}`,
+							},
+						] as never,
+						display: false,
+					},
+					{ deliverAs: "followUp" },
+				);
+				logger.debug("pi-fence", "error follow-up sent to LLM", {
+					tag: block.tag,
+					processor: processor.id,
+				});
+			}
 		}
 	});
 }

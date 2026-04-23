@@ -470,6 +470,65 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 	);
 });
 
+describe("pi-fence extension — error follow-up to LLM (CV1.E2.S2)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"sends a follow-up message to the LLM when a render fails",
+		async () => {
+			// Program Kroki to return a 400 for the mermaid block.
+			const http = new FakeHttpClient();
+			http.setResponse(
+				"POST",
+				"https://kroki.io/mermaid/png?theme=dark",
+				{
+					status: 400,
+					headers: { "content-type": "text/plain" },
+					body: Buffer.from("Syntax error at line 1", "utf8"),
+				},
+			);
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nbad syntax\n```",
+			);
+
+			// Error panel rendered to the user (E2.S1).
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({ kind: "error" });
+
+			// Follow-up sent to the LLM (E2.S2).
+			const followUps = captured.sentCustomMessages.filter(
+				(m) => m.options?.deliverAs === "followUp",
+			);
+			expect(followUps).toHaveLength(1);
+			const followUpContent = followUps[0].content as Array<{ type: string; text: string }>;
+			expect(followUpContent[0].text).toContain("mermaid");
+			expect(followUpContent[0].text).toContain("Syntax error");
+		},
+		20_000,
+	);
+
+	it(
+		"does NOT send a follow-up when the render succeeds",
+		async () => {
+			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png?theme=dark": TINY_PNG });
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+			);
+
+			const followUps = captured.sentCustomMessages.filter(
+				(m) => m.options?.deliverAs === "followUp",
+			);
+			expect(followUps).toHaveLength(0);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
 	afterEach(() => {
 		cleanupTempDirs();
@@ -805,6 +864,7 @@ interface CapturedCustomMessage {
 	customType: string;
 	content: unknown;
 	details: unknown;
+	options?: { triggerTurn?: boolean; deliverAs?: string };
 }
 
 type CapturedRenderer = (
@@ -952,6 +1012,7 @@ async function buildSessionWithExtension(
 				customType: message.customType,
 				content: message.content,
 				details: message.details,
+				options: options as CapturedCustomMessage["options"],
 			});
 			return originalSendMessage(message, options);
 		}) as ExtensionAPI["sendMessage"];
