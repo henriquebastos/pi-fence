@@ -1,6 +1,6 @@
 # CV3.E1.S2 — SQL/regex/jq syntax highlighting processor
 
-**Status:** Draft
+**Status:** Done
 
 **Epic:** [CV3.E1 — Text Processors](cv3-e1--text-processors.md)
 **Date:** 2026-04-23 (spec)

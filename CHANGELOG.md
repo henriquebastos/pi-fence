@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV3.E1.S2 — SQL/regex/jq syntax highlighting)
+
+- **`highlight` processor** applies ANSI syntax highlighting to `sql`, `regex`, and `jq` fenced blocks. Hand-written tokenizers, standard 16-color ANSI codes, zero external dependencies.
+- SQL: keywords, single-quoted strings, comments (`--` line, `/* */` block), numbers.
+- regex: character classes, groups, quantifiers, anchors, escapes.
+- jq: builtins, pipe/alt operators, dot accessors, strings, numbers, comments.
+- Five processors now ship: `graphviz-local`, `mermaid-local`, `table`, `highlight`, `kroki`.
+
 ### Added (CV3.E1.S1 — CSV/JSONL table processor)
 
 - **`table` processor** renders `csv` and `jsonl` fenced blocks as Unicode box-drawing tables in the terminal. First non-image processor — output is text, not PNG.

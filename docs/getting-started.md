@@ -48,6 +48,10 @@ pi-fence also renders structured data as formatted tables. Ask for CSV or JSONL 
 
 When the assistant emits a ```` ```csv ```` or ```` ```jsonl ```` block, pi-fence formats it as a Unicode box-drawing table — no image, no external service, pure local rendering.
 
+## Syntax highlighting (SQL / regex / jq)
+
+pi-fence applies ANSI syntax highlighting to `sql`, `regex`, and `jq` blocks. Keywords, strings, comments, operators, and other tokens get distinct colors for readability. No external tools required — pure local rendering with standard terminal colors.
+
 Type `/fence list` to see every registered processor, its availability, and the tags it accepts:
 
 ```text

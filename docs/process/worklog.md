@@ -1626,3 +1626,22 @@ Refactored NULL_LOGGER: consolidated four identical inline copies into a single 
 3. **Union-key JSONL headers.** All keys across all objects form the header row; missing keys render as empty cells. Handles ragged input gracefully.
 
 **Carry-forward.** Next story: CV3.E1.S2 (SQL/regex/jq syntax highlighting).
+
+---
+
+### 2026-04-23 — CV3.E1.S2 closed; CV3.E1 done
+
+**What shipped.** `highlight` processor applies ANSI syntax highlighting to `sql`, `regex`, and `jq` fenced blocks. Hand-written tokenizers with standard 16-color ANSI codes. Five processors now ship: graphviz-local, mermaid-local, table, highlight, kroki.
+
+**Implementation commits.**
+
+1. `c97f287` — spec CV3.E1.S2
+2. `ea18f72` — step 1: highlight processor (tokenizers + unit tests)
+3. `9eadbf2` — step 2: contract test
+4. `a44ff39` — step 3: wire into extension + refactor CRAP below 25
+
+**Test count.** 441 fast-suite (was 395; +46).
+
+**Refactoring.** Extracted scan helpers (`scanCharClass`, `scanDelimited`, `scanDoubleQuotedString`, `scanLineComment`, `scanDotAccessor`, `scanNumber`, `scanWord`) from the three tokenizers. `highlightJq` CRAP 27→13, `highlightRegex` 26→below top-10. All extension CRAP ≤25.
+
+**Carry-forward.** CV3.E1 done. Next: CV3.E2.S1 (QR code image processor).
