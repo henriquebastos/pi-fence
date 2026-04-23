@@ -1420,3 +1420,38 @@ Low-signal / noisy findings:
 3. **Make the workflow teach refactoring explicitly.** The docs now describe red → green → fast refactor → inspect → refactor, rather than treating cleanup as a separate later concern.
 
 **Carry-forward.** `CVx.E3.S6` is still in progress; this commit adds the completion-pass layer but does not close the story yet.
+
+### 2026-04-22 — fast coverage minimums + explicit completion targets
+
+**Goal.** Make the fast loop reject coverage backsliding immediately, and make the completion-pass expectations explicit without turning CRAP or Sonar into hard local gates yet.
+
+**What shipped.**
+
+1. `pnpm test` now enforces extension-only coverage minimums directly:
+   - statements `90`
+   - lines `90`
+   - functions `90`
+   - branches `75`
+2. `pnpm run feedback` inherits those minimums automatically because it delegates to `pnpm test`.
+3. Contributor workflow docs now name the completion-pass targets explicitly:
+   - keep focused extension CRAP at or below `25`
+   - try to drive Sonar to `0` open issues when configured
+4. The script-surface test now locks the threshold flags in `package.json`.
+5. `CVx.E3.S6` remains in progress; this is another refinement inside the same story.
+
+**Implementation commit.**
+
+1. `850998d` — make fast coverage expectations explicit
+
+**Verification.**
+
+1. `pnpm test` green at `289` passing tests with the new thresholds enabled.
+2. `pnpm run feedback` green; the fast refactor loop now enforces the same coverage minimums.
+
+**Design decisions that survived implementation.**
+
+1. **Coverage minimums belong in `pnpm test`.** They are part of the shipped-code fast signal, so they live in the test command rather than the inspection lane.
+2. **CRAP stays a completion-pass target, not a hard gate.** The workflow now names `<=25` explicitly without turning it into a local failing threshold yet.
+3. **Sonar stays aspirational-but-visible.** The workflow calls for driving it toward `0` open issues when configured, without requiring every machine to have Sonar available.
+
+**Carry-forward.** `CVx.E3.S6` is still in progress; the next likely refinement is to close the story once the renamed command surface and the new workflow wording feel stable.

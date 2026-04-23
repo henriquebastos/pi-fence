@@ -27,7 +27,7 @@ When the next workflow step is obvious, do it. Do not stop at chat prose if the 
 
 Use TDD explicitly: red → green → refactor. During implementation, prefer `pnpm run feedback` as the one-command fast refactor loop after the red/green test pass.
 
-1. `pnpm test` — fast suite (unit + contract + extension) with coverage focused on `extensions/**`.
+1. `pnpm test` — fast suite (unit + contract + extension) with coverage focused on `extensions/**` and minimum thresholds of statements `90`, lines `90`, functions `90`, branches `75`.
 2. `pnpm run inspect:crap:ext` — focused CRAP summary for `extensions/**`, reusing the coverage output from `pnpm test` and printing to stdout.
 3. `pnpm run lint:markdown` — markdown docs checks (`lint:markdown:links` + `lint:markdown:body`). `pnpm run lint` is the umbrella convenience name for this docs-only lane.
 4. `pnpm run lint:types` — `tsc --noEmit` across production code, tests, and repo scripts.
@@ -41,9 +41,12 @@ Use TDD explicitly: red → green → refactor. During implementation, prefer `p
 `pnpm run feedback` is the fast loop, not the whole finish line.
 
 1. `pnpm run inspect` — broader completion pass. Always runs `inspect:crap`; runs `inspect:sonar` too when `SONAR_HOST_URL` and `SONAR_TOKEN` are set, otherwise prints a clear skip.
-2. `pnpm test:live` — when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures.
-3. `pnpm run render:verify` — when changing render-verifier / screenshot / visual-tooling paths.
-4. Refactor again from what those analyzers surface, then rerun `pnpm run feedback` before calling the work done.
+2. Use the completion pass as a refactor target, not a report archive:
+   - keep focused extension CRAP at or below `25`
+   - try to drive Sonar to `0` open issues
+3. `pnpm test:live` — when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures.
+4. `pnpm run render:verify` — when changing render-verifier / screenshot / visual-tooling paths.
+5. Refactor again from what those analyzers surface, then rerun `pnpm run feedback` before calling the work done.
 
 No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all that "builds" the package.
 

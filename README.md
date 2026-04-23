@@ -106,7 +106,9 @@ corepack enable          # one time, once per machine
 pnpm install
 pnpm test:watch          # red/green loop while editing
 pnpm run feedback        # fast refactor loop: tests + focused analyzers + static checks
+                         #   includes extension coverage thresholds: 90/90/90/75
 pnpm run inspect         # completion pass: broader CRAP, plus Sonar when configured
+                         #   target: keep CRAP(ext) <=25 and try for zero Sonar issues
 pnpm test:live           # live suite — needs network for kroki.io
                          #   Docker for container-binary tests (CV0.E2+)
 pnpm run inspect:sonar   # SonarQube experiment only (requires SONAR_HOST_URL + SONAR_TOKEN)

@@ -51,7 +51,8 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
 2. Legacy names are removed from `package.json` so the repo exposes one canonical script vocabulary only.
 3. An automated fast-suite test locks the canonical script surface and the absence of the removed aliases.
 4. Contributor-facing docs and relevant workflow files teach the nested loop explicitly: red/green, fast refactor, then completion inspection.
-5. `pnpm run feedback`, `pnpm run inspect`, and `pnpm run inspect:crap` all succeed on the current tree.
+5. The workflow names the current quality targets explicitly: fast-suite extension coverage minimums of statements `90`, lines `90`, functions `90`, branches `75`; completion-pass CRAP target `<=25`; Sonar target of `0` open issues when configured.
+6. `pnpm run feedback`, `pnpm run inspect`, and `pnpm run inspect:crap` all succeed on the current tree.
 
 ## Scope
 
@@ -60,15 +61,17 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
 1. `package.json` script naming and wiring.
 2. A repo-tooling test that validates the command surface.
 3. Updating contributor-facing docs to prefer the canonical names and the explicit TDD/refactor/inspect workflow.
-4. Updating workflow files that should speak the current script vocabulary.
-5. Removing the replaced legacy aliases from `package.json` and docs.
+4. Setting the fast-suite extension coverage thresholds in `pnpm test`.
+5. Updating workflow files that should speak the current script vocabulary.
+6. Removing the replaced legacy aliases from `package.json` and docs.
 
 **Out of scope:**
 
-1. Changing the fast gate's actual composition.
+1. Changing the fast gate's actual composition beyond naming + the added coverage minimums.
 2. Changing coverage scope or CRAP scope.
 3. SonarQube server setup or rule tuning beyond optional detection in `pnpm run inspect`.
-4. Rewriting older roadmap/worklog history that mentions the old commands.
+4. Adding a hard CRAP gate in code rather than documenting the workflow target.
+5. Rewriting older roadmap/worklog history that mentions the old commands.
 
 ## Plan
 
@@ -81,14 +84,19 @@ Target families:
 1. `feedback` for the normal implementation loop
 2. `lint:*` for static checks, markdown validation, and markdown fixing
 3. `inspect` / `inspect:*` for coverage/reporting analyzers and the broader completion pass
+4. quality targets are explicit in the workflow, not implied: fast coverage minimums, completion-pass CRAP target, and Sonar cleanup target
 
 `test:*`, `live:*`, and `render:*` stay as they are because those families already read clearly.
 
-#### 2. Legacy aliases are removed
+#### 2. Coverage minimums belong in the fast test command
+
+`pnpm test` is the normal shipped-code quality signal, so its extension-focused coverage minimums belong there rather than in the inspection lane.
+
+#### 3. Legacy aliases are removed
 
 Historical docs and habit loops should be updated to the canonical names rather than preserved in parallel. The command surface should teach one vocabulary only.
 
-#### 3. Docs teach the loop explicitly
+#### 4. Docs teach the loop explicitly
 
 Contributor docs should answer this flow in one pass:
 
@@ -115,6 +123,7 @@ Contributor docs should answer this flow in one pass:
 2. **Events / interactions covered:**
    - canonical scripts exist
    - removed legacy aliases stay absent
+   - `pnpm test` carries the extension-coverage minimums directly
    - coverage attached to `pnpm test` stays separate from broader inspect-only coverage
    - `pnpm run inspect` always includes the broader CRAP path and conditionally includes Sonar when configured
    - CRAP analyzers live under `inspect:*` even when `feedback` calls the focused one

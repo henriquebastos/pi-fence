@@ -172,7 +172,7 @@ pnpm run feedback   # pnpm test + pnpm run inspect:crap:ext + pnpm run lint:mark
 Equivalent individual commands:
 
 ```bash
-pnpm test                 # unit, contract, extension, utility self-tests + extension-focused coverage
+pnpm test                 # unit, contract, extension, utility self-tests + extension-focused coverage + 90/90/90/75 thresholds
 pnpm run inspect:crap:ext # focused CRAP summary for extensions/**
 pnpm run lint            # docs link + markdown checks
 pnpm run lint:types      # tsc --noEmit across extensions, tests, and scripts
@@ -215,7 +215,7 @@ pnpm run inspect:crap:ext # focused CRAP summary for extensions/**
 pnpm run inspect:crap     # broader CRAP report over extensions/, scripts/, and non-live tests/
 ```
 
-`pnpm test` uses Vitest's Istanbul provider because it is the coverage input shape `crap-score` consumes directly and it matched function coverage correctly in this repo during evaluation. The fast-suite coverage summary is intentionally scoped to `extensions/**` so the normal loop answers the production-lane question first.
+`pnpm test` uses Vitest's Istanbul provider because it is the coverage input shape `crap-score` consumes directly and it matched function coverage correctly in this repo during evaluation. The fast-suite coverage summary is intentionally scoped to `extensions/**` so the normal loop answers the production-lane question first. The current fast-gate minimums are statements `90`, lines `90`, functions `90`, branches `75`.
 
 `pnpm run feedback` reuses the `coverage/coverage-final.json` produced by `pnpm test` and adds a focused extension-only CRAP summary on stdout before `lint:markdown`, `lint:types`, and `lint:deps`. That keeps the implementation loop focused on shipped extension code without rerunning the suite.
 
@@ -230,6 +230,11 @@ pnpm run inspect
 ```
 
 `pnpm run inspect` always runs `pnpm run inspect:crap`. If `SONAR_HOST_URL` and `SONAR_TOKEN` are set, it also runs `pnpm run inspect:sonar`; otherwise it prints a clear skip and exits green. After `inspect` surfaces issues or simplification opportunities, refactor again and rerun `pnpm run feedback`.
+
+Current completion-pass targets:
+
+1. keep focused extension CRAP (`inspect:crap:ext`) at or below `25`
+2. try to drive Sonar to `0` open issues
 
 ### SonarQube experiment
 
@@ -264,7 +269,7 @@ This experiment is intentionally separate from `pnpm run feedback` so generic So
 |--------|---------|
 | `pnpm run feedback` | Canonical fast refactor loop: `pnpm run feedback:fast`. |
 | `pnpm run feedback:fast` | Fast refactor loop: `pnpm test` + `pnpm run inspect:crap:ext` + `pnpm run lint:markdown` + `pnpm run lint:types` + `pnpm run lint:deps`. |
-| `pnpm test` | Fast suite (unit, contract, render, extension, utility) with coverage focused on `extensions/**`. |
+| `pnpm test` | Fast suite (unit, contract, render, extension, utility) with coverage focused on `extensions/**` and minimum thresholds of statements `90`, lines `90`, functions `90`, branches `75`. |
 | `pnpm test:watch` | vitest in watch mode on the fast suite. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
@@ -275,7 +280,7 @@ This experiment is intentionally separate from `pnpm run feedback` so generic So
 | `pnpm run lint:markdown` | Run both markdown link checks and markdown body checks. |
 | `pnpm run lint:markdown:links` | Markdown link + heading-fragment validation. |
 | `pnpm run lint:markdown:body` | Markdown body checks via `markdownlint-cli2`. |
-| `pnpm run inspect` | Completion inspection pass: always runs `inspect:crap`; also runs `inspect:sonar` when `SONAR_HOST_URL` + `SONAR_TOKEN` are set, otherwise skips Sonar clearly. |
+| `pnpm run inspect` | Completion inspection pass: always runs `inspect:crap`; also runs `inspect:sonar` when `SONAR_HOST_URL` + `SONAR_TOKEN` are set, otherwise skips Sonar clearly. Use it to keep focused extension CRAP at or below `25` and to try to drive Sonar to `0` open issues. |
 | `pnpm run inspect:coverage:nonlive` | Broader non-live coverage pass for `extensions/**`, `scripts/**`, and non-live `tests/**`; used as the input to the broader CRAP report. |
 | `pnpm run inspect:crap:ext` | Focused CRAP summary for `extensions/**`, built from the coverage output produced by `pnpm test` and printed to stdout. |
 | `pnpm run inspect:crap` | Broader CRAP report flow: `pnpm run inspect:coverage:nonlive` + `pnpm run inspect:crap:nonlive`. |
