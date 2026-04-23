@@ -156,6 +156,35 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 		20_000,
 	);
 	it(
+		"renders a color block as ANSI swatches via the color processor",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Brand colors:\n\n```color\n#ff5733 Primary\n#3498db Secondary\n```\n\nDone.",
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "color",
+				processor: "color",
+				kind: "ok",
+			});
+
+			const items = outputs[0].content as Array<{ type: string; text?: string }>;
+			expect(items).toHaveLength(1);
+			expect(items[0].type).toBe("text");
+			expect(items[0].text).toContain("\x1b[38;2;");
+			expect(items[0].text).toContain("Primary");
+			expect(items[0].text).toContain("Secondary");
+
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"renders a qr block as a PNG QR code via the qr processor",
 		async () => {
 			const http = new FakeHttpClient();
@@ -304,7 +333,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(6);
+			expect(details.listings).toHaveLength(7);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-local",
 				status: "unavailable",
@@ -333,6 +362,11 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				tags: ["qr"],
 			});
 			expect(details.listings[5]).toMatchObject({
+				id: "color",
+				status: "registered",
+				tags: ["color", "palette"],
+			});
+			expect(details.listings[6]).toMatchObject({
 				id: "kroki",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,

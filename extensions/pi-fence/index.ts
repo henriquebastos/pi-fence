@@ -25,6 +25,7 @@ import type { Logger } from "./io/logger.ts";
 import { NodeLogger } from "./io/logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
+import { createColorProcessor } from "./color.ts";
 import { createHighlightProcessor } from "./highlight.ts";
 import { createKrokiProcessor, isDarkThemeName } from "./kroki.ts";
 import { createQrProcessor } from "./qr.ts";
@@ -142,6 +143,7 @@ function createDefaultProcessors(
 		createTableProcessor(),
 		createHighlightProcessor(),
 		createQrProcessor(),
+		createColorProcessor(),
 		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),
