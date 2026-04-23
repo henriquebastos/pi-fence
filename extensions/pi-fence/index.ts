@@ -35,6 +35,7 @@ import {
 	PI_FENCE_OUTPUT_MESSAGE_TYPE,
 } from "./messages.ts";
 import type { FenceProcessor } from "./processor.ts";
+import { validateProcessor, registerProcessor, type ProcessorRegistry } from "./register.ts";
 import { collectSupportedTags, probeAvailability, resolveBindings } from "./resolve.ts";
 import {
 	createPiFenceListRenderer,
@@ -100,6 +101,32 @@ export async function createPiFenceExtension(
 	// Build the endpoints map for /fence list display.
 	const endpoints: Record<string, string> = {};
 	if (config.kroki?.endpoint) endpoints.kroki = config.kroki.endpoint;
+
+	// Build the shared mutable registry for dynamic processor registration.
+	const registry: ProcessorRegistry = { processors, availability };
+
+	// Listen for third-party processor registrations via the event bus (D5).
+	if (pi.events) {
+		pi.events.on("pi-fence:register", async (data: unknown) => {
+			const validated = validateProcessor(data);
+			if (!validated.ok) {
+				deps.logger.warn("pi-fence", "register rejected", { error: validated.error });
+				pi.events.emit("pi-fence:register-error", { error: validated.error });
+				return;
+			}
+			const result = await registerProcessor(registry, validated.processor);
+			if (!result.ok) {
+				deps.logger.warn("pi-fence", "register rejected", { error: result.error });
+				pi.events.emit("pi-fence:register-error", { error: result.error });
+				return;
+			}
+			deps.logger.info("pi-fence", "third-party processor registered", {
+				id: result.id,
+				tags: [...result.tags],
+			});
+			pi.events.emit("pi-fence:registered", { id: result.id, tags: [...result.tags] });
+		});
+	}
 
 	registerPiFenceRenderers(pi);
 	registerFenceCommand({

@@ -700,6 +700,61 @@ describe("pi-fence extension — error follow-up to LLM (CV1.E2.S2)", () => {
 	);
 });
 
+describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"renders a fenced block via a third-party processor registered through pi.events",
+		async () => {
+			const http = new FakeHttpClient();
+
+			// A fake third-party extension that registers a processor via the event bus.
+			// Registers in its factory function — pi-fence's factory runs first (first
+			// in the extensionFactories array), so the listener is ready. The event bus
+			// handler is async, so we need the factory to be async too to await.
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async (_tag: string, source: string) => ({
+						ok: true,
+						text: source.toUpperCase(),
+					}),
+				});
+				// Allow async registration handler to complete.
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Result:\n\n```upper\nhello world\n```\n\nDone.",
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "upper",
+				processor: "custom-upper",
+				kind: "ok",
+			});
+
+			const items = outputs[0].content as Array<{ type: string; text?: string }>;
+			expect(items[0].type).toBe("text");
+			expect(items[0].text).toBe("HELLO WORLD");
+
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
 	afterEach(() => {
 		cleanupTempDirs();
@@ -1155,6 +1210,7 @@ async function buildSessionWithExtension(
 	http: FakeHttpClient,
 	shell?: FakeShellRunner,
 	configOptions?: LoadConfigOptions,
+	extraExtensionFactories?: Array<(pi: ExtensionAPI) => void | Promise<void>>,
 ): Promise<{
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
@@ -1223,7 +1279,7 @@ async function buildSessionWithExtension(
 		cwd: agentDir,
 		agentDir,
 		settingsManager,
-		extensionFactories: [extensionFactory],
+		extensionFactories: [extensionFactory, ...(extraExtensionFactories ?? [])],
 	});
 	await resourceLoader.reload();
 
@@ -1252,9 +1308,10 @@ async function runExtensionWithAssistantText(
 	assistantText: string,
 	shell?: FakeShellRunner,
 	configOptions?: LoadConfigOptions,
+	extraExtensionFactories?: Array<(pi: ExtensionAPI) => void | Promise<void>>,
 ): Promise<Captured> {
 	const { session, sentCustomMessages, registeredRenderers, model, logger } =
-		await buildSessionWithExtension(http, shell, configOptions);
+		await buildSessionWithExtension(http, shell, configOptions, extraExtensionFactories);
 
 	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
