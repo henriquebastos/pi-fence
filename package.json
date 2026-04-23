@@ -49,7 +49,7 @@
     "lint:markdown:links": "tsx scripts/lint-markdown-links.ts",
     "lint:markdown:body": "markdownlint-cli2",
     "lint:markdown:fix": "markdownlint-cli2 --fix",
-    "test": "vitest run --exclude 'tests/integration/**' --exclude 'tests/render-image/**' --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text-summary --coverage.include='extensions/**/*.ts'",
+    "test": "vitest run --exclude 'tests/integration/**' --exclude 'tests/render-image/**' --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text-summary --coverage.include='extensions/**/*.ts' --coverage.thresholds.statements=90 --coverage.thresholds.lines=90 --coverage.thresholds.functions=90 --coverage.thresholds.branches=75",
     "test:watch": "vitest --exclude 'tests/integration/**' --exclude 'tests/render-image/**'",
     "test:live": "vitest run tests/integration tests/render-image",
     "test:all": "vitest run",

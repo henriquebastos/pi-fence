@@ -20,6 +20,10 @@ describe("package.json scripts", () => {
 		expect(scripts["feedback:fast"]).toBe(
 			"pnpm test && pnpm run inspect:crap:ext && pnpm run lint:markdown && pnpm run lint:types && pnpm run lint:deps",
 		);
+		expect(scripts.test).toContain("--coverage.thresholds.statements=90");
+		expect(scripts.test).toContain("--coverage.thresholds.lines=90");
+		expect(scripts.test).toContain("--coverage.thresholds.functions=90");
+		expect(scripts.test).toContain("--coverage.thresholds.branches=75");
 		expect(scripts.lint).toBe("pnpm run lint:markdown");
 		expect(scripts["lint:types"]).toBe("tsc --noEmit");
 		expect(scripts["lint:deps"]).toBe(
