@@ -1662,3 +1662,22 @@ Refactored NULL_LOGGER: consolidated four identical inline copies into a single 
 **Test count.** 461 fast-suite (was 441; +20).
 
 **Carry-forward.** Next: CV3.E2.S2 (color/palette swatch processor).
+
+---
+
+### 2026-04-23 — CV3.E2.S2 closed; CV3.E2 and CV3 done
+
+**What shipped.** `color` processor renders `color` and `palette` fenced blocks as ANSI truecolor swatches. Parses hex (#RGB, #RRGGBB), rgb(), rgba(), and 38 named CSS colors. Non-color lines pass through as labels/headers. Seven processors now ship.
+
+This closes CV3.E2 (Utility Processors) and **CV3 (Beyond Diagrams)**.
+
+**Implementation commits.**
+
+1. `f9a2db1` — spec CV3.E2.S2
+2. `4338503` — step 1: color processor + unit tests
+3. `3a3e0a8` — step 2: contract test
+4. `fb6509d` — step 3: wire into extension + extension test
+
+**Test count.** 488 fast-suite (was 461; +27).
+
+**Carry-forward.** CV0, CV1, CV2, CV3 done. Next: CV4 (Platform).

@@ -1,6 +1,6 @@
 # CV3.E2.S2 — Color/palette swatch processor
 
-**Status:** Draft
+**Status:** Done
 
 **Epic:** [CV3.E2 — Utility Processors](cv3-e2--utility-processors.md)
 **Date:** 2026-04-23 (spec)

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV3.E2.S2 — Color/palette swatch processor)
+
+- **`color` processor** renders `color` and `palette` fenced blocks as ANSI truecolor swatches. Hex (#RGB, #RRGGBB, #RRGGBBAA), `rgb()`, `rgba()`, and 38 named CSS colors. Non-color lines pass through as labels. Each swatch is a colored filled block (██████) next to its value.
+- Seven processors now ship: `graphviz-local`, `mermaid-local`, `table`, `highlight`, `qr`, `color`, `kroki`.
+
 ### Added (CV3.E2.S1 — QR code image processor)
 
 - **`qr` processor** renders `qr` fenced blocks as QR code PNG images. The block content is the text to encode — URLs, Wi-Fi configs, arbitrary strings. Powered by the `qrcode` npm package, always available, no external service.

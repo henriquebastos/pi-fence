@@ -48,6 +48,10 @@ pi-fence also renders structured data as formatted tables. Ask for CSV or JSONL 
 
 When the assistant emits a ```` ```csv ```` or ```` ```jsonl ```` block, pi-fence formats it as a Unicode box-drawing table — no image, no external service, pure local rendering.
 
+## Color swatches
+
+Ask the assistant to list colors in a ```` ```color ```` or ```` ```palette ```` block. pi-fence renders each color as an ANSI truecolor swatch — a filled block of the color next to its value. Supports hex (`#RGB`, `#RRGGBB`), `rgb()`, `rgba()`, and named CSS colors. Non-color lines pass through as labels.
+
 ## QR codes
 
 Ask the assistant to put a URL, Wi-Fi config, or any text in a ```` ```qr ```` block and pi-fence renders it as an inline QR code image. No external service — the QR code is generated locally.
