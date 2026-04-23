@@ -26,7 +26,10 @@ import {
 	mergePiFenceConfigs,
 	validatePiFenceConfig,
 } from "../../extensions/pi-fence/config.ts";
-import { loadPiFenceConfig } from "../../extensions/pi-fence/io/config-loader.ts";
+import {
+	loadPiFenceConfig,
+	loadPiFenceConfigWithStatus,
+} from "../../extensions/pi-fence/io/config-loader.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
 
@@ -461,5 +464,61 @@ describe("loadPiFenceConfig — malformed files", () => {
 		});
 
 		expect(config.bindings).toEqual({});
+	});
+});
+
+describe("loadPiFenceConfigWithStatus", () => {
+	afterEach(() => cleanupTempDirs());
+
+	it("reports 'loaded' for a valid config file", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(dir, JSON.stringify({ bindings: { a: "b" } }));
+
+		const result = await loadPiFenceConfigWithStatus({
+			globalConfigPath: path,
+			projectConfigPath: join(dir, "no-project.json"),
+		});
+
+		expect(result.globalStatus).toBe("loaded");
+		expect(result.projectStatus).toBe("not-found");
+		expect(result.config.bindings).toEqual({ a: "b" });
+	});
+
+	it("reports 'malformed-json' for invalid JSON", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(dir, "not json");
+
+		const result = await loadPiFenceConfigWithStatus({
+			globalConfigPath: path,
+			projectConfigPath: join(dir, "no-project.json"),
+		});
+
+		expect(result.globalStatus).toBe("malformed-json");
+	});
+
+	it("reports 'not-found' for missing files", async () => {
+		const dir = makeTempDir();
+
+		const result = await loadPiFenceConfigWithStatus({
+			globalConfigPath: join(dir, "missing.json"),
+			projectConfigPath: join(dir, "also-missing.json"),
+		});
+
+		expect(result.globalStatus).toBe("not-found");
+		expect(result.projectStatus).toBe("not-found");
+	});
+
+	it("includes the resolved file paths", async () => {
+		const dir = makeTempDir();
+		const gPath = join(dir, "g.json");
+		const pPath = join(dir, "p.json");
+
+		const result = await loadPiFenceConfigWithStatus({
+			globalConfigPath: gPath,
+			projectConfigPath: pPath,
+		});
+
+		expect(result.globalPath).toBe(gPath);
+		expect(result.projectPath).toBe(pPath);
 	});
 });

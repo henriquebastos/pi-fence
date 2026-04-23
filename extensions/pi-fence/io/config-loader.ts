@@ -45,6 +45,76 @@ export async function loadPiFenceConfig(
 	return mergePiFenceConfigs(globalConfig, projectConfig);
 }
 
+export type ConfigFileStatus = "loaded" | "not-found" | "read-error" | "malformed-json";
+
+export interface ConfigLoadResult {
+	config: PiFenceConfig;
+	globalStatus: ConfigFileStatus;
+	globalPath: string;
+	projectStatus: ConfigFileStatus;
+	projectPath: string;
+}
+
+/**
+ * Same as `loadPiFenceConfig` but also reports per-file load status
+ * for `/fence doctor`.
+ */
+export async function loadPiFenceConfigWithStatus(
+	opts: LoadConfigOptions = {},
+): Promise<ConfigLoadResult> {
+	const home = opts.home ?? homedir();
+	const cwd = opts.cwd ?? process.cwd();
+	const globalPath =
+		opts.globalConfigPath ?? join(home, ".pi", "agent", "pi-fence.config.json");
+	const projectPath =
+		opts.projectConfigPath ?? join(cwd, ".pi", "pi-fence.config.json");
+	const logger = opts.logger;
+
+	const [globalConfig, globalStatus] = await readConfigFileWithStatus(globalPath, "global", logger);
+	const [projectConfig, projectStatus] = await readConfigFileWithStatus(projectPath, "project", logger);
+	return {
+		config: mergePiFenceConfigs(globalConfig, projectConfig),
+		globalStatus,
+		globalPath,
+		projectStatus,
+		projectPath,
+	};
+}
+
+async function readConfigFileWithStatus(
+	path: string,
+	label: string,
+	logger?: Logger,
+): Promise<[PiFenceConfig, ConfigFileStatus]> {
+	let raw: string;
+	try {
+		raw = await fs.readFile(path, "utf8");
+	} catch (err) {
+		const code = (err as NodeJS.ErrnoException)?.code;
+		if (code === "ENOENT") {
+			return [DEFAULT_CONFIG, "not-found"];
+		}
+		logger?.warn("config", `failed to read ${label} config`, {
+			path,
+			error: err instanceof Error ? err.message : String(err),
+		});
+		return [DEFAULT_CONFIG, "read-error"];
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(raw);
+	} catch (err) {
+		logger?.warn("config", `malformed JSON in ${label} config`, {
+			path,
+			error: err instanceof Error ? err.message : String(err),
+		});
+		return [DEFAULT_CONFIG, "malformed-json"];
+	}
+
+	return [validatePiFenceConfig(parsed, label, logger), "loaded"];
+}
+
 async function readConfigFile(
 	path: string,
 	label: string,
