@@ -13,6 +13,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
 import { registerFenceCommand } from "./command.ts";
 import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
+import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { createMermaidLocalProcessor } from "./mermaid-local.ts";
 import {
 	loadPiFenceConfigWithStatus,
@@ -69,6 +70,28 @@ export async function createPiFenceExtension(
 	const bindingRows = resolveBindings(processors, availability, bindings, disabled);
 	logBindingResolution(bindingRows, deps.logger);
 	logDisabled(disabled, deps.logger);
+
+	// Auto-start Docker Kroki if configured.
+	if (config.kroki?.docker?.autoStart) {
+		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
+		const dockerStatus = await dockerMgr.status();
+		if (dockerStatus.status !== "running") {
+			const startResult = await dockerMgr.start();
+			if (startResult.ok) {
+				deps.logger.info("pi-fence", "Docker Kroki auto-started", {
+					endpoint: startResult.endpoint,
+				});
+			} else {
+				deps.logger.warn("pi-fence", "Docker Kroki auto-start failed", {
+					error: startResult.message,
+				});
+			}
+		} else {
+			deps.logger.debug("pi-fence", "Docker Kroki already running", {
+				endpoint: dockerStatus.endpoint,
+			});
+		}
+	}
 
 	// Build the endpoints map for /fence list display.
 	const endpoints: Record<string, string> = {};

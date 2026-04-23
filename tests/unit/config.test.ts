@@ -169,6 +169,36 @@ describe("config core", () => {
 		);
 		expect(merged.kroki?.endpoint).toBe("http://global:8000");
 	});
+
+	it("validates kroki.docker.autoStart: accepts a boolean", () => {
+		const result = validatePiFenceConfig(
+			{ kroki: { docker: { autoStart: true } } },
+			"test",
+		);
+		expect(result.kroki?.docker?.autoStart).toBe(true);
+	});
+
+	it("validates kroki.docker.autoStart: non-boolean dropped with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ kroki: { docker: { autoStart: "yes" } } },
+			"test",
+			logger,
+		);
+		expect(result.kroki?.docker?.autoStart).toBeUndefined();
+		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("validates kroki.docker: non-object dropped with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ kroki: { docker: 42 } },
+			"test",
+			logger,
+		);
+		expect(result.kroki?.docker).toBeUndefined();
+		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+	});
 });
 
 describe("loadPiFenceConfig — missing files", () => {

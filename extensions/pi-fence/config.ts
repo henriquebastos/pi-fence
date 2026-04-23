@@ -31,6 +31,11 @@ export interface PiFenceConfig {
 	kroki?: {
 		/** Kroki endpoint URL. Default: https://kroki.io */
 		endpoint?: string;
+		/** Docker lifecycle settings. */
+		docker?: {
+			/** Auto-start the Docker Kroki container on session init. Default: false. */
+			autoStart?: boolean;
+		};
 	};
 }
 
@@ -140,7 +145,24 @@ function validateKroki(
 			});
 		}
 	}
-	return Object.keys(out).length > 0 ? out : {};
+	if (rawKroki.docker !== undefined) {
+		if (isRecordLike(rawKroki.docker)) {
+			const docker: NonNullable<NonNullable<PiFenceConfig["kroki"]>["docker"]> = {};
+			if (typeof rawKroki.docker.autoStart === "boolean") {
+				docker.autoStart = rawKroki.docker.autoStart;
+			} else if (rawKroki.docker.autoStart !== undefined) {
+				logger?.warn("config", `${label} config 'kroki.docker.autoStart' is not a boolean`, {
+					got: typeof rawKroki.docker.autoStart,
+				});
+			}
+			if (Object.keys(docker).length > 0) out.docker = docker;
+		} else {
+			logger?.warn("config", `${label} config 'kroki.docker' is not an object`, {
+				got: typeof rawKroki.docker,
+			});
+		}
+	}
+	return out;
 }
 
 function validateDisabled(
