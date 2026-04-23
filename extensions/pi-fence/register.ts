@@ -1,0 +1,118 @@
+/**
+ * Third-party processor registration — validation and registry mutation.
+ *
+ * Pure logic: no pi SDK, no event bus, no I/O. The event-bus listener
+ * in `index.ts` calls these functions after receiving a `pi-fence:register`
+ * event.
+ *
+ * Landing with CV4.E1.S1.
+ */
+
+import type { Availability, FenceProcessor } from "./processor.ts";
+
+// ── Registry type ───────────────────────────────────────────────────
+
+export interface ProcessorRegistry {
+	processors: FenceProcessor[];
+	availability: Map<string, Availability>;
+}
+
+// ── Validation ──────────────────────────────────────────────────────
+
+export type ValidationResult =
+	| { ok: true; processor: FenceProcessor }
+	| { ok: false; error: string };
+
+/**
+ * Validate that `value` conforms to the `FenceProcessor` shape.
+ * Does NOT call `available()` or `render()` — shape only.
+ * Missing `aliases` defaults to `{}`.
+ */
+export function validateProcessor(value: unknown): ValidationResult {
+	if (value === null || value === undefined || typeof value !== "object") {
+		return { ok: false, error: "processor must be a non-null object" };
+	}
+
+	const obj = value as Record<string, unknown>;
+
+	if (typeof obj.id !== "string" || obj.id.length === 0) {
+		return { ok: false, error: "processor.id must be a non-empty string" };
+	}
+
+	if (!Array.isArray(obj.tags) || obj.tags.length === 0) {
+		return { ok: false, error: "processor.tags must be a non-empty array of strings" };
+	}
+
+	for (const tag of obj.tags) {
+		if (typeof tag !== "string" || tag.length === 0) {
+			return { ok: false, error: "processor.tags must contain only non-empty strings" };
+		}
+	}
+
+	if (typeof obj.available !== "function") {
+		return { ok: false, error: "processor.available must be a function" };
+	}
+
+	if (typeof obj.render !== "function") {
+		return { ok: false, error: "processor.render must be a function" };
+	}
+
+	// Default aliases to {} if missing.
+	const aliases = (typeof obj.aliases === "object" && obj.aliases !== null && !Array.isArray(obj.aliases))
+		? obj.aliases as Readonly<Record<string, string>>
+		: {};
+
+	return {
+		ok: true,
+		processor: {
+			id: obj.id as string,
+			tags: obj.tags as readonly string[],
+			aliases,
+			available: obj.available as FenceProcessor["available"],
+			render: obj.render as FenceProcessor["render"],
+		},
+	};
+}
+
+// ── Registration ────────────────────────────────────────────────────
+
+export type RegistrationResult =
+	| { ok: true; id: string; tags: readonly string[] }
+	| { ok: false; error: string };
+
+/**
+ * Add a validated processor to the registry. Probes availability.
+ * Inserts before kroki (the catch-all) if kroki is present;
+ * otherwise appends.
+ *
+ * Rejects duplicate ids.
+ */
+export async function registerProcessor(
+	registry: ProcessorRegistry,
+	processor: FenceProcessor,
+): Promise<RegistrationResult> {
+	if (registry.processors.some((p) => p.id === processor.id)) {
+		return { ok: false, error: `duplicate processor id: ${processor.id}` };
+	}
+
+	// Probe availability (defensive — never throw).
+	let avail: Availability;
+	try {
+		avail = await processor.available();
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		avail = { ok: false, reason: `available() threw: ${msg}` };
+	}
+
+	// Insert before kroki (the catch-all fallback) if present.
+	const krokiIndex = registry.processors.findIndex((p) => p.id === "kroki");
+	if (krokiIndex >= 0) {
+		registry.processors.splice(krokiIndex, 0, processor);
+	} else {
+		registry.processors.push(processor);
+	}
+
+	registry.availability.set(processor.id, avail);
+
+	return { ok: true, id: processor.id, tags: processor.tags };
+}
