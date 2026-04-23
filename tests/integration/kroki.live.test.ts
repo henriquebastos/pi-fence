@@ -63,7 +63,7 @@ describe.skipIf(!networkUp)("kroki renderer \u2014 live", () => {
 					const result = await kroki.render(spec.tag, spec.source);
 
 					expect(result.ok).toBe(true);
-					if (!result.ok) return;
+					if (!result.ok || !("png" in result)) return;
 
 					// Magic byte check: the response is a real PNG, not HTML,
 					// not JSON, not a redirect body.
@@ -97,7 +97,7 @@ describe.skipIf(!networkUp)("kroki renderer \u2014 live", () => {
 						const result = await kroki.render(alias, spec.source);
 
 						expect(result.ok).toBe(true);
-						if (!result.ok) return;
+						if (!result.ok || !("png" in result)) return;
 
 						expect(
 							result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),

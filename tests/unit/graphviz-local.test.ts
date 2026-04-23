@@ -177,7 +177,7 @@ describe("createGraphvizLocalProcessor — render()", () => {
 		const result = await processor.render("graphviz", "digraph {}");
 
 		expect(result.ok).toBe(true);
-		if (result.ok) {
+		if (result.ok && "png" in result) {
 			expect(Buffer.compare(result.png, TINY_PNG)).toBe(0);
 		}
 	});
@@ -198,7 +198,7 @@ describe("createGraphvizLocalProcessor — render()", () => {
 		const result = await processor.render("graphviz", "digraph {}");
 
 		expect(result.ok).toBe(true);
-		if (result.ok) {
+		if (result.ok && "png" in result) {
 			expect(result.png.toString("utf8")).toBe("ascii only");
 		}
 	});

@@ -57,7 +57,7 @@ describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 		const result = await graphvizLocal.render("graphviz", GOOD_SOURCE);
 
 		expect(result.ok).toBe(true);
-		if (!result.ok) return;
+		if (!result.ok || !("png" in result)) return;
 
 		// Magic bytes: the response is a real PNG, not HTML, not an
 		// error text, not a zero-length buffer.
@@ -77,7 +77,7 @@ describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 		const result = await graphvizLocal.render("dot", GOOD_SOURCE);
 
 		expect(result.ok).toBe(true);
-		if (!result.ok) return;
+		if (!result.ok || !("png" in result)) return;
 		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
 	}, 15_000);
 

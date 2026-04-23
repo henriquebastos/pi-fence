@@ -259,7 +259,7 @@ describe("createKrokiProcessor", () => {
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
 		expect(result.ok).toBe(true);
-		if (result.ok) {
+		if (result.ok && "png" in result) {
 			expect(Buffer.compare(result.png, pngBytes)).toBe(0);
 		}
 	});

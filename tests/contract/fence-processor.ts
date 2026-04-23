@@ -34,6 +34,12 @@ export interface FenceProcessorContractCases {
 	goodSource: string;
 	/** A source string we use to exercise the error path. */
 	badSource: string;
+	/**
+	 * Expected output kind on the happy path. `"image"` (default) asserts
+	 * `Buffer.isBuffer(result.png)`; `"text"` asserts `typeof result.text === "string"`.
+	 * Added in CV3.E1.S1 for the first non-image processor.
+	 */
+	outputKind?: "image" | "text";
 }
 
 /**
@@ -120,12 +126,18 @@ export function runFenceProcessorContract(
 			return promise.catch(() => {});
 		});
 
-		it("returns { ok: true, png } for a good source", async () => {
+		it("returns a successful result for a good source", async () => {
 			const processor = factory();
 			const result = await processor.render(cases.tag, cases.goodSource);
 			expect(result.ok).toBe(true);
 			if (result.ok) {
-				expect(Buffer.isBuffer(result.png)).toBe(true);
+				if ((cases.outputKind ?? "image") === "image") {
+					expect("png" in result).toBe(true);
+					if ("png" in result) expect(Buffer.isBuffer(result.png)).toBe(true);
+				} else {
+					expect("text" in result).toBe(true);
+					if ("text" in result) expect(typeof result.text).toBe("string");
+				}
 			}
 		});
 

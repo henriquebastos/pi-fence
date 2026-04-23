@@ -26,6 +26,7 @@ export const NULL_LOGGER: Logger = {
 
 export type FenceResult =
 	| { ok: true; png: Buffer }
+	| { ok: true; text: string }
 	| { ok: false; error: string };
 
 /**

@@ -69,15 +69,20 @@ export function buildPiFenceOutputMessage(
 	};
 
 	if (result.ok) {
+		const content =
+			"png" in result
+				? [
+						{
+							type: "image",
+							data: result.png.toString("base64"),
+							mimeType: "image/png",
+						},
+					]
+				: [{ type: "text", text: result.text }];
+
 		return {
 			customType: PI_FENCE_OUTPUT_MESSAGE_TYPE,
-			content: [
-				{
-					type: "image",
-					data: result.png.toString("base64"),
-					mimeType: "image/png",
-				},
-			] as never,
+			content: content as never,
 			details: details as never,
 			display: true,
 		};

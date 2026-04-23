@@ -69,10 +69,12 @@ export function registerPiFenceAgentEndHandler({
 			});
 			const result = await processor.render(block.tag, block.source);
 			if (result.ok) {
+				const bytes =
+					"png" in result ? result.png.length : Buffer.byteLength(result.text, "utf8");
 				logger.info("pi-fence", "block rendered", {
 					tag: block.tag,
 					processor: processor.id,
-					bytes: result.png.length,
+					bytes,
 				});
 			} else {
 				logger.warn("pi-fence", "block render failed", {
