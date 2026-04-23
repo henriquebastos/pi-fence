@@ -70,7 +70,15 @@ brew install graphviz            # macOS
 
 Then `/reload` inside pi (pi-fence probes `dot -V` once per session, at startup; new installs are picked up on the next reload). `/fence list` should now show `graphviz-local [registered]`.
 
-Mermaid, PlantUML, blockdiag, and every other tag still hit `kroki.io`. Local rendering for those languages is on the [roadmap](project/roadmap/README.md) (CV2.E1 for mermaid via `mmdc`).
+With `@mermaid-js/mermaid-cli` installed, mermaid blocks also render locally:
+
+```bash
+npm i -g @mermaid-js/mermaid-cli
+```
+
+`/reload` inside pi. `/fence list` should now show `mermaid-local [registered]` ahead of `kroki`. Mermaid diagram source never leaves your machine when `mmdc` is available.
+
+PlantUML, blockdiag, and every other non-graphviz tag still hit `kroki.io`. Local rendering for those languages is on the [roadmap](project/roadmap/README.md).
 
 ## Binding a tag to a specific processor
 

@@ -1,6 +1,6 @@
 # CV2.E1.S1 — Mermaid local via mmdc
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV2.E1 — Mermaid Local](cv2-e1--mermaid-local.md)
 **Date:** 2026-04-22 (spec)
