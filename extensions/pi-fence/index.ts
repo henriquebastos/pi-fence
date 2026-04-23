@@ -13,7 +13,10 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
 import { registerFenceCommand } from "./command.ts";
 import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
-import { loadPiFenceConfig, type LoadConfigOptions } from "./io/config-loader.ts";
+import {
+	loadPiFenceConfigWithStatus,
+	type LoadConfigOptions,
+} from "./io/config-loader.ts";
 import type { HttpClient } from "./io/http-client.ts";
 import { NodeHttpClient } from "./io/http-client.ts";
 import type { Logger } from "./io/logger.ts";
@@ -46,10 +49,11 @@ export async function createPiFenceExtension(
 	pi: ExtensionAPI,
 	deps: PiFenceRuntimeDeps,
 ): Promise<void> {
-	const config = await loadPiFenceConfig({
+	const configResult = await loadPiFenceConfigWithStatus({
 		logger: deps.logger,
 		...deps.configOptions,
 	});
+	const config = configResult.config;
 
 	const themeState: ThemeState = {};
 	const processors = deps.processors ?? createDefaultProcessors(
@@ -79,6 +83,12 @@ export async function createPiFenceExtension(
 		bindingRows,
 		disabled,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
+		configStatus: {
+			globalPath: configResult.globalPath,
+			globalStatus: configResult.globalStatus,
+			projectPath: configResult.projectPath,
+			projectStatus: configResult.projectStatus,
+		},
 	});
 	registerPiFenceAgentEndHandler({
 		pi,

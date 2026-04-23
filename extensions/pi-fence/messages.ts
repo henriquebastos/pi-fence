@@ -43,6 +43,18 @@ export function sendPiFenceListMessage(
 	});
 }
 
+export function sendPiFenceDoctorMessage(
+	pi: ExtensionAPI,
+	lines: readonly string[],
+): void {
+	pi.sendMessage({
+		customType: PI_FENCE_LIST_MESSAGE_TYPE,
+		content: [{ type: "text", text: lines.join("\n") }] as never,
+		details: { lines } as never,
+		display: true,
+	});
+}
+
 export function buildPiFenceOutputMessage(
 	tag: string,
 	source: string,

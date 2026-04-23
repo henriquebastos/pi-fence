@@ -2,12 +2,22 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
+import { formatDoctorLines, type DoctorInput } from "./doctor.ts";
+import type { ConfigFileStatus } from "./io/config-loader.ts";
 import type { Logger } from "./io/logger.ts";
-import { sendPiFenceListMessage } from "./messages.ts";
+import { formatProcessorLines, listProcessors, type ListProcessorsOptions } from "./list.ts";
+import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
-import type { BindingResolution } from "./resolve.ts";
+import { collectSupportedTags, type BindingResolution } from "./resolve.ts";
 
-const FENCE_SUBCOMMANDS = ["list"] as const;
+const FENCE_SUBCOMMANDS = ["list", "doctor"] as const;
+
+interface ConfigStatus {
+	globalPath: string;
+	globalStatus: ConfigFileStatus;
+	projectPath: string;
+	projectStatus: ConfigFileStatus;
+}
 
 interface RegisterFenceCommandOptions {
 	pi: ExtensionAPI;
@@ -17,6 +27,7 @@ interface RegisterFenceCommandOptions {
 	bindingRows: readonly BindingResolution[];
 	disabled: ReadonlySet<string>;
 	endpoints?: Readonly<Record<string, string>>;
+	configStatus?: ConfigStatus;
 }
 
 export function registerFenceCommand({
@@ -27,14 +38,33 @@ export function registerFenceCommand({
 	bindingRows,
 	disabled,
 	endpoints,
+	configStatus,
 }: RegisterFenceCommandOptions): void {
+	const listOpts: ListProcessorsOptions = { disabled, endpoints };
+
 	pi.registerCommand("fence", {
-		description: "List or inspect pi-fence processors (usage: /fence list)",
+		description: "List or inspect pi-fence processors (usage: /fence list, /fence doctor)",
 		handler: async (args, ctx) => {
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
 				sendPiFenceListMessage(pi, processors, availability, bindingRows, disabled, endpoints);
+				return;
+			}
+			if (subcommand === "doctor") {
+				const listings = listProcessors(processors, availability, listOpts);
+				const processorLines = formatProcessorLines(listings, bindingRows);
+				const input: DoctorInput = {
+					globalPath: configStatus?.globalPath ?? "(unknown)",
+					globalStatus: configStatus?.globalStatus ?? "not-found",
+					projectPath: configStatus?.projectPath ?? "(unknown)",
+					projectStatus: configStatus?.projectStatus ?? "not-found",
+					listings,
+					bindingRows,
+					allTags: collectSupportedTags(processors),
+				};
+				const doctorLines = formatDoctorLines(input, processorLines);
+				sendPiFenceDoctorMessage(pi, doctorLines);
 				return;
 			}
 			notifyUnknownSubcommand(ctx, subcommand);

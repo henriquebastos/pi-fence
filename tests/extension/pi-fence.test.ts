@@ -411,6 +411,65 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 	);
 });
 
+describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"emits a doctor message with Config and Processors sections",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithCommand(http, "/fence doctor");
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(m) => m.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+
+			const details = listMessages[0].details as { lines: string[] };
+			expect(details.lines.some((l) => l.startsWith("Config"))).toBe(true);
+			expect(details.lines.some((l) => l.includes("global:"))).toBe(true);
+			expect(details.lines.some((l) => l.includes("project:"))).toBe(true);
+			// Default test shell has dot unavailable → graphviz-local issue.
+			expect(details.lines).toContain("Issues");
+			expect(
+				details.lines.some((l) => l.includes("graphviz-local is unavailable")),
+			).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"reports issues when kroki is disabled",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ disabled: ["kroki"] }),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithCommand(
+				http,
+				"/fence doctor",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find(
+				(m) => m.customType === "pi-fence:list",
+			)?.details as { lines: string[] };
+			expect(details.lines).toContain("Issues");
+			expect(
+				details.lines.some((l) => l.includes("kroki is disabled")),
+			).toBe(true);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
 	afterEach(() => {
 		cleanupTempDirs();
