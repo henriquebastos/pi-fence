@@ -69,7 +69,7 @@ describe("config core", () => {
 	it("merges disabled: absent disabled inherits from earlier config", () => {
 		const merged = mergePiFenceConfigs(
 			{ bindings: {}, disabled: ["kroki"] },
-			{ bindings: {}, disabled: undefined as unknown as string[] },
+			{ bindings: {} },
 		);
 		expect(merged.disabled).toEqual(["kroki"]);
 	});
@@ -82,8 +82,8 @@ describe("config core", () => {
 		expect(merged.disabled).toEqual([]);
 	});
 
-	it("defaults disabled to empty array", () => {
-		expect(DEFAULT_CONFIG.disabled).toEqual([]);
+	it("defaults disabled to undefined (absent = inherit)", () => {
+		expect(DEFAULT_CONFIG.disabled).toBeUndefined();
 	});
 
 	it("validates disabled: accepts array of strings", () => {
@@ -127,7 +127,7 @@ describe("loadPiFenceConfig — missing files", () => {
 			projectConfigPath: join(empty, "also-missing.json"),
 		});
 
-		expect(config).toEqual({ bindings: {}, disabled: [] });
+		expect(config).toEqual({ bindings: {} });
 	});
 
 	it("does NOT log warn when files are simply missing (common case, silent)", async () => {

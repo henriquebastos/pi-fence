@@ -343,6 +343,74 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 	);
 });
 
+describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"disabled kroki — mermaid block produces no pi-fence:output",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ disabled: ["kroki"] }),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			// Kroki is the only processor for mermaid. Disabled → no output.
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(0);
+			// No HTTP — kroki was never called.
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"/fence list shows disabled kroki as [disabled]",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ disabled: ["kroki"] }),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithCommand(
+				http,
+				"/fence list",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(m) => m.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+
+			const details = listMessages[0].details as {
+				listings: Array<{ id: string; status: string }>;
+				lines: string[];
+			};
+
+			const krokiListing = details.listings.find((l) => l.id === "kroki");
+			expect(krokiListing?.status).toBe("disabled");
+			expect(details.lines.some((l) => l.includes("[disabled]"))).toBe(true);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () => {
 	afterEach(() => {
 		cleanupTempDirs();

@@ -20,10 +20,16 @@ export interface PiFenceConfig {
 	 * Merge: project replaces global entirely when present; absent key
 	 * inherits from the lower-priority layer.
 	 */
-	disabled: string[];
+	/**
+	 * `undefined` means "not specified in this config layer" — the merge
+	 * inherits from the lower-priority layer. An explicit `[]` means
+	 * "I want everything enabled" and overrides a non-empty list from
+	 * a lower layer.
+	 */
+	disabled?: string[];
 }
 
-export const DEFAULT_CONFIG: PiFenceConfig = { bindings: {}, disabled: [] };
+export const DEFAULT_CONFIG: PiFenceConfig = { bindings: {} };
 
 /**
  * Shallow merge at the top level; inside `bindings` later configs win on the
@@ -33,14 +39,16 @@ export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
 ): PiFenceConfig {
 	const bindings: Record<string, string> = {};
-	let disabled: string[] = [];
+	let disabled: string[] | undefined;
 	for (const config of configs) {
 		Object.assign(bindings, config.bindings);
 		if (config.disabled !== undefined) {
 			disabled = config.disabled;
 		}
 	}
-	return { bindings, disabled };
+	return disabled !== undefined
+		? { bindings, disabled }
+		: { bindings };
 }
 
 /**
@@ -60,10 +68,12 @@ export function validatePiFenceConfig(
 		return DEFAULT_CONFIG;
 	}
 
-	return {
-		bindings: validateBindings(parsed.bindings, label, logger),
-		disabled: validateDisabled(parsed.disabled, label, logger),
-	};
+	const disabled = parsed.disabled !== undefined
+		? validateDisabled(parsed.disabled, label, logger)
+		: undefined;
+	return disabled !== undefined
+		? { bindings: validateBindings(parsed.bindings, label, logger), disabled }
+		: { bindings: validateBindings(parsed.bindings, label, logger) };
 }
 
 function validateBindings(

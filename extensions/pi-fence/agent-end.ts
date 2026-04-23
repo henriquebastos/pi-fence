@@ -18,6 +18,7 @@ interface RegisterAgentEndHandlerOptions {
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, string>>;
+	disabled: ReadonlySet<string>;
 	supportedTags: string[];
 	themeState: ThemeState;
 	maxBlocksPerTurn: number;
@@ -29,6 +30,7 @@ export function registerPiFenceAgentEndHandler({
 	processors,
 	availability,
 	bindings,
+	disabled,
 	supportedTags,
 	themeState,
 	maxBlocksPerTurn,
@@ -55,7 +57,7 @@ export function registerPiFenceAgentEndHandler({
 		}
 
 		for (const block of toRender) {
-			const processor = resolveProcessor(processors, availability, block.tag, bindings);
+			const processor = resolveProcessor(processors, availability, block.tag, bindings, disabled);
 			if (!processor) {
 				logger.warn("pi-fence", "no available processor for tag", { tag: block.tag });
 				continue;

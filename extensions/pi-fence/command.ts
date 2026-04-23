@@ -15,6 +15,7 @@ interface RegisterFenceCommandOptions {
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
 	bindingRows: readonly BindingResolution[];
+	disabled: ReadonlySet<string>;
 }
 
 export function registerFenceCommand({
@@ -23,6 +24,7 @@ export function registerFenceCommand({
 	processors,
 	availability,
 	bindingRows,
+	disabled,
 }: RegisterFenceCommandOptions): void {
 	pi.registerCommand("fence", {
 		description: "List or inspect pi-fence processors (usage: /fence list)",
@@ -30,7 +32,7 @@ export function registerFenceCommand({
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
-				sendPiFenceListMessage(pi, processors, availability, bindingRows);
+				sendPiFenceListMessage(pi, processors, availability, bindingRows, disabled);
 				return;
 			}
 			notifyUnknownSubcommand(ctx, subcommand);

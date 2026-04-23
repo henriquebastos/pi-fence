@@ -56,8 +56,10 @@ export async function createPiFenceExtension(
 		...deps.configOptions,
 	});
 	const bindings: Readonly<Record<string, string>> = config.bindings;
-	const bindingRows = resolveBindings(processors, availability, bindings);
+	const disabled: ReadonlySet<string> = new Set(config.disabled ?? []);
+	const bindingRows = resolveBindings(processors, availability, bindings, disabled);
 	logBindingResolution(bindingRows, deps.logger);
+	logDisabled(disabled, deps.logger);
 
 	const supportedTags = collectSupportedTags(processors);
 	registerPiFenceRenderers(pi);
@@ -67,6 +69,7 @@ export async function createPiFenceExtension(
 		processors,
 		availability,
 		bindingRows,
+		disabled,
 	});
 	registerPiFenceAgentEndHandler({
 		pi,
@@ -74,6 +77,7 @@ export async function createPiFenceExtension(
 		processors,
 		availability,
 		bindings,
+		disabled,
 		supportedTags,
 		themeState,
 		maxBlocksPerTurn: MAX_BLOCKS_PER_TURN,
@@ -128,6 +132,16 @@ function logBindingResolution(
 			});
 		}
 	}
+}
+
+function logDisabled(
+	disabled: ReadonlySet<string>,
+	logger: Logger,
+): void {
+	if (disabled.size === 0) return;
+	logger.info("pi-fence", "processors disabled by config", {
+		ids: [...disabled],
+	});
 }
 
 function registerPiFenceRenderers(pi: ExtensionAPI): void {
