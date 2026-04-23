@@ -115,6 +115,57 @@ describe("config core", () => {
 		expect(result.disabled).toEqual([]);
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
+
+	it("validates kroki.endpoint: accepts a string", () => {
+		const result = validatePiFenceConfig(
+			{ kroki: { endpoint: "http://localhost:8000" } },
+			"test",
+		);
+		expect(result.kroki?.endpoint).toBe("http://localhost:8000");
+	});
+
+	it("validates kroki.endpoint: absent kroki section yields undefined", () => {
+		const result = validatePiFenceConfig({}, "test");
+		expect(result.kroki).toBeUndefined();
+	});
+
+	it("validates kroki: non-object becomes undefined with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ kroki: "bad" },
+			"test",
+			logger,
+		);
+		expect(result.kroki).toBeUndefined();
+		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("validates kroki.endpoint: non-string endpoint dropped with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ kroki: { endpoint: 42 } },
+			"test",
+			logger,
+		);
+		expect(result.kroki?.endpoint).toBeUndefined();
+		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("merges kroki.endpoint: project overrides global", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, kroki: { endpoint: "http://global:8000" } },
+			{ bindings: {}, kroki: { endpoint: "http://project:9000" } },
+		);
+		expect(merged.kroki?.endpoint).toBe("http://project:9000");
+	});
+
+	it("merges kroki.endpoint: absent project inherits global", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, kroki: { endpoint: "http://global:8000" } },
+			{ bindings: {} },
+		);
+		expect(merged.kroki?.endpoint).toBe("http://global:8000");
+	});
 });
 
 describe("loadPiFenceConfig — missing files", () => {

@@ -1,6 +1,6 @@
 # CV1.E1.S2 — Configure the Kroki endpoint
 
-**Status:** Draft
+**Status:** In progress
 
 **Epic:** [CV1.E1 — Explicit Configuration](cv1-e1--explicit-configuration.md)
 **Depends on:** [CV1.E1.S1 — enable/disable processors](cv1-e1-s1--enable-disable-processors.md) (config infrastructure)

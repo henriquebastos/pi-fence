@@ -27,6 +27,11 @@ export interface PiFenceConfig {
 	 * a lower layer.
 	 */
 	disabled?: string[];
+	/** Per-processor configuration. Currently only Kroki has settings. */
+	kroki?: {
+		/** Kroki endpoint URL. Default: https://kroki.io */
+		endpoint?: string;
+	};
 }
 
 export const DEFAULT_CONFIG: PiFenceConfig = { bindings: {} };
@@ -40,15 +45,20 @@ export function mergePiFenceConfigs(
 ): PiFenceConfig {
 	const bindings: Record<string, string> = {};
 	let disabled: string[] | undefined;
+	let kroki: PiFenceConfig["kroki"];
 	for (const config of configs) {
 		Object.assign(bindings, config.bindings);
 		if (config.disabled !== undefined) {
 			disabled = config.disabled;
 		}
+		if (config.kroki !== undefined) {
+			kroki = config.kroki;
+		}
 	}
-	return disabled !== undefined
-		? { bindings, disabled }
-		: { bindings };
+	const out: PiFenceConfig = { bindings };
+	if (disabled !== undefined) out.disabled = disabled;
+	if (kroki !== undefined) out.kroki = kroki;
+	return out;
 }
 
 /**
@@ -71,9 +81,13 @@ export function validatePiFenceConfig(
 	const disabled = parsed.disabled !== undefined
 		? validateDisabled(parsed.disabled, label, logger)
 		: undefined;
-	return disabled !== undefined
-		? { bindings: validateBindings(parsed.bindings, label, logger), disabled }
-		: { bindings: validateBindings(parsed.bindings, label, logger) };
+	const kroki = parsed.kroki !== undefined
+		? validateKroki(parsed.kroki, label, logger)
+		: undefined;
+	const out: PiFenceConfig = { bindings: validateBindings(parsed.bindings, label, logger) };
+	if (disabled !== undefined) out.disabled = disabled;
+	if (kroki !== undefined) out.kroki = kroki;
+	return out;
 }
 
 function validateBindings(
@@ -103,6 +117,30 @@ function validateBindings(
 		});
 	}
 	return bindings;
+}
+
+function validateKroki(
+	rawKroki: unknown,
+	label: string,
+	logger?: Logger,
+): PiFenceConfig["kroki"] | undefined {
+	if (!isRecordLike(rawKroki)) {
+		logger?.warn("config", `${label} config 'kroki' is not an object`, {
+			got: Array.isArray(rawKroki) ? "array" : typeof rawKroki,
+		});
+		return undefined;
+	}
+	const out: NonNullable<PiFenceConfig["kroki"]> = {};
+	if (rawKroki.endpoint !== undefined) {
+		if (typeof rawKroki.endpoint === "string") {
+			out.endpoint = rawKroki.endpoint;
+		} else {
+			logger?.warn("config", `${label} config 'kroki.endpoint' is not a string`, {
+				got: typeof rawKroki.endpoint,
+			});
+		}
+	}
+	return Object.keys(out).length > 0 ? out : {};
 }
 
 function validateDisabled(
