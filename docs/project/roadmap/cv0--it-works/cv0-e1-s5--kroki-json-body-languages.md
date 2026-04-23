@@ -1,6 +1,6 @@
 # CV0.E1.S5 — Kroki JSON-body languages
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV0.E1 — Kroki Through The Wire](cv0-e1--kroki-through-the-wire.md)
 **Depends on:** [S4 — Full Kroki coverage for text-based languages](cv0-e1-s4--full-kroki-text-coverage.md)

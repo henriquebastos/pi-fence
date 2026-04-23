@@ -1455,3 +1455,32 @@ Low-signal / noisy findings:
 3. **Sonar stays aspirational-but-visible.** The workflow calls for driving it toward `0` open issues when configured, without requiring every machine to have Sonar available.
 
 **Carry-forward.** `CVx.E3.S6` is still in progress; the next likely refinement is to close the story once the renamed command surface and the new workflow wording feel stable.
+
+---
+
+### 2026-04-22 — CV0.E1.S5 closed; CV0.E1 and CV0 done
+
+**What shipped.** Vega and Vega-Lite render through pi-fence. Research against Kroki's public endpoint found that raw JSON source works via `text/plain` — no content-type dispatch or `diagram_source` wrapping needed. Excalidraw turned out to be SVG-only on the public endpoint (same category as d2, bpmn); moved to the deferred SVG-only table.
+
+This closes CV0.E1 (Kroki Through The Wire) and CV0 (It Works). Every language the public Kroki endpoint serves as PNG now renders inline.
+
+**Implementation commits.**
+
+1. `12beac5` — step 1: add vega and vegalite as Kroki text-body languages
+2. `58f352e` — step 2: document vega/vegalite support and excalidraw deferral
+
+**Test count.** 290 fast-suite, 24 live (was 21; +2 canonical tags, +1 alias).
+
+**Design decisions that survived implementation.**
+
+1. **No content-type dispatch.** The original spec assumed `application/json` was required for JSON-source languages. Probing the public endpoint showed `text/plain` works for vega and vegalite. Simpler code, no new abstraction.
+2. **Excalidraw deferred, not dropped.** Kroki refuses PNG for excalidraw on the public endpoint. It joins the SVG-only set; self-hosted Kroki (CV2.E2) can serve it.
+3. **Vega/vegalite are text-body entries in the fixture, not a separate JSON fixture.** One data-driven loop covers all languages; no fixture split.
+
+**Deviations from spec.**
+
+1. Plan step 1 (content-type dispatch) reverted after research. The `KROKI_JSON_BODY_TAGS` set and dispatch logic were implemented, committed, then reset when live tests against the real endpoint proved `text/plain` sufficient.
+2. Plan originally had 6 steps; collapsed to 2 implementation + 1 docs.
+3. Excalidraw dropped from scope (SVG-only).
+
+**Carry-forward.** None for this story. Next story is the first not-done story in the first not-done epic of CV1.

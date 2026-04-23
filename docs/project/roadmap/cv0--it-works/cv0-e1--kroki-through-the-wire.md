@@ -1,7 +1,7 @@
 # CV0.E1 — Kroki Through The Wire
 
 **Roadmap:** [CV0.E1](../README.md)
-**Last updated:** 2026-04-18
+**Last updated:** 2026-04-22
 
 The thinnest possible path through the system. Hook → parse → Kroki → inline image. No registry, no config, no tool yet — those come in later Epics once this path proves end-to-end.
 
@@ -14,7 +14,7 @@ The thinnest possible path through the system. Hook → parse → Kroki → inli
 | [S2](cv0-e1-s2--other-kroki-tags.md) | **I see other Kroki-supported diagrams (graphviz, plantuml, d2) through the same path** | ✅ Done |
 | [S3](cv0-e1-s3--fence-list.md) | **I can see which processors are registered and their status** (`/fence list`) | ✅ Done |
 | [S4](cv0-e1-s4--full-kroki-text-coverage.md) | **Every text-based language the public Kroki endpoint supports renders through pi-fence** | ✅ Done |
-| [S5](cv0-e1-s5--kroki-json-body-languages.md) | **JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw) render through pi-fence** | Planned |
+| [S5](cv0-e1-s5--kroki-json-body-languages.md) | **JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw) render through pi-fence** | ✅ Done |
 
 `S0` lands before `S1`. It defines the test architecture, utilities, Docker image for live dependencies, and the mandatory `Tests` section structure in every future story plan. `S1` is then implemented test-first against the infrastructure `S0` provides.
 
