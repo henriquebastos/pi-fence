@@ -4,14 +4,13 @@
 
 pi-fence's default processor posts fenced-block sources to [Kroki](https://kroki.io)'s public endpoint at `https://kroki.io/<tag>/png`. This page documents, per language Kroki hosts, whether pi-fence can render it today and why (or why not).
 
-Last updated: 2026-04-20 (CV0.E1.S4).
+Last updated: 2026-04-22 (CV0.E1.S5).
 
 ## Quick summary
 
-1. **17 text-body languages render today** on the public endpoint. They're all listed below with minimal canonical sources.
-2. **8 text-body languages** are hosted by Kroki but refused as PNG on the public endpoint (Kroki answers `400: Unsupported output format: png … Must be one of svg.`). pi-fence's inline-PNG path via the Kitty graphics protocol can't serve them yet — see the deferred table and follow-up paths below.
-3. **3 JSON-body languages** (Vega, Vega-Lite, Excalidraw) need a different request shape. They're scoped to [CV0.E1.S5](../project/roadmap/cv0--it-works/cv0-e1-s5--kroki-json-body-languages.md) and not yet implemented.
-4. **1 language** (diagrams.net) has backend infrastructure unavailable on Kroki's public endpoint — Kroki answers `503: Connection refused`. Same status as the SVG-only set: deferred until self-hosted Kroki (CV2.E2) ships.
+1. **19 languages render today** on the public endpoint — 17 text-body + 2 JSON-source (Vega, Vega-Lite). All listed below with minimal canonical sources.
+2. **9 languages** are hosted by Kroki but refused as PNG on the public endpoint (Kroki answers `400: Unsupported output format: png … Must be one of svg.`). This includes Excalidraw, which S5's research found to be SVG-only despite being a JSON-body language in Kroki's docs. pi-fence's inline-PNG path via the Kitty graphics protocol can't serve them yet — see the deferred table and follow-up paths below.
+3. **1 language** (diagrams.net) has backend infrastructure unavailable on Kroki's public endpoint — Kroki answers `503: Connection refused`. Same status as the SVG-only set: deferred until self-hosted Kroki (CV2.E2) ships.
 
 ## Supported on public Kroki (PNG) — rendered by pi-fence today
 
@@ -36,6 +35,8 @@ Each entry is verified by a live integration test at `tests/integration/kroki.li
 | `tikz` | — | LaTeX TikZ drawings. Requires a full LaTeX document (`\documentclass{standalone}`, `\begin{document}` … `\end{document}`), not a bare `tikzpicture` block. |
 | `umlet` | — | UMLet XML format. Verbose but stable. |
 | `wireviz` | — | YAML connector / cable / connection definitions. |
+| `vega` | — | [Vega](https://vega.github.io/vega/) visualisation grammar. Source is raw JSON sent as text/plain — no wrapping needed. |
+| `vegalite` | `vega-lite` | [Vega-Lite](https://vega.github.io/vega-lite/) — higher-level Vega. Alias `vega-lite` resolves to `/vegalite/png`. |
 
 ### Usage
 
@@ -86,6 +87,7 @@ Kroki hosts these languages but the public endpoint refuses PNG output (`400: Un
 | `pikchr` | SVG-only on public endpoint | SQLite project's PIC-derived diagram language. |
 | `svgbob` | SVG-only on public endpoint | ASCII-art → SVG. |
 | `wavedrom` | SVG-only on public endpoint | Digital timing diagrams. |
+| `excalidraw` | SVG-only on public endpoint | Excalidraw scenes (JSON body). Originally expected to support PNG; S5 research found it SVG-only on the public endpoint. |
 
 If you want one of these languages specifically, run your own Kroki locally with the relevant backend enabled and point pi-fence at it. Configuration hooks for that land in [CV1 — Take Control](../project/roadmap/cv1--take-control/README.md).
 
@@ -94,16 +96,6 @@ If you want one of these languages specifically, run your own Kroki locally with
 | Tag | Kroki-documented behaviour | Notes |
 |-----|---------------------------|-------|
 | `diagramsnet` | Public endpoint lacks the backend wiring | Kroki answers `503: Connection refused: /127.0.0.1:8005`. Same follow-up path as the SVG-only set — self-hosted Kroki with the diagrams.net backend enabled. |
-
-## JSON-body languages — scoped to CV0.E1.S5
-
-These languages take a JSON body, not text. They need a different request shape (`Content-Type: application/json`) than pi-fence's current text-body flow; that's [CV0.E1.S5](../project/roadmap/cv0--it-works/cv0-e1-s5--kroki-json-body-languages.md).
-
-| Tag | Notes |
-|-----|-------|
-| `vega` | Vega visualisation grammar. |
-| `vegalite` | Vega-Lite. |
-| `excalidraw` | Excalidraw scenes. |
 
 ## Browsing a live gallery
 
@@ -123,7 +115,7 @@ Per-tile output dimensions are auto-trimmed — a tall viewport (120×140 cells)
 If Kroki hosts a text-body language on its public endpoint that pi-fence doesn't yet support, extending is small:
 
 1. Add an entry to `tests/fixtures/kroki/canonical-sources.ts` with the canonical tag, a minimal source, any aliases, and a calibrated `sizeFloorBytes`.
-2. Add the tag to `KROKI_CANONICAL_TAGS` in `extensions/pi-fence/kroki.ts` and to `SUPPORTED_TAGS` in `extensions/pi-fence/index.ts`.
+2. Add the tag to `KROKI_CANONICAL_TAGS` in `extensions/pi-fence/kroki.ts` (and to `KROKI_ALIASES` if the tag has a colloquial alias). No changes needed in `index.ts` — the supported-tag allowlist is derived dynamically via `collectSupportedTags()`.
 3. `pnpm test:live` — the live integration test picks up the new entry automatically via the data-driven `for (const spec of KROKI_TEXT_LANGUAGES)` loop. Expect one new case, green on first run if the fixture source is valid.
 
 No other test or wiring needs touching. The pi-fence renderer is language-agnostic; every new tag just rides the existing Kroki HTTP path.

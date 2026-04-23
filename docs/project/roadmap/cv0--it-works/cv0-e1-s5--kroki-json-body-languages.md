@@ -34,10 +34,10 @@ pi-fence recognises the tag, posts the JSON body to `https://kroki.io/vegalite/p
 
 **In scope:**
 
-- Kroki processor gains a per-tag content-type dispatch: JSON tags go out as `application/json`, text tags continue as `text/plain` (current behaviour).
-- `SUPPORTED_TAGS` and `KROKI_TAG_ALIASES` grow to include JSON-body tags (`vega`, `vegalite`/`vega-lite`, `excalidraw`, …).
-- Live tests per JSON-body language in `tests/integration/kroki.live.test.ts`.
-- Documentation updates: `README.md`, `docs/getting-started.md`, `docs/product/kroki-support.md` (the doc S4 introduces).
+- `KROKI_CANONICAL_TAGS` grows to include `vega` and `vegalite`; `KROKI_ALIASES` gains `vega-lite` → `vegalite`. No content-type dispatch needed — Kroki accepts raw JSON via `text/plain`.
+- Excalidraw moved to the SVG-only deferred set (public endpoint refuses PNG).
+- Live tests per new language in `tests/integration/kroki.live.test.ts` via the data-driven fixture.
+- Documentation updates: `README.md`, `docs/getting-started.md`, `docs/product/kroki-support.md`.
 
 **Out of scope:**
 
@@ -49,7 +49,7 @@ pi-fence recognises the tag, posts the JSON body to `https://kroki.io/vegalite/p
 
 ## Approach
 
-pi-fence renders Kroki's JSON-body languages (Vega, Vega-Lite, Excalidraw, others if S4 surfaces them) with the same intercept-and-display flow as the text-based languages. One small code change in `kroki.ts` to dispatch on content type; everything else flows through unchanged.
+Research against the public endpoint (2026-04-22) found that Kroki accepts raw JSON source via `text/plain` for vega and vegalite — no `application/json` content-type dispatch or `diagram_source` wrapping needed. Excalidraw is SVG-only on the public endpoint. The implementation reduces to adding two tags, one alias, and canonical-source fixtures.
 
 ## Plan
 

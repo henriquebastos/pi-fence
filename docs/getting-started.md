@@ -33,10 +33,11 @@ Ask the assistant for a diagram — any of these work today:
 - *"Make a PlantUML sequence diagram of a checkout flow."*
 - *"Render a blockdiag showing three services calling a database."*
 - *"Draw a wireviz harness for a D-Sub to barrel-jack cable."*
+- *"Sketch a Vega-Lite bar chart of quarterly revenue: Q1 120k, Q2 145k, Q3 98k, Q4 160k."*
 
 The assistant answers with the obvious fenced block (```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```blockdiag ````, ```` ```wireviz ````, …). pi-fence intercepts it, renders via `https://kroki.io`, and the PNG appears inline in any terminal that supports inline images (Ghostty, Kitty, iTerm2, WezTerm).
 
-Supported tags today: every text-body Kroki language the public endpoint serves as PNG — `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`. Full reference with minimal source examples, per-language quirks, and a list of languages pi-fence deliberately does *not* advertise yet: [docs/product/kroki-support.md](product/kroki-support.md).
+Supported tags today: every Kroki language the public endpoint serves as PNG — `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, `vegalite` (alias `vega-lite`). Full reference with minimal source examples, per-language quirks, and a list of languages pi-fence deliberately does *not* advertise yet: [docs/product/kroki-support.md](product/kroki-support.md).
 
 Type `/fence list` to see every registered processor, its availability, and the tags it accepts:
 

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV0.E1.S5 — Vega and Vega-Lite support)
+
+Kroki's JSON-source visualisation languages now render through pi-fence.
+
+- **`vega` and `vegalite` (alias `vega-lite`)** render inline via the same `text/plain` path as all other Kroki languages. Research against the public endpoint found that Kroki accepts raw JSON source without wrapping or content-type dispatch.
+- **Excalidraw** moved to the SVG-only deferred set — the public endpoint refuses PNG for it (`400: Unsupported output format: png`).
+- Live integration tests cover both new tags plus the `vega-lite` alias end-to-end.
+- Canonical-source fixtures added for vega and vegalite with calibrated size floors.
+
 ### Added (CVx.E5.S1 — coverage and CRAP feedback)
 
 Coverage and CRAP feedback now have two distinct loops, matching the repo's production-vs-broader-analysis split.
