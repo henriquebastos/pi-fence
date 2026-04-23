@@ -755,6 +755,42 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 });
 
+describe("pi-fence extension — /fence stats (CV4.E2.S2)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"shows render count after a block is rendered",
+		async () => {
+			const http = makeKrokiHttp({ "https://kroki.io/mermaid/png?theme=dark": TINY_PNG });
+			const { session, sentCustomMessages, model } = await buildSessionWithExtension(http);
+
+			// Render a block.
+			session.agent.streamFn = cannedAssistantStream(model, "```mermaid\nflowchart LR\nA-->B\n```");
+			try {
+				await session.prompt("render it");
+				await new Promise((r) => setTimeout(r, 50));
+
+				// Now run /fence stats.
+				await session.prompt("/fence stats");
+				await new Promise((r) => setTimeout(r, 50));
+			} finally {
+				session.dispose();
+			}
+
+			const statsMessages = sentCustomMessages.filter(
+				(m) => m.customType === "pi-fence:list" && (m.details as { lines?: string[] })?.lines?.some((l: string) => l.includes("Session metrics")),
+			);
+			expect(statsMessages).toHaveLength(1);
+
+			const lines = (statsMessages[0].details as { lines: string[] }).lines;
+			expect(lines.some((l) => l.includes("1") && l.includes("ok"))).toBe(true);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — /fence trace (CV4.E2.S1)", () => {
 	afterEach(() => {
 		cleanupTempDirs();

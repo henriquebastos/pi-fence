@@ -26,6 +26,7 @@ import { NodeLogger } from "./io/logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
 import { createColorProcessor } from "./color.ts";
+import { MetricsCollector } from "./metrics.ts";
 import { createHighlightProcessor } from "./highlight.ts";
 import { createKrokiProcessor, isDarkThemeName } from "./kroki.ts";
 import { createQrProcessor } from "./qr.ts";
@@ -128,6 +129,8 @@ export async function createPiFenceExtension(
 		});
 	}
 
+	const metrics = new MetricsCollector();
+
 	registerPiFenceRenderers(pi);
 	registerFenceCommand({
 		pi,
@@ -145,6 +148,7 @@ export async function createPiFenceExtension(
 			projectStatus: configResult.projectStatus,
 		},
 		shell: deps.shell,
+		metrics,
 	});
 	registerPiFenceAgentEndHandler({
 		pi,
@@ -156,6 +160,7 @@ export async function createPiFenceExtension(
 		supportedTags: () => collectSupportedTags(processors),
 		themeState,
 		maxBlocksPerTurn: MAX_BLOCKS_PER_TURN,
+		metrics,
 	});
 }
 

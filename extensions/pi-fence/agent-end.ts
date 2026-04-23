@@ -5,6 +5,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import type { Logger } from "./io/logger.ts";
 import { buildPiFenceOutputMessage } from "./messages.ts";
 import { extractFencedBlocks } from "./parser.ts";
+import type { MetricsCollector } from "./metrics.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
 import { collectSupportedTags, resolveProcessor } from "./resolve.ts";
 
@@ -22,6 +23,7 @@ interface RegisterAgentEndHandlerOptions {
 	supportedTags: string[] | (() => string[]);
 	themeState: ThemeState;
 	maxBlocksPerTurn: number;
+	metrics?: MetricsCollector;
 }
 
 export function registerPiFenceAgentEndHandler({
@@ -34,6 +36,7 @@ export function registerPiFenceAgentEndHandler({
 	supportedTags,
 	themeState,
 	maxBlocksPerTurn,
+	metrics,
 }: RegisterAgentEndHandlerOptions): void {
 	pi.on("agent_end", async (event, ctx) => {
 		tryCaptureThemeName(ctx, logger, themeState);
@@ -85,6 +88,7 @@ export function registerPiFenceAgentEndHandler({
 				});
 			}
 			pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
+			metrics?.recordRender(processor.id, block.tag, result.ok);
 
 			// Feed the error back to the LLM so it can self-correct (D2).
 			if (!result.ok) {

@@ -9,11 +9,13 @@ import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { formatProcessorLines, listProcessors, type ListProcessorsOptions } from "./list.ts";
 import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
+import type { MetricsCollector } from "./metrics.ts";
+import { formatMetricsLines } from "./metrics.ts";
 import { collectSupportedTags, type BindingResolution } from "./resolve.ts";
 import { traceResolution, formatTraceLines } from "./trace.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 
-const FENCE_SUBCOMMANDS = ["list", "doctor", "trace <tag>", "kroki start", "kroki stop", "kroki status"] as const;
+const FENCE_SUBCOMMANDS = ["list", "doctor", "trace <tag>", "stats", "kroki start", "kroki stop", "kroki status"] as const;
 
 interface ConfigStatus {
 	globalPath: string;
@@ -33,6 +35,7 @@ interface RegisterFenceCommandOptions {
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
 	shell: ShellRunner;
+	metrics?: MetricsCollector;
 }
 
 export function registerFenceCommand({
@@ -46,6 +49,7 @@ export function registerFenceCommand({
 	endpoints,
 	configStatus,
 	shell,
+	metrics,
 }: RegisterFenceCommandOptions): void {
 	const listOpts: ListProcessorsOptions = { disabled, endpoints };
 	const dockerMgr = createKrokiDockerManager(shell, logger);
@@ -73,6 +77,16 @@ export function registerFenceCommand({
 				};
 				const doctorLines = formatDoctorLines(input, processorLines);
 				sendPiFenceDoctorMessage(pi, doctorLines);
+				return;
+			}
+			if (subcommand === "stats") {
+				if (!metrics) {
+					ctx.ui.notify("Metrics not available.", "warning");
+					return;
+				}
+				const summary = metrics.getSummary();
+				const lines = formatMetricsLines(summary);
+				sendPiFenceDoctorMessage(pi, lines);
 				return;
 			}
 			if (subcommand === "trace") {
