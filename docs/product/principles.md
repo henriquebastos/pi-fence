@@ -87,7 +87,7 @@ Story specs without a `Tests` section are incomplete and should not be approved.
 
 **Small stories with immediate validation.** Each story ends with a verifiable "it works" moment — a test, a command, a visible result. Don't declare done without validation, and don't declare a story done until that validated work is committed.
 
-**Refactoring in cycle.** After implement + test, evaluate refactoring. Document what was refactored *and* what was evaluated but left as-is, with criteria for revisiting.
+**Refactoring in cycle.** After implement + test, evaluate refactoring. Use the fast loop (`pnpm run feedback`) while simplifying, then run the broader completion inspection pass (`pnpm run inspect`, plus `pnpm test:live` / `pnpm run render:verify` when relevant) before calling the work done. Document what was refactored *and* what was evaluated but left as-is, with criteria for revisiting.
 
 **Living documentation.** Roadmap, worklog, decisions, story docs are the map. They are updated at the end of each cycle, in a dedicated docs commit — never mixed into a feature commit, never predicting commits that do not yet exist. See `AGENTS.md` → *Worklog and CHANGELOG ordering* for the rule.
 

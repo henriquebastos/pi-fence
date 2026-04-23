@@ -1385,3 +1385,38 @@ Low-signal / noisy findings:
 4. **Keep cleanup incremental.** The repo reached zero open Sonar issues through small validated passes rather than one large churn commit.
 
 **Carry-forward.** The next ready story in the repo is `CV0.E1.S5`.
+
+### 2026-04-22 — completion inspection pass for the feedback loop
+
+**Goal.** Treat refactoring as part of the normal delivery loop by adding one broader "I think I'm done" inspection command on top of the fast `feedback` loop.
+
+**What shipped.**
+
+1. Added `pnpm run inspect` via `scripts/inspect.ts`.
+2. `inspect` always runs `pnpm run inspect:crap`.
+3. `inspect` runs `pnpm run inspect:sonar` too when both `SONAR_HOST_URL` and `SONAR_TOKEN` are set; otherwise it prints a clear skip and exits green.
+4. Added unit coverage for the new planning logic in `tests/unit/inspect.test.ts` and extended `tests/unit/package-scripts.test.ts` to lock the new top-level script.
+5. Contributor docs now teach the intended nested loop explicitly:
+   - `pnpm test:watch` for red/green
+   - `pnpm run feedback` for the fast refactor loop
+   - `pnpm run inspect` for the completion pass
+   - then refactor again from what the broader analyzers surface
+6. The tooling architecture note now lists `scripts/inspect.ts` as a tooling composition root.
+
+**Implementation commit.**
+
+1. `0de8d91` — add a completion inspection pass
+
+**Verification.**
+
+1. `pnpm test` green at `289` passing tests.
+2. `pnpm run feedback` green.
+3. `pnpm run inspect` green. In this local environment the Sonar step was configured, so the command exercised both `inspect:crap` and `inspect:sonar`; on an unconfigured machine it would have printed a skip for Sonar and still exited green.
+
+**Design decisions that survived implementation.**
+
+1. **Keep `feedback` fast and deterministic.** The broader completion pass sits beside the fast loop instead of bloating it.
+2. **Treat Sonar as optional but first-class in the completion pass.** `inspect` can use it when configured without making it a hard prerequisite for every contributor.
+3. **Make the workflow teach refactoring explicitly.** The docs now describe red → green → fast refactor → inspect → refactor, rather than treating cleanup as a separate later concern.
+
+**Carry-forward.** `CVx.E3.S6` is still in progress; this commit adds the completion-pass layer but does not close the story yet.

@@ -155,7 +155,15 @@ corepack enable    # one-time
 pnpm install
 ```
 
-### Run the implementation feedback loop
+### Run the TDD loops
+
+Red / green while iterating:
+
+```bash
+pnpm test:watch    # vitest --watch on the fast suite
+```
+
+Fast refactor loop:
 
 ```bash
 pnpm run feedback   # pnpm test + pnpm run inspect:crap:ext + pnpm run lint:markdown + pnpm run lint:types + pnpm run lint:deps
@@ -213,6 +221,16 @@ pnpm run inspect:crap     # broader CRAP report over extensions/, scripts/, and 
 
 `pnpm run inspect:crap` is separate and non-blocking: it reruns the fast suite with a broader coverage include set (`extensions/**`, `scripts/**`, `tests/unit/**`, `tests/contract/**`, `tests/extension/**`, `tests/utilities/**`) and then writes JSON + HTML reports under `crap-report/nonlive/`.
 
+### Completion inspection pass
+
+When the change feels done, run the broader inspection pass before you decide the refactor is finished:
+
+```bash
+pnpm run inspect
+```
+
+`pnpm run inspect` always runs `pnpm run inspect:crap`. If `SONAR_HOST_URL` and `SONAR_TOKEN` are set, it also runs `pnpm run inspect:sonar`; otherwise it prints a clear skip and exits green. After `inspect` surfaces issues or simplification opportunities, refactor again and rerun `pnpm run feedback`.
+
 ### SonarQube experiment
 
 `CVx.E4.S2` treats SonarQube as a non-blocking experiment. It is **not** part of the fast gate.
@@ -244,8 +262,8 @@ This experiment is intentionally separate from `pnpm run feedback` so generic So
 
 | Script | Purpose |
 |--------|---------|
-| `pnpm run feedback` | Canonical implementation loop: `pnpm run feedback:fast`. |
-| `pnpm run feedback:fast` | Fast implementation loop: `pnpm test` + `pnpm run inspect:crap:ext` + `pnpm run lint:markdown` + `pnpm run lint:types` + `pnpm run lint:deps`. |
+| `pnpm run feedback` | Canonical fast refactor loop: `pnpm run feedback:fast`. |
+| `pnpm run feedback:fast` | Fast refactor loop: `pnpm test` + `pnpm run inspect:crap:ext` + `pnpm run lint:markdown` + `pnpm run lint:types` + `pnpm run lint:deps`. |
 | `pnpm test` | Fast suite (unit, contract, render, extension, utility) with coverage focused on `extensions/**`. |
 | `pnpm test:watch` | vitest in watch mode on the fast suite. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
@@ -257,6 +275,7 @@ This experiment is intentionally separate from `pnpm run feedback` so generic So
 | `pnpm run lint:markdown` | Run both markdown link checks and markdown body checks. |
 | `pnpm run lint:markdown:links` | Markdown link + heading-fragment validation. |
 | `pnpm run lint:markdown:body` | Markdown body checks via `markdownlint-cli2`. |
+| `pnpm run inspect` | Completion inspection pass: always runs `inspect:crap`; also runs `inspect:sonar` when `SONAR_HOST_URL` + `SONAR_TOKEN` are set, otherwise skips Sonar clearly. |
 | `pnpm run inspect:coverage:nonlive` | Broader non-live coverage pass for `extensions/**`, `scripts/**`, and non-live `tests/**`; used as the input to the broader CRAP report. |
 | `pnpm run inspect:crap:ext` | Focused CRAP summary for `extensions/**`, built from the coverage output produced by `pnpm test` and printed to stdout. |
 | `pnpm run inspect:crap` | Broader CRAP report flow: `pnpm run inspect:coverage:nonlive` + `pnpm run inspect:crap:nonlive`. |

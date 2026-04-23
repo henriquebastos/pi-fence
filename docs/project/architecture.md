@@ -15,14 +15,14 @@ Current-state map for refactoring pi-fence safely.
 | **Pure module** | Logic with no ambient environment access and no direct dependency on external runtime services. Inputs come in as arguments; outputs come back as values. | `extensions/pi-fence/parser.ts`, `extensions/pi-fence/resolve.ts`, `extensions/pi-fence/list.ts`, `extensions/pi-fence/config.ts`, `scripts/verify/gallery.ts` |
 | **Adapter** | Code that translates between pi-fence's contracts and an external library, runtime, or protocol. | `extensions/pi-fence/kroki.ts`, `extensions/pi-fence/graphviz-local.ts`, `extensions/pi-fence/renderer.ts`, `extensions/pi-fence/io/config-loader.ts`, `scripts/verify/pipeline.ts` |
 | **Runtime seam** | An injected interface/value at an environment boundary: HTTP, subprocesses, logging, filesystem/config discovery, similar I/O. | `HttpClient`, `ShellRunner`, `Logger` under `extensions/pi-fence/io/` |
-| **Composition root** | The file that chooses concrete runtime implementations and wires them to inner modules. Ambient reads are acceptable here; they are suspect in inner modules. | `extensions/pi-fence/index.ts`, `scripts/render-verify.ts`, `scripts/render-gallery.ts` |
+| **Composition root** | The file that chooses concrete runtime implementations and wires them to inner modules. Ambient reads are acceptable here; they are suspect in inner modules. | `extensions/pi-fence/index.ts`, `scripts/render-verify.ts`, `scripts/render-gallery.ts`, `scripts/inspect.ts` |
 | **Policy module** | Runtime logic that coordinates pure modules and adapters without owning ambient Node access itself. | `extensions/pi-fence/agent-end.ts`, `extensions/pi-fence/command.ts`, `extensions/pi-fence/messages.ts` |
 | **Hotspot** | A file or dependency edge where multiple responsibilities or blurry ownership make refactoring riskier than it should be. | Extension-runtime hotspots from `CVx.E3` are now cleared; remaining couplings are tooling-lane only. |
 
 Two supporting terms remain useful in practice:
 
 1. **Boundary contract** — a shared type/interface that pure modules and adapters agree on (`extensions/pi-fence/processor.ts`).
-2. **Tooling lane** — repo scripts that support development and verification but are not the shipped extension runtime (`scripts/verify/**`, `scripts/render-gallery.ts`, `scripts/lint-markdown-links.ts`).
+2. **Tooling lane** — repo scripts that support development and verification but are not the shipped extension runtime (`scripts/verify/**`, `scripts/render-gallery.ts`, `scripts/inspect.ts`, `scripts/lint-markdown-links.ts`).
 
 ## Extension runtime lane
 
@@ -140,6 +140,7 @@ These are **not** the shipped extension runtime, so they should not be forced in
 | `scripts/verify/pipeline.ts` | Adapter | Headless Chromium + xterm.js + addon-image screenshot pipeline | Intentionally imports `tests/utilities/addon-image-overlay-fix.ts`; this is verifier infrastructure, not shipped runtime. |
 | `scripts/render-verify.ts` | Tooling composition root | CLI entrypoint for scenario render verification | Chooses scenarios, runs the pipeline, writes outputs/goldens/gallery. |
 | `scripts/render-gallery.ts` | Tooling composition root + online adapter use | Fetches live Kroki PNGs and emits a browsable gallery | Uses the verifier pipeline as a consumer-facing showcase, not as a test gate. |
+| `scripts/inspect.ts` | Tooling composition root | Completion-pass analyzer wrapper | Runs the broader CRAP inspection path and optionally the Sonar experiment when configured. |
 | `scripts/lint-markdown-links.ts` | Separate docs-tooling lane | Markdown link/fragment checker | Purely repo-maintenance tooling; independent of the extension runtime refactor plan. |
 
 ### Rule of thumb for this lane

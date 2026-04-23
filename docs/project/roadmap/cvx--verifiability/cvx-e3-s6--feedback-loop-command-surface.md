@@ -24,7 +24,7 @@ This story adds a small intent-first script taxonomy:
 
 1. `feedback` / `feedback:*` — the normal implementation loop
 2. `lint:*` — TypeScript, dependency-boundary, markdown validation, and markdown-fix commands
-3. `inspect:*` — coverage/reporting analyzers such as CRAP and Sonar
+3. `inspect` / `inspect:*` — completion-pass analyzers such as CRAP and Sonar
 
 The repo will prefer a single intent-first script taxonomy. Older names will be removed rather than kept as compatibility aliases so the contributor loop has one canonical vocabulary.
 
@@ -40,6 +40,7 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
    - `lint:markdown:body`
    - `lint:markdown:links`
    - `lint:markdown:fix`
+   - `inspect`
    - `inspect:coverage:nonlive`
    - `inspect:crap`
    - `inspect:crap:ext`
@@ -49,8 +50,8 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
    - `inspect:sonar:report`
 2. Legacy names are removed from `package.json` so the repo exposes one canonical script vocabulary only.
 3. An automated fast-suite test locks the canonical script surface and the absence of the removed aliases.
-4. Contributor-facing docs and relevant workflow files prefer the canonical names only.
-5. `pnpm run feedback` and `pnpm run inspect:crap` both succeed on the current tree.
+4. Contributor-facing docs and relevant workflow files teach the nested loop explicitly: red/green, fast refactor, then completion inspection.
+5. `pnpm run feedback`, `pnpm run inspect`, and `pnpm run inspect:crap` all succeed on the current tree.
 
 ## Scope
 
@@ -58,7 +59,7 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
 
 1. `package.json` script naming and wiring.
 2. A repo-tooling test that validates the command surface.
-3. Updating contributor-facing docs to prefer the canonical names.
+3. Updating contributor-facing docs to prefer the canonical names and the explicit TDD/refactor/inspect workflow.
 4. Updating workflow files that should speak the current script vocabulary.
 5. Removing the replaced legacy aliases from `package.json` and docs.
 
@@ -66,7 +67,7 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
 
 1. Changing the fast gate's actual composition.
 2. Changing coverage scope or CRAP scope.
-3. SonarQube server setup or rule tuning.
+3. SonarQube server setup or rule tuning beyond optional detection in `pnpm run inspect`.
 4. Rewriting older roadmap/worklog history that mentions the old commands.
 
 ## Plan
@@ -79,7 +80,7 @@ Target families:
 
 1. `feedback` for the normal implementation loop
 2. `lint:*` for static checks, markdown validation, and markdown fixing
-3. `inspect:*` for coverage/reporting analyzers and deeper non-blocking inspection
+3. `inspect` / `inspect:*` for coverage/reporting analyzers and the broader completion pass
 
 `test:*`, `live:*`, and `render:*` stay as they are because those families already read clearly.
 
@@ -91,11 +92,12 @@ Historical docs and habit loops should be updated to the canonical names rather 
 
 Contributor docs should answer this flow in one pass:
 
-1. run `pnpm run feedback` during implementation
-2. run `pnpm test:watch` while iterating when helpful
+1. run `pnpm test:watch` for red/green while iterating
+2. run `pnpm run feedback` for the fast refactor loop
 3. read `pnpm test` coverage output as the default shipped-code coverage signal
-4. run `pnpm run inspect:crap` for the broader non-blocking hotspot view
-5. run `pnpm run inspect:sonar` only when the external experiment is intentionally in play
+4. when the change feels done, run `pnpm run inspect` for the broader completion pass
+5. refactor again from what `inspect` surfaces, then rerun `pnpm run feedback`
+6. use `pnpm run inspect:sonar` directly only when you want the Sonar experiment in isolation
 
 ### Implementation order
 
@@ -103,7 +105,7 @@ Contributor docs should answer this flow in one pass:
 |------|-------|------|--------|
 | 1 | spec | Add `CVx.E3.S6`, reopen roadmap status, and name the command-surface taxonomy. | `spec CVx.E3.S6` |
 | 2 | tooling | Rewire `package.json` around canonical `feedback` / `lint:*` / `inspect:*` names, remove replaced aliases, and add a fast-suite test for the command surface. | `step 1: make the local command surface intent-first` |
-| 3 | docs | Update contributor docs and workflow files to teach the canonical names only. | `step 2: teach the implementation feedback loop explicitly` |
+| 3 | tooling + docs | Add top-level `inspect` as the completion-pass wrapper and update contributor docs to teach the canonical workflow explicitly. | `step 2: teach the implementation feedback loop explicitly` |
 | 4 | close | Re-run the fast loop and broader inspection command, then close the story. | `close CVx.E3.S6` |
 
 ## Tests
@@ -114,6 +116,7 @@ Contributor docs should answer this flow in one pass:
    - canonical scripts exist
    - removed legacy aliases stay absent
    - coverage attached to `pnpm test` stays separate from broader inspect-only coverage
+   - `pnpm run inspect` always includes the broader CRAP path and conditionally includes Sonar when configured
    - CRAP analyzers live under `inspect:*` even when `feedback` calls the focused one
 3. **Fakes added:** none.
 4. **Live tests added / updated:** none.
@@ -124,6 +127,7 @@ Contributor docs should answer this flow in one pass:
 ```bash
 pnpm test
 pnpm run feedback
+pnpm run inspect
 pnpm run inspect:crap
 ```
 
@@ -131,6 +135,8 @@ pnpm run inspect:crap
 
 - `package.json`
 - `tests/unit/package-scripts.test.ts`
+- `tests/unit/inspect.test.ts`
+- `scripts/inspect.ts`
 - `AGENTS.md`
 - `README.md`
 - `docs/getting-started.md`

@@ -25,7 +25,7 @@ When the next workflow step is obvious, do it. Do not stop at chat prose if the 
 
 ## Verification gate (before every commit)
 
-During implementation, prefer `pnpm run feedback` as the one-command local loop.
+Use TDD explicitly: red → green → refactor. During implementation, prefer `pnpm run feedback` as the one-command fast refactor loop after the red/green test pass.
 
 1. `pnpm test` — fast suite (unit + contract + extension) with coverage focused on `extensions/**`.
 2. `pnpm run inspect:crap:ext` — focused CRAP summary for `extensions/**`, reusing the coverage output from `pnpm test` and printing to stdout.
@@ -36,16 +36,21 @@ During implementation, prefer `pnpm run feedback` as the one-command local loop.
 
 `pnpm run feedback` is the umbrella command for steps 1–5. Every commit leaves the fast gate passing. CI runs the same checks on push/PR ([.github/workflows/ci.yml](.github/workflows/ci.yml)); live runs separately ([.github/workflows/live.yml](.github/workflows/live.yml)).
 
-`pnpm run inspect:crap` is broader, non-blocking feedback: it generates a CRAP report over the repo's broader non-live codebase (`extensions/**`, `scripts/**`, non-live `tests/**`) for inspection, not as a commit gate.
+## Completion inspection pass (when the change feels done)
 
-`pnpm run inspect:sonar` is the separate SonarQube experiment path. It is intentionally outside the normal implementation loop and outside the commit gate.
+`pnpm run feedback` is the fast loop, not the whole finish line.
+
+1. `pnpm run inspect` — broader completion pass. Always runs `inspect:crap`; runs `inspect:sonar` too when `SONAR_HOST_URL` and `SONAR_TOKEN` are set, otherwise prints a clear skip.
+2. `pnpm test:live` — when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures.
+3. `pnpm run render:verify` — when changing render-verifier / screenshot / visual-tooling paths.
+4. Refactor again from what those analyzers surface, then rerun `pnpm run feedback` before calling the work done.
 
 No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all that "builds" the package.
 
 ## Story workflow
 
 1. **Spec** — draft the story file. Every story file starts with a visible metadata block carrying `**Status:** Draft|Ready|In progress|Done` so a reader can see whether the spec is still forming, ready to execute, actively being implemented, or closed. Every story file must also contain, at minimum: `Summary`, `Done criterion`, `Scope`, `Plan`, `Tests`, and `Verification`. The `Tests` section is mandatory and names layers touched, events covered, fakes added, live tests, and anything deferred. Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story file as the working template — imitate the section shape, don't invent one. Parent docs link downward; they do not copy story-level detail.
-2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor), each green on `pnpm run feedback` (and `pnpm test:live` when the story touches a live-only seam). When implementation starts, flip the story file metadata to `**Status:** In progress`. A story is not considered done until its implementation exists in committed history. Do not start the next story with uncommitted carry-over from the previous one.
+2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor). Use `pnpm test:watch` for the red/green loop when helpful, then `pnpm run feedback` for the fast refactor loop. When the change feels done, run the completion inspection pass (`pnpm run inspect`, plus `pnpm test:live` / `pnpm run render:verify` when relevant) and refactor again before calling the step complete. When implementation starts, flip the story file metadata to `**Status:** In progress`. A story is not considered done until its implementation exists in committed history. Do not start the next story with uncommitted carry-over from the previous one.
 3. **Close** — close only from a clean working tree after the story's implementation commits already exist. Flip the story file metadata to `**Status:** Done`, update status in the epic file, the CV `README.md`, and the top-level roadmap `README.md`, append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards), and update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
 
 Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog.md](docs/process/worklog.md).
