@@ -157,6 +157,20 @@ Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. 
 docker run -d -p 8000:8000 yuzutech/kroki
 ```
 
+## Running Kroki locally via Docker
+
+Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-fence manages the Docker container for you:
+
+```text
+/fence kroki start    → pulls and starts a local Kroki container on port 8000
+/fence kroki status   → reports running / stopped / absent
+/fence kroki stop     → stops and removes the container
+```
+
+After `/fence kroki start`, the Kroki processor automatically uses `http://localhost:8000` for the current session. No config file edit needed — the session-scoped override reverts when the session ends or you run `/fence kroki stop`.
+
+For persistent configuration (across sessions), set the endpoint in your config file — see [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint) above.
+
 ## Diagnosing the setup
 
 Type `/fence doctor` for a full diagnostic summary:

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV2.E2.S1 — Docker Kroki lifecycle commands)
+
+- **`/fence kroki start`** pulls and starts a local `yuzutech/kroki` Docker container on port 8000. Sets the Kroki endpoint to `http://localhost:8000` for the current session.
+- **`/fence kroki stop`** stops and removes the container, reverting the endpoint.
+- **`/fence kroki status`** reports running / stopped / absent.
+- All three commands shell out to `docker` via the DI seam — no Docker SDK dependency.
+
 ### Added (CV2.E1.S1 — mermaid-local via mmdc)
 
 - **`mermaid-local` processor** shells out to `mmdc` (@mermaid-js/mermaid-cli) for local mermaid rendering. Wins the `mermaid` tag when `mmdc` is on PATH; falls through to Kroki otherwise. Diagram source never leaves the host for this tag.
