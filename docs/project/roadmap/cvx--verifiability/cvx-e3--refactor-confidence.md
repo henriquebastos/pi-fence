@@ -1,7 +1,7 @@
 # CVx.E3 — Refactor Confidence
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-22 — S3–S5 Done
+**Last updated:** 2026-04-22 — S6 In progress
 
 CVx.E1 and CVx.E2 proved what pi-fence renders. The next missing confidence rung is structural: can we clean the code up without guessing, drifting, or breaking hidden contracts? This Epic makes refactoring deliberate.
 
@@ -16,8 +16,9 @@ Internal-first on purpose: no new end-user behavior, no new processors, no visua
 | [S3](cvx-e3-s3--production-owned-runtime-seams.md) | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | ✅ Done |
 | [S4](cvx-e3-s4--thin-composition-root.md) | **The extension entrypoint becomes a thin composition root over focused modules and policies** | ✅ Done |
 | [S5](cvx-e3-s5--internal-api-polish.md) | **Internal module APIs and naming make the boundary-injected architecture easy to compose** | ✅ Done |
+| [S6](cvx-e3-s6--feedback-loop-command-surface.md) | **The local command surface names the implementation loop, checks, and inspection passes by intent** | In progress |
 
-The sequence is intentional and mirrors the product decision behind this Epic: **safer refactoring first, architecture clarity second, API polish third**.
+The sequence is intentional and mirrors the product decision behind this Epic: **safer refactoring first, architecture clarity second, API polish third, contributor-loop polish last**.
 
 Current map: [Architecture map](../../architecture.md).
 
@@ -26,12 +27,13 @@ Current map: [Architecture map](../../architecture.md).
 3. `S3` makes the repository hierarchy predictable by promoting runtime seams into production-owned interfaces and wiring them by injection at the edge.
 4. `S4` reduces orchestration complexity by shrinking `extensions/pi-fence/index.ts` into the composition root over focused modules and explicit policies.
 5. `S5` spends the confidence earned above on internal API shape, naming, and low-cognitive-load boundaries so the DI-first architecture reads naturally instead of ceremonially.
+6. `S6` makes the local command surface read the same way: `feedback` for the normal implementation loop, `check:*` for checks, and `inspect:*` for deeper non-blocking analyzers.
 
 ## Deliverable vision (epic scope)
 
 A contributor returns to pi-fence after a few weeks away and can orient quickly.
 
-1. `pnpm run verify:fast` tells them whether the repo is safe to change.
+1. `pnpm run feedback` tells them whether the repo is safe to change.
 2. An [architecture note](../../architecture.md) explains which module owns parsing, resolution, config, commands, rendering, runtime seams, adapters, and the composition root.
 3. Production code reads production dependencies from production paths, and inner modules receive those dependencies explicitly rather than reaching into ambient process state.
 4. The extension entrypoint is small enough to scan in one pass because it primarily wires concrete implementations to boundary interfaces.
@@ -113,3 +115,4 @@ The Epic is done when the following are true together:
 4. `extensions/pi-fence/index.ts` is a thin composition root rather than the home of every orchestration concern.
 5. Inner modules no longer depend on ambient environment access where an explicit boundary should exist.
 6. Remaining cleanup work is an explicit backlog, not a vague feeling that the code should be prettier someday.
+7. The local command surface distinguishes the normal implementation loop from deeper inspection without breaking older aliases abruptly.

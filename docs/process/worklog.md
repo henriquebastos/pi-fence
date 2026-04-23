@@ -6,16 +6,17 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CV0.E1.S5` is now the next ready story. `CVx.E4.S3` is closed, the Sonar report pipeline is split into readable modules, and the latest Sonar run reports zero open issues under the repo's current rule set.
+`CVx.E3.S6` is in flight: make the local command surface name the implementation feedback loop, checks, and deeper inspection passes by intent with a single canonical vocabulary. `CV0.E1.S5` remains the next feature story once this tooling pass closes.
 
 ## Next
 
-No story is currently in flight. Under the simplified roadmap hierarchy:
+Under the simplified roadmap hierarchy:
 
-- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** to execute.
+- `CVx.E3.S6` — feedback-loop command surface. **In progress**.
+- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** once `CVx.E3.S6` closes.
 - Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
 
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S3 are ✅ Done. `CVx — Verifiability` is done again. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
+CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S3 + CVx.E5.S1 are ✅ Done. `CVx — Verifiability` is reopened by `CVx.E3.S6`. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
 
 Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
 
