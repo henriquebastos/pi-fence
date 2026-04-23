@@ -26,6 +26,7 @@ import { NodeLogger } from "./io/logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
 import { createKrokiProcessor, isDarkThemeName } from "./kroki.ts";
+import { createTableProcessor } from "./table.ts";
 import {
 	PI_FENCE_LIST_MESSAGE_TYPE,
 	PI_FENCE_OUTPUT_MESSAGE_TYPE,
@@ -136,6 +137,7 @@ function createDefaultProcessors(
 	return [
 		createGraphvizLocalProcessor(deps.shell, deps.logger),
 		createMermaidLocalProcessor(deps.shell, deps.logger),
+		createTableProcessor(),
 		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),

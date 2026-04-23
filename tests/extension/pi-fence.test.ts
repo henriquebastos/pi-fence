@@ -155,6 +155,61 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 		},
 		20_000,
 	);
+	it(
+		"renders a csv block as a text table via the table processor",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Here's the data:\n\n```csv\nname,age\nAlice,30\nBob,25\n```\n\nDone.",
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "csv",
+				processor: "table",
+				kind: "ok",
+			});
+
+			// Content is text, not image.
+			const items = outputs[0].content as Array<{ type: string; text?: string }>;
+			expect(items).toHaveLength(1);
+			expect(items[0].type).toBe("text");
+			expect(items[0].text).toContain("Alice");
+			expect(items[0].text).toContain("Bob");
+			expect(items[0].text).toContain("─");
+
+			// No HTTP requests — table processor is pure logic.
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"renders a jsonl block as a text table via the table processor",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				'Data:\n\n```jsonl\n{"id":1,"name":"Alpha"}\n{"id":2,"name":"Beta"}\n```',
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "jsonl",
+				processor: "table",
+				kind: "ok",
+			});
+
+			const items = outputs[0].content as Array<{ type: string; text?: string }>;
+			expect(items[0].type).toBe("text");
+			expect(items[0].text).toContain("Alpha");
+			expect(items[0].text).toContain("Beta");
+		},
+		20_000,
+	);
 });
 
 describe("pi-fence extension — /fence list command through AgentSession", () => {
@@ -190,7 +245,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(3);
+			expect(details.listings).toHaveLength(4);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-local",
 				status: "unavailable",
@@ -204,6 +259,11 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				status: "unavailable",
 			});
 			expect(details.listings[2]).toMatchObject({
+				id: "table",
+				status: "registered",
+				tags: ["csv", "jsonl"],
+			});
+			expect(details.listings[3]).toMatchObject({
 				id: "kroki",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
