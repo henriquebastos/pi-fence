@@ -159,7 +159,7 @@ Pure function; takes card descriptions, returns HTML. Easy to unit-test.
 
 #### 6. CLI changes
 
-`scripts/verify.ts`:
+`scripts/render-verify.ts`:
 
 - New `--variant <name>` flag narrowing to one variant when `--scenario` is also set.
 - Without filter flags, iterates every `scenario × variant` combo.
@@ -206,7 +206,7 @@ Test-first on the pure-function pieces; fixture-captured goldens land before the
 | 2 | unit | Add `mermaid-error-path` scenario with one default variant. Register it. Extend `tests/unit/verify-scenarios.test.ts` to cover both scenarios and the error-path case's byte-stream shape (must NOT contain the Kitty APC, because the error path has no image). | `wip(agent): mermaid-error-path scenario (S2 step 2)` |
 | 3 | tooling | Pipeline refactor: `renderScenario(scenario, variant, outDir)` and `renderMany(scenarios, outDir)` iterating `scenario × variant`. `RenderResult` gains name fields. Spike `scripts/render-image-spike.ts` picks up the new signature (picks the default variant). | `wip(agent): pipeline variants refactor (S2 step 3)` |
 | 4 | tooling | `scripts/verify/gallery.ts` + its unit test `tests/unit/verify-gallery.test.ts`. Four cases per deliverable 9. | `wip(agent): HTML gallery renderer (S2 step 4)` |
-| 5 | tooling | `scripts/verify.ts` CLI changes: `--variant` flag, cross-product iteration, gallery write, `--update` across combos. | `wip(agent): pnpm render:verify cross-product + gallery (S2 step 5)` |
+| 5 | tooling | `scripts/render-verify.ts` CLI changes: `--variant` flag, cross-product iteration, gallery write, `--update` across combos. | `wip(agent): pnpm render:verify cross-product + gallery (S2 step 5)` |
 | 6 | fixture | Capture goldens: `pnpm render:verify --update` on a clean run. Commits `tests/fixtures/golden/mermaid-happy-path/default.png` (renamed) + `tests/fixtures/golden/mermaid-error-path/default.png` (new). | `wip(agent): goldens for scenario × variant cross-product (S2 step 6)` |
 | 7 | live | `tests/render-image/verify.test.ts` iterates the cross-product with nested golden lookup. `pnpm test:live` now runs 2 render-image cases (up from 1). | `wip(agent): render-image cross-product test (S2 step 7)` |
 | 8 | docs | CHANGELOG + getting-started. | `wip(agent): S2 docs` |
@@ -417,7 +417,7 @@ The rename is recorded as a `git mv`; revert restores the original path.
 
 - `scripts/verify/scenarios.ts` — `Variant` type, `variants` field, `build(variant)`, new `mermaid-error-path` scenario.
 - `scripts/verify/pipeline.ts` — variant-aware `renderScenario`, `renderMany` iterates cross-product, `RenderResult` gains name fields.
-- `scripts/verify.ts` — `--variant` flag, cross-product loop, gallery write, `--update` across combos.
+- `scripts/render-verify.ts` — `--variant` flag, cross-product loop, gallery write, `--update` across combos.
 - `scripts/render-image-spike.ts` — picks the default variant of the default scenario.
 - `tests/render-image/verify.test.ts` — iterates cross-product, nested golden path.
 - `tests/unit/verify-scenarios.test.ts` — extended to cover both scenarios and variants.

@@ -104,11 +104,12 @@ This project uses [pnpm](https://pnpm.io). The `packageManager` field in `packag
 ```bash
 corepack enable          # one time, once per machine
 pnpm install
-pnpm test                # fast suite + coverage focused on extensions/**
-pnpm run crap:ext        # focused CRAP summary for extensions/**
+pnpm run feedback        # implementation loop: fast tests + ext coverage + focused CRAP + docs + types + deps
+pnpm test:watch          # watch the fast suite while editing
 pnpm test:live           # live suite — needs network for kroki.io
                          #   Docker for container-binary tests (CV0.E2+)
-pnpm run crap            # broader CRAP report over extensions/, scripts/, and non-live tests/
+pnpm run inspect:crap    # broader CRAP report over extensions/, scripts/, and non-live tests/
+pnpm run inspect:sonar   # SonarQube experiment (requires SONAR_HOST_URL + SONAR_TOKEN)
 ```
 
 Without corepack, `pnpm install` works as long as you have pnpm 10.x available on PATH. See [getting-started](docs/getting-started.md#development) for the full dev workflow.

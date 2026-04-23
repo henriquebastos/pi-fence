@@ -44,7 +44,7 @@ A contributor returning to pi-fence can read one architecture note and orient wi
 
 - A new durable architecture note at `docs/project/architecture.md`.
 - A current-state module map for the extension runtime (`extensions/pi-fence/*.ts`).
-- A smaller, clearly-separated map for repo tooling only where it affects the refactor plan (`scripts/verify/**`, `scripts/verify.ts`, `scripts/render-gallery.ts`).
+- A smaller, clearly-separated map for repo tooling only where it affects the refactor plan (`scripts/verify/**`, `scripts/render-verify.ts`, `scripts/render-gallery.ts`).
 - A hotspot inventory tied explicitly to `CVx.E3.S3`–`S5`.
 - Discoverability links from the nearest navigation surfaces (`docs/README.md` and `cvx-e3--refactor-confidence.md`).
 - A small amount of evidence-gathering from the current tree (`rg`, `wc -l`, import census) if needed to keep the note factual.

@@ -143,7 +143,7 @@ How to work on pi-fence itself. You need this only if you're contributing; end u
 
 - **Node 22** or newer. Matches the base image used by the live-deps container.
 - **pnpm 10.x**. `packageManager` is pinned in `package.json`; `corepack enable` once per machine lets Node resolve the right pnpm automatically.
-- **Docker Desktop or the docker CLI**. Optional — only needed when running `pnpm test:live`. The fast gate (`pnpm run verify:fast`) requires neither Docker nor network.
+- **Docker Desktop or the docker CLI**. Optional — only needed when running `pnpm test:live`. The implementation loop (`pnpm run feedback`) requires neither Docker nor network.
 - **macOS or Linux** for the full test matrix. Windows contributors can run the fast suite without issue; live tests on Windows require Docker Desktop and are not yet verified in CI.
 
 ### Clone and install
@@ -155,19 +155,20 @@ corepack enable    # one-time
 pnpm install
 ```
 
-### Run the fast verification gate
+### Run the implementation feedback loop
 
 ```bash
-pnpm run verify:fast   # pnpm test + pnpm run check + pnpm run typecheck + pnpm run typecheck:deps
+pnpm run feedback   # pnpm test + pnpm run inspect:crap:ext + pnpm run lint:markdown + pnpm run lint:types + pnpm run lint:deps
 ```
 
 Equivalent individual commands:
 
 ```bash
-pnpm test              # unit, contract, extension, utility self-tests
-pnpm run check         # docs link + markdown lint
-pnpm run typecheck     # tsc --noEmit across extensions, tests, and scripts
-pnpm run typecheck:deps # dependency-cruiser architectural boundaries
+pnpm test                 # unit, contract, extension, utility self-tests + extension-focused coverage
+pnpm run inspect:crap:ext # focused CRAP summary for extensions/**
+pnpm run lint            # docs link + markdown checks
+pnpm run lint:types      # tsc --noEmit across extensions, tests, and scripts
+pnpm run lint:deps       # dependency-cruiser architectural boundaries
 ```
 
 Expect all green on a clean clone.
@@ -201,16 +202,16 @@ pnpm test:watch    # vitest --watch on the fast suite
 ### Coverage + CRAP feedback
 
 ```bash
-pnpm test          # fast suite + coverage focused on extensions/**
-pnpm run crap:ext  # focused CRAP summary for extensions/**
-pnpm run crap      # broader CRAP report over extensions/, scripts/, and non-live tests/
+pnpm test                 # fast suite + coverage focused on extensions/**
+pnpm run inspect:crap:ext # focused CRAP summary for extensions/**
+pnpm run inspect:crap     # broader CRAP report over extensions/, scripts/, and non-live tests/
 ```
 
-`pnpm test` uses Vitest's Istanbul provider because it is the coverage input shape `crap-score` consumes directly and it matched function coverage correctly in this repo during evaluation. The fast-suite coverage summary is intentionally scoped to `extensions/**` so the normal gate answers the production-lane question first.
+`pnpm test` uses Vitest's Istanbul provider because it is the coverage input shape `crap-score` consumes directly and it matched function coverage correctly in this repo during evaluation. The fast-suite coverage summary is intentionally scoped to `extensions/**` so the normal loop answers the production-lane question first.
 
-`pnpm run verify:fast` now reuses the `coverage/coverage-final.json` produced by `pnpm test` and adds a focused extension-only CRAP summary on stdout before docs, type, and dependency-boundary checks. That keeps the fast gate focused on shipped extension code without rerunning the suite.
+`pnpm run feedback` reuses the `coverage/coverage-final.json` produced by `pnpm test` and adds a focused extension-only CRAP summary on stdout before `lint:markdown`, `lint:types`, and `lint:deps`. That keeps the implementation loop focused on shipped extension code without rerunning the suite.
 
-`pnpm run crap` is separate and non-blocking: it reruns the fast suite with a broader coverage include set (`extensions/**`, `scripts/**`, `tests/unit/**`, `tests/contract/**`, `tests/extension/**`, `tests/utilities/**`) and then writes JSON + HTML reports under `crap-report/nonlive/`.
+`pnpm run inspect:crap` is separate and non-blocking: it reruns the fast suite with a broader coverage include set (`extensions/**`, `scripts/**`, `tests/unit/**`, `tests/contract/**`, `tests/extension/**`, `tests/utilities/**`) and then writes JSON + HTML reports under `crap-report/nonlive/`.
 
 ### SonarQube experiment
 
@@ -227,51 +228,58 @@ Then open <http://localhost:9000>, sign in with the local default admin account,
 ```bash
 export SONAR_HOST_URL=http://localhost:9000
 export SONAR_TOKEN=<your-token>
-pnpm run sonar
+pnpm run inspect:sonar
 ```
 
-`pnpm run sonar` is the convenience command: it runs the repo-pinned scanner and then generates a local report bundle under `scripts/out/sonar/latest/`. Low-level commands remain available when needed:
+`pnpm run inspect:sonar` is the convenience command: it runs the repo-pinned scanner and then generates a local report bundle under `scripts/out/sonar/latest/`. Low-level commands remain available when needed:
 
 ```bash
-pnpm run sonar:scan    # scanner only
-pnpm run sonar:report  # report only, reusing the latest .scannerwork/report-task.txt
+pnpm run inspect:sonar:scan    # scanner only
+pnpm run inspect:sonar:report  # report only, reusing the latest .scannerwork/report-task.txt
 ```
 
-This experiment is intentionally separate from `pnpm run verify:fast` so generic Sonar findings do not block normal commits. The repo also exposes a manual GitHub Actions workflow, `sonarqube-experiment`, for teams that want to point the same scan at a configured server without making it a required CI gate.
+This experiment is intentionally separate from `pnpm run feedback` so generic Sonar findings do not block normal commits. The repo also exposes a manual GitHub Actions workflow, `sonarqube-experiment`, for teams that want to point the same scan at a configured server without making it a required CI gate.
 
 ### Scripts reference
 
 | Script | Purpose |
 |--------|---------|
+| `pnpm run feedback` | Canonical implementation loop: `pnpm run feedback:fast`. |
+| `pnpm run feedback:fast` | Fast implementation loop: `pnpm test` + `pnpm run inspect:crap:ext` + `pnpm run lint:markdown` + `pnpm run lint:types` + `pnpm run lint:deps`. |
 | `pnpm test` | Fast suite (unit, contract, render, extension, utility) with coverage focused on `extensions/**`. |
-| `pnpm run crap:ext` | Focused CRAP summary for `extensions/**`, built from the coverage output produced by `pnpm test` and printed to stdout. |
-| `pnpm run typecheck` | Static TypeScript gate (`tsc --noEmit`) across production code, tests, and scripts. |
-| `pnpm run verify:fast` | Umbrella fast gate: `pnpm test` + focused extension CRAP + `pnpm run check` + `pnpm run typecheck` + `pnpm run typecheck:deps`. |
-| `pnpm test:watch` | vitest in watch mode. |
-| `pnpm run coverage:nonlive` | Broader non-live coverage pass for `extensions/**`, `scripts/**`, and non-live `tests/**`; used as the input to `crap-score`. |
-| `pnpm run crap` | Generate JSON + HTML CRAP reports under `crap-report/nonlive/` from the broader non-live coverage input. |
+| `pnpm test:watch` | vitest in watch mode on the fast suite. |
 | `pnpm test:live` | Integration + render-image live suites (Docker / network / Chromium). Each case skips cleanly when its prerequisite is absent. |
 | `pnpm test:all` | Fast + live. |
-| `pnpm render:verify` | Produces PNGs + an HTML gallery of pi-fence scenarios via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/<variant>/render.png` + `scripts/out/render-verify/index.html`. Flags: `--list`, `--scenario <name>`, `--variant <name>`, `--update`. |
-| `pnpm run check` | Link check + markdown lint. |
-| `pnpm run sonar` | Run the non-blocking SonarQube experiment end-to-end: scan, wait for CE completion, and write a report bundle under `scripts/out/sonar/latest/`. |
-| `pnpm run sonar:scan` | Run the SonarQube scanner only against `SONAR_HOST_URL` with `SONAR_TOKEN`, using `sonar-project.properties`. |
-| `pnpm run sonar:report` | Generate report artifacts from the latest Sonar scan recorded in `.scannerwork/report-task.txt`. |
-| `pnpm run check:links` | Link check only. |
-| `pnpm run check:markdown` | Markdown lint only. |
-| `pnpm run fix:markdown` | Auto-fix markdown lint issues. |
+| `pnpm run lint` | Convenience wrapper for `pnpm run lint:markdown`. |
+| `pnpm run lint:types` | Static TypeScript gate (`tsc --noEmit`) across production code, tests, and scripts. |
+| `pnpm run lint:deps` | dependency-cruiser architectural boundary check. |
+| `pnpm run lint:markdown:fix` | Auto-fix markdown body issues with `markdownlint-cli2 --fix`. |
+| `pnpm run lint:markdown` | Run both markdown link checks and markdown body checks. |
+| `pnpm run lint:markdown:links` | Markdown link + heading-fragment validation. |
+| `pnpm run lint:markdown:body` | Markdown body checks via `markdownlint-cli2`. |
+| `pnpm run inspect:coverage:nonlive` | Broader non-live coverage pass for `extensions/**`, `scripts/**`, and non-live `tests/**`; used as the input to the broader CRAP report. |
+| `pnpm run inspect:crap:ext` | Focused CRAP summary for `extensions/**`, built from the coverage output produced by `pnpm test` and printed to stdout. |
+| `pnpm run inspect:crap` | Broader CRAP report flow: `pnpm run inspect:coverage:nonlive` + `pnpm run inspect:crap:nonlive`. |
+| `pnpm run inspect:crap:nonlive` | Write JSON + HTML CRAP reports under `crap-report/nonlive/` from `coverage/nonlive/coverage-final.json`. |
+| `pnpm run inspect:sonar` | Run the non-blocking SonarQube experiment end-to-end: scan, wait for CE completion, and write a report bundle under `scripts/out/sonar/latest/`. |
+| `pnpm run inspect:sonar:scan` | Run the SonarQube scanner only against `SONAR_HOST_URL` with `SONAR_TOKEN`, using `sonar-project.properties`. |
+| `pnpm run inspect:sonar:report` | Generate report artifacts from the latest Sonar scan recorded in `.scannerwork/report-task.txt`. |
+| `pnpm render:verify` | Produce PNGs + an HTML gallery of pi-fence scenarios via headless xterm.js + Kitty-graphics addon in Chromium. Output: `scripts/out/render-verify/<scenario>/<variant>/render.png` + `scripts/out/render-verify/index.html`. Flags: `--list`, `--scenario <name>`, `--variant <name>`, `--update`. |
+| `pnpm render:gallery` | Render the user-facing gallery HTML under `scripts/out/render-gallery/`. |
 | `pnpm live:up` | Pull/start the live-deps container. |
 | `pnpm live:down` | Stop and remove the container. |
 | `pnpm live:status` | Print `running` / `stopped` / `absent`. |
 | `pnpm live:exec -- <cmd>` | Run a command inside the container. |
 | `pnpm live:build` | Build the live-deps image locally. |
-| `pnpm refresh-fixtures <tag>` | Regenerate committed fixtures from live sources. |
+| `pnpm refresh-fixtures <tag>` | Fixture-refresh entrypoint. Currently a tagged skeleton that exits with a not-yet-implemented error until the first real refresh path lands. |
+
+The command surface is intentionally single-vocabulary: use the names shown above in scripts, docs, and contributor workflow.
 
 ### CI
 
 Two GitHub Actions workflows are committed but dormant until the repo goes public:
 
-- `.github/workflows/ci.yml` — the fast gate (`pnpm run check`, `pnpm run typecheck`, `pnpm test`) on Ubuntu + macOS, triggered on push and PR to `main`.
+- `.github/workflows/ci.yml` — the fast gate (`pnpm run lint:markdown`, `pnpm run lint:types`, `pnpm run lint:deps`, `pnpm test`) on Ubuntu + macOS, triggered on push and PR to `main`.
 - `.github/workflows/live.yml` — live suite on Ubuntu, runs nightly and on `workflow_dispatch`.
 
 ### Test layout

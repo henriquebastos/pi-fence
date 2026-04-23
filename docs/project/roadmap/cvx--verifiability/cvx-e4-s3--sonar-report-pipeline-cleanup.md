@@ -8,7 +8,7 @@
 
 ## Summary
 
-`CVx.E4.S2` proved that `pnpm run sonar` works and produces useful report artifacts. It also exposed an immediate maintainability problem: the new `scripts/sonar-report.ts` is too dense, too loosely typed, and too noisy under Sonar to serve as a clean long-term reporting tool.
+`CVx.E4.S2` proved that `pnpm run sonar` works and produces useful report artifacts. It also exposed an immediate maintainability problem: the new `scripts/inspect-sonar-report.ts` is too dense, too loosely typed, and too noisy under Sonar to serve as a clean long-term reporting tool.
 
 This story refactors the Sonar report pipeline itself. The goal is not new behavior. The goal is to keep the same reporting flow while making the implementation easier to read, easier to trust, and less noisy under the very analyzer it consumes.
 
@@ -27,7 +27,7 @@ This story refactors the Sonar report pipeline itself. The goal is not new behav
    - `issues.json`
    - `summary.json`
    - `summary.md`
-3. `scripts/sonar-report.ts` becomes a thin entrypoint/orchestrator.
+3. `scripts/inspect-sonar-report.ts` becomes a thin entrypoint/orchestrator.
 4. Sonar API payload typing is explicit enough that the current repeated `unknown` casts disappear or shrink materially.
 5. Markdown rendering is separated from data fetching and summary derivation.
 6. Sonar noise from the reporting implementation drops materially relative to the current state.
@@ -74,7 +74,7 @@ Refactor by responsibility, not by style nibbling.
 
 Expected target:
 
-- `scripts/sonar-report.ts` mainly:
+- `scripts/inspect-sonar-report.ts` mainly:
   1. validate env
   2. load report-task metadata
   3. fetch Sonar data
@@ -149,7 +149,7 @@ pnpm run sonar
 
 ## Key files
 
-- `scripts/sonar-report.ts`
+- `scripts/inspect-sonar-report.ts`
 - new `scripts/sonar/*.ts` modules
 - `package.json` only if command wiring changes
 - roadmap/worklog files at close

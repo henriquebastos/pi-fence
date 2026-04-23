@@ -128,7 +128,7 @@ Test coverage in a new `tests/unit/verify-kitty.test.ts`:
 
 #### 4. CLI timing log
 
-`scripts/verify.ts` after each combo prints:
+`scripts/render-verify.ts` after each combo prints:
 
 ```text
 [render:verify] mermaid-happy-path / default rendered in 456ms
@@ -329,7 +329,7 @@ The rest of S3 (counter, timing, budget) can stay; only the sentinel change carr
 **Modified:**
 
 - `scripts/verify/pipeline.ts` — sentinel wait; `durationMs` on `RenderResult`.
-- `scripts/verify.ts` — per-combo + total timing log.
+- `scripts/render-verify.ts` — per-combo + total timing log.
 - `scripts/render-image-spike.ts` — picks up `durationMs` in its stderr summary (optional polish; not required).
 - `tests/render-image/verify.test.ts` — timing-budget assertion; `DIFF_BUDGET` recalibration.
 - `CHANGELOG.md`, `docs/process/worklog.md`, status-flip files.

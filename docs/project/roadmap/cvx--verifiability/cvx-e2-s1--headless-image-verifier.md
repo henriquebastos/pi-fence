@@ -29,7 +29,7 @@ Running `pnpm test` (the fast suite) is unchanged: the render-image test is gate
 
 **In scope:**
 
-- Promote `scripts/render-image-spike.ts` to `scripts/verify.ts`. Refactor the scenario's bytes-capture + paint pipeline into reusable modules under `scripts/verify/`.
+- Promote `scripts/render-image-spike.ts` to `scripts/render-verify.ts`. Refactor the scenario's bytes-capture + paint pipeline into reusable modules under `scripts/verify/`.
 - **Scenario registry** at `scripts/verify/scenarios.ts`: one named scenario today (`mermaid-happy-path`) mirroring the spike's fixture. Registry exposes `listScenarios()` and `getScenario(name)`.
 - **`pnpm render:verify`** entry point. Default scenario is `mermaid-happy-path`. Accepts `--scenario <name>` (selects from the registry) and `--update` (overwrites the golden).
 - **Golden PNG** committed at `tests/fixtures/golden/mermaid-happy-path.png`. Produced by a first `pnpm render:verify --update` run and captured into the tree.
@@ -105,7 +105,7 @@ Internals mirror the spike: launch Chromium via `playwright-core`, navigate to a
 
 One refinement vs. the spike: factor out the Chromium-lifecycle bits (`launch` / `context.newPage` / `browser.close`) so the in-process test can reuse a single browser across scenarios when S2 adds more than one.
 
-#### 3. `scripts/verify.ts` — CLI entry point
+#### 3. `scripts/render-verify.ts` — CLI entry point
 
 Accepts:
 
@@ -202,7 +202,7 @@ Simple broadening. No new script.
 Test-first. Each step leaves `pnpm test` green; `pnpm test:live` is allowed to be skipped (Chromium optional) or green (Chromium present).
 
 1. **`wip(agent): scenario registry + pipeline extraction (S1 step 1)`** — extract `scripts/verify/scenarios.ts` and `scripts/verify/pipeline.ts` from `render-image-spike.ts` without adding CLI or tests yet. Existing spike keeps working; new modules are just library code. Verify by running `pnpm --silent render:image-spike` still produces a valid PNG via the spike path.
-2. **`wip(agent): pnpm render:verify CLI (S1 step 2)`** — add `scripts/verify.ts` CLI + `pnpm render:verify` script. `--scenario`, `--list`, `--update` flags. Invoking `pnpm render:verify` produces the PNG in `scripts/out/render-verify/mermaid-happy-path/render.png`. No test yet.
+2. **`wip(agent): pnpm render:verify CLI (S1 step 2)`** — add `scripts/render-verify.ts` CLI + `pnpm render:verify` script. `--scenario`, `--list`, `--update` flags. Invoking `pnpm render:verify` produces the PNG in `scripts/out/render-verify/mermaid-happy-path/render.png`. No test yet.
 3. **`wip(agent): golden PNG for mermaid-happy-path (S1 step 3)`** — first run of `pnpm render:verify --update` captures the golden into `tests/fixtures/golden/mermaid-happy-path.png`. Commit the PNG as binary. Note the Chromium version used in the commit message so future-us knows what baseline it was pinned to.
 4. **`wip(agent): pixel-diff render-image test (S1 step 4)`** — add `tests/render-image/verify.test.ts` with the `describe.skipIf` shape. Add `pngjs`, `pixelmatch`, and their `@types/*` as dev deps. Broaden `pnpm test:live` to include `tests/render-image`. Run `pnpm test:live`; expect one new case, green. Run `pnpm test`; expect 161 unchanged (render-image skipped in fast suite because fast suite's include pattern doesn't cover `tests/render-image/`).
 5. **`wip(agent): principles + docs (S1 step 5)`** — add `Render Image` row to `principles.md` Testing table. Update `docs/getting-started.md`. Add CHANGELOG entry.
@@ -381,7 +381,7 @@ No runtime rollback is needed — the verifier is a dev-time tool plus one live-
 
 **New:**
 
-- `scripts/verify.ts`
+- `scripts/render-verify.ts`
 - `scripts/verify/scenarios.ts`
 - `scripts/verify/pipeline.ts`
 - `tests/render-image/verify.test.ts`

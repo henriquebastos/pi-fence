@@ -36,7 +36,7 @@ Not "the testing infrastructure is good." Good is subjective. **S0 is done when 
 | `DockerExecShellRunner` | ✅ | — |
 | `FakeExtensionAPI` | ✅ | — |
 | `docker/Dockerfile` with graphviz | ✅ | — |
-| `scripts/live-container.ts` | ✅ | — |
+| `scripts/live.ts` | ✅ | — |
 | `.github/workflows/` skeleton | ✅ | — |
 | Self-tests for every piece above | ✅ | — |
 | `FenceProcessor` interface | — | S1 |
@@ -250,11 +250,11 @@ RUN apt-get update \
 CMD ["sleep", "infinity"]
 ```
 
-Tag: `ghcr.io/henriquebastos/pi-fence-live-deps:0.1.0`. The version is pinned in `scripts/live-container.ts` as a constant; bumping it is a deliberate act.
+Tag: `ghcr.io/henriquebastos/pi-fence-live-deps:0.1.0`. The version is pinned in `scripts/live.ts` as a constant; bumping it is a deliberate act.
 
 The image is built but not pushed in S0. Pushing to ghcr.io requires the public repo and credentials; we land the Dockerfile and local `docker build` workflow now, and wire the publish pipeline when the repo goes public.
 
-#### 9. `scripts/live-container.ts` — lifecycle CLI
+#### 9. `scripts/live.ts` — lifecycle CLI
 
 Subcommands:
 
@@ -320,7 +320,7 @@ Test-first at every step. Each step ends green (`pnpm test` passes).
 | 6 | `FakeExtensionAPI` + self-test | `wip(agent): FakeExtensionAPI test utility` |
 | 7 | `tests/extension/example.test.ts` using real pi SDK `createAgentSession` + `streamFn` override | `wip(agent): extension-layer exemplar with fake LLM stream` |
 | 8 | `docker/Dockerfile` with graphviz; can `docker build` locally | `wip(agent): docker image for live deps (graphviz only)` |
-| 9 | `scripts/live-container.ts` up/down/status/exec/build; self-test for `hasContainer()` | `wip(agent): live-container lifecycle CLI` |
+| 9 | `scripts/live.ts` up/down/status/exec/build; self-test for `hasContainer()` | `wip(agent): live lifecycle CLI` |
 | 10 | `DockerExecShellRunner`; `tests/integration/example.live.test.ts` with `skipIf(!hasContainer)` | `wip(agent): DockerExecShellRunner with live exemplar` |
 | 11 | `scripts/refresh-fixtures.ts` skeleton with self-test | `wip(agent): refresh-fixtures script skeleton` |
 | 12 | `.github/workflows/ci.yml` + `live.yml` | `wip(agent): CI workflow skeletons (dormant)` |
@@ -581,7 +581,7 @@ If `actionlint` isn't installed: visual inspection should show the files parse a
 - `vitest.config.ts`
 - `tests/` (entire tree)
 - `docker/Dockerfile`
-- `scripts/live-container.ts`
+- `scripts/live.ts`
 - `scripts/refresh-fixtures.ts`
 - `.github/workflows/ci.yml`
 - `.github/workflows/live.yml`
