@@ -39,7 +39,7 @@
 import type { Availability, FenceProcessor } from "./processor.ts";
 import type { BindingResolution } from "./resolve.ts";
 
-export type ProcessorStatus = "registered" | "unavailable";
+export type ProcessorStatus = "registered" | "unavailable" | "disabled";
 
 export interface ProcessorListing {
 	id: string;
@@ -67,8 +67,17 @@ export interface ProcessorListing {
 export function listProcessors(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
+	disabled?: ReadonlySet<string>,
 ): ProcessorListing[] {
 	return processors.map((processor) => {
+		if (disabled?.has(processor.id)) {
+			return {
+				id: processor.id,
+				status: "disabled" as const,
+				tags: processor.tags,
+				aliases: processor.aliases,
+			};
+		}
 		const status = availability.get(processor.id);
 		if (status?.ok) {
 			return {

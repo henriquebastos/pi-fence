@@ -94,6 +94,21 @@ describe("listProcessors", () => {
 		});
 	});
 
+	it("returns status 'disabled' when the processor id is in the disabled set", () => {
+		const kroki = stubProcessor("kroki", ["mermaid"]);
+		const listings = listProcessors(
+			[kroki],
+			allOk(["kroki"]),
+			new Set(["kroki"]),
+		);
+
+		expect(listings).toHaveLength(1);
+		expect(listings[0]).toMatchObject({
+			id: "kroki",
+			status: "disabled",
+		});
+	});
+
 	it("omits installHint from the listing when the processor did not provide one", () => {
 		const broken = stubProcessor("broken", ["x"]);
 		const availability = new Map<string, Availability>([
@@ -164,6 +179,19 @@ describe("formatProcessorLines", () => {
 		expect(lines).toEqual([
 			"kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
 		]);
+	});
+
+	it("renders a disabled processor with [disabled] badge", () => {
+		const lines = formatProcessorLines([
+			{
+				id: "kroki",
+				status: "disabled",
+				tags: ["mermaid"],
+				aliases: {},
+			},
+		]);
+
+		expect(lines).toEqual(["kroki [disabled] \u2014 mermaid"]);
 	});
 
 	it("renders a processor with no aliases as plain comma-separated tags", () => {
