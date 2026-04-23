@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV4.E2.S2 — Usage metrics)
+
+- **`/fence stats`** shows per-session usage metrics: total renders, ok/error counts, and breakdowns by processor and by tag. Metrics accumulate from session start and reset on `/reload`.
+
 ### Added (CV4.E2.S1 — /fence trace)
 
 - **`/fence trace <tag>`** shows step-by-step processor resolution for a given tag: which processors claim it, availability, bindings, disabled state, and which one wins. Useful for debugging why a block renders via one processor instead of another.

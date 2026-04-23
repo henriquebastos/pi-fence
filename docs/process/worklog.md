@@ -1735,3 +1735,21 @@ This closes CV3.E2 (Utility Processors) and **CV3 (Beyond Diagrams)**.
 **Test count.** 515 fast-suite (was 505; +10).
 
 **Carry-forward.** Next: CV4.E2.S2 (usage metrics).
+
+---
+
+### 2026-04-23 — CV4.E2.S2 closed; CV4.E2 and CV4 done
+
+**What shipped.** Per-session usage metrics via `MetricsCollector`. `/fence stats` displays render count, error count, per-processor and per-tag breakdowns. `agent-end.ts` records each render outcome.
+
+This closes CV4.E2 (Observability) and **CV4 (Platform)**.
+
+**Implementation commits.**
+
+1. `aed10d2` — spec CV4.E2.S2
+2. `789dd40` — step 1: MetricsCollector
+3. `f94bd82` — step 2: wire into agent-end + /fence stats
+
+**Test count.** 520 fast-suite (was 515; +5).
+
+**Carry-forward.** CV0, CV1, CV2, CV3, CV4 done.

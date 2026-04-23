@@ -3,7 +3,7 @@
 > Third parties write their own processors as first-class citizens.
 
 **Type:** `extensibility`
-**Status:** not done
+**Status:** done
 
 This CV is done when every Story in its Epics is done.
 
@@ -12,4 +12,4 @@ This CV is done when every Story in its Epics is done.
 | Code | Epic | State |
 |------|------|-------|
 | [CV4.E1](cv4-e1--third-party-processors.md) | **Third-party Processors** | Done |
-| [CV4.E2](cv4-e2--observability.md) | **Observability** | Not done |
+| [CV4.E2](cv4-e2--observability.md) | **Observability** | Done |

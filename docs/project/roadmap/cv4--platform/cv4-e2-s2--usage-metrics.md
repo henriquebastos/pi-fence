@@ -1,6 +1,6 @@
 # CV4.E2.S2 — Usage metrics
 
-**Status:** Draft
+**Status:** Done
 
 **Epic:** [CV4.E2 — Observability](cv4-e2--observability.md)
 **Date:** 2026-04-23 (spec)
