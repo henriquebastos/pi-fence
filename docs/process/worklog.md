@@ -1719,3 +1719,19 @@ This closes CV3.E2 (Utility Processors) and **CV3 (Beyond Diagrams)**.
 **Test count.** 505 (unchanged — docs-only story).
 
 **Carry-forward.** CV4.E1 done. Next: CV4.E2.S1 (/fence trace).
+
+---
+
+### 2026-04-23 — CV4.E2.S1 closed
+
+**What shipped.** `/fence trace <tag>` shows step-by-step processor resolution: which processors claim the tag, their availability, binding overrides, disabled state, and which one wins. New `trace.ts` module with `traceResolution()` and `formatTraceLines()`.
+
+**Implementation commits.**
+
+1. `5923e16` — spec CV4.E2.S1
+2. `38bffe4` — step 1: trace logic + formatting
+3. `2179d97` — step 2: wire /fence trace subcommand
+
+**Test count.** 515 fast-suite (was 505; +10).
+
+**Carry-forward.** Next: CV4.E2.S2 (usage metrics).

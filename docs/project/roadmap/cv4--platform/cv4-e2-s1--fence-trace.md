@@ -1,6 +1,6 @@
 # CV4.E2.S1 — /fence trace — resolution trace
 
-**Status:** Draft
+**Status:** Done
 
 **Epic:** [CV4.E2 — Observability](cv4-e2--observability.md)
 **Date:** 2026-04-23 (spec)
