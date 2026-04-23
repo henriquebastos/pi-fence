@@ -33,4 +33,4 @@ jobs:
         env:
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: pnpm run sonar:scan
+        run: pnpm run inspect:sonar:scan

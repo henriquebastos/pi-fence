@@ -21,7 +21,7 @@ RUN apt-get update \
        ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Keep the container alive so `docker exec` can reach it. The live-container
+# Keep the container alive so `docker exec` can reach it. The live
 # CLI does not use `docker run` with a one-shot command; it starts a
 # long-lived container that tests `docker exec` into.
 CMD ["sleep", "infinity"]

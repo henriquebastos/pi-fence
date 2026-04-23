@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * live-container — lifecycle CLI for the pi-fence-live-deps Docker container.
+ * live — lifecycle CLI for the pi-fence-live-deps Docker container.
  *
  * Subcommands:
  *   up        docker pull + docker run -d --name pi-fence-live-deps <image>
@@ -47,7 +47,7 @@ async function main(argv: string[]): Promise<number> {
 		case "help":
 			return printUsage(0);
 		default:
-			console.error(`live-container: unknown subcommand '${sub}'`);
+			console.error(`live: unknown subcommand '${sub}'`);
 			return printUsage(1);
 	}
 }

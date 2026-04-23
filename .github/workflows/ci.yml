@@ -46,13 +46,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint docs
-        run: pnpm run check
+        run: pnpm run lint:markdown
 
       - name: Run static typecheck
-        run: pnpm run typecheck
+        run: pnpm run lint:types
 
       - name: Run dependency boundary check
-        run: pnpm run typecheck:deps
+        run: pnpm run lint:deps
 
       - name: Run fast test suite
         run: pnpm test
