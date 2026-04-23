@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV1.E2.S2 — error follow-up to LLM)
+
+- **Render errors are fed back to the LLM** via `deliverAs: "followUp"`. When a processor returns an error (Kroki 4xx, network failure, etc.), pi-fence sends a `pi-fence:error-followup` custom message so the LLM sees the error in the same turn and can self-correct. The follow-up is invisible to the user (`display: false`) — the red error panel from E2.S1 already shows the error.
+
 ### Added (CV1.E1.S3 — /fence doctor)
 
 - **`/fence doctor`** prints a diagnostic summary: config file load status (loaded / not found / malformed), processor availability and status, effective bindings, and actionable issues. Surfaces install hints for unavailable processors and warns when disabled processors orphan tags.

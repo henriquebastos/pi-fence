@@ -1,6 +1,6 @@
 # CV1.E2.S2 — Error follow-up to the LLM
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV1.E2 — Error Feedback Loop](cv1-e2--error-feedback-loop.md)
 **Depends on:** [CV1.E2.S1](cv1-e2-s1--readable-error-panels.md)

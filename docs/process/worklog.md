@@ -1554,3 +1554,23 @@ This closes CV0.E1 (Kroki Through The Wire) and CV0 (It Works). Every language t
 **Test count.** 329 fast-suite (was 315; +14 across config, doctor, extension layers).
 
 **Carry-forward.** CV1.E1 is done. Next: CV1.E2.S1 (readable error panels).
+
+---
+
+### 2026-04-22 — CV1.E2.S1 retroactive close + CV1.E2.S2 closed; CV1.E2 and CV1 done
+
+**What shipped.**
+
+1. **E2.S1 (readable error panels)** was already implemented as part of CV0.E1.S1's render pipeline. Retroactively closed — no new code.
+2. **E2.S2 (error follow-up to LLM)** sends render errors via `pi.sendMessage(msg, { deliverAs: "followUp" })` so the LLM can self-correct in the same turn. One new branch in `agent-end.ts`, two extension tests.
+
+This closes CV1.E2 (Error Feedback Loop) and **CV1 (Take Control)**.
+
+**Implementation commits.**
+
+1. `8e167fe` — spec E2.S1 (retroactive close) + E2.S2
+2. `66a41c4` — step 1: send render errors as follow-up messages to the LLM
+
+**Test count.** 331 fast-suite (was 329; +2 extension tests).
+
+**Carry-forward.** CV0 and CV1 are done. Next: CV2 (Work Offline).
