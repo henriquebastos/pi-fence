@@ -138,6 +138,96 @@ describe("/fence list — subcommand", () => {
 	});
 });
 
+describe("/fence kroki — Docker lifecycle subcommands", () => {
+	it("kroki status notifies with the container status", async () => {
+		const api = new FakeExtensionAPI();
+		const logger = new FakeLogger();
+		const shell = new FakeShellRunner();
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"],
+			{ stdout: "true\n", stderr: "", exitCode: 0 },
+		);
+		await createPiFenceExtension(api as never, {
+			http: new FakeHttpClient(),
+			shell,
+			logger,
+			processors: [stubProcessor("kroki", ["mermaid"])],
+		});
+
+		await api.invokeCommand("fence", "kroki status");
+
+		expect(api.ui.notifications).toHaveLength(1);
+		expect(api.ui.notifications[0].message).toContain("running");
+	});
+
+	it("kroki start notifies on success", async () => {
+		const api = new FakeExtensionAPI();
+		const logger = new FakeLogger();
+		const shell = new FakeShellRunner();
+		// inspect → absent
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"],
+			{ stdout: "", stderr: "No such container", exitCode: 1 },
+		);
+		// docker run → success
+		shell.setResponse(
+			"docker",
+			["run", "-d", "--name", "pi-fence-kroki", "-p", "8000:8000", "yuzutech/kroki"],
+			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+		);
+		await createPiFenceExtension(api as never, {
+			http: new FakeHttpClient(),
+			shell,
+			logger,
+			processors: [stubProcessor("kroki", ["mermaid"])],
+		});
+
+		await api.invokeCommand("fence", "kroki start");
+
+		expect(api.ui.notifications).toHaveLength(1);
+		expect(api.ui.notifications[0].message).toContain("Started");
+	});
+
+	it("kroki stop notifies on success", async () => {
+		const api = new FakeExtensionAPI();
+		const logger = new FakeLogger();
+		const shell = new FakeShellRunner();
+		shell.setResponse("docker", ["stop", "pi-fence-kroki"], {
+			stdout: "pi-fence-kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["rm", "pi-fence-kroki"], {
+			stdout: "pi-fence-kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		await createPiFenceExtension(api as never, {
+			http: new FakeHttpClient(),
+			shell,
+			logger,
+			processors: [stubProcessor("kroki", ["mermaid"])],
+		});
+
+		await api.invokeCommand("fence", "kroki stop");
+
+		expect(api.ui.notifications).toHaveLength(1);
+		expect(api.ui.notifications[0].message).toContain("Stopped");
+	});
+
+	it("kroki with unknown sub notifies warning", async () => {
+		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+
+		await api.invokeCommand("fence", "kroki bogus");
+
+		expect(api.ui.notifications).toHaveLength(1);
+		expect(api.ui.notifications[0].type).toBe("warning");
+		expect(api.ui.notifications[0].message).toContain("bogus");
+	});
+});
+
 describe("/fence — no subcommand / unknown subcommand", () => {
 	it("notifies with a warning listing the available subcommands when called with no args", async () => {
 		const { api, logger } = await setupExtension(stubProcessor("kroki", ["mermaid"]));

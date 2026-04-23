@@ -90,6 +90,7 @@ export async function createPiFenceExtension(
 			projectPath: configResult.projectPath,
 			projectStatus: configResult.projectStatus,
 		},
+		shell: deps.shell,
 	});
 	registerPiFenceAgentEndHandler({
 		pi,

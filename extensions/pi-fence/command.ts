@@ -5,12 +5,14 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { formatDoctorLines, type DoctorInput } from "./doctor.ts";
 import type { ConfigFileStatus } from "./io/config-loader.ts";
 import type { Logger } from "./io/logger.ts";
+import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { formatProcessorLines, listProcessors, type ListProcessorsOptions } from "./list.ts";
 import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
 import { collectSupportedTags, type BindingResolution } from "./resolve.ts";
+import type { ShellRunner } from "./io/shell-runner.ts";
 
-const FENCE_SUBCOMMANDS = ["list", "doctor"] as const;
+const FENCE_SUBCOMMANDS = ["list", "doctor", "kroki start", "kroki stop", "kroki status"] as const;
 
 interface ConfigStatus {
 	globalPath: string;
@@ -28,6 +30,7 @@ interface RegisterFenceCommandOptions {
 	disabled: ReadonlySet<string>;
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
+	shell: ShellRunner;
 }
 
 export function registerFenceCommand({
@@ -39,8 +42,10 @@ export function registerFenceCommand({
 	disabled,
 	endpoints,
 	configStatus,
+	shell,
 }: RegisterFenceCommandOptions): void {
 	const listOpts: ListProcessorsOptions = { disabled, endpoints };
+	const dockerMgr = createKrokiDockerManager(shell, logger);
 
 	pi.registerCommand("fence", {
 		description: "List or inspect pi-fence processors (usage: /fence list, /fence doctor)",
@@ -67,6 +72,11 @@ export function registerFenceCommand({
 				sendPiFenceDoctorMessage(pi, doctorLines);
 				return;
 			}
+			if (subcommand === "kroki") {
+				const krokiSub = args.trim().split(/\s+/)[1] ?? "";
+				await handleKrokiSubcommand(krokiSub, dockerMgr, ctx);
+				return;
+			}
 			notifyUnknownSubcommand(ctx, subcommand);
 			logger.warn("command", "unknown subcommand", { subcommand });
 		},
@@ -75,6 +85,31 @@ export function registerFenceCommand({
 
 interface NotifyContext {
 	ui: { notify(message: string, type?: "info" | "warning" | "error"): void };
+}
+
+async function handleKrokiSubcommand(
+	sub: string,
+	mgr: ReturnType<typeof createKrokiDockerManager>,
+	ctx: NotifyContext,
+): Promise<void> {
+	if (sub === "start") {
+		const result = await mgr.start();
+		ctx.ui.notify(result.message, result.ok ? "info" : "error");
+		return;
+	}
+	if (sub === "stop") {
+		const result = await mgr.stop();
+		ctx.ui.notify(result.message, result.ok ? "info" : "error");
+		return;
+	}
+	if (sub === "status") {
+		const result = await mgr.status();
+		ctx.ui.notify(result.message, "info");
+		return;
+	}
+	const available = ["start", "stop", "status"].join(", ");
+	const prefix = sub === "" ? "No kroki subcommand given" : `Unknown kroki subcommand '${sub}'`;
+	ctx.ui.notify(`${prefix}. Available: ${available}`, "warning");
 }
 
 function notifyUnknownSubcommand(ctx: NotifyContext, subcommand: string): void {
