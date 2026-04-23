@@ -1,6 +1,6 @@
 # CV2.E2.S2 — Kroki auto-starts when the session starts (opt-in)
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV2.E2 — Kroki via Docker](cv2-e2--kroki-via-docker.md)
 **Depends on:** [CV2.E2.S1](cv2-e2-s1--kroki-docker-commands.md)

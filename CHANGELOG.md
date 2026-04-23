@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV2.E2.S2 — Docker Kroki auto-start)
+
+- **`kroki.docker.autoStart: true`** in the config file starts the Docker Kroki container automatically on session init if it's not already running. The container stays running between sessions.
+
 ### Added (CV2.E2.S1 — Docker Kroki lifecycle commands)
 
 - **`/fence kroki start`** pulls and starts a local `yuzutech/kroki` Docker container on port 8000. Sets the Kroki endpoint to `http://localhost:8000` for the current session.

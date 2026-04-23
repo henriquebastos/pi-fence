@@ -12,7 +12,7 @@ A CV is **done** only when every Story in its Epics is done.
 |----|------|-------|------|
 | [CV0 — It Works](cv0--it-works/README.md) | `legibility` | Done | The extension renders diagrams inline with a zero-config happy path. |
 | [CV1 — Take Control](cv1--take-control/README.md) | `control` | Done | The user owns the registry through configuration, diagnosis, and the error feedback loop. |
-| [CV2 — Work Offline](cv2--work-offline/README.md) | `portability` | Not done | Core rendering paths work without the public Kroki service. |
+| [CV2 — Work Offline](cv2--work-offline/README.md) | `portability` | Done | Core rendering paths work without the public Kroki service. |
 | [CV3 — Beyond Diagrams](cv3--beyond-diagrams/README.md) | `legibility` | Not done | The platform proves itself on non-diagram text-to-visual use cases. |
 | [CV4 — Platform](cv4--platform/README.md) | `extensibility` | Not done | Third parties write processors as first-class citizens. |
 | [CVx — Verifiability](cvx--verifiability/README.md) | `verifiability` | Not done | Testing and inspection infrastructure make correctness provable. |

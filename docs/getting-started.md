@@ -171,6 +171,18 @@ After `/fence kroki start`, the Kroki processor automatically uses `http://local
 
 For persistent configuration (across sessions), set the endpoint in your config file — see [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint) above.
 
+**Auto-start (opt-in):** to have pi-fence start the Docker container automatically on every session, add to your config:
+
+```json
+{
+  "kroki": {
+    "docker": { "autoStart": true }
+  }
+}
+```
+
+The container stays running between sessions — subsequent starts are no-ops.
+
 ## Diagnosing the setup
 
 Type `/fence doctor` for a full diagnostic summary:

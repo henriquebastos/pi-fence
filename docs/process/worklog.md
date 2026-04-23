@@ -1574,3 +1574,31 @@ This closes CV1.E2 (Error Feedback Loop) and **CV1 (Take Control)**.
 **Test count.** 331 fast-suite (was 329; +2 extension tests).
 
 **Carry-forward.** CV0 and CV1 are done. Next: CV2 (Work Offline).
+
+---
+
+### 2026-04-22 — CV2 closed
+
+**What shipped.**
+
+1. **CV2.E1.S1 — mermaid-local via mmdc.** New `mermaid-local` processor shells out to `mmdc` (@mermaid-js/mermaid-cli). Wins `mermaid` when installed; falls through to Kroki otherwise. Three processors now ship: graphviz-local, mermaid-local, kroki.
+2. **CV2.E2.S1 — Docker Kroki lifecycle.** `/fence kroki start|stop|status` commands manage a `pi-fence-kroki` container via the `docker` CLI through the ShellRunner DI seam.
+3. **CV2.E2.S2 — Docker Kroki auto-start.** `kroki.docker.autoStart: true` in config starts the container on session init.
+
+Refactored NULL_LOGGER: consolidated four identical inline copies into a single export in `processor.ts`, eliminating 12 uncovered function copies and satisfying the `only-index-wires-node-impls` dep-cruiser rule.
+
+**Implementation commits.**
+
+1. `e0f4dd2` — spec CV2.E1.S1
+2. `1b468bb` — step 1: mermaid-local processor via mmdc
+3. `7e7f210` — step 2: mermaid-local contract test
+4. `3901a7e` — close CV2.E1.S1
+5. `c0402ec` — spec CV2.E2.S1
+6. `ca901de` — step 1: Docker Kroki manager + consolidate NULL_LOGGER
+7. `d3d2ff4` — step 2: /fence kroki subcommand routing
+8. `42c53eb` — close CV2.E2.S1
+9. `910ccc8` — step 1+2: kroki.docker.autoStart config + wire
+
+**Test count.** 362 fast-suite (was 331; +31).
+
+**Carry-forward.** CV0, CV1, CV2 done. Next session: CV3 (Beyond Diagrams) + CV4 (Platform).
