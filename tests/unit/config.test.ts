@@ -39,17 +39,15 @@ function writeConfig(dir: string, body: string): string {
 describe("config core", () => {
 	it("merges bindings left-to-right with later configs winning", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: { graphviz: "kroki", mermaid: "one" } },
-			{ bindings: { mermaid: "two" } },
-			{ bindings: { plantuml: "three" } },
+			{ bindings: { graphviz: "kroki", mermaid: "one" }, disabled: [] },
+			{ bindings: { mermaid: "two" }, disabled: [] },
+			{ bindings: { plantuml: "three" }, disabled: [] },
 		);
 
-		expect(merged).toEqual({
-			bindings: {
-				graphviz: "kroki",
-				mermaid: "two",
-				plantuml: "three",
-			},
+		expect(merged.bindings).toEqual({
+			graphviz: "kroki",
+			mermaid: "two",
+			plantuml: "three",
 		});
 	});
 
@@ -58,6 +56,64 @@ describe("config core", () => {
 
 		expect(validatePiFenceConfig(["nope"], "global", logger)).toBe(DEFAULT_CONFIG);
 		expect(logger.byLevel("warn")[0]?.message).toContain("not an object");
+	});
+
+	it("merges disabled: last config with a disabled key wins entirely", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, disabled: ["kroki"] },
+			{ bindings: {}, disabled: ["graphviz-local"] },
+		);
+		expect(merged.disabled).toEqual(["graphviz-local"]);
+	});
+
+	it("merges disabled: absent disabled inherits from earlier config", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, disabled: ["kroki"] },
+			{ bindings: {}, disabled: undefined as unknown as string[] },
+		);
+		expect(merged.disabled).toEqual(["kroki"]);
+	});
+
+	it("merges disabled: empty array overrides earlier non-empty", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, disabled: ["kroki"] },
+			{ bindings: {}, disabled: [] },
+		);
+		expect(merged.disabled).toEqual([]);
+	});
+
+	it("defaults disabled to empty array", () => {
+		expect(DEFAULT_CONFIG.disabled).toEqual([]);
+	});
+
+	it("validates disabled: accepts array of strings", () => {
+		const result = validatePiFenceConfig(
+			{ disabled: ["kroki", "graphviz-local"] },
+			"test",
+		);
+		expect(result.disabled).toEqual(["kroki", "graphviz-local"]);
+	});
+
+	it("validates disabled: drops non-string entries with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ disabled: ["kroki", 42, true] },
+			"test",
+			logger,
+		);
+		expect(result.disabled).toEqual(["kroki"]);
+		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("validates disabled: non-array becomes empty with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ disabled: "kroki" },
+			"test",
+			logger,
+		);
+		expect(result.disabled).toEqual([]);
+		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
 });
 
@@ -71,7 +127,7 @@ describe("loadPiFenceConfig — missing files", () => {
 			projectConfigPath: join(empty, "also-missing.json"),
 		});
 
-		expect(config).toEqual({ bindings: {} });
+		expect(config).toEqual({ bindings: {}, disabled: [] });
 	});
 
 	it("does NOT log warn when files are simply missing (common case, silent)", async () => {

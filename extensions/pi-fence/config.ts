@@ -14,9 +14,16 @@ export interface PiFenceConfig {
 	 * processor is registered AND available; falls through otherwise.
 	 */
 	bindings: Record<string, string>;
+	/**
+	 * Processor ids to disable. A disabled processor is skipped during
+	 * resolution — its tags fall through to the next available processor.
+	 * Merge: project replaces global entirely when present; absent key
+	 * inherits from the lower-priority layer.
+	 */
+	disabled: string[];
 }
 
-export const DEFAULT_CONFIG: PiFenceConfig = { bindings: {} };
+export const DEFAULT_CONFIG: PiFenceConfig = { bindings: {}, disabled: [] };
 
 /**
  * Shallow merge at the top level; inside `bindings` later configs win on the
@@ -26,10 +33,14 @@ export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
 ): PiFenceConfig {
 	const bindings: Record<string, string> = {};
+	let disabled: string[] = [];
 	for (const config of configs) {
 		Object.assign(bindings, config.bindings);
+		if (config.disabled !== undefined) {
+			disabled = config.disabled;
+		}
 	}
-	return { bindings };
+	return { bindings, disabled };
 }
 
 /**
@@ -51,6 +62,7 @@ export function validatePiFenceConfig(
 
 	return {
 		bindings: validateBindings(parsed.bindings, label, logger),
+		disabled: validateDisabled(parsed.disabled, label, logger),
 	};
 }
 
@@ -81,6 +93,33 @@ function validateBindings(
 		});
 	}
 	return bindings;
+}
+
+function validateDisabled(
+	rawDisabled: unknown,
+	label: string,
+	logger?: Logger,
+): string[] {
+	if (rawDisabled === undefined) {
+		return [];
+	}
+	if (!Array.isArray(rawDisabled)) {
+		logger?.warn("config", `${label} config 'disabled' is not an array`, {
+			got: typeof rawDisabled,
+		});
+		return [];
+	}
+	const out: string[] = [];
+	for (const item of rawDisabled) {
+		if (typeof item === "string") {
+			out.push(item);
+		} else {
+			logger?.warn("config", `non-string entry in ${label} disabled`, {
+				got: typeof item,
+			});
+		}
+	}
+	return out;
 }
 
 function isRecordLike(value: unknown): value is Record<string, unknown> {
