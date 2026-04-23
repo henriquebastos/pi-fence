@@ -27,6 +27,7 @@ import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
 import { createHighlightProcessor } from "./highlight.ts";
 import { createKrokiProcessor, isDarkThemeName } from "./kroki.ts";
+import { createQrProcessor } from "./qr.ts";
 import { createTableProcessor } from "./table.ts";
 import {
 	PI_FENCE_LIST_MESSAGE_TYPE,
@@ -140,6 +141,7 @@ function createDefaultProcessors(
 		createMermaidLocalProcessor(deps.shell, deps.logger),
 		createTableProcessor(),
 		createHighlightProcessor(),
+		createQrProcessor(),
 		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),

@@ -156,6 +156,35 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 		20_000,
 	);
 	it(
+		"renders a qr block as a PNG QR code via the qr processor",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"Scan this:\n\n```qr\nhttps://example.com\n```\n\nDone.",
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "qr",
+				processor: "qr",
+				kind: "ok",
+			});
+
+			// Content is an image.
+			const items = outputs[0].content as Array<{ type: string; data?: string; mimeType?: string }>;
+			expect(items).toHaveLength(1);
+			expect(items[0].type).toBe("image");
+			expect(items[0].mimeType).toBe("image/png");
+
+			// No HTTP — QR is generated locally.
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"renders a csv block as a text table via the table processor",
 		async () => {
 			const http = new FakeHttpClient();
@@ -275,7 +304,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(5);
+			expect(details.listings).toHaveLength(6);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-local",
 				status: "unavailable",
@@ -299,6 +328,11 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				tags: ["sql", "regex", "jq"],
 			});
 			expect(details.listings[4]).toMatchObject({
+				id: "qr",
+				status: "registered",
+				tags: ["qr"],
+			});
+			expect(details.listings[5]).toMatchObject({
 				id: "kroki",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
