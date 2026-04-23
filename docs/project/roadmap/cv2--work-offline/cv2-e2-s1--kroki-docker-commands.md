@@ -1,6 +1,6 @@
 # CV2.E2.S1 — Start/stop Kroki in Docker through pi-fence commands
 
-**Status:** Draft
+**Status:** In progress
 
 **Epic:** [CV2.E2 — Kroki via Docker](cv2-e2--kroki-via-docker.md)
 **Date:** 2026-04-22 (spec)

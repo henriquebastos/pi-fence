@@ -23,14 +23,9 @@ import { randomUUID } from "node:crypto";
 
 import type { ShellRunner } from "./io/shell-runner.ts";
 import type { Logger } from "./io/logger.ts";
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import { NULL_LOGGER, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
 
-const NULL_LOGGER: Logger = {
-	debug: () => {},
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-};
+
 
 const ERROR_BODY_MAX_CHARS = 500;
 

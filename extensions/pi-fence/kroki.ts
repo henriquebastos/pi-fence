@@ -26,19 +26,9 @@
 
 import type { HttpClient } from "./io/http-client.ts";
 import type { Logger } from "./io/logger.ts";
-import type { FenceProcessor, FenceResult } from "./processor.ts";
+import { NULL_LOGGER, type FenceProcessor, type FenceResult } from "./processor.ts";
 
-/**
- * No-op logger used when the caller passes no `Logger`. Keeps the render
- * path free of `if (logger)` branches while preserving the two-arg
- * factory signature the existing callers already use.
- */
-const NULL_LOGGER: Logger = {
-	debug: () => {},
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-};
+
 
 const DEFAULT_ENDPOINT = "https://kroki.io";
 const DEFAULT_TIMEOUT_MS = 15_000;
