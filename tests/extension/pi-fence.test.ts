@@ -755,6 +755,30 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 });
 
+describe("pi-fence extension — /fence trace (CV4.E2.S1)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"emits a trace message for /fence trace mermaid",
+		async () => {
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithCommand(http, "/fence trace mermaid");
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(m) => m.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+
+			const details = listMessages[0].details as { lines: string[] };
+			expect(details.lines.some((l) => l.includes("mermaid"))).toBe(true);
+			expect(details.lines.some((l) => l.includes("selected") || l.includes("skipped"))).toBe(true);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
 	afterEach(() => {
 		cleanupTempDirs();
