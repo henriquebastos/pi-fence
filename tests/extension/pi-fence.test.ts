@@ -411,6 +411,49 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 	);
 });
 
+describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"configured endpoint — Kroki requests hit the custom URL",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ kroki: { endpoint: "http://localhost:9999" } }),
+			);
+
+			const http = makeKrokiHttp({
+				"http://localhost:9999/mermaid/png?theme=dark": TINY_PNG,
+			});
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "mermaid",
+				processor: "kroki",
+				kind: "ok",
+			});
+
+			// The HTTP request went to the custom endpoint, not kroki.io.
+			expect(http.requests).toHaveLength(1);
+			expect(http.requests[0].url).toBe(
+				"http://localhost:9999/mermaid/png?theme=dark",
+			);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () => {
 	afterEach(() => {
 		cleanupTempDirs();

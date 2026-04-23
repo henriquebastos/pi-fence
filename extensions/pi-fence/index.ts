@@ -46,15 +46,19 @@ export async function createPiFenceExtension(
 	pi: ExtensionAPI,
 	deps: PiFenceRuntimeDeps,
 ): Promise<void> {
-	const themeState: ThemeState = {};
-	const processors = deps.processors ?? createDefaultProcessors(deps, themeState);
-	const availability = await probeAvailability(processors);
-	logAvailability(processors, availability, deps.logger);
-
 	const config = await loadPiFenceConfig({
 		logger: deps.logger,
 		...deps.configOptions,
 	});
+
+	const themeState: ThemeState = {};
+	const processors = deps.processors ?? createDefaultProcessors(
+		deps,
+		themeState,
+		config.kroki?.endpoint,
+	);
+	const availability = await probeAvailability(processors);
+	logAvailability(processors, availability, deps.logger);
 	const bindings: Readonly<Record<string, string>> = config.bindings;
 	const disabled: ReadonlySet<string> = new Set(config.disabled ?? []);
 	const bindingRows = resolveBindings(processors, availability, bindings, disabled);
@@ -87,10 +91,11 @@ export async function createPiFenceExtension(
 function createDefaultProcessors(
 	deps: PiFenceRuntimeDeps,
 	themeState: ThemeState,
+	krokiEndpoint?: string,
 ): FenceProcessor[] {
 	return [
 		createGraphvizLocalProcessor(deps.shell, deps.logger),
-		createKrokiProcessor(deps.http, undefined, deps.logger, () =>
+		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),
 	];
