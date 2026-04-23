@@ -242,6 +242,53 @@ export const KROKI_TEXT_LANGUAGES: readonly KrokiTextLanguageSpec[] = [
 		sizeFloorBytes: 15_000,
 		note: "YAML connector / cable / connection definitions. Largest PNG observed (\u226526 KB).",
 	},
+
+	// --- JSON-source Kroki languages (CV0.E1.S5) ---
+	// Source is raw JSON passed as text/plain. Kroki accepts it without
+	// wrapping or content-type dispatch — verified against the public
+	// endpoint on 2026-04-22.
+	{
+		tag: "vega",
+		source: JSON.stringify({
+			$schema: "https://vega.github.io/schema/vega/v5.json",
+			width: 200,
+			height: 200,
+			data: [{ name: "t", values: [{ x: 0, y: 0 }] }],
+			marks: [
+				{
+					type: "rect",
+					from: { data: "t" },
+					encode: {
+						enter: {
+							x: { value: 0 },
+							width: { value: 100 },
+							y: { value: 0 },
+							height: { value: 100 },
+							fill: { value: "steelblue" },
+						},
+					},
+				},
+			],
+		}),
+		aliases: [],
+		sizeFloorBytes: 150,
+		note: "Minimal Vega spec drawing one filled rect. Output is small (~250B) because the PNG is mostly transparent.",
+	},
+	{
+		tag: "vegalite",
+		source: JSON.stringify({
+			$schema: "https://vega.github.io/schema/vega-lite/v5.json",
+			data: { values: [{ a: "A", b: 28 }] },
+			mark: "bar",
+			encoding: {
+				x: { field: "a", type: "nominal" },
+				y: { field: "b", type: "quantitative" },
+			},
+		}),
+		aliases: ["vega-lite"],
+		sizeFloorBytes: 1000,
+		note: "Minimal Vega-Lite bar chart.",
+	},
 ];
 
 /**
@@ -253,3 +300,4 @@ export const KROKI_TEXT_LANGUAGES: readonly KrokiTextLanguageSpec[] = [
 export const KROKI_TEXT_TAGS: readonly string[] = KROKI_TEXT_LANGUAGES.map(
 	(l) => l.tag,
 );
+

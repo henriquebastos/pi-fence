@@ -1,6 +1,6 @@
 # CV0.E1.S5 — Kroki JSON-body languages
 
-**Status:** Ready
+**Status:** In progress
 
 **Epic:** [CV0.E1 — Kroki Through The Wire](cv0-e1--kroki-through-the-wire.md)
 **Depends on:** [S4 — Full Kroki coverage for text-based languages](cv0-e1-s4--full-kroki-text-coverage.md)
@@ -75,9 +75,9 @@ No schema validation. Body passes through unchanged. Kroki validates on receipt 
 
 #### 2. Expanded allowlist and aliases
 
-`extensions/pi-fence/index.ts`'s `SUPPORTED_TAGS` grows to include `vega`, `vegalite`, `excalidraw`, and whatever aliases come from S4's research (most likely `vega-lite` → `vegalite`).
+`extensions/pi-fence/kroki.ts`'s `KROKI_CANONICAL_TAGS` grows to include `vega`, `vegalite`, `excalidraw`. `KROKI_ALIASES` gains `vega-lite` → `vegalite`. No changes needed in `index.ts` — the extension's supported-tag allowlist is derived dynamically via `collectSupportedTags(processors)` in `resolve.ts`, which reads each processor's `tags` and `aliases`.
 
-`extensions/pi-fence/kroki.ts`'s `KROKI_TAG_ALIASES` gets the same aliases. The content-type dispatch operates on the *alias-resolved* tag so both `vega-lite` and `vegalite` hit the JSON path.
+The content-type dispatch operates on the *alias-resolved* tag so both `vega-lite` and `vegalite` hit the JSON path.
 
 #### 3. Live tests per JSON-body language
 
@@ -108,12 +108,9 @@ Test-first.
 
 | Step | Layer | What | Commit |
 |------|-------|------|--------|
-| 1 | unit | Content-type dispatch cases in `kroki.test.ts` — fail until impl | `wip(agent): unit tests for JSON-body content-type dispatch (S5)` |
-| 2 | impl | `KROKI_JSON_BODY_TAGS` + dispatch in `kroki.ts` | `wip(agent): Content-Type dispatch for JSON-body languages (S5)` |
-| 3 | extension | `SUPPORTED_TAGS` broadens to include JSON tags; existing extension test unaffected | `wip(agent): accept JSON-body Kroki tags in extension (S5)` |
-| 4 | integration | Live tests per JSON-body language | `wip(agent): live Kroki JSON-body round-trips (S5)` |
-| 5 | docs | kroki-support.md, README, getting-started, CHANGELOG | `wip(agent): document JSON-body Kroki support (S5)` |
-| 6 | close | Status flips + worklog | `wip(agent): close CV0.E1.S5` |
+| 1 | unit + impl | Content-type dispatch in `kroki.test.ts` + `KROKI_JSON_BODY_TAGS` + tags/aliases in `kroki.ts` (TDD cycle) | `step 1: content-type dispatch for JSON-body Kroki languages` |
+| 2 | integration | JSON-body fixtures + live tests per JSON-body language | `step 2: live round-trips for JSON-body Kroki languages` |
+| 3 | docs | kroki-support.md, README, getting-started, CHANGELOG | `step 3: document JSON-body Kroki support` |
 
 ## Tests
 

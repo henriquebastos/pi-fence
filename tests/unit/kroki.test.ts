@@ -405,6 +405,22 @@ describe("createKrokiProcessor", () => {
 			expect(http.requests[0].url).toBe("https://kroki.io/blockdiag/png");
 		});
 
+		it("resolves `vega-lite` to Kroki's `/vegalite/png` endpoint", async () => {
+			const http = new FakeHttpClient();
+			http.setResponse(
+				"POST",
+				"https://kroki.io/vegalite/png",
+				pngResponse(Buffer.alloc(8)),
+			);
+			const kroki = createKrokiProcessor(http);
+
+			const result = await kroki.render("vega-lite", '{"data":{}}');
+
+			expect(result.ok).toBe(true);
+			expect(http.requests[0].url).toBe("https://kroki.io/vegalite/png");
+			expect(http.requests[0].headers?.["content-type"]).toBe("text/plain");
+		});
+
 		it("also honours the canonical name (`graphviz` -> /graphviz/png)", async () => {
 			// Alias resolution is 'dot -> graphviz', not 'graphviz -> dot'. A user
 			// or LLM who writes `graphviz` directly must get the same endpoint.

@@ -10,6 +10,8 @@
  *
  * Contract:
  *   - POST `{endpoint}/{tag}/png` with Content-Type: text/plain, body = source.
+ *     JSON-body Kroki languages (vega, vegalite) also accept text/plain with
+ *     the raw JSON source — no wrapping or content-type dispatch needed.
  *   - 15-second timeout by default (AbortSignal.timeout). Merged with the
  *     caller's signal when provided.
  *   - 2xx: return { ok: true, png: Buffer }. Response body passed through
@@ -84,6 +86,11 @@ export const KROKI_CANONICAL_TAGS: readonly string[] = [
 	"tikz",
 	"umlet",
 	"wireviz",
+	// JSON-body Kroki languages — rendered via text/plain with raw JSON source.
+	// Kroki accepts the plain JSON body without wrapping; no content-type
+	// dispatch needed (verified against the public endpoint in CV0.E1.S5).
+	"vega",
+	"vegalite",
 ];
 
 /**
@@ -102,6 +109,7 @@ export const KROKI_CANONICAL_TAGS: readonly string[] = [
 export const KROKI_ALIASES: Readonly<Record<string, string>> = {
 	dot: "graphviz",
 	puml: "plantuml",
+	"vega-lite": "vegalite",
 };
 
 /**
