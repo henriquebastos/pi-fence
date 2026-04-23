@@ -259,6 +259,67 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 	});
 });
 
+describe("resolveProcessor — disabled set", () => {
+	const local = makeFakeProcessor({
+		id: "graphviz-local",
+		tags: ["graphviz"],
+		aliases: { dot: "graphviz" },
+	});
+	const kroki = makeFakeProcessor({
+		id: "kroki",
+		tags: ["graphviz", "mermaid"],
+	});
+	const bothAvailable = new Map<string, Availability>([
+		["graphviz-local", { ok: true }],
+		["kroki", { ok: true }],
+	]);
+
+	it("skips a disabled processor in capability-based resolution", () => {
+		const result = resolveProcessor(
+			[local, kroki],
+			bothAvailable,
+			"graphviz",
+			undefined,
+			new Set(["graphviz-local"]),
+		);
+		expect(result?.id).toBe("kroki");
+	});
+
+	it("skips a disabled processor even when it is the binding target", () => {
+		const result = resolveProcessor(
+			[local, kroki],
+			bothAvailable,
+			"graphviz",
+			{ graphviz: "graphviz-local" },
+			new Set(["graphviz-local"]),
+		);
+		// Binding target is disabled → falls through to capability.
+		expect(result?.id).toBe("kroki");
+	});
+
+	it("returns null when all processors for a tag are disabled", () => {
+		const result = resolveProcessor(
+			[local, kroki],
+			bothAvailable,
+			"graphviz",
+			undefined,
+			new Set(["graphviz-local", "kroki"]),
+		);
+		expect(result).toBeNull();
+	});
+
+	it("empty disabled set has no effect", () => {
+		const result = resolveProcessor(
+			[local, kroki],
+			bothAvailable,
+			"graphviz",
+			undefined,
+			new Set(),
+		);
+		expect(result?.id).toBe("graphviz-local");
+	});
+});
+
 describe("resolveBindings", () => {
 	const local = makeFakeProcessor({
 		id: "graphviz-local",
@@ -298,6 +359,29 @@ describe("resolveBindings", () => {
 				tag: "graphviz",
 				processorId: "nonexistent",
 				reason: "unknown-processor",
+			},
+		]);
+	});
+
+	it("categorises ignored-processor-disabled", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+
+		const rows = resolveBindings(
+			[local, kroki],
+			availability,
+			{ graphviz: "graphviz-local" },
+			new Set(["graphviz-local"]),
+		);
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				processorId: "graphviz-local",
+				reason: "processor-disabled",
 			},
 		]);
 	});

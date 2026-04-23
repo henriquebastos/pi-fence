@@ -157,9 +157,11 @@ const UNAVAILABLE_DETAIL_INDENT = "    ";
 const BINDING_INDENT = "  ";
 
 function formatIgnoredReason(
-	reason: "unknown-processor" | "processor-unavailable",
+	reason: "unknown-processor" | "processor-unavailable" | "processor-disabled",
 ): string {
-	return reason === "unknown-processor" ? "unknown processor" : "processor unavailable";
+	if (reason === "unknown-processor") return "unknown processor";
+	if (reason === "processor-disabled") return "processor disabled";
+	return "processor unavailable";
 }
 
 function formatUnavailableDetail(listing: ProcessorListing): string {

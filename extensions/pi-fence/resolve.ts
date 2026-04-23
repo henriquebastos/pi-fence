@@ -48,19 +48,25 @@ export function resolveProcessor(
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
 	bindings?: Readonly<Record<string, string>>,
+	disabled?: ReadonlySet<string>,
 ): FenceProcessor | null {
-	// 1. Binding takes precedence when the bound processor is registered
-	//    AND available. Otherwise fall through to capability order.
+	// 1. Binding takes precedence when the bound processor is registered,
+	//    available, AND not disabled. Otherwise fall through to capability order.
 	const boundId = bindings?.[tag];
 	if (boundId !== undefined) {
 		const bound = processors.find((p) => p.id === boundId);
-		if (bound && availability.get(bound.id)?.ok === true) {
+		if (
+			bound &&
+			availability.get(bound.id)?.ok === true &&
+			!disabled?.has(bound.id)
+		) {
 			return bound;
 		}
 	}
 
-	// 2. Capability-based: first available match in registration order.
+	// 2. Capability-based: first available, non-disabled match in registration order.
 	for (const processor of processors) {
+		if (disabled?.has(processor.id)) continue;
 		if (availability.get(processor.id)?.ok !== true) continue;
 		if (processor.tags.includes(tag) || processor.aliases[tag] !== undefined) {
 			return processor;
@@ -85,13 +91,14 @@ export type BindingResolution =
 			status: "ignored";
 			tag: string;
 			processorId: string;
-			reason: "unknown-processor" | "processor-unavailable";
+			reason: "unknown-processor" | "processor-unavailable" | "processor-disabled";
 		};
 
 export function resolveBindings(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	bindings: Readonly<Record<string, string>>,
+	disabled?: ReadonlySet<string>,
 ): BindingResolution[] {
 	const out: BindingResolution[] = [];
 	for (const [tag, processorId] of Object.entries(bindings)) {
@@ -102,6 +109,15 @@ export function resolveBindings(
 				tag,
 				processorId,
 				reason: "unknown-processor",
+			});
+			continue;
+		}
+		if (disabled?.has(processor.id)) {
+			out.push({
+				status: "ignored",
+				tag,
+				processorId,
+				reason: "processor-disabled",
 			});
 			continue;
 		}
