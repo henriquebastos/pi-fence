@@ -101,7 +101,6 @@ export async function createPiFenceExtension(
 	const endpoints: Record<string, string> = {};
 	if (config.kroki?.endpoint) endpoints.kroki = config.kroki.endpoint;
 
-	const supportedTags = collectSupportedTags(processors);
 	registerPiFenceRenderers(pi);
 	registerFenceCommand({
 		pi,
@@ -126,7 +125,7 @@ export async function createPiFenceExtension(
 		availability,
 		bindings,
 		disabled,
-		supportedTags,
+		supportedTags: () => collectSupportedTags(processors),
 		themeState,
 		maxBlocksPerTurn: MAX_BLOCKS_PER_TURN,
 	});

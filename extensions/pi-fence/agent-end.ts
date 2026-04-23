@@ -6,7 +6,7 @@ import type { Logger } from "./io/logger.ts";
 import { buildPiFenceOutputMessage } from "./messages.ts";
 import { extractFencedBlocks } from "./parser.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
-import { resolveProcessor } from "./resolve.ts";
+import { collectSupportedTags, resolveProcessor } from "./resolve.ts";
 
 export interface ThemeState {
 	currentName?: string;
@@ -19,7 +19,7 @@ interface RegisterAgentEndHandlerOptions {
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, string>>;
 	disabled: ReadonlySet<string>;
-	supportedTags: string[];
+	supportedTags: string[] | (() => string[]);
 	themeState: ThemeState;
 	maxBlocksPerTurn: number;
 }
@@ -41,7 +41,8 @@ export function registerPiFenceAgentEndHandler({
 		const assistantText = extractAssistantText(event.messages);
 		if (!assistantText) return;
 
-		const blocks = extractFencedBlocks(assistantText, supportedTags);
+		const tags = typeof supportedTags === "function" ? supportedTags() : supportedTags;
+		const blocks = extractFencedBlocks(assistantText, tags);
 		logger.debug("pi-fence", "agent_end parsed", {
 			assistantTextBytes: assistantText.length,
 			blocks: blocks.length,
