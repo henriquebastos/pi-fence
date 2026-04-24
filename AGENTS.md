@@ -23,38 +23,53 @@ Front door for agents and new contributors. Short on purpose — redirects, does
 
 When the next workflow step is obvious, do it. Do not stop at chat prose if the task clearly calls for a repo artifact such as a story spec, roadmap update, worklog entry, or similar bookkeeping needed to continue. Be conservative with ambiguous design choices and destructive actions, not with routine workflow continuation.
 
-## Verification gate (before every commit)
+## Testing levels
 
-Use TDD explicitly: red → green → refactor. During implementation, prefer `pnpm run feedback` as the one-command fast refactor loop after the red/green test pass.
+Four levels, each with a clear trigger. No level requires human review.
+
+| Level | Command | When | Needs Docker/network |
+|-------|---------|------|---------------------|
+| TDD loop | `pnpm run feedback` | Every commit | No |
+| Completion | `pnpm run inspect` | TDD session feels done | No |
+| Live I/O | `pnpm test:live` | New/changed processor or I/O seam | Yes |
+| Acceptance | `pnpm test:live` + `pnpm run render:verify` | Before closing an epic | Yes |
+
+### TDD loop — `pnpm run feedback` (before every commit)
+
+Use TDD explicitly: red → green → refactor. `pnpm run feedback` is the one-command fast gate after every meaningful change.
 
 1. `pnpm test` — fast suite (unit + contract + extension) with coverage focused on `extensions/**` and minimum thresholds of statements `90`, lines `90`, functions `90`, branches `75`.
 2. `pnpm run inspect:crap:ext` — focused CRAP summary for `extensions/**`, reusing the coverage output from `pnpm test` and printing to stdout.
 3. `pnpm run lint:markdown` — markdown docs checks (`lint:markdown:links` + `lint:markdown:body`). `pnpm run lint` is the umbrella convenience name for this docs-only lane.
 4. `pnpm run lint:types` — `tsc --noEmit` across production code, tests, and repo scripts.
 5. `pnpm run lint:deps` — dependency-cruiser architectural boundary check (`extensions/**` must not import from `tests/**`).
-6. `pnpm test:live` — only when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures. Requires Docker (`pnpm run live:up`) or network.
 
 `pnpm run feedback` is the umbrella command for steps 1–5. Every commit leaves the fast gate passing. CI runs the same checks on push/PR ([.github/workflows/ci.yml](.github/workflows/ci.yml)); live runs separately ([.github/workflows/live.yml](.github/workflows/live.yml)).
 
-## Completion inspection pass (when the change feels done)
-
-`pnpm run feedback` is the fast loop, not the whole finish line.
+### Completion — `pnpm run inspect` (when the TDD session feels done)
 
 1. `pnpm run inspect` — broader completion pass. Always runs `inspect:crap`; runs `inspect:sonar` too when `SONAR_HOST_URL` and `SONAR_TOKEN` are set, otherwise prints a clear skip.
-2. Use the completion pass as a refactor target, not a report archive:
-   - keep focused extension CRAP at or below `25`
-   - try to drive Sonar to `0` open issues
-3. `pnpm test:live` — when touching an I/O seam (`HttpClient`, `ShellRunner`) or refreshing fixtures.
-4. `pnpm run render:verify` — when changing render-verifier / screenshot / visual-tooling paths.
-5. Refactor again from what those analyzers surface, then rerun `pnpm run feedback` before calling the work done.
+2. Quality targets: keep focused extension CRAP at or below `25`; try to drive Sonar to `0` open issues when configured.
+3. Refactor from what the analyzers surface, then rerun `pnpm run feedback`.
+
+### Live I/O — `pnpm test:live` (when adding or changing a processor)
+
+Run `pnpm test:live` when adding or changing a processor, touching an I/O seam (`HttpClient`, `ShellRunner`), or refreshing fixtures. Requires Docker (`pnpm run live:up`) or network. After live confirms real I/O, run `pnpm refresh-fixtures` to update committed fixtures so the fast suite replays grounded responses.
+
+### Acceptance gate (before closing an epic)
+
+Before closing an epic, verify user-visible output programmatically — no acceptance criterion depends on human review:
+
+1. `pnpm test:live` — full live suite including render-image pixel-diff against goldens.
+2. `pnpm run render:verify` — headless UI screenshots of every scenario.
 
 No build step — TypeScript runs via pi's jiti loader. `pnpm install` is all that "builds" the package.
 
 ## Story workflow
 
 1. **Spec** — draft the story file. Every story file starts with a visible metadata block carrying `**Status:** Draft|Ready|In progress|Done` so a reader can see whether the spec is still forming, ready to execute, actively being implemented, or closed. Every story file must also contain, at minimum: `Summary`, `Done criterion`, `Scope`, `Plan`, `Tests`, and `Verification`. The `Tests` section is mandatory and names layers touched, events covered, fakes added, live tests, and anything deferred. Amend spec churn *into the spec commit* so plan revisions don't leak into history. When starting a new story, read the closest finished story file as the working template — imitate the section shape, don't invent one. Parent docs link downward; they do not copy story-level detail.
-2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor). Use `pnpm test:watch` for the red/green loop when helpful, then `pnpm run feedback` for the fast refactor loop. When the change feels done, run the completion inspection pass (`pnpm run inspect`, plus `pnpm test:live` / `pnpm run render:verify` when relevant) and refactor again before calling the step complete. When implementation starts, flip the story file metadata to `**Status:** In progress`. A story is not considered done until its implementation exists in committed history. Do not start the next story with uncommitted carry-over from the previous one.
-3. **Close** — close only from a clean working tree after the story's implementation commits already exist. Flip the story file metadata to `**Status:** Done`, update status in the epic file, the CV `README.md`, and the top-level roadmap `README.md`, append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards), and update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
+2. **Implement** — one commit per numbered plan step, test-first (red → green → refactor). Use `pnpm test:watch` for the red/green loop when helpful, then `pnpm run feedback` for the fast refactor loop. When the TDD session feels done, run `pnpm run inspect` and refactor from what it surfaces. When adding or changing a processor, run `pnpm test:live` and refresh fixtures. When implementation starts, flip the story file metadata to `**Status:** In progress`. A story is not considered done until its implementation exists in committed history. Do not start the next story with uncommitted carry-over from the previous one.
+3. **Close** — close only from a clean working tree after the story's implementation commits already exist. When this story closes an epic, run the acceptance gate first (`pnpm test:live` + `pnpm run render:verify`). Flip the story file metadata to `**Status:** Done`, update status in the epic file, the CV `README.md`, and the top-level roadmap `README.md`, append a worklog entry (commits + test-count deltas + design decisions + known deviations + carry-forwards), and update `CHANGELOG.md`, `README.md`, and `docs/getting-started.md` if user-visible behavior changed.
 
 Canonical example: read the CV0.E1.S3 entry at the tail of [docs/process/worklog.md](docs/process/worklog.md).
 

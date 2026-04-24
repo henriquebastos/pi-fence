@@ -50,7 +50,7 @@ The repo will prefer a single intent-first script taxonomy. Older names will be 
    - `inspect:sonar:report`
 2. Legacy names are removed from `package.json` so the repo exposes one canonical script vocabulary only.
 3. An automated fast-suite test locks the canonical script surface and the absence of the removed aliases.
-4. Contributor-facing docs and relevant workflow files teach the nested loop explicitly: red/green, fast refactor, then completion inspection.
+4. Contributor-facing docs and relevant workflow files teach the four-level testing workflow explicitly: TDD loop, completion, live I/O, and acceptance gate.
 5. The workflow names the current quality targets explicitly: fast-suite extension coverage minimums of statements `90`, lines `90`, functions `90`, branches `75`; completion-pass CRAP target `<=25`; Sonar target of `0` open issues when configured.
 6. `pnpm run feedback`, `pnpm run inspect`, and `pnpm run inspect:crap` all succeed on the current tree.
 
@@ -96,16 +96,16 @@ Target families:
 
 Historical docs and habit loops should be updated to the canonical names rather than preserved in parallel. The command surface should teach one vocabulary only.
 
-#### 4. Docs teach the loop explicitly
+#### 4. Docs teach the testing workflow explicitly
 
-Contributor docs should answer this flow in one pass:
+Contributor docs answer four levels in one pass:
 
-1. run `pnpm test:watch` for red/green while iterating
-2. run `pnpm run feedback` for the fast refactor loop
-3. read `pnpm test` coverage output as the default shipped-code coverage signal
-4. when the change feels done, run `pnpm run inspect` for the broader completion pass
-5. refactor again from what `inspect` surfaces, then rerun `pnpm run feedback`
-6. use `pnpm run inspect:sonar` directly only when you want the Sonar experiment in isolation
+1. **TDD loop** — `pnpm run feedback` (every commit)
+2. **Completion** — `pnpm run inspect` (when TDD session feels done)
+3. **Live I/O** — `pnpm test:live` (when adding or changing a processor)
+4. **Acceptance** — `pnpm test:live` + `pnpm run render:verify` (before closing an epic)
+
+No level requires human review.
 
 ### Implementation order
 
@@ -114,7 +114,9 @@ Contributor docs should answer this flow in one pass:
 | 1 | spec | Add `CVx.E3.S6`, reopen roadmap status, and name the command-surface taxonomy. | `spec CVx.E3.S6` |
 | 2 | tooling | Rewire `package.json` around canonical `feedback` / `lint:*` / `inspect:*` names, remove replaced aliases, and add a fast-suite test for the command surface. | `step 1: make the local command surface intent-first` |
 | 3 | tooling + docs | Add top-level `inspect` as the completion-pass wrapper and update contributor docs to teach the canonical workflow explicitly. | `step 2: teach the implementation feedback loop explicitly` |
-| 4 | close | Re-run the fast loop and broader inspection command, then close the story. | `close CVx.E3.S6` |
+| 4 | tooling + docs | Completion inspection pass, fast coverage thresholds, dependency-cruiser rules. | `step 3` through `step 4` + docs commits |
+| 5 | docs | Teach the four-level testing workflow: TDD, completion, live I/O, acceptance. | `step 5: teach the four-level testing workflow` |
+| 6 | close | Re-run the fast loop and broader inspection command, then close the story. | `close CVx.E3.S6` |
 
 ## Tests
 

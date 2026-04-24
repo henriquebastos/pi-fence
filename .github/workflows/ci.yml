@@ -1,6 +1,6 @@
 # Fast CI — runs on every push and pull request.
 #
-# Executes: docs checks, static typecheck, dependency-boundary check, fast test suite.
+# Executes: docs checks, type check, dependency-boundary check, fast test suite.
 # Excluded: live tests under tests/integration/ and the Render Image
 # layer under tests/render-image/ (both live in live.yml, which also
 # handles Docker + Chromium provisioning).

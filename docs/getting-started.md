@@ -280,6 +280,17 @@ corepack enable    # one-time
 pnpm install
 ```
 
+### Testing levels
+
+| Level | Command | When | Needs Docker/network |
+|-------|---------|------|---------------------|
+| TDD loop | `pnpm run feedback` | Every commit | No |
+| Completion | `pnpm run inspect` | TDD session feels done | No |
+| Live I/O | `pnpm test:live` | New/changed processor or I/O seam | Yes |
+| Acceptance | `pnpm test:live` + `pnpm run render:verify` | Before closing an epic | Yes |
+
+No level requires human review. The sections below detail each level.
+
 ### Run the TDD loops
 
 Red / green while iterating:
@@ -308,7 +319,7 @@ Expect all green on a clean clone.
 
 ### Run the live test suite
 
-The live suite exercises real dependencies — the Kroki HTTP service and (once S1 ships) a Docker container carrying local binaries. Skipped cleanly when those aren't available.
+Run when adding or changing a processor, touching an I/O seam, or refreshing fixtures. The live suite exercises real dependencies — Kroki HTTP, local binaries via Docker, and headless Chromium for render-image pixel-diff. Skipped cleanly when dependencies aren’t available.
 
 ```bash
 pnpm live:build    # build the pi-fence-live-deps image locally
