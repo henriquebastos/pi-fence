@@ -1,0 +1,165 @@
+{
+  "refreshedAt": "2026-04-24T19:34:47.172Z",
+  "fixtures": [
+    {
+      "processor": "graphviz",
+      "tag": "graphviz",
+      "file": "graphviz/graphviz.png",
+      "bytes": 4244,
+      "sha256": "e89f5d7c826a387e1bb82ecabcefbd6f83ecf02c1038dc17da33dc8c2b74b999",
+      "relPath": "graphviz/graphviz.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "actdiag",
+      "file": "kroki/actdiag.png",
+      "bytes": 3522,
+      "sha256": "681bf2a59a6218dd7ece0e1610ff38a5bfdb97dcd0541fc00590a5b46c9860e7",
+      "relPath": "kroki/actdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "blockdiag",
+      "file": "kroki/blockdiag.png",
+      "bytes": 2066,
+      "sha256": "c89bcd6e0c14a265f913d00f51b86968eb26a871bdc372316756b7a0b00820a6",
+      "relPath": "kroki/blockdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "c4plantuml",
+      "file": "kroki/c4plantuml.png",
+      "bytes": 16596,
+      "sha256": "7562b3d2308e092b7ebacaaac5d72ac8ceb40c15bcef54805a5f41e356e898b3",
+      "relPath": "kroki/c4plantuml.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "ditaa",
+      "file": "kroki/ditaa.png",
+      "bytes": 1186,
+      "sha256": "6b8239b0957352271eb056ec259f8fa5d4ef8e3b6e63a16af79abd7ffa116022",
+      "relPath": "kroki/ditaa.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "erd",
+      "file": "kroki/erd.png",
+      "bytes": 4277,
+      "sha256": "3d9554ec42a6c9f439888ee747c4bd238b4d210f9eee21eda9e9487d7053a64d",
+      "relPath": "kroki/erd.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "graphviz",
+      "file": "kroki/graphviz.png",
+      "bytes": 3764,
+      "sha256": "32f60a6304f291918af416490442759e968831f90e290dbb938714900d5b958e",
+      "relPath": "kroki/graphviz.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "mermaid",
+      "file": "kroki/mermaid.png",
+      "bytes": 1475,
+      "sha256": "f8f8cbeced02e5e0fcf94b0cc2fbbeb578bceaeada2b389fb1e24542330e51e5",
+      "relPath": "kroki/mermaid.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "nwdiag",
+      "file": "kroki/nwdiag.png",
+      "bytes": 3768,
+      "sha256": "ff1e23c4fbd14aa4c5c2bdc03037e8e273025ab1bfc893510e0ca3b02aa88ddc",
+      "relPath": "kroki/nwdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "packetdiag",
+      "file": "kroki/packetdiag.png",
+      "bytes": 1219,
+      "sha256": "9869786ac52ea0b1b382a56d354e323c016486b85759bc251c01a665a5ce4926",
+      "relPath": "kroki/packetdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "plantuml",
+      "file": "kroki/plantuml.png",
+      "bytes": 990,
+      "sha256": "e595352b43818141fcb027a5fa3c219f64d00927b1aad773143afa9c188909d8",
+      "relPath": "kroki/plantuml.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "rackdiag",
+      "file": "kroki/rackdiag.png",
+      "bytes": 2255,
+      "sha256": "da944edc2315966aa2668c61226890b05e1d72ff6ba3d6aeaae644ec7ae67894",
+      "relPath": "kroki/rackdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "seqdiag",
+      "file": "kroki/seqdiag.png",
+      "bytes": 3280,
+      "sha256": "987107d8140f3032347d9146e47fefa7fc5b47b19f3d22c8656f4e2cb633cce7",
+      "relPath": "kroki/seqdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "structurizr",
+      "file": "kroki/structurizr.png",
+      "bytes": 7503,
+      "sha256": "b7f05f55e6623de3273cebcc4b16d7403b771623fceec319794fed1d2c8ae9f9",
+      "relPath": "kroki/structurizr.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "symbolator",
+      "file": "kroki/symbolator.png",
+      "bytes": 2292,
+      "sha256": "a4688a8bb905b91182cbfba6a097273ffe0b791ae6284f540d781809bf2c01ce",
+      "relPath": "kroki/symbolator.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "tikz",
+      "file": "kroki/tikz.png",
+      "bytes": 752,
+      "sha256": "bebbb74a9dd821eff7d3da9cc0dc185fe1c3712b2134eccf5e113c61a3e5a968",
+      "relPath": "kroki/tikz.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "umlet",
+      "file": "kroki/umlet.png",
+      "bytes": 635,
+      "sha256": "0d3e585cab9adca783fc7c17b5f7ff685944c3a62e00a5cee46d506a01096bcc",
+      "relPath": "kroki/umlet.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "vega",
+      "file": "kroki/vega.png",
+      "bytes": 448,
+      "sha256": "d67d0aa07c6626f3a63b7ac29a2743e94030a761f030252953771be8eae704dc",
+      "relPath": "kroki/vega.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "vegalite",
+      "file": "kroki/vegalite.png",
+      "bytes": 3253,
+      "sha256": "9a6a448e26a286e23be2322423768eac39330e71febe8e46ff432d86bc8d4fa9",
+      "relPath": "kroki/vegalite.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "wireviz",
+      "file": "kroki/wireviz.png",
+      "bytes": 26588,
+      "sha256": "643394f507e6f1dbff137d2f08ce216f06f75ba6e160a518376e4a054821bdf8",
+      "relPath": "kroki/wireviz.png"
+    }
+  ]
+}
