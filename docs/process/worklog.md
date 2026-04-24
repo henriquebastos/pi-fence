@@ -6,19 +6,14 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-`CVx.E3.S6` is in flight: make the local command surface name the implementation feedback loop, checks, and deeper inspection passes by intent with a single canonical vocabulary. `CV0.E1.S5` remains the next feature story once this tooling pass closes.
+All planned CVs (CV0–CV4, CVx) are done. The roadmap is clear for new work.
 
 ## Next
 
-Under the simplified roadmap hierarchy:
+No story is currently in progress. Candidates for future work:
 
-- `CVx.E3.S6` — feedback-loop command surface. **In progress**.
-- `CV0.E1.S5` — JSON-body Kroki languages (Vega, Vega-Lite, Excalidraw). **Ready** once `CVx.E3.S6` closes.
-- Everything CV1+ (explicit configuration surface beyond bindings, error feedback loop, `/fence doctor`, offline story for non-graphviz languages, ecosystem CVs) remains unspecced.
-
-CVx lane state: CVx.E1.S1 + CVx.E2.S1–S4 + CVx.E3.S1–S5 + CVx.E4.S1–S3 + CVx.E5.S1 are ✅ Done. `CVx — Verifiability` is reopened by `CVx.E3.S6`. Every feature CV from here on can be verified through the Render layer (fast suite) + the Render Image layer (live suite, gallery + pixel-diff) on its first visual touch without new test infrastructure.
-
-Surfaced by CV0.E1.S4's research pass: adding SVG→PNG rasterization support inside pi-fence would unlock 8 currently-deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Not yet specced; would be its own story whenever the pressure earns it a slot.
+- Fixture-replay extraction: derive fast-suite fixtures from live test runs so `pnpm run inspect` replays grounded I/O without Docker/network.
+- SVG→PNG rasterization: would unlock 8 deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Surfaced by CV0.E1.S4’s research pass; not yet specced.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -1753,3 +1748,32 @@ This closes CV4.E2 (Observability) and **CV4 (Platform)**.
 **Test count.** 520 fast-suite (was 515; +5).
 
 **Carry-forward.** CV0, CV1, CV2, CV3, CV4 done.
+
+---
+
+### 2026-04-24 — CVx.E3.S6 closed; CVx.E3 and CVx done
+
+**What shipped.** Intent-first command surface with a four-level testing workflow. The repo now teaches four levels — TDD loop (`feedback`), completion (`inspect`), live I/O (`test:live`), and acceptance (`test:live` + `render:verify`) — each with a clear trigger. No acceptance criterion depends on human review.
+
+This closes CVx.E3 (Refactor Confidence) and **CVx (Verifiability)**. All planned CVs (CV0–CV4, CVx) are done.
+
+**Implementation commits.**
+
+1. `1f966d2` — spec CVx.E3.S6
+2. `8b7632e` — step 1: rewire package.json to canonical feedback/lint/inspect families + script-surface test
+3. `cc339f7` — step 2: docs teach the implementation feedback loop
+4. `0de8d91` — step 3: `scripts/inspect.ts` completion-pass wrapper + inspect test
+5. `850998d` — step 4: fast coverage thresholds in `pnpm test`
+6. `8d0c45a` — codify extension architecture boundaries in dependency-cruiser
+7. `a856343` — step 5: teach the four-level testing workflow
+
+**Test count.** 520 fast-suite (unchanged — tooling/docs story, no new tests beyond the script-surface and inspect tests added in steps 1–3).
+
+**Design decisions that survived implementation.**
+
+1. **Four levels, not two.** The original plan had "feedback" and "inspect". Refinement added explicit live-I/O and acceptance levels so the agent can verify all layers without human review.
+2. **Remove legacy aliases, don't alias.** One vocabulary only. The script-surface test locks both canonical names and the absence of removed ones.
+3. **Coverage minimums in `pnpm test`, not in inspect.** They're a fast-loop signal, so they fail fast rather than waiting for the completion pass.
+4. **Fixture refresh as a future story.** Live-derived fixtures for fast-suite replay would let `inspect` prove I/O grounding without Docker. Acknowledged as a carry-forward, not crammed into S6.
+
+**Carry-forward.** All planned CVs done. Two candidates for future work: fixture-replay extraction (live-derived fixtures for the fast suite) and SVG→PNG rasterization (8 deferred Kroki languages).

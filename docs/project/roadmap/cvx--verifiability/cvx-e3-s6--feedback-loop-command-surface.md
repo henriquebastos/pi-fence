@@ -1,6 +1,6 @@
 # CVx.E3.S6 — Feedback-loop command surface
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CVx.E3 — Refactor Confidence](cvx-e3--refactor-confidence.md)
 **Depends on:** [CVx.E5.S1 — Coverage and CRAP feedback](cvx-e5-s1--coverage-and-crap-feedback.md)

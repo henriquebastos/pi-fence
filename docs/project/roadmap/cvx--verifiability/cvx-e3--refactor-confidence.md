@@ -1,7 +1,7 @@
 # CVx.E3 — Refactor Confidence
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-22 — S6 In progress
+**Last updated:** 2026-04-24 — S6 Done
 
 CVx.E1 and CVx.E2 proved what pi-fence renders. The next missing confidence rung is structural: can we clean the code up without guessing, drifting, or breaking hidden contracts? This Epic makes refactoring deliberate.
 
@@ -16,7 +16,7 @@ Internal-first on purpose: no new end-user behavior, no new processors, no visua
 | [S3](cvx-e3-s3--production-owned-runtime-seams.md) | **Runtime seams are production-owned and injected at the edge, not imported from `tests/utilities/`** | ✅ Done |
 | [S4](cvx-e3-s4--thin-composition-root.md) | **The extension entrypoint becomes a thin composition root over focused modules and policies** | ✅ Done |
 | [S5](cvx-e3-s5--internal-api-polish.md) | **Internal module APIs and naming make the boundary-injected architecture easy to compose** | ✅ Done |
-| [S6](cvx-e3-s6--feedback-loop-command-surface.md) | **The local command surface names the implementation loop, checks, and inspection passes by intent** | In progress |
+| [S6](cvx-e3-s6--feedback-loop-command-surface.md) | **The local command surface names the implementation loop, checks, and inspection passes by intent** | ✅ Done |
 
 The sequence is intentional and mirrors the product decision behind this Epic: **safer refactoring first, architecture clarity second, API polish third, contributor-loop polish last**.
 
