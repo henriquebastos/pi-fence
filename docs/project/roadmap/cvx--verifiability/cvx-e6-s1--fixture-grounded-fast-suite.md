@@ -1,6 +1,6 @@
 # CVx.E6.S1 — Fixture-grounded fast suite
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CVx.E6 — Live-derived Fixtures](cvx-e6--live-derived-fixtures.md)
 **Date:** 2026-04-24 (spec)

@@ -1,7 +1,7 @@
 # CVx.E6 — Live-derived Fixtures
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-24 — S1 Ready
+**Last updated:** 2026-04-24 — S1 Done
 
 The fast suite uses hand-crafted fake responses. The live suite verifies real I/O but needs Docker/network. This Epic bridges the gap: capture real responses as committed fixtures and replay them in the fast suite so `pnpm test` has real-world grounding without external dependencies.
 
@@ -9,7 +9,7 @@ The fast suite uses hand-crafted fake responses. The live suite verifies real I/
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cvx-e6-s1--fixture-grounded-fast-suite.md) | **Fixture capture and replay for kroki and graphviz-local** | Ready |
+| [S1](cvx-e6-s1--fixture-grounded-fast-suite.md) | **Fixture capture and replay for kroki and graphviz-local** | ✅ Done |
 
 ## Done criterion (epic-level)
 

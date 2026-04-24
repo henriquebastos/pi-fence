@@ -12,8 +12,9 @@ All planned CVs (CV0–CV4, CVx) are done. The roadmap is clear for new work.
 
 No story is currently in progress. Candidates for future work:
 
-- Fixture-replay extraction: derive fast-suite fixtures from live test runs so `pnpm run inspect` replays grounded I/O without Docker/network.
 - SVG→PNG rasterization: would unlock 8 deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Surfaced by CV0.E1.S4’s research pass; not yet specced.
+- Automatic fixture staleness detection: CI job that re-refreshes fixtures and fails on diff.
+- Mermaid-local fixtures: extend `refresh-fixtures` once the kroki + graphviz pattern proves stable.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -1777,3 +1778,28 @@ This closes CVx.E3 (Refactor Confidence) and **CVx (Verifiability)**. All planne
 4. **Fixture refresh as a future story.** Live-derived fixtures for fast-suite replay would let `inspect` prove I/O grounding without Docker. Acknowledged as a carry-forward, not crammed into S6.
 
 **Carry-forward.** All planned CVs done. Two candidates for future work: fixture-replay extraction (live-derived fixtures for the fast suite) and SVG→PNG rasterization (8 deferred Kroki languages).
+
+---
+
+### 2026-04-24 — CVx.E6.S1 closed; CVx.E6 and CVx done
+
+**What shipped.** `pnpm refresh-fixtures` captures real PNG responses from Kroki (19 tags) and graphviz-local (1 tag via Docker) into committed fixture files under `tests/fixtures/live/`. A manifest records per-fixture bytes and SHA-256. A fast-suite fixture-replay test replays each committed fixture through the appropriate processor fake, asserting the render result matches the committed bytes. 40 new fast-suite assertions, no Docker/network required.
+
+This closes CVx.E6 (Live-derived Fixtures) and **CVx (Verifiability)** again.
+
+**Implementation commits.**
+
+1. `3fbe9c0` — spec CVx.E6.S1
+2. `585405f` — step 1: refresh-fixtures script + fixture-replay test
+3. `97a2bce` — step 2: commit initial 20 fixtures (90 KB)
+
+**Test count.** 559 fast-suite (was 520; +40 fixture-replay, −1 retired skeleton test).
+
+**Design decisions that survived implementation.**
+
+1. **Manifest as source of truth.** The replay test iterates the manifest, not the filesystem. Adding a fixture = refresh + commit; the test picks it up automatically.
+2. **Merge semantics for partial refresh.** `pnpm refresh-fixtures kroki` replaces only kroki entries in the manifest; graphviz entries survive. Supports incremental refresh without losing unrelated fixtures.
+3. **Skip cleanly when prerequisites are absent.** Both the refresh script (no network/container) and the replay test (no manifest) degrade to skip + exit 0 rather than failing.
+4. **Text-output processors excluded.** Table, highlight, color, and qr are pure-logic processors with no I/O seam — their fast tests are already grounded. Fixtures add value only where a real external service is involved.
+
+**Carry-forward.** All planned CVs done. Future candidates: mermaid-local fixtures, automatic staleness detection, SVG→PNG rasterization.
