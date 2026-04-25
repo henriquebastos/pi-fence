@@ -16,7 +16,7 @@ import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { createMermaidLocalProcessor } from "./mermaid-local.ts";
 import {
-	loadPiFenceConfigWithStatus,
+	loadPiFenceConfig,
 	type LoadConfigOptions,
 } from "./io/config-loader.ts";
 import type { HttpClient } from "./io/http-client.ts";
@@ -57,7 +57,7 @@ export async function createPiFenceExtension(
 	pi: ExtensionAPI,
 	deps: PiFenceRuntimeDeps,
 ): Promise<void> {
-	const configResult = await loadPiFenceConfigWithStatus({
+	const configResult = await loadPiFenceConfig({
 		logger: deps.logger,
 		...deps.configOptions,
 	});

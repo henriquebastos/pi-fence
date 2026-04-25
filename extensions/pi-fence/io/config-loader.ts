@@ -25,26 +25,6 @@ export interface LoadConfigOptions {
 	logger?: Logger;
 }
 
-/**
- * Compute the default global / project paths + load both files + merge.
- * Project wins on conflicting keys inside `bindings`. Never throws.
- */
-export async function loadPiFenceConfig(
-	opts: LoadConfigOptions = {},
-): Promise<PiFenceConfig> {
-	const home = opts.home ?? homedir();
-	const cwd = opts.cwd ?? process.cwd();
-	const globalPath =
-		opts.globalConfigPath ?? join(home, ".pi", "agent", "pi-fence.config.json");
-	const projectPath =
-		opts.projectConfigPath ?? join(cwd, ".pi", "pi-fence.config.json");
-	const logger = opts.logger;
-
-	const globalConfig = await readConfigFile(globalPath, "global", logger);
-	const projectConfig = await readConfigFile(projectPath, "project", logger);
-	return mergePiFenceConfigs(globalConfig, projectConfig);
-}
-
 export type ConfigFileStatus = "loaded" | "not-found" | "read-error" | "malformed-json";
 
 export interface ConfigLoadResult {
@@ -56,10 +36,10 @@ export interface ConfigLoadResult {
 }
 
 /**
- * Same as `loadPiFenceConfig` but also reports per-file load status
- * for `/fence doctor`.
+ * Compute the default global / project paths, load both files, merge,
+ * and report per-file load status for `/fence doctor`. Never throws.
  */
-export async function loadPiFenceConfigWithStatus(
+export async function loadPiFenceConfig(
 	opts: LoadConfigOptions = {},
 ): Promise<ConfigLoadResult> {
 	const home = opts.home ?? homedir();
@@ -113,38 +93,4 @@ async function readConfigFileWithStatus(
 	}
 
 	return [validatePiFenceConfig(parsed, label, logger), "loaded"];
-}
-
-async function readConfigFile(
-	path: string,
-	label: string,
-	logger?: Logger,
-): Promise<PiFenceConfig> {
-	let raw: string;
-	try {
-		raw = await fs.readFile(path, "utf8");
-	} catch (err) {
-		const code = (err as NodeJS.ErrnoException)?.code;
-		if (code === "ENOENT") {
-			return DEFAULT_CONFIG;
-		}
-		logger?.warn("config", `failed to read ${label} config`, {
-			path,
-			error: err instanceof Error ? err.message : String(err),
-		});
-		return DEFAULT_CONFIG;
-	}
-
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(raw);
-	} catch (err) {
-		logger?.warn("config", `malformed JSON in ${label} config`, {
-			path,
-			error: err instanceof Error ? err.message : String(err),
-		});
-		return DEFAULT_CONFIG;
-	}
-
-	return validatePiFenceConfig(parsed, label, logger);
 }

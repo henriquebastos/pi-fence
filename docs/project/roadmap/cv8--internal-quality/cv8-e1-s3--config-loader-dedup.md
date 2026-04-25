@@ -1,6 +1,6 @@
 # CV8.E1.S3 — Config loader deduplication
 
-**Status:** Ready
+**Status:** In progress
 
 **Epic:** [CV8.E1 — Duplication Removal](cv8-e1--resolution-trace-unification.md)
 **Date:** 2026-04-25 (spec)

@@ -28,7 +28,7 @@ import {
 } from "../../extensions/pi-fence/config.ts";
 import {
 	loadPiFenceConfig,
-	loadPiFenceConfigWithStatus,
+	type LoadConfigOptions,
 } from "../../extensions/pi-fence/io/config-loader.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
@@ -37,6 +37,10 @@ function writeConfig(dir: string, body: string): string {
 	const path = join(dir, "pi-fence.config.json");
 	writeFileSync(path, body);
 	return path;
+}
+
+async function loadConfig(opts: LoadConfigOptions = {}) {
+	return (await loadPiFenceConfig(opts)).config;
 }
 
 describe("config core", () => {
@@ -206,7 +210,7 @@ describe("loadPiFenceConfig — missing files", () => {
 
 	it("returns defaults when neither file exists", async () => {
 		const empty = makeTempDir();
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: join(empty, "does-not-exist.json"),
 			projectConfigPath: join(empty, "also-missing.json"),
 		});
@@ -218,7 +222,7 @@ describe("loadPiFenceConfig — missing files", () => {
 		const empty = makeTempDir();
 		const logger = new FakeLogger();
 
-		await loadPiFenceConfig({
+		await loadConfig({
 			globalConfigPath: join(empty, "does-not-exist.json"),
 			projectConfigPath: join(empty, "also-missing.json"),
 			logger,
@@ -238,7 +242,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			JSON.stringify({ bindings: { graphviz: "kroki" } }),
 		);
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: globalPath,
 			projectConfigPath: join(globalDir, "no-project-file.json"),
 		});
@@ -253,7 +257,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			JSON.stringify({ bindings: { mermaid: "kroki" } }),
 		);
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: join(projectDir, "no-global-file.json"),
 			projectConfigPath: projectPath,
 		});
@@ -273,7 +277,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			JSON.stringify({ bindings: { mermaid: "graphviz-local" } }),
 		);
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: globalPath,
 			projectConfigPath: projectPath,
 		});
@@ -296,7 +300,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			JSON.stringify({ bindings: { graphviz: "graphviz-local" } }),
 		);
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: globalPath,
 			projectConfigPath: projectPath,
 		});
@@ -322,7 +326,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			JSON.stringify({ bindings: { mermaid: "from-cwd" } }),
 		);
 
-		const config = await loadPiFenceConfig({ home, cwd });
+		const config = await loadConfig({ home, cwd });
 
 		expect(config.bindings).toEqual({
 			graphviz: "from-home",
@@ -339,7 +343,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		const path = writeConfig(dir, "not valid json{");
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 			logger,
@@ -356,7 +360,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		const path = writeConfig(dir, JSON.stringify(["this", "is", "not", "an", "object"]));
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 			logger,
@@ -372,7 +376,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		const path = writeConfig(dir, JSON.stringify("just a string"));
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 			logger,
@@ -400,7 +404,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		);
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 			logger,
@@ -424,7 +428,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		);
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 			logger,
@@ -450,7 +454,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		);
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 			logger,
@@ -472,7 +476,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		);
 		const logger = new FakeLogger();
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: globalPath,
 			projectConfigPath: projectPath,
 			logger,
@@ -488,7 +492,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		const dir = makeTempDir();
 		const path = writeConfig(dir, JSON.stringify({}));
 
-		const config = await loadPiFenceConfig({
+		const config = await loadConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 		});
@@ -497,14 +501,14 @@ describe("loadPiFenceConfig — malformed files", () => {
 	});
 });
 
-describe("loadPiFenceConfigWithStatus", () => {
+describe("loadPiFenceConfig — status reporting", () => {
 	afterEach(() => cleanupTempDirs());
 
 	it("reports 'loaded' for a valid config file", async () => {
 		const dir = makeTempDir();
 		const path = writeConfig(dir, JSON.stringify({ bindings: { a: "b" } }));
 
-		const result = await loadPiFenceConfigWithStatus({
+		const result = await loadPiFenceConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 		});
@@ -518,7 +522,7 @@ describe("loadPiFenceConfigWithStatus", () => {
 		const dir = makeTempDir();
 		const path = writeConfig(dir, "not json");
 
-		const result = await loadPiFenceConfigWithStatus({
+		const result = await loadPiFenceConfig({
 			globalConfigPath: path,
 			projectConfigPath: join(dir, "no-project.json"),
 		});
@@ -529,7 +533,7 @@ describe("loadPiFenceConfigWithStatus", () => {
 	it("reports 'not-found' for missing files", async () => {
 		const dir = makeTempDir();
 
-		const result = await loadPiFenceConfigWithStatus({
+		const result = await loadPiFenceConfig({
 			globalConfigPath: join(dir, "missing.json"),
 			projectConfigPath: join(dir, "also-missing.json"),
 		});
@@ -543,7 +547,7 @@ describe("loadPiFenceConfigWithStatus", () => {
 		const gPath = join(dir, "g.json");
 		const pPath = join(dir, "p.json");
 
-		const result = await loadPiFenceConfigWithStatus({
+		const result = await loadPiFenceConfig({
 			globalConfigPath: gPath,
 			projectConfigPath: pPath,
 		});
