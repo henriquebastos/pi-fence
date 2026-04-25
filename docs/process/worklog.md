@@ -1858,3 +1858,28 @@ This starts **CV8 (Internal Quality)** and CV8.E1 (Duplication Removal).
 4. **Quality refactor after inspection.** The initial unified resolver tripped Sonar cognitive complexity. Splitting candidate evaluation and fallback patching kept the single processor pass while moving CRAP/Sonar back under the story target.
 
 **Carry-forward.** Next: CV8.E1.S2 (Shared render guards). The broader Sonar quality gate is still red from pre-existing issues in `color.ts`, `highlight.ts`, `metrics.ts`, `table.ts`, and related files.
+
+---
+
+### 2026-04-25 — CV8.E1.S2 closed
+
+**What shipped.** All built-in processors now share the duplicated render guard logic. `withSignalGuard` centralizes pre-aborted signal handling for every processor, and `withRenderGuards` composes it with trim + empty-input validation for the pure-logic processors (`highlight`, `table`, `color`, `qr`). Shell/HTTP aborts now return the same `Aborted before render` message and no longer warn-log normal cancellation.
+
+**Implementation commits.**
+
+1. `65e1786` — step 1: share render guards
+
+**Test count.** 572 fast-suite (was 567; +5 focused unit tests for the shared guard helpers). Existing processor unit and contract tests cover the migrated processors unchanged.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed. SonarQube remains quality-gate `ERROR` with 38 open issues already tracked outside this story; duplicated-line density is now `0.0`.
+
+**Design decisions that survived implementation.**
+
+1. **Two guard layers.** `withSignalGuard` is the all-processor layer; `withRenderGuards` composes it for processors that also need trimming and empty-input rejection.
+2. **Abort as normal control flow.** The shared guard returns an error result without logging, keeping cancellation out of warning logs.
+3. **No behavior-specific knobs.** Empty input remains the existing `${tag}: empty input` template for all pure-logic processors.
+
+**Carry-forward.** Next: CV8.E1.S3 (Config loader deduplication). The remaining Sonar issues in the changed processor files are pre-existing parser/formatting findings and not part of this guard extraction.

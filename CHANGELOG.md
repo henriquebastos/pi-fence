@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV8.E1.S2 — Shared render guards)
+
+- Processor render guard logic is shared through `withSignalGuard` and `withRenderGuards`, removing duplicated abort and empty-input checks across the built-in processors.
+- Abort errors now consistently report `Aborted before render`; aborts are treated as normal control flow and no longer emit processor warnings.
+
 ### Changed (CV8.E1.S1 — Resolution trace unification)
 
 - `resolveProcessor` now returns structured resolution steps for every processor candidate and the agent-end pipeline logs them once per fenced block at debug level.
