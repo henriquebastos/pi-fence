@@ -1,5 +1,5 @@
 {
-  "refreshedAt": "2026-04-24T19:34:47.172Z",
+  "refreshedAt": "2026-04-25T00:39:10.304Z",
   "fixtures": [
     {
       "processor": "graphviz",
@@ -27,11 +27,35 @@
     },
     {
       "processor": "kroki",
+      "tag": "bytefield",
+      "file": "kroki/bytefield.png",
+      "bytes": 2523,
+      "sha256": "6ff65cb30c083ff092142b4ab2fe3e1e736d86aedf3e56ea0832fe1cc6947064",
+      "relPath": "kroki/bytefield.png"
+    },
+    {
+      "processor": "kroki",
       "tag": "c4plantuml",
       "file": "kroki/c4plantuml.png",
       "bytes": 16596,
       "sha256": "7562b3d2308e092b7ebacaaac5d72ac8ceb40c15bcef54805a5f41e356e898b3",
       "relPath": "kroki/c4plantuml.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "d2",
+      "file": "kroki/d2.png",
+      "bytes": 15078,
+      "sha256": "878a92a98cea505f0c6b39ab0eb7ff8dac2ee9706a215e6a5e5d433c9f93d775",
+      "relPath": "kroki/d2.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "dbml",
+      "file": "kroki/dbml.png",
+      "bytes": 21822,
+      "sha256": "0db5602e3b23df600f6aca5adfd44f139884f929c6bc2a4aabca8613c4c017ab",
+      "relPath": "kroki/dbml.png"
     },
     {
       "processor": "kroki",
@@ -67,6 +91,14 @@
     },
     {
       "processor": "kroki",
+      "tag": "nomnoml",
+      "file": "kroki/nomnoml.png",
+      "bytes": 20987,
+      "sha256": "1fae8415d044babc39da2dba03013eb9559dbeb250a655c4a22f471c75746b33",
+      "relPath": "kroki/nomnoml.png"
+    },
+    {
+      "processor": "kroki",
       "tag": "nwdiag",
       "file": "kroki/nwdiag.png",
       "bytes": 3768,
@@ -80,6 +112,14 @@
       "bytes": 1219,
       "sha256": "9869786ac52ea0b1b382a56d354e323c016486b85759bc251c01a665a5ce4926",
       "relPath": "kroki/packetdiag.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "pikchr",
+      "file": "kroki/pikchr.png",
+      "bytes": 4223,
+      "sha256": "722e79fe9bfe983ad5d933ed38c00b2564863feeff112c84be0d3c219d5568a5",
+      "relPath": "kroki/pikchr.png"
     },
     {
       "processor": "kroki",
@@ -112,6 +152,14 @@
       "bytes": 7503,
       "sha256": "b7f05f55e6623de3273cebcc4b16d7403b771623fceec319794fed1d2c8ae9f9",
       "relPath": "kroki/structurizr.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "svgbob",
+      "file": "kroki/svgbob.png",
+      "bytes": 10333,
+      "sha256": "f5e217c77506f4184f65e3486707b404f0bb96b84f7ed4ff1aae740167488286",
+      "relPath": "kroki/svgbob.png"
     },
     {
       "processor": "kroki",
@@ -152,6 +200,14 @@
       "bytes": 3253,
       "sha256": "9a6a448e26a286e23be2322423768eac39330e71febe8e46ff432d86bc8d4fa9",
       "relPath": "kroki/vegalite.png"
+    },
+    {
+      "processor": "kroki",
+      "tag": "wavedrom",
+      "file": "kroki/wavedrom.png",
+      "bytes": 7143,
+      "sha256": "02a23f5c2ef4b086df5c51ee0d64308e8392107168a64b79daea06b38acd987c",
+      "relPath": "kroki/wavedrom.png"
     },
     {
       "processor": "kroki",

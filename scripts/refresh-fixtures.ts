@@ -68,6 +68,12 @@ async function refreshKroki(): Promise<FixtureEntry[]> {
 	const { NodeHttpClient } = await import(
 		"../extensions/pi-fence/io/http-client.ts"
 	);
+	const { KROKI_SVG_ONLY_TAGS } = await import(
+		"../extensions/pi-fence/kroki.ts"
+	);
+	const { svgToPng } = await import(
+		"../extensions/pi-fence/svg-to-png.ts"
+	);
 
 	const http = new NodeHttpClient();
 	const endpoint = "https://kroki.io";
@@ -75,8 +81,10 @@ async function refreshKroki(): Promise<FixtureEntry[]> {
 	const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 	for (const spec of KROKI_TEXT_LANGUAGES) {
-		const url = `${endpoint}/${spec.tag}/png`;
-		process.stderr.write(`  kroki/${spec.tag} ... `);
+		const isSvgOnly = KROKI_SVG_ONLY_TAGS.has(spec.tag);
+		const format = isSvgOnly ? "svg" : "png";
+		const url = `${endpoint}/${spec.tag}/${format}`;
+		process.stderr.write(`  kroki/${spec.tag} (${format}) ... `);
 
 		try {
 			const resp = await http.request({
@@ -91,15 +99,21 @@ async function refreshKroki(): Promise<FixtureEntry[]> {
 				continue;
 			}
 
-			const body = Buffer.isBuffer(resp.body) ? resp.body : Buffer.from(resp.body);
-			if (body.length < 8 || Buffer.compare(body.subarray(0, 8), PNG_MAGIC) !== 0) {
+			let png: Buffer;
+			if (isSvgOnly) {
+				png = await svgToPng(resp.body);
+			} else {
+				png = Buffer.isBuffer(resp.body) ? resp.body : Buffer.from(resp.body);
+			}
+
+			if (png.length < 8 || Buffer.compare(png.subarray(0, 8), PNG_MAGIC) !== 0) {
 				process.stderr.write(`SKIP (not PNG)\n`);
 				continue;
 			}
 
-			const entry = writeFixture(`kroki/${spec.tag}.png`, body);
+			const entry = writeFixture(`kroki/${spec.tag}.png`, png);
 			entries.push(entry);
-			process.stderr.write(`${body.length} bytes\n`);
+			process.stderr.write(`${png.length} bytes\n`);
 		} catch (err) {
 			const msg = err instanceof Error ? err.message : String(err);
 			process.stderr.write(`SKIP (${msg})\n`);

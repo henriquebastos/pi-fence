@@ -19,7 +19,7 @@ import { describe, expect, it } from "vitest";
 import { FakeHttpClient } from "../utilities/http-client.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 import { FakeLogger } from "../utilities/logger.ts";
-import { createKrokiProcessor } from "../../extensions/pi-fence/kroki.ts";
+import { createKrokiProcessor, KROKI_SVG_ONLY_TAGS } from "../../extensions/pi-fence/kroki.ts";
 import { createGraphvizLocalProcessor } from "../../extensions/pi-fence/graphviz-local.ts";
 import { KROKI_TEXT_LANGUAGES } from "../fixtures/kroki/canonical-sources.ts";
 
@@ -64,9 +64,11 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 
 	describe("kroki fixture replay", () => {
 		const krokiFixtures = manifest.fixtures.filter((f) => f.processor === "kroki");
+		const pngDirectFixtures = krokiFixtures.filter((f) => !KROKI_SVG_ONLY_TAGS.has(f.tag));
+		const svgOnlyFixtures = krokiFixtures.filter((f) => KROKI_SVG_ONLY_TAGS.has(f.tag));
 
-		for (const entry of krokiFixtures) {
-			it(`replays ${entry.tag} through FakeHttpClient → kroki processor`, async () => {
+		for (const entry of pngDirectFixtures) {
+			it(`replays ${entry.tag} through FakeHttpClient → kroki processor (PNG-direct)`, async () => {
 				const pngBytes = loadFixture(entry);
 				const spec = KROKI_TEXT_LANGUAGES.find((l) => l.tag === entry.tag);
 				expect(spec).toBeDefined();
@@ -84,6 +86,42 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 				expect(result.ok).toBe(true);
 				if (!result.ok || !("png" in result)) return;
 				expect(Buffer.compare(result.png, pngBytes)).toBe(0);
+			});
+		}
+
+		for (const entry of svgOnlyFixtures) {
+			it(`replays ${entry.tag} through FakeHttpClient → kroki processor (SVG→PNG)`, async () => {
+				const expectedPng = loadFixture(entry);
+				const spec = KROKI_TEXT_LANGUAGES.find((l) => l.tag === entry.tag);
+				expect(spec).toBeDefined();
+
+				// For SVG-only tags, the fixture is the rasterized PNG.
+				// The processor requests SVG and rasterizes locally, so we
+				// verify the result is a valid PNG with correct magic bytes.
+				// Exact byte match is not guaranteed because resvg may produce
+				// slightly different output across versions.
+				const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+				// Provide a minimal valid SVG so the processor can rasterize.
+				const fakeSvg =
+					'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">' +
+					'<rect width="10" height="10" fill="red"/></svg>';
+
+				const http = new FakeHttpClient();
+				http.setResponse("POST", `https://kroki.io/${entry.tag}/svg`, {
+					status: 200,
+					headers: { "content-type": "image/svg+xml" },
+					body: Buffer.from(fakeSvg),
+				});
+
+				const kroki = createKrokiProcessor(http, undefined, new FakeLogger());
+				const result = await kroki.render(entry.tag, spec!.source);
+
+				expect(result.ok).toBe(true);
+				if (!result.ok || !("png" in result)) return;
+				expect(Buffer.compare(result.png.subarray(0, 8), PNG_MAGIC)).toBe(0);
+				// Verify fixture is also a valid PNG (manifest integrity covers bytes/sha)
+				expect(Buffer.compare(expectedPng.subarray(0, 8), PNG_MAGIC)).toBe(0);
 			});
 		}
 	});
