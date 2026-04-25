@@ -30,7 +30,7 @@ After installing pi-fence into pi:
 3. pi-fence intercepts `agent_end`, posts the source to `https://kroki.io`, and emits a custom message below the assistant's text containing the rendered PNG.
 4. Your terminal displays the PNG inline (Ghostty, Kitty, iTerm2, WezTerm).
 
-**Supported tags**: `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, `vegalite` (alias `vega-lite`) — 19 canonical languages, three aliases. See [docs/product/kroki-support.md](docs/product/kroki-support.md) for minimal source examples per language, quirks worth knowing, and the list of Kroki languages pi-fence deliberately does *not* advertise yet (SVG-only on the public endpoint or backend unavailable).
+**Supported tags**: `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, `vegalite` (alias `vega-lite`), plus SVG→PNG rasterized: `d2`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom` — 28 canonical languages, three aliases. See [docs/product/kroki-support.md](docs/product/kroki-support.md) for minimal source examples per language, quirks worth knowing, and the list of Kroki languages pi-fence deliberately does *not* advertise yet (SVG-only on the public endpoint or backend unavailable).
 
 On expansion (ctrl+o on the rendered message) pi-fence also shows the original source in a code block for copy-paste, regardless of which supported tag you used.
 

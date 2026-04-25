@@ -9,8 +9,8 @@ Last updated: 2026-04-22 (CV0.E1.S5).
 ## Quick summary
 
 1. **19 languages render today** on the public endpoint — 17 text-body + 2 JSON-source (Vega, Vega-Lite). All listed below with minimal canonical sources.
-2. **9 languages** are hosted by Kroki but refused as PNG on the public endpoint (Kroki answers `400: Unsupported output format: png … Must be one of svg.`). This includes Excalidraw, which S5's research found to be SVG-only despite being a JSON-body language in Kroki's docs. pi-fence's inline-PNG path via the Kitty graphics protocol can't serve them yet — see the deferred table and follow-up paths below.
-3. **1 language** (diagrams.net) has backend infrastructure unavailable on Kroki's public endpoint — Kroki answers `503: Connection refused`. Same status as the SVG-only set: deferred until self-hosted Kroki (CV2.E2) ships.
+2. **7 languages** were SVG-only on the public endpoint but now render via pi-fence's local SVG→PNG rasterization (`@resvg/resvg-js`): `d2`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`. pi-fence requests SVG from Kroki and rasterizes locally — the source still travels to kroki.io but the PNG conversion happens on your machine.
+3. **3 languages** have backend infrastructure unavailable on Kroki's public endpoint: `bpmn`, `excalidraw`, and `diagramsnet`. Kroki answers with connection refused errors. Deferred until self-hosted Kroki with those backends enabled.
 
 ## Supported on public Kroki (PNG) — rendered by pi-fence today
 
@@ -70,32 +70,29 @@ The `/fence list` slash command reports the full list at runtime.
 
 pi-fence requests `?theme=dark` from Kroki when pi's current theme is a dark one. Light themes (`light`, `solarized-light`, `github-light`, `catppuccin-latte`, `day`) get Kroki's default rendering. Theme is re-read every turn, so switching pi themes mid-session takes effect on the next rendered block.
 
-## SVG-only on public Kroki — deferred
+## SVG→PNG rasterized languages
 
-Kroki hosts these languages but the public endpoint refuses PNG output (`400: Unsupported output format: png for <tag>. Must be one of svg.`). pi-fence's rendering pipeline is PNG-only today (via the Kitty graphics protocol the terminal expects), so these can't render inline without either:
+These languages render via SVG from Kroki's public endpoint, rasterized to PNG locally by pi-fence using `@resvg/resvg-js`. The diagram source travels to kroki.io; the PNG conversion is local.
 
-1. An **SVG→PNG rasterization step** inside pi-fence (not yet specced; would be its own story).
-2. **Self-hosted Kroki** with alternate backends enabled — covered by [CV2 — Work Offline](../project/roadmap/cv2--work-offline/README.md).
-
-| Tag | Kroki-documented behaviour | Notes |
-|-----|---------------------------|-------|
-| `d2` | SVG-only on public endpoint | Was in pi-fence's allowlist prior to CV0.E1.S4 but never worked; removed to stop advertising a language that always errors. |
-| `bpmn` | SVG-only on public endpoint | BPMN 2.0 XML. |
-| `bytefield` | SVG-only on public endpoint | Byte-field diagrams from Clojure-like syntax. |
-| `dbml` | SVG-only on public endpoint | Database Markup Language. |
-| `nomnoml` | SVG-only on public endpoint | Simple UML-ish diagrams. |
-| `pikchr` | SVG-only on public endpoint | SQLite project's PIC-derived diagram language. |
-| `svgbob` | SVG-only on public endpoint | ASCII-art → SVG. |
-| `wavedrom` | SVG-only on public endpoint | Digital timing diagrams. |
-| `excalidraw` | SVG-only on public endpoint | Excalidraw scenes (JSON body). Originally expected to support PNG; S5 research found it SVG-only on the public endpoint. |
-
-If you want one of these languages specifically, run your own Kroki locally with the relevant backend enabled and point pi-fence at it. Configuration hooks for that land in [CV1 — Take Control](../project/roadmap/cv1--take-control/README.md).
+| Tag | Notes |
+|-----|-------|
+| `d2` | D2 diagrams. |
+| `bytefield` | Byte-field diagrams from Clojure-like syntax. |
+| `dbml` | Database Markup Language. |
+| `nomnoml` | Simple UML-ish diagrams. |
+| `pikchr` | SQLite project's PIC-derived diagram language. |
+| `svgbob` | ASCII-art → SVG. |
+| `wavedrom` | Digital timing diagrams (JSON source). |
 
 ## Backend unavailable on public Kroki
 
 | Tag | Kroki-documented behaviour | Notes |
 |-----|---------------------------|-------|
-| `diagramsnet` | Public endpoint lacks the backend wiring | Kroki answers `503: Connection refused: /127.0.0.1:8005`. Same follow-up path as the SVG-only set — self-hosted Kroki with the diagrams.net backend enabled. |
+| `bpmn` | Backend unavailable | Kroki answers with connection refused. BPMN 2.0 XML. |
+| `excalidraw` | Backend unavailable | Kroki answers with connection refused. JSON body. |
+| `diagramsnet` | Backend unavailable | Kroki answers `503: Connection refused`. |
+
+If you want one of these languages, run your own Kroki locally with the relevant backend enabled and point pi-fence at it. See [Configuring the Kroki endpoint](../getting-started.md#configuring-the-kroki-endpoint).
 
 ## Browsing a live gallery
 
