@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV8.E2.S1 — Shell processor render timeout)
+
+- `graphviz-local` and `mermaid-local` renders now use the same 15-second default render timeout as Kroki, preventing hung local binaries from blocking the render loop indefinitely.
+
 ### Changed (CV8.E1.S2 — Shared render guards)
 
 - Processor render guard logic is shared through `withSignalGuard` and `withRenderGuards`, removing duplicated abort and empty-input checks across the built-in processors.

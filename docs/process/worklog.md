@@ -1937,3 +1937,30 @@ This closes CV8.E1 (Duplication Removal). The logger cleanup also split the conc
 3. **Dead aliases removed.** No production or test imports used `KrokiResult` or `KrokiProcessor`, so they were deleted instead of preserved as compatibility noise.
 
 **Carry-forward.** CV8.E1 is done. Next: CV8.E2.S1 (Shell processor render timeout).
+
+---
+
+### 2026-04-25 — CV8.E2.S1 closed
+
+**What shipped.** Local shell processors now have the same render timeout protection as Kroki. `DEFAULT_RENDER_TIMEOUT_MS` and `mergeSignals` live in `processor.ts`; Kroki, graphviz-local, and mermaid-local all share them. A hanging `dot` or `mmdc` process now receives an abort signal and returns `{ ok: false }` instead of blocking indefinitely.
+
+This starts CV8.E2 (Robustness).
+
+**Implementation commits.**
+
+1. `e0cb31c` — step 1: timeout shell renders
+
+**Test count.** 578 fast-suite (was 573; +5: graphviz-local timeout, mermaid-local timeout, and three shared signal-helper tests).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed. SonarQube remains quality-gate `ERROR` with 38 open issues outside this story; overall complexity dropped from 974 to 970 in the latest report.
+
+**Design decisions that survived implementation.**
+
+1. **One timeout constant.** Shell and HTTP renderers share the same 15-second render budget until real usage shows a need to split them.
+2. **One signal merge helper.** `processor.ts` owns `mergeSignals`, and the old Kroki-local helper and Node 20 polyfill were removed.
+3. **No fake promotion.** Hanging-shell behavior stayed as an inline unit-test stub because it is a single scenario, not a reusable fake seam.
+
+**Carry-forward.** Next: CV8.E2.S2 (Eliminate `as never` casts).
