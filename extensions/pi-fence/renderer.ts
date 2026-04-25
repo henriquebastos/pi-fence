@@ -111,23 +111,34 @@ export interface PiFenceOutputDetails {
  */
 type ThemeLike = Pick<Theme, "fg" | "bg" | "bold">;
 
-export function createPiFenceMessageRenderer(tui: {
-	Box: new (paddingX: number, paddingY: number, bg?: (text: string) => string) => PiTuiContainer;
-	Text: new (text: string, x: number, y: number) => PiTuiComponent;
-	Spacer: new (height: number) => PiTuiComponent;
+interface Container extends Component {
+	addChild(child: Component): void;
+}
+
+interface TuiPrimitives {
+	Box: new (paddingX: number, paddingY: number, bg?: (text: string) => string) => Container;
+	Text: new (
+		text: string,
+		paddingX: number,
+		paddingY: number,
+		bg?: (text: string) => string,
+	) => Component;
+	Spacer: new (height: number) => Component;
 	Image: new (
 		base64Data: string,
 		mimeType: string,
 		imageTheme: { fallbackColor: (s: string) => string },
 		options?: { maxWidthCells?: number; maxHeightCells?: number; filename?: string },
-	) => PiTuiComponent;
+	) => Component;
 	truncateToWidth: (text: string, width: number, suffix?: string) => string;
-}) {
+}
+
+export function createPiFenceMessageRenderer(tui: TuiPrimitives) {
 	return (
 		message: { content: unknown; details?: unknown },
 		options: { expanded: boolean },
 		theme: ThemeLike,
-	): PiTuiContainer => {
+	): Component => {
 		const details = (message.details ?? {}) as Partial<PiFenceOutputDetails>;
 		const tag = details.tag ?? "unknown";
 		const processor = details.processor ?? "unknown";
@@ -242,17 +253,14 @@ const EMPTY_LISTING_LINE = "(no processors registered)";
  * visible content. Expanded and collapsed renders are identical today —
  * `/fence list` has no hidden detail to unfold.
  */
-export function createPiFenceListRenderer(tui: {
-	Box: new (paddingX: number, paddingY: number, bg?: (text: string) => string) => PiTuiContainer;
-	Text: new (text: string, x: number, y: number) => PiTuiComponent;
-	Spacer: new (height: number) => PiTuiComponent;
-	truncateToWidth: (text: string, width: number, suffix?: string) => string;
-}) {
+export function createPiFenceListRenderer(
+	tui: Pick<TuiPrimitives, "Box" | "Text" | "Spacer" | "truncateToWidth">,
+) {
 	return (
 		message: { content: unknown; details?: unknown },
 		_options: { expanded: boolean },
 		theme: ThemeLike,
-	): PiTuiContainer => {
+	): Component => {
 		const details = (message.details ?? {}) as Partial<PiFenceListDetails>;
 		const lines = details.lines && details.lines.length > 0 ? details.lines : [EMPTY_LISTING_LINE];
 
@@ -264,14 +272,4 @@ export function createPiFenceListRenderer(tui: {
 		}
 		return box;
 	};
-}
-
-// ---------------------------------------------------------------------------
-// Minimal shape types for pi-tui primitives
-// ---------------------------------------------------------------------------
-
-interface PiTuiComponent extends Component {}
-
-interface PiTuiContainer extends PiTuiComponent {
-	addChild(child: PiTuiComponent): void;
 }

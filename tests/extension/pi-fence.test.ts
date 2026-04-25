@@ -1430,12 +1430,15 @@ function cannedAssistantStream(_model: Model<any>, text: string) {
 			timestamp: Date.now(),
 		};
 
-		stream.push({ type: "start", partial: output });
-		stream.push({ type: "text_start", contentIndex: 0, partial: output } as never);
+		const push = (event: unknown) => {
+			stream.push(event as Parameters<typeof stream.push>[0]);
+		};
+		push({ type: "start", partial: output });
+		push({ type: "text_start", contentIndex: 0, partial: output });
 		textBlock.text = text;
-		stream.push({ type: "text_delta", contentIndex: 0, delta: text, partial: output } as never);
-		stream.push({ type: "text_end", contentIndex: 0, content: text, partial: output } as never);
-		stream.push({ type: "done", reason: "stop", message: output } as never);
+		push({ type: "text_delta", contentIndex: 0, delta: text, partial: output });
+		push({ type: "text_end", contentIndex: 0, content: text, partial: output });
+		push({ type: "done", reason: "stop", message: output });
 		stream.end();
 
 		return stream;

@@ -3,7 +3,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Logger } from "./io/logger.ts";
-import { buildPiFenceOutputMessage } from "./messages.ts";
+import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
@@ -103,15 +103,16 @@ export function registerPiFenceAgentEndHandler({
 
 			// Feed the error back to the LLM so it can self-correct (D2).
 			if (!result.ok) {
+				const content: TextContent[] = [
+					{
+						type: "text",
+						text: `pi-fence: render error for \`${block.tag}\` via ${processor.id}: ${result.error}`,
+					},
+				];
 				pi.sendMessage(
 					{
 						customType: "pi-fence:error-followup",
-						content: [
-							{
-								type: "text",
-								text: `pi-fence: render error for \`${block.tag}\` via ${processor.id}: ${result.error}`,
-							},
-						] as never,
+						content,
 						display: false,
 					},
 					{ deliverAs: "followUp" },

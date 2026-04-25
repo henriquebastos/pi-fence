@@ -231,19 +231,19 @@ function logDisabled(
 
 function registerPiFenceRenderers(pi: ExtensionAPI): void {
 	const tuiPrimitives = {
-		Box: Box as never,
-		Text: Text as never,
-		Spacer: Spacer as never,
-		Image: Image as never,
+		Box,
+		Text,
+		Spacer,
+		Image,
 		truncateToWidth,
 	};
 	pi.registerMessageRenderer(
 		PI_FENCE_OUTPUT_MESSAGE_TYPE,
-		createPiFenceMessageRenderer(tuiPrimitives) as never,
+		createPiFenceMessageRenderer(tuiPrimitives),
 	);
 	pi.registerMessageRenderer(
 		PI_FENCE_LIST_MESSAGE_TYPE,
-		createPiFenceListRenderer(tuiPrimitives) as never,
+		createPiFenceListRenderer(tuiPrimitives),
 	);
 }
 

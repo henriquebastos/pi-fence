@@ -13,6 +13,19 @@ import type { BindingResolution } from "./resolve.ts";
 export const PI_FENCE_OUTPUT_MESSAGE_TYPE = "pi-fence:output";
 export const PI_FENCE_LIST_MESSAGE_TYPE = "pi-fence:list";
 
+export interface TextContent {
+	type: "text";
+	text: string;
+}
+
+export interface ImageContent {
+	type: "image";
+	data: string;
+	mimeType: string;
+}
+
+export type MessageContent = TextContent | ImageContent;
+
 export function sendPiFenceListMessage(
 	pi: ExtensionAPI,
 	processors: readonly FenceProcessor[],
@@ -35,10 +48,11 @@ export function sendPiFenceListMessage(
 		listings,
 		bindings: bindingRows,
 	};
-	pi.sendMessage({
+	const content: TextContent[] = [{ type: "text", text: lines.join("\n") }];
+	pi.sendMessage<typeof details>({
 		customType: PI_FENCE_LIST_MESSAGE_TYPE,
-		content: [{ type: "text", text: lines.join("\n") }] as never,
-		details: details as never,
+		content,
+		details,
 		display: true,
 	});
 }
@@ -47,10 +61,12 @@ export function sendPiFenceDoctorMessage(
 	pi: ExtensionAPI,
 	lines: readonly string[],
 ): void {
-	pi.sendMessage({
+	const content: TextContent[] = [{ type: "text", text: lines.join("\n") }];
+	const details: PiFenceListDetails = { lines: [...lines] };
+	pi.sendMessage<PiFenceListDetails>({
 		customType: PI_FENCE_LIST_MESSAGE_TYPE,
-		content: [{ type: "text", text: lines.join("\n") }] as never,
-		details: { lines } as never,
+		content,
+		details,
 		display: true,
 	});
 }
@@ -69,7 +85,7 @@ export function buildPiFenceOutputMessage(
 	};
 
 	if (result.ok) {
-		const content =
+		const content: MessageContent[] =
 			"png" in result
 				? [
 						{
@@ -82,21 +98,22 @@ export function buildPiFenceOutputMessage(
 
 		return {
 			customType: PI_FENCE_OUTPUT_MESSAGE_TYPE,
-			content: content as never,
-			details: details as never,
+			content,
+			details,
 			display: true,
 		};
 	}
 
+	const content: TextContent[] = [
+		{
+			type: "text",
+			text: result.error,
+		},
+	];
 	return {
 		customType: PI_FENCE_OUTPUT_MESSAGE_TYPE,
-		content: [
-			{
-				type: "text",
-				text: result.error,
-			},
-		] as never,
-		details: details as never,
+		content,
+		details,
 		display: true,
 	};
 }

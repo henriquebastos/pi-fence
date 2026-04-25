@@ -19,6 +19,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
 import type { Availability, FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
@@ -47,12 +48,16 @@ function stubProcessor(
 	};
 }
 
+function asExtensionAPI(api: FakeExtensionAPI): ExtensionAPI {
+	return api as unknown as ExtensionAPI;
+}
+
 async function setupExtension(
 	processor: FenceProcessor,
 ): Promise<{ api: FakeExtensionAPI; logger: FakeLogger }> {
 	const api = new FakeExtensionAPI();
 	const logger = new FakeLogger();
-	await createPiFenceExtension(api as never, {
+	await createPiFenceExtension(asExtensionAPI(api), {
 		http: new FakeHttpClient(),
 		// Default shell is never invoked by these tests (the stub
 		// processor doesn't shell out) but PiFenceRuntimeDeps.shell became
@@ -148,7 +153,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"],
 			{ stdout: "true\n", stderr: "", exitCode: 0 },
 		);
-		await createPiFenceExtension(api as never, {
+		await createPiFenceExtension(asExtensionAPI(api), {
 			http: new FakeHttpClient(),
 			shell,
 			logger,
@@ -177,7 +182,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			["run", "-d", "--name", "pi-fence-kroki", "-p", "8000:8000", "yuzutech/kroki"],
 			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
 		);
-		await createPiFenceExtension(api as never, {
+		await createPiFenceExtension(asExtensionAPI(api), {
 			http: new FakeHttpClient(),
 			shell,
 			logger,
@@ -204,7 +209,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			stderr: "",
 			exitCode: 0,
 		});
-		await createPiFenceExtension(api as never, {
+		await createPiFenceExtension(asExtensionAPI(api), {
 			http: new FakeHttpClient(),
 			shell,
 			logger,

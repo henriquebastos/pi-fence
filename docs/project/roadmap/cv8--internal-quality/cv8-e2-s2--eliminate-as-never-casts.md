@@ -1,6 +1,6 @@
 # CV8.E2.S2 — Eliminate `as never` casts
 
-**Status:** Ready
+**Status:** In progress
 
 **Epic:** [CV8.E2 — Robustness](cv8-e2--robustness.md)
 **Date:** 2026-04-25 (spec)
