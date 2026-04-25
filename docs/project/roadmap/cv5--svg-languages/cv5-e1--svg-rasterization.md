@@ -1,13 +1,13 @@
 # CV5.E1 — SVG→PNG Rasterization
 
 **Roadmap:** [CV5](README.md)
-**Last updated:** 2026-04-24 — S1 Ready
+**Last updated:** 2026-04-24 — S1 Done
 
 ## Stories
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv5-e1-s1--kroki-svg-to-png.md) | **Rasterize SVG-only Kroki languages via resvg** | Ready |
+| [S1](cv5-e1-s1--kroki-svg-to-png.md) | **Rasterize SVG-only Kroki languages via resvg** | ✅ Done |
 
 ## Done criterion (epic-level)
 

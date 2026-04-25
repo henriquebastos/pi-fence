@@ -1,6 +1,6 @@
 # CV5.E1.S1 — Rasterize SVG-only Kroki languages via resvg
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV5.E1 — SVG→PNG Rasterization](cv5-e1--svg-rasterization.md)
 **Date:** 2026-04-24 (spec)

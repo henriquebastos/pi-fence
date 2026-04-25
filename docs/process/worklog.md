@@ -1803,3 +1803,29 @@ This closes CVx.E6 (Live-derived Fixtures) and **CVx (Verifiability)** again.
 4. **Text-output processors excluded.** Table, highlight, color, and qr are pure-logic processors with no I/O seam — their fast tests are already grounded. Fixtures add value only where a real external service is involved.
 
 **Carry-forward.** All planned CVs done. Future candidates: mermaid-local fixtures, automatic staleness detection, SVG→PNG rasterization.
+
+---
+
+### 2026-04-24 — CV5.E1.S1 closed; CV5.E1 and CV5 done
+
+**What shipped.** 7 SVG-only Kroki languages now render inline: `d2`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`. pi-fence requests SVG from the public endpoint and rasterizes to PNG locally via `@resvg/resvg-js` (lazy-loaded, ~3.5 MB native binary). 28 canonical tags total (was 21).
+
+This closes CV5.E1 (SVG→PNG Rasterization) and **CV5 (SVG Languages)**.
+
+**Implementation commits.**
+
+1. `4db5a8c` — spec CV5.E1.S1
+2. `c06cb0a` — step 1: svg-to-png.ts module, extend Kroki processor, 7 new tags + canonical sources, unit tests
+3. `8b2d8f5` — step 2: refresh-fixtures handles SVG-only path, 26 committed fixtures, fixture-replay tests
+4. `2d05e2d` — step 3: update kroki-support.md, README.md
+
+**Test count.** 576 fast-suite (was 559; +17: 3 SVG-path unit tests + 14 fixture replay).
+
+**Design decisions that survived implementation.**
+
+1. **Extend Kroki processor, not a new processor.** The SVG→PNG path is an internal concern of the Kroki renderer. The rest of the pipeline sees the same `{ ok: true, png: Buffer }`.
+2. **Lazy-load resvg.** `@resvg/resvg-js` is imported on first SVG-only render, not at startup. Zero cost when only PNG-direct tags are used.
+3. **Excluded bpmn and excalidraw.** Live probing found both return ECONNREFUSED — backend unavailable on the public endpoint, same as diagramsnet. Not an SVG-only problem; moved to the "backend unavailable" category in kroki-support.md.
+4. **7 tags, not 9.** The spec originally targeted 9 (including bpmn and excalidraw). Live verification narrowed the set to 7 working tags.
+
+**Carry-forward.** CV0–CV5 and CVx all done. bpmn, excalidraw, and diagramsnet remain deferred (backend unavailable on public Kroki).

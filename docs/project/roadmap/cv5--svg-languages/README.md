@@ -3,7 +3,7 @@
 > Unlock the Kroki languages the public endpoint serves only as SVG by rasterizing SVG→PNG locally.
 
 **Type:** `legibility`
-**Status:** not done
+**Status:** done
 
 This CV is done when every Story in its Epics is done.
 
@@ -11,4 +11,4 @@ This CV is done when every Story in its Epics is done.
 
 | Code | Epic | State |
 |------|------|-------|
-| [CV5.E1](cv5-e1--svg-rasterization.md) | **SVG→PNG Rasterization** | Not done |
+| [CV5.E1](cv5-e1--svg-rasterization.md) | **SVG→PNG Rasterization** | Done |
