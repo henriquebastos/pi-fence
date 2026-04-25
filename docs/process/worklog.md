@@ -1829,3 +1829,32 @@ This closes CV5.E1 (SVG→PNG Rasterization) and **CV5 (SVG Languages)**.
 4. **7 tags, not 9.** The spec originally targeted 9 (including bpmn and excalidraw). Live verification narrowed the set to 7 working tags.
 
 **Carry-forward.** CV0–CV5 and CVx all done. bpmn, excalidraw, and diagramsnet remain deferred (backend unavailable on public Kroki).
+
+---
+
+### 2026-04-25 — CV8.E1.S1 closed
+
+**What shipped.** Processor resolution now produces the selected processor and structured trace steps from the same single-pass algorithm. `agent_end` logs those steps once per fenced block at debug level, so resolution diagnostics no longer need a separate `/fence trace` command or a duplicate trace implementation.
+
+This starts **CV8 (Internal Quality)** and CV8.E1 (Duplication Removal).
+
+**Implementation commits.**
+
+1. `32924cb` — spec roadmap: add future CVs
+2. `80fd3d4` — step 1: unify resolution trace
+
+**Test count.** 567 fast-suite (was 576; −9 net: deleted the separate trace unit/extension tests, added resolution-step assertions to every `resolveProcessor` scenario, and added an agent-end debug-log assertion).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed. SonarQube remains quality-gate `ERROR` with 38 open issues in unrelated files; the resolve refactor removed the new cognitive-complexity finding and the unused-import finding from the changed files.
+
+**Design decisions that survived implementation.**
+
+1. **Trace data belongs to resolution.** The selected processor and the trace steps now come from one function, eliminating the duplicate `trace.ts` algorithm.
+2. **Debug logs replace `/fence trace`.** The trace is always available to callers as structured data and logged by `agent_end`; the user-facing command was removed instead of maintaining a second display path.
+3. **Binding semantics stayed permissive.** Bindings still select an available, enabled processor by id even if that processor does not claim the tag; unavailable, disabled, or unknown bindings fall through to capability resolution.
+4. **Quality refactor after inspection.** The initial unified resolver tripped Sonar cognitive complexity. Splitting candidate evaluation and fallback patching kept the single processor pass while moving CRAP/Sonar back under the story target.
+
+**Carry-forward.** Next: CV8.E1.S2 (Shared render guards). The broader Sonar quality gate is still red from pre-existing issues in `color.ts`, `highlight.ts`, `metrics.ts`, `table.ts`, and related files.

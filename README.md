@@ -55,6 +55,7 @@ Set `PI_FENCE_LOG_LEVEL` in the environment to see pi-fence's internal activity 
 [pi-fence:pi-fence] debug: processor available {"id":"graphviz-local"}
 [pi-fence:pi-fence] debug: processor available {"id":"kroki"}
 [pi-fence:pi-fence] debug: agent_end parsed {"assistantTextBytes":142,"blocks":1}
+[pi-fence:pi-fence] debug: processor resolution {"tag":"dot","processor":"graphviz-local","steps":[{"id":"graphviz-local","outcome":"selected-first-available"}]}
 [pi-fence:graphviz-local] debug: shelling out to dot {"tag":"dot","sourceBytes":23}
 [pi-fence:graphviz-local] info: dot ok {"tag":"dot","bytes":2041}
 [pi-fence:kroki] debug: request {"tag":"mermaid","krokiTag":"mermaid","url":"https://kroki.io/mermaid/png","sourceBytes":30}
@@ -68,7 +69,7 @@ pi's TUI owns stdout; logs arrive on stderr, so redirect `2>` to capture them wi
 PI_FENCE_LOG_LEVEL=debug pi 2> /tmp/pi-fence.log
 ```
 
-A user-facing `/fence trace` view inside pi is not yet built.
+Resolution diagnostics live in structured debug logs; `/fence trace` is not part of the command surface.
 
 What does **not** work yet:
 

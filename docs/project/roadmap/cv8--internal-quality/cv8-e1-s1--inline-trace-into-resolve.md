@@ -1,6 +1,6 @@
 # CV8.E1.S1 — Inline trace into resolveProcessor
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV8.E1 — Duplication Removal](cv8-e1--resolution-trace-unification.md)
 **Date:** 2026-04-25 (spec)

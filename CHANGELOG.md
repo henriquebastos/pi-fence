@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV8.E1.S1 — Resolution trace unification)
+
+- `resolveProcessor` now returns structured resolution steps for every processor candidate and the agent-end pipeline logs them once per fenced block at debug level.
+- Removed `/fence trace <tag>` and its separate trace algorithm. Use `PI_FENCE_LOG_LEVEL=debug` to inspect resolution diagnostics.
+
 ### Added (CV4.E2.S2 — Usage metrics)
 
 - **`/fence stats`** shows per-session usage metrics: total renders, ok/error counts, and breakdowns by processor and by tag. Metrics accumulate from session start and reset on `/reload`.
