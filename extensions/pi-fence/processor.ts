@@ -29,6 +29,31 @@ export type FenceResult =
 	| { ok: true; text: string }
 	| { ok: false; error: string };
 
+export type RenderFunction = (
+	tag: string,
+	source: string,
+	signal?: AbortSignal,
+) => Promise<FenceResult>;
+
+export function withSignalGuard(render: RenderFunction): RenderFunction {
+	return async (tag, source, signal) => {
+		if (signal?.aborted) {
+			return { ok: false, error: "Aborted before render" };
+		}
+		return render(tag, source, signal);
+	};
+}
+
+export function withRenderGuards(render: RenderFunction): RenderFunction {
+	return withSignalGuard(async (tag, source, signal) => {
+		const trimmed = source.trim();
+		if (trimmed.length === 0) {
+			return { ok: false, error: `${tag}: empty input` };
+		}
+		return render(tag, trimmed, signal);
+	});
+}
+
 /**
  * One-shot capability probe result. Landed with CV0.E2.S1 when the second
  * processor (graphviz-local) made availability a real user-visible concern

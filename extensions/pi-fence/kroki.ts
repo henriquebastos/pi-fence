@@ -26,10 +26,13 @@
 
 import type { HttpClient } from "./io/http-client.ts";
 import type { Logger } from "./io/logger.ts";
-import { NULL_LOGGER, type FenceProcessor, type FenceResult } from "./processor.ts";
+import {
+	NULL_LOGGER,
+	withSignalGuard,
+	type FenceProcessor,
+	type FenceResult,
+} from "./processor.ts";
 import { svgToPng } from "./svg-to-png.ts";
-
-
 
 const DEFAULT_ENDPOINT = "https://kroki.io";
 
@@ -204,12 +207,7 @@ export function createKrokiProcessor(
 			return { ok: true };
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				logger.warn("kroki", "Aborted before request", { tag });
-				return { ok: false, error: "Aborted before request" };
-			}
-
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
 			const combinedSignal = mergeSignals([signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)]);
 			const krokiTag = KROKI_ALIASES[tag] ?? tag;
 			const mode = appearance?.();
@@ -276,7 +274,7 @@ export function createKrokiProcessor(
 				bodyBytes: response.body.length,
 			});
 			return { ok: false, error: truncated };
-		},
+		}),
 	};
 }
 

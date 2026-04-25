@@ -22,7 +22,7 @@
  *     exit → { ok: false, error: stderr (or `dot exited N`) truncated
  *     to 500 chars }. Shell-runner throw → { ok: false, error:
  *     exception message }. Pre-aborted signal → early
- *     { ok: false, error: "Aborted before request" } with no spawn.
+ *     { ok: false, error: "Aborted before render" } with no spawn.
  *   - Aliases: the processor advertises `dot → graphviz`. Alias
  *     resolution to the canonical tag is not meaningful internally
  *     (the shell command is the same regardless of how the tag was
@@ -36,9 +36,13 @@
 
 import type { ShellRunner } from "./io/shell-runner.ts";
 import type { Logger } from "./io/logger.ts";
-import { NULL_LOGGER, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
-
-
+import {
+	NULL_LOGGER,
+	withSignalGuard,
+	type Availability,
+	type FenceProcessor,
+	type FenceResult,
+} from "./processor.ts";
 
 const ERROR_BODY_MAX_CHARS = 500;
 
@@ -111,12 +115,7 @@ export function createGraphvizLocalProcessor(
 			}
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				logger.warn("graphviz-local", "Aborted before request", { tag });
-				return { ok: false, error: "Aborted before request" };
-			}
-
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
 			logger.debug("graphviz-local", "shelling out to dot", {
 				tag,
 				sourceBytes: Buffer.byteLength(source, "utf8"),
@@ -152,6 +151,6 @@ export function createGraphvizLocalProcessor(
 				exitCode: result.exitCode,
 			});
 			return { ok: false, error };
-		},
+		}),
 	};
 }

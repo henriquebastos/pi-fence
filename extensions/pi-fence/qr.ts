@@ -7,7 +7,7 @@
  */
 
 import QRCode from "qrcode";
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import { withRenderGuards, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
 
 export function createQrProcessor(): FenceProcessor {
 	return {
@@ -19,18 +19,9 @@ export function createQrProcessor(): FenceProcessor {
 			return { ok: true };
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				return { ok: false, error: "Aborted before render" };
-			}
-
-			const trimmed = source.trim();
-			if (trimmed.length === 0) {
-				return { ok: false, error: `${tag}: empty input` };
-			}
-
+		render: withRenderGuards(async (_tag, source): Promise<FenceResult> => {
 			try {
-				const png = await QRCode.toBuffer(trimmed, {
+				const png = await QRCode.toBuffer(source, {
 					type: "png",
 					margin: 2,
 					color: {
@@ -43,6 +34,6 @@ export function createQrProcessor(): FenceProcessor {
 				const message = err instanceof Error ? err.message : String(err);
 				return { ok: false, error: message };
 			}
-		},
+		}),
 	};
 }

@@ -17,7 +17,7 @@
  * cell values truncated at MAX_CELL_WIDTH.
  */
 
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import { withRenderGuards, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
 
 const MAX_CELL_WIDTH = 40;
 
@@ -42,20 +42,11 @@ export function createTableProcessor(): FenceProcessor {
 			return { ok: true };
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				return { ok: false, error: "Aborted before render" };
-			}
-
-			const trimmed = source.trim();
-			if (trimmed.length === 0) {
-				return { ok: false, error: `${tag}: empty input` };
-			}
-
+		render: withRenderGuards(async (tag, source): Promise<FenceResult> => {
 			try {
 				const { headers, rows } = tag === "jsonl"
-					? parseJsonl(trimmed)
-					: parseCsv(trimmed);
+					? parseJsonl(source)
+					: parseCsv(source);
 
 				if (rows.length === 0) {
 					return { ok: false, error: `${tag}: no data rows` };
@@ -67,7 +58,7 @@ export function createTableProcessor(): FenceProcessor {
 				const message = err instanceof Error ? err.message : String(err);
 				return { ok: false, error: message };
 			}
-		},
+		}),
 	};
 }
 

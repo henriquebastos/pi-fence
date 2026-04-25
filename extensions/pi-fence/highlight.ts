@@ -6,7 +6,7 @@
  * adapts to any terminal theme.
  */
 
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import { withRenderGuards, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
 
 // ── ANSI helpers ────────────────────────────────────────────────────
 
@@ -36,24 +36,15 @@ export function createHighlightProcessor(): FenceProcessor {
 			return { ok: true };
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				return { ok: false, error: "Aborted before render" };
-			}
-
-			const trimmed = source.trim();
-			if (trimmed.length === 0) {
-				return { ok: false, error: `${tag}: empty input` };
-			}
-
+		render: withRenderGuards(async (tag, source): Promise<FenceResult> => {
 			const highlighter = HIGHLIGHTERS[tag];
 			if (!highlighter) {
 				return { ok: false, error: `${tag}: unsupported language` };
 			}
 
-			const text = highlighter(trimmed);
+			const text = highlighter(source);
 			return { ok: true, text };
-		},
+		}),
 	};
 }
 

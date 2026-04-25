@@ -6,7 +6,7 @@
  * Landing with CV3.E2.S2. Pure logic, no external dependencies.
  */
 
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import { withRenderGuards, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
 
 const RESET = "\x1b[0m";
 const SWATCH = "██████";
@@ -23,17 +23,8 @@ export function createColorProcessor(): FenceProcessor {
 			return { ok: true };
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				return { ok: false, error: "Aborted before render" };
-			}
-
-			const trimmed = source.trim();
-			if (trimmed.length === 0) {
-				return { ok: false, error: `${tag}: empty input` };
-			}
-
-			const lines = trimmed.split(/\r?\n/);
+		render: withRenderGuards(async (tag, source): Promise<FenceResult> => {
+			const lines = source.split(/\r?\n/);
 			const outputLines: string[] = [];
 			let colorCount = 0;
 
@@ -52,7 +43,7 @@ export function createColorProcessor(): FenceProcessor {
 			}
 
 			return { ok: true, text: outputLines.join("\n") };
-		},
+		}),
 	};
 }
 

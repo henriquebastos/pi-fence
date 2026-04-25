@@ -23,9 +23,13 @@ import { randomUUID } from "node:crypto";
 
 import type { ShellRunner } from "./io/shell-runner.ts";
 import type { Logger } from "./io/logger.ts";
-import { NULL_LOGGER, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
-
-
+import {
+	NULL_LOGGER,
+	withSignalGuard,
+	type Availability,
+	type FenceProcessor,
+	type FenceResult,
+} from "./processor.ts";
 
 const ERROR_BODY_MAX_CHARS = 500;
 
@@ -71,12 +75,7 @@ export function createMermaidLocalProcessor(
 			}
 		},
 
-		async render(tag, source, signal): Promise<FenceResult> {
-			if (signal?.aborted) {
-				logger.warn("mermaid-local", "Aborted before request", { tag });
-				return { ok: false, error: "Aborted before request" };
-			}
-
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
 			const id = randomUUID().slice(0, 8);
 			const inPath = join(tmpdir(), `pi-fence-mmd-${id}.mmd`);
 			const outPath = join(tmpdir(), `pi-fence-mmd-${id}.png`);
@@ -119,6 +118,6 @@ export function createMermaidLocalProcessor(
 				await fs.unlink(inPath).catch(() => {});
 				await fs.unlink(outPath).catch(() => {});
 			}
-		},
+		}),
 	};
 }
