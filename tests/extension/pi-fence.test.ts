@@ -144,6 +144,11 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			// Extension hook traced parse + per-block render.
 			const fenceEntries = logger.bySubsystem("pi-fence");
 			expect(fenceEntries.find((e) => e.message.includes("agent_end parsed"))).toBeDefined();
+			const resolution = fenceEntries.find((e) => e.message.includes("processor resolution"));
+			expect(resolution?.meta).toMatchObject({ tag: "mermaid", processor: "kroki" });
+			expect(resolution?.meta?.steps).toEqual(
+				expect.arrayContaining([{ id: "kroki", outcome: "selected-first-available" }]),
+			);
 			expect(fenceEntries.find((e) => e.message.includes("rendering block"))).toBeDefined();
 			expect(
 				fenceEntries.find((e) => e.level === "info" && e.message.includes("block rendered")),
@@ -786,30 +791,6 @@ describe("pi-fence extension — /fence stats (CV4.E2.S2)", () => {
 
 			const lines = (statsMessages[0].details as { lines: string[] }).lines;
 			expect(lines.some((l) => l.includes("1") && l.includes("ok"))).toBe(true);
-		},
-		20_000,
-	);
-});
-
-describe("pi-fence extension — /fence trace (CV4.E2.S1)", () => {
-	afterEach(() => {
-		cleanupTempDirs();
-	});
-
-	it(
-		"emits a trace message for /fence trace mermaid",
-		async () => {
-			const http = new FakeHttpClient();
-			const captured = await runExtensionWithCommand(http, "/fence trace mermaid");
-
-			const listMessages = captured.sentCustomMessages.filter(
-				(m) => m.customType === "pi-fence:list",
-			);
-			expect(listMessages).toHaveLength(1);
-
-			const details = listMessages[0].details as { lines: string[] };
-			expect(details.lines.some((l) => l.includes("mermaid"))).toBe(true);
-			expect(details.lines.some((l) => l.includes("selected") || l.includes("skipped"))).toBe(true);
 		},
 		20_000,
 	);

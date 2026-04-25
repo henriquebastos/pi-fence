@@ -7,7 +7,7 @@ import { buildPiFenceOutputMessage } from "./messages.ts";
 import { extractFencedBlocks } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import type { Availability, FenceProcessor } from "./processor.ts";
-import { collectSupportedTags, resolveProcessor } from "./resolve.ts";
+import { resolveProcessor } from "./resolve.ts";
 
 export interface ThemeState {
 	currentName?: string;
@@ -61,7 +61,18 @@ export function registerPiFenceAgentEndHandler({
 		}
 
 		for (const block of toRender) {
-			const processor = resolveProcessor(processors, availability, block.tag, bindings, disabled);
+			const { processor, steps } = resolveProcessor(
+				processors,
+				availability,
+				block.tag,
+				bindings,
+				disabled,
+			);
+			logger.debug("pi-fence", "processor resolution", {
+				tag: block.tag,
+				processor: processor?.id ?? null,
+				steps,
+			});
 			if (!processor) {
 				logger.warn("pi-fence", "no available processor for tag", { tag: block.tag });
 				continue;

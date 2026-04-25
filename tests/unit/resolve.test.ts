@@ -15,6 +15,7 @@ import {
 	probeAvailability,
 	resolveBindings,
 	resolveProcessor,
+	type TraceStep,
 } from "../../extensions/pi-fence/resolve.ts";
 
 interface FakeProcessorOptions {
@@ -42,6 +43,15 @@ function makeFakeProcessor(opts: FakeProcessorOptions): FenceProcessor {
 	};
 }
 
+function expectResolution(
+	result: ReturnType<typeof resolveProcessor>,
+	processorId: string | null,
+	steps: readonly TraceStep[],
+): void {
+	expect(result.processor?.id ?? null).toBe(processorId);
+	expect(result.steps).toEqual(steps);
+}
+
 describe("resolveProcessor", () => {
 	it("returns the first available processor whose canonical tags include the tag", () => {
 		const a = makeFakeProcessor({ id: "a", tags: ["graphviz"] });
@@ -51,8 +61,14 @@ describe("resolveProcessor", () => {
 			["b", { ok: true }],
 		]);
 
-		expect(resolveProcessor([a, b], availability, "graphviz")?.id).toBe("a");
-		expect(resolveProcessor([a, b], availability, "mermaid")?.id).toBe("b");
+		expectResolution(resolveProcessor([a, b], availability, "graphviz"), "a", [
+			{ id: "a", outcome: "selected-first-available" },
+			{ id: "b", outcome: "skipped-already-resolved" },
+		]);
+		expectResolution(resolveProcessor([a, b], availability, "mermaid"), "b", [
+			{ id: "a", outcome: "skipped-no-claim" },
+			{ id: "b", outcome: "selected-first-available" },
+		]);
 	});
 
 	it("returns the first available processor whose aliases include the tag", () => {
@@ -63,7 +79,9 @@ describe("resolveProcessor", () => {
 		});
 		const availability = new Map<string, Availability>([["a", { ok: true }]]);
 
-		expect(resolveProcessor([a], availability, "dot")?.id).toBe("a");
+		expectResolution(resolveProcessor([a], availability, "dot"), "a", [
+			{ id: "a", outcome: "selected-first-available" },
+		]);
 	});
 
 	it("skips processors whose availability is not ok and returns the next match", () => {
@@ -86,8 +104,14 @@ describe("resolveProcessor", () => {
 			["kroki", { ok: true }],
 		]);
 
-		expect(resolveProcessor([local, kroki], availability, "graphviz")?.id).toBe("kroki");
-		expect(resolveProcessor([local, kroki], availability, "dot")?.id).toBe("kroki");
+		expectResolution(resolveProcessor([local, kroki], availability, "graphviz"), "kroki", [
+			{ id: "graphviz-local", outcome: "skipped-unavailable" },
+			{ id: "kroki", outcome: "selected-first-available" },
+		]);
+		expectResolution(resolveProcessor([local, kroki], availability, "dot"), "kroki", [
+			{ id: "graphviz-local", outcome: "skipped-unavailable" },
+			{ id: "kroki", outcome: "selected-first-available" },
+		]);
 	});
 
 	it("preserves registration order: first available match wins", () => {
@@ -109,19 +133,27 @@ describe("resolveProcessor", () => {
 			["kroki", { ok: true }],
 		]);
 
-		expect(resolveProcessor([local, kroki], availability, "graphviz")?.id).toBe(
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "graphviz"),
 			"graphviz-local",
+			[
+				{ id: "graphviz-local", outcome: "selected-first-available" },
+				{ id: "kroki", outcome: "skipped-already-resolved" },
+			],
 		);
-		expect(resolveProcessor([local, kroki], availability, "dot")?.id).toBe(
-			"graphviz-local",
-		);
+		expectResolution(resolveProcessor([local, kroki], availability, "dot"), "graphviz-local", [
+			{ id: "graphviz-local", outcome: "selected-first-available" },
+			{ id: "kroki", outcome: "skipped-already-resolved" },
+		]);
 	});
 
 	it("returns null when no registered processor claims the tag", () => {
 		const a = makeFakeProcessor({ id: "a", tags: ["mermaid"] });
 		const availability = new Map<string, Availability>([["a", { ok: true }]]);
 
-		expect(resolveProcessor([a], availability, "graphviz")).toBeNull();
+		expectResolution(resolveProcessor([a], availability, "graphviz"), null, [
+			{ id: "a", outcome: "skipped-no-claim" },
+		]);
 	});
 
 	it("returns null when every claimer is unavailable", () => {
@@ -130,7 +162,9 @@ describe("resolveProcessor", () => {
 			["a", { ok: false, reason: "broken" }],
 		]);
 
-		expect(resolveProcessor([a], availability, "graphviz")).toBeNull();
+		expectResolution(resolveProcessor([a], availability, "graphviz"), null, [
+			{ id: "a", outcome: "skipped-unavailable" },
+		]);
 	});
 
 	it("returns null when a processor id is missing from the availability map", () => {
@@ -140,11 +174,13 @@ describe("resolveProcessor", () => {
 		const a = makeFakeProcessor({ id: "a", tags: ["graphviz"] });
 		const availability = new Map<string, Availability>();
 
-		expect(resolveProcessor([a], availability, "graphviz")).toBeNull();
+		expectResolution(resolveProcessor([a], availability, "graphviz"), null, [
+			{ id: "a", outcome: "skipped-unavailable" },
+		]);
 	});
 
 	it("returns null when the processor array is empty", () => {
-		expect(resolveProcessor([], new Map(), "graphviz")).toBeNull();
+		expectResolution(resolveProcessor([], new Map(), "graphviz"), null, []);
 	});
 });
 
@@ -170,9 +206,14 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		]);
 		const bindings = { graphviz: "kroki" };
 
-		expect(
-			resolveProcessor([local, kroki], availability, "graphviz", bindings)?.id,
-		).toBe("kroki");
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "graphviz", bindings),
+			"kroki",
+			[
+				{ id: "graphviz-local", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki", outcome: "selected-by-binding" },
+			],
+		);
 	});
 
 	it("binding falls through when bound processor is unavailable", () => {
@@ -185,9 +226,14 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		]);
 		const bindings = { graphviz: "graphviz-local" };
 
-		expect(
-			resolveProcessor([local, kroki], availability, "graphviz", bindings)?.id,
-		).toBe("kroki");
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "graphviz", bindings),
+			"kroki",
+			[
+				{ id: "graphviz-local", outcome: "skipped-unavailable" },
+				{ id: "kroki", outcome: "selected-first-available" },
+			],
+		);
 	});
 
 	it("binding falls through when the processor id is unknown", () => {
@@ -198,9 +244,14 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		]);
 		const bindings = { graphviz: "nonexistent-typo" };
 
-		expect(
-			resolveProcessor([local, kroki], availability, "graphviz", bindings)?.id,
-		).toBe("graphviz-local");
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "graphviz", bindings),
+			"graphviz-local",
+			[
+				{ id: "graphviz-local", outcome: "selected-first-available" },
+				{ id: "kroki", outcome: "skipped-already-resolved" },
+			],
+		);
 	});
 
 	it("binding on an alias tag also honoured", () => {
@@ -214,8 +265,26 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		]);
 		const bindings = { dot: "kroki" };
 
-		expect(resolveProcessor([local, kroki], availability, "dot", bindings)?.id).toBe(
+		expectResolution(resolveProcessor([local, kroki], availability, "dot", bindings), "kroki", [
+			{ id: "graphviz-local", outcome: "skipped-binding-prefers-other" },
+			{ id: "kroki", outcome: "selected-by-binding" },
+		]);
+	});
+
+	it("binding can select a processor that does not claim the tag", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-local", { ok: true }],
+			["kroki", { ok: true }],
+		]);
+		const bindings = { unknown: "kroki" };
+
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "unknown", bindings),
 			"kroki",
+			[
+				{ id: "graphviz-local", outcome: "skipped-no-claim" },
+				{ id: "kroki", outcome: "selected-by-binding" },
+			],
 		);
 	});
 
@@ -225,8 +294,13 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["kroki", { ok: true }],
 		]);
 
-		expect(resolveProcessor([local, kroki], availability, "graphviz")?.id).toBe(
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "graphviz"),
 			"graphviz-local",
+			[
+				{ id: "graphviz-local", outcome: "selected-first-available" },
+				{ id: "kroki", outcome: "skipped-already-resolved" },
+			],
 		);
 	});
 
@@ -236,8 +310,13 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["kroki", { ok: true }],
 		]);
 
-		expect(resolveProcessor([local, kroki], availability, "graphviz", {})?.id).toBe(
+		expectResolution(
+			resolveProcessor([local, kroki], availability, "graphviz", {}),
 			"graphviz-local",
+			[
+				{ id: "graphviz-local", outcome: "selected-first-available" },
+				{ id: "kroki", outcome: "skipped-already-resolved" },
+			],
 		);
 	});
 
@@ -250,12 +329,16 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 
 		// Bound to unknown → fall through. Capability sees Kroki claims
 		// mermaid and is available → returns Kroki.
-		expect(resolveProcessor([solo], availability, "mermaid", bindings)?.id).toBe("kroki");
+		expectResolution(resolveProcessor([solo], availability, "mermaid", bindings), "kroki", [
+			{ id: "kroki", outcome: "selected-first-available" },
+		]);
 
 		// Now bind mermaid to kroki and ask for graphviz — no claimer.
-		expect(
+		expectResolution(
 			resolveProcessor([solo], availability, "graphviz", { mermaid: "kroki" }),
-		).toBeNull();
+			null,
+			[{ id: "kroki", outcome: "skipped-no-claim" }],
+		);
 	});
 });
 
@@ -275,48 +358,72 @@ describe("resolveProcessor — disabled set", () => {
 	]);
 
 	it("skips a disabled processor in capability-based resolution", () => {
-		const result = resolveProcessor(
-			[local, kroki],
-			bothAvailable,
-			"graphviz",
-			undefined,
-			new Set(["graphviz-local"]),
+		expectResolution(
+			resolveProcessor(
+				[local, kroki],
+				bothAvailable,
+				"graphviz",
+				undefined,
+				new Set(["graphviz-local"]),
+			),
+			"kroki",
+			[
+				{ id: "graphviz-local", outcome: "skipped-disabled" },
+				{ id: "kroki", outcome: "selected-first-available" },
+			],
 		);
-		expect(result?.id).toBe("kroki");
 	});
 
 	it("skips a disabled processor even when it is the binding target", () => {
-		const result = resolveProcessor(
-			[local, kroki],
-			bothAvailable,
-			"graphviz",
-			{ graphviz: "graphviz-local" },
-			new Set(["graphviz-local"]),
-		);
 		// Binding target is disabled → falls through to capability.
-		expect(result?.id).toBe("kroki");
+		expectResolution(
+			resolveProcessor(
+				[local, kroki],
+				bothAvailable,
+				"graphviz",
+				{ graphviz: "graphviz-local" },
+				new Set(["graphviz-local"]),
+			),
+			"kroki",
+			[
+				{ id: "graphviz-local", outcome: "skipped-disabled" },
+				{ id: "kroki", outcome: "selected-first-available" },
+			],
+		);
 	});
 
 	it("returns null when all processors for a tag are disabled", () => {
-		const result = resolveProcessor(
-			[local, kroki],
-			bothAvailable,
-			"graphviz",
-			undefined,
-			new Set(["graphviz-local", "kroki"]),
+		expectResolution(
+			resolveProcessor(
+				[local, kroki],
+				bothAvailable,
+				"graphviz",
+				undefined,
+				new Set(["graphviz-local", "kroki"]),
+			),
+			null,
+			[
+				{ id: "graphviz-local", outcome: "skipped-disabled" },
+				{ id: "kroki", outcome: "skipped-disabled" },
+			],
 		);
-		expect(result).toBeNull();
 	});
 
 	it("empty disabled set has no effect", () => {
-		const result = resolveProcessor(
-			[local, kroki],
-			bothAvailable,
-			"graphviz",
-			undefined,
-			new Set(),
+		expectResolution(
+			resolveProcessor(
+				[local, kroki],
+				bothAvailable,
+				"graphviz",
+				undefined,
+				new Set(),
+			),
+			"graphviz-local",
+			[
+				{ id: "graphviz-local", outcome: "selected-first-available" },
+				{ id: "kroki", outcome: "skipped-already-resolved" },
+			],
 		);
-		expect(result?.id).toBe("graphviz-local");
 	});
 });
 

@@ -12,10 +12,9 @@ import type { Availability, FenceProcessor } from "./processor.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import { formatMetricsLines } from "./metrics.ts";
 import { collectSupportedTags, type BindingResolution } from "./resolve.ts";
-import { traceResolution, formatTraceLines } from "./trace.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 
-const FENCE_SUBCOMMANDS = ["list", "doctor", "trace <tag>", "stats", "kroki start", "kroki stop", "kroki status"] as const;
+const FENCE_SUBCOMMANDS = ["list", "doctor", "stats", "kroki start", "kroki stop", "kroki status"] as const;
 
 interface ConfigStatus {
 	globalPath: string;
@@ -30,7 +29,6 @@ interface RegisterFenceCommandOptions {
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
 	bindingRows: readonly BindingResolution[];
-	bindings?: Readonly<Record<string, string>>;
 	disabled: ReadonlySet<string>;
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
@@ -44,7 +42,6 @@ export function registerFenceCommand({
 	processors,
 	availability,
 	bindingRows,
-	bindings,
 	disabled,
 	endpoints,
 	configStatus,
@@ -86,17 +83,6 @@ export function registerFenceCommand({
 				}
 				const summary = metrics.getSummary();
 				const lines = formatMetricsLines(summary);
-				sendPiFenceDoctorMessage(pi, lines);
-				return;
-			}
-			if (subcommand === "trace") {
-				const tag = args.trim().split(/\s+/)[1] ?? "";
-				if (tag === "") {
-					ctx.ui.notify("Usage: /fence trace <tag>", "warning");
-					return;
-				}
-				const trace = traceResolution(processors, availability, tag, bindings, disabled);
-				const lines = formatTraceLines(tag, trace);
 				sendPiFenceDoctorMessage(pi, lines);
 				return;
 			}

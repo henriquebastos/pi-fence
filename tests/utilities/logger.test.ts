@@ -3,8 +3,7 @@
  *
  * Logger is the diagnostic seam for pi-fence. Production writes to stderr
  * with a structured prefix, gated by `PI_FENCE_LOG_LEVEL`. Tests capture
- * every log entry and assert against it directly — principles.md's
- * "/fence trace" command will read from the same capture in future work.
+ * every log entry and assert against it directly.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

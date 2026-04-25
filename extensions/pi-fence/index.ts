@@ -138,7 +138,6 @@ export async function createPiFenceExtension(
 		processors,
 		availability,
 		bindingRows,
-		bindings,
 		disabled,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
 		configStatus: {

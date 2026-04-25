@@ -1,10 +1,10 @@
 /**
  * Processor resolution — the registry's one piece of logic.
  *
- * `resolveProcessor(processors, availability, tag)` returns the first
- * processor in registration order whose availability is `ok` AND whose
- * canonical tags or aliases cover `tag`. Returns `null` if no processor
- * claims the tag or all claimers are unavailable.
+ * `resolveProcessor(processors, availability, tag)` returns the selected
+ * processor plus the structured trace steps that explain each candidate's
+ * outcome. `processor` is `null` if no registered, enabled, available
+ * processor can handle the tag.
  *
  * `probeAvailability(processors)` runs every processor's `available()`
  * once and returns a map from processor id to result. Defensive against
@@ -23,6 +23,36 @@
 
 import type { Availability, FenceProcessor } from "./processor.ts";
 
+export type StepOutcome =
+	| "selected-by-binding"
+	| "selected-first-available"
+	| "skipped-already-resolved"
+	| "skipped-disabled"
+	| "skipped-no-claim"
+	| "skipped-unavailable"
+	| "skipped-binding-prefers-other";
+
+export interface TraceStep {
+	id: string;
+	outcome: StepOutcome;
+}
+
+export interface ResolveProcessorResult {
+	processor: FenceProcessor | null;
+	steps: TraceStep[];
+}
+
+interface CandidateEvaluation {
+	step: TraceStep;
+	selected?: FenceProcessor;
+	fallback?: FenceProcessor;
+}
+
+interface FallbackCandidate {
+	index: number;
+	processor: FenceProcessor;
+}
+
 /**
  * Return the first processor that can serve `tag` on this session.
  *
@@ -32,7 +62,7 @@ import type { Availability, FenceProcessor } from "./processor.ts";
  *   2. Otherwise, capability-based order. Iterate `processors` in
  *      registration order; return the first whose availability is ok
  *      AND whose tags/aliases cover the tag.
- *   3. Null if neither produces a match.
+ *   3. `{ processor: null, steps }` if neither produces a match.
  *
  * Bindings are preferences, not hard requirements. A binding to an
  * unknown processor id OR to an unavailable processor falls through
@@ -49,30 +79,102 @@ export function resolveProcessor(
 	tag: string,
 	bindings?: Readonly<Record<string, string>>,
 	disabled?: ReadonlySet<string>,
-): FenceProcessor | null {
-	// 1. Binding takes precedence when the bound processor is registered,
-	//    available, AND not disabled. Otherwise fall through to capability order.
+): ResolveProcessorResult {
 	const boundId = bindings?.[tag];
-	if (boundId !== undefined) {
-		const bound = processors.find((p) => p.id === boundId);
-		if (
-			bound &&
-			availability.get(bound.id)?.ok === true &&
-			!disabled?.has(bound.id)
-		) {
-			return bound;
+	const steps: TraceStep[] = [];
+	let processor: FenceProcessor | null = null;
+	let fallback: FallbackCandidate | null = null;
+
+	for (const candidate of processors) {
+		const evaluation = evaluateCandidate(candidate, {
+			alreadySelected: processor !== null,
+			availability,
+			boundId,
+			disabled,
+			tag,
+		});
+		steps.push(evaluation.step);
+		if (evaluation.selected) processor = evaluation.selected;
+		if (evaluation.fallback && !fallback) {
+			fallback = { index: steps.length - 1, processor: evaluation.fallback };
 		}
 	}
 
-	// 2. Capability-based: first available, non-disabled match in registration order.
-	for (const processor of processors) {
-		if (disabled?.has(processor.id)) continue;
-		if (availability.get(processor.id)?.ok !== true) continue;
-		if (processor.tags.includes(tag) || processor.aliases[tag] !== undefined) {
-			return processor;
+	if (!processor && fallback) {
+		processor = fallback.processor;
+		applyFallbackSelection(steps, fallback);
+	}
+
+	return { processor, steps };
+}
+
+interface EvaluateCandidateContext {
+	alreadySelected: boolean;
+	availability: ReadonlyMap<string, Availability>;
+	boundId?: string;
+	disabled?: ReadonlySet<string>;
+	tag: string;
+}
+
+function evaluateCandidate(
+	candidate: FenceProcessor,
+	context: EvaluateCandidateContext,
+): CandidateEvaluation {
+	if (context.alreadySelected) {
+		return { step: { id: candidate.id, outcome: "skipped-already-resolved" } };
+	}
+	if (isSelectedBinding(candidate, context)) {
+		return {
+			selected: candidate,
+			step: { id: candidate.id, outcome: "selected-by-binding" },
+		};
+	}
+	if (context.disabled?.has(candidate.id)) {
+		return { step: { id: candidate.id, outcome: "skipped-disabled" } };
+	}
+	if (context.availability.get(candidate.id)?.ok !== true) {
+		return { step: { id: candidate.id, outcome: "skipped-unavailable" } };
+	}
+	if (!claimsTag(candidate, context.tag)) {
+		return { step: { id: candidate.id, outcome: "skipped-no-claim" } };
+	}
+	if (context.boundId !== undefined) {
+		return {
+			fallback: candidate,
+			step: { id: candidate.id, outcome: "skipped-binding-prefers-other" },
+		};
+	}
+	return {
+		selected: candidate,
+		step: { id: candidate.id, outcome: "selected-first-available" },
+	};
+}
+
+function isSelectedBinding(
+	candidate: FenceProcessor,
+	context: EvaluateCandidateContext,
+): boolean {
+	return (
+		candidate.id === context.boundId &&
+		context.availability.get(candidate.id)?.ok === true &&
+		!context.disabled?.has(candidate.id)
+	);
+}
+
+function applyFallbackSelection(steps: TraceStep[], fallback: FallbackCandidate): void {
+	steps[fallback.index] = {
+		id: fallback.processor.id,
+		outcome: "selected-first-available",
+	};
+	for (let index = fallback.index + 1; index < steps.length; index += 1) {
+		if (steps[index]?.outcome === "skipped-binding-prefers-other") {
+			steps[index] = { id: steps[index].id, outcome: "skipped-already-resolved" };
 		}
 	}
-	return null;
+}
+
+function claimsTag(processor: FenceProcessor, tag: string): boolean {
+	return processor.tags.includes(tag) || processor.aliases[tag] !== undefined;
 }
 
 /**
