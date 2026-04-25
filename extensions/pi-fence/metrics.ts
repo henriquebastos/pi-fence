@@ -49,31 +49,32 @@ export class MetricsCollector {
 }
 
 export function formatMetricsLines(summary: MetricsSummary): string[] {
-	const lines: string[] = [];
-	lines.push("Session metrics");
-	lines.push("");
-	lines.push(`Total renders: ${summary.total} (${summary.ok} ok, ${summary.errors} errors)`);
+	return [
+		"Session metrics",
+		"",
+		`Total renders: ${summary.total} (${summary.ok} ok, ${summary.errors} errors)`,
+		...formatMetricBreakdown("By processor:", summary.byProcessor),
+		...formatMetricBreakdown("By tag:", summary.byTag),
+		...formatEmptySessionNote(summary.total),
+	];
+}
 
-	if (Object.keys(summary.byProcessor).length > 0) {
-		lines.push("");
-		lines.push("By processor:");
-		for (const [id, counts] of Object.entries(summary.byProcessor)) {
-			lines.push(`  ${id}: ${counts.ok + counts.errors} (${counts.ok} ok, ${counts.errors} errors)`);
-		}
-	}
+function formatMetricBreakdown(
+	title: string,
+	entriesByName: Record<string, { ok: number; errors: number }>,
+): string[] {
+	const entries = Object.entries(entriesByName);
+	if (entries.length === 0) return [];
 
-	if (Object.keys(summary.byTag).length > 0) {
-		lines.push("");
-		lines.push("By tag:");
-		for (const [tag, counts] of Object.entries(summary.byTag)) {
-			lines.push(`  ${tag}: ${counts.ok + counts.errors} (${counts.ok} ok, ${counts.errors} errors)`);
-		}
-	}
+	return [
+		"",
+		title,
+		...entries.map(([name, counts]) =>
+			`  ${name}: ${counts.ok + counts.errors} (${counts.ok} ok, ${counts.errors} errors)`,
+		),
+	];
+}
 
-	if (summary.total === 0) {
-		lines.push("");
-		lines.push("No renders in this session yet.");
-	}
-
-	return lines;
+function formatEmptySessionNote(total: number): string[] {
+	return total === 0 ? ["", "No renders in this session yet."] : [];
 }

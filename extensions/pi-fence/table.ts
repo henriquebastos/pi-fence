@@ -80,52 +80,62 @@ function parseCsv(input: string): ParsedTable {
 	return { headers, rows };
 }
 
+interface CsvField {
+	value: string;
+	next: number;
+}
+
 function parseCsvLine(line: string): string[] {
+	if (line.length === 0) return [""];
+
 	const fields: string[] = [];
 	let i = 0;
+	while (i < line.length) {
+		const field = parseNextCsvField(line, i);
+		fields.push(field.value);
+		i = field.next;
+	}
+	return line.endsWith(",") ? [...fields, ""] : fields;
+}
 
-	while (i <= line.length) {
-		if (i === line.length) {
-			fields.push("");
-			break;
-		}
+function parseNextCsvField(line: string, start: number): CsvField {
+	return line[start] === '"'
+		? parseQuotedCsvField(line, start)
+		: parseUnquotedCsvField(line, start);
+}
 
-		if (line[i] === '"') {
-			// Quoted field.
-			let value = "";
-			i++; // skip opening quote
-			while (i < line.length) {
-				if (line[i] === '"') {
-					if (i + 1 < line.length && line[i + 1] === '"') {
-						// Escaped quote.
-						value += '"';
-						i += 2;
-					} else {
-						// Closing quote.
-						i++; // skip closing quote
-						break;
-					}
-				} else {
-					value += line[i];
-					i++;
-				}
-			}
-			fields.push(value);
-			// Skip comma after closing quote.
-			if (i < line.length && line[i] === ",") i++;
-		} else {
-			// Unquoted field.
-			const commaIdx = line.indexOf(",", i);
-			if (commaIdx === -1) {
-				fields.push(line.slice(i));
-				break;
-			}
-			fields.push(line.slice(i, commaIdx));
-			i = commaIdx + 1;
+function parseQuotedCsvField(line: string, start: number): CsvField {
+	let value = "";
+	let i = start + 1;
+
+	while (i < line.length) {
+		const char = line[i];
+		if (char !== '"') {
+			value += char;
+			i++;
+			continue;
 		}
+		if (line[i + 1] === '"') {
+			value += '"';
+			i += 2;
+			continue;
+		}
+		i++;
+		break;
 	}
 
-	return fields;
+	return { value, next: skipCsvComma(line, i) };
+}
+
+function parseUnquotedCsvField(line: string, start: number): CsvField {
+	const commaIdx = line.indexOf(",", start);
+	return commaIdx === -1
+		? { value: line.slice(start), next: line.length }
+		: { value: line.slice(start, commaIdx), next: commaIdx + 1 };
+}
+
+function skipCsvComma(line: string, index: number): number {
+	return line[index] === "," ? index + 1 : index;
 }
 
 // ── JSONL parser ────────────────────────────────────────────────────
@@ -159,12 +169,7 @@ function parseJsonl(input: string): ParsedTable {
 
 	const headers = [...headerSet];
 	const rows = objects.map((obj) =>
-		headers.map((h) => {
-			const v = obj[h];
-			if (v === undefined || v === null) return "";
-			if (typeof v === "object") return JSON.stringify(v);
-			return String(v);
-		}),
+		headers.map((h) => formatJsonCell(obj[h])),
 	);
 
 	return { headers, rows };
@@ -178,35 +183,15 @@ function formatTable(headers: string[], rows: string[][]): string {
 	const truncatedRows = rows.map((row) =>
 		headers.map((_, ci) => truncateCell(row[ci] ?? "")),
 	);
+	const colWidths = columnWidths(truncatedHeaders, truncatedRows);
 
-	const colWidths = truncatedHeaders.map((h, ci) => {
-		let max = h.length;
-		for (const row of truncatedRows) {
-			if (row[ci].length > max) max = row[ci].length;
-		}
-		return max;
-	});
-
-	const out: string[] = [];
-
-	// Top border.
-	out.push(horizontalLine(colWidths, BOX.tl, BOX.tt, BOX.tr));
-
-	// Header row.
-	out.push(dataRow(truncatedHeaders, colWidths));
-
-	// Header separator.
-	out.push(horizontalLine(colWidths, BOX.lt, BOX.x, BOX.rt));
-
-	// Data rows.
-	for (const row of truncatedRows) {
-		out.push(dataRow(row, colWidths));
-	}
-
-	// Bottom border.
-	out.push(horizontalLine(colWidths, BOX.bl, BOX.bt, BOX.br));
-
-	return out.join("\n");
+	return [
+		horizontalLine(colWidths, BOX.tl, BOX.tt, BOX.tr),
+		dataRow(truncatedHeaders, colWidths),
+		horizontalLine(colWidths, BOX.lt, BOX.x, BOX.rt),
+		...truncatedRows.map((row) => dataRow(row, colWidths)),
+		horizontalLine(colWidths, BOX.bl, BOX.bt, BOX.br),
+	].join("\n");
 }
 
 function horizontalLine(widths: number[], left: string, mid: string, right: string): string {
@@ -224,6 +209,19 @@ function truncateCell(value: string): string {
 	return value.slice(0, MAX_CELL_WIDTH - 1) + "…";
 }
 
+function formatJsonCell(value: unknown): string {
+	if (value === undefined || value === null) return "";
+	if (typeof value === "string") return value;
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	return JSON.stringify(value) ?? "";
+}
+
+function columnWidths(headers: string[], rows: string[][]): number[] {
+	return headers.map((header, ci) =>
+		Math.max(header.length, ...rows.map((row) => row[ci].length)),
+	);
+}
+
 function splitLines(input: string): string[] {
-	return input.replace(/\r\n?/g, "\n").split("\n");
+	return input.replaceAll("\r\n", "\n").replaceAll("\r", "\n").split("\n");
 }

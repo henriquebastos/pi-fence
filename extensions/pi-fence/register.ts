@@ -65,7 +65,7 @@ export function validateProcessor(value: unknown): ValidationResult {
 	return {
 		ok: true,
 		processor: {
-			id: obj.id as string,
+			id: obj.id,
 			tags: obj.tags as readonly string[],
 			aliases,
 			available: obj.available as FenceProcessor["available"],

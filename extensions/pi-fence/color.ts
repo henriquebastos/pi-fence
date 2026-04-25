@@ -75,16 +75,16 @@ function parseHex(input: string): RGB | null {
 	const hex = match[1];
 	if (hex.length === 3) {
 		return {
-			r: parseInt(hex[0] + hex[0], 16),
-			g: parseInt(hex[1] + hex[1], 16),
-			b: parseInt(hex[2] + hex[2], 16),
+			r: Number.parseInt(hex[0] + hex[0], 16),
+			g: Number.parseInt(hex[1] + hex[1], 16),
+			b: Number.parseInt(hex[2] + hex[2], 16),
 		};
 	}
 	if (hex.length >= 6) {
 		return {
-			r: parseInt(hex.slice(0, 2), 16),
-			g: parseInt(hex.slice(2, 4), 16),
-			b: parseInt(hex.slice(4, 6), 16),
+			r: Number.parseInt(hex.slice(0, 2), 16),
+			g: Number.parseInt(hex.slice(2, 4), 16),
+			b: Number.parseInt(hex.slice(4, 6), 16),
 		};
 	}
 	return null;
@@ -94,9 +94,9 @@ function parseRgbFunction(input: string): RGB | null {
 	const match = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/.exec(input);
 	if (!match) return null;
 	return {
-		r: clamp(parseInt(match[1], 10)),
-		g: clamp(parseInt(match[2], 10)),
-		b: clamp(parseInt(match[3], 10)),
+		r: clamp(Number.parseInt(match[1], 10)),
+		g: clamp(Number.parseInt(match[2], 10)),
+		b: clamp(Number.parseInt(match[3], 10)),
 	};
 }
 

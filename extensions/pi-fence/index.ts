@@ -81,7 +81,11 @@ export async function createPiFenceExtension(
 	if (config.kroki?.docker?.autoStart) {
 		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
 		const dockerStatus = await dockerMgr.status();
-		if (dockerStatus.status !== "running") {
+		if (dockerStatus.status === "running") {
+			deps.logger.debug("pi-fence", "Docker Kroki already running", {
+				endpoint: dockerStatus.endpoint,
+			});
+		} else {
 			const startResult = await dockerMgr.start();
 			if (startResult.ok) {
 				deps.logger.info("pi-fence", "Docker Kroki auto-started", {
@@ -92,10 +96,6 @@ export async function createPiFenceExtension(
 					error: startResult.message,
 				});
 			}
-		} else {
-			deps.logger.debug("pi-fence", "Docker Kroki already running", {
-				endpoint: dockerStatus.endpoint,
-			});
 		}
 	}
 

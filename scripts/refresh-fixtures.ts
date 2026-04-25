@@ -18,9 +18,12 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
+import type { HttpClient, HttpResponse } from "../extensions/pi-fence/io/http-client.ts";
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = resolve(SCRIPT_DIR, "../tests/fixtures/live");
 const MANIFEST_PATH = resolve(FIXTURES_DIR, "manifest.json");
+const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export interface FixtureEntry {
 	processor: string;
@@ -61,6 +64,23 @@ function writeFixture(relPath: string, data: Buffer): FixtureEntry & { relPath: 
 // Kroki fixtures
 // ---------------------------------------------------------------------------
 
+interface KrokiFixtureSpec {
+	tag: string;
+	source: string;
+}
+
+interface KrokiFixtureRequest {
+	format: "png" | "svg";
+	isSvgOnly: boolean;
+	url: string;
+}
+
+interface KrokiFixtureDeps {
+	http: HttpClient;
+	svgOnlyTags: ReadonlySet<string>;
+	svgToPng: (svg: Buffer) => Promise<Buffer>;
+}
+
 async function refreshKroki(): Promise<FixtureEntry[]> {
 	const { KROKI_TEXT_LANGUAGES } = await import(
 		"../tests/fixtures/kroki/canonical-sources.ts"
@@ -75,52 +95,88 @@ async function refreshKroki(): Promise<FixtureEntry[]> {
 		"../extensions/pi-fence/svg-to-png.ts"
 	);
 
-	const http = new NodeHttpClient();
-	const endpoint = "https://kroki.io";
+	const deps: KrokiFixtureDeps = {
+		http: new NodeHttpClient(),
+		svgOnlyTags: KROKI_SVG_ONLY_TAGS,
+		svgToPng,
+	};
+	return collectKrokiFixtures(KROKI_TEXT_LANGUAGES, deps);
+}
+
+async function collectKrokiFixtures(
+	specs: readonly KrokiFixtureSpec[],
+	deps: KrokiFixtureDeps,
+): Promise<FixtureEntry[]> {
 	const entries: FixtureEntry[] = [];
-	const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-
-	for (const spec of KROKI_TEXT_LANGUAGES) {
-		const isSvgOnly = KROKI_SVG_ONLY_TAGS.has(spec.tag);
-		const format = isSvgOnly ? "svg" : "png";
-		const url = `${endpoint}/${spec.tag}/${format}`;
-		process.stderr.write(`  kroki/${spec.tag} (${format}) ... `);
-
-		try {
-			const resp = await http.request({
-				method: "POST",
-				url,
-				headers: { "content-type": "text/plain" },
-				body: spec.source,
-			});
-
-			if (resp.status !== 200) {
-				process.stderr.write(`SKIP (HTTP ${resp.status})\n`);
-				continue;
-			}
-
-			let png: Buffer;
-			if (isSvgOnly) {
-				png = await svgToPng(resp.body);
-			} else {
-				png = Buffer.isBuffer(resp.body) ? resp.body : Buffer.from(resp.body);
-			}
-
-			if (png.length < 8 || Buffer.compare(png.subarray(0, 8), PNG_MAGIC) !== 0) {
-				process.stderr.write(`SKIP (not PNG)\n`);
-				continue;
-			}
-
-			const entry = writeFixture(`kroki/${spec.tag}.png`, png);
-			entries.push(entry);
-			process.stderr.write(`${png.length} bytes\n`);
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : String(err);
-			process.stderr.write(`SKIP (${msg})\n`);
-		}
+	for (const spec of specs) {
+		const entry = await refreshKrokiFixture(spec, deps);
+		if (entry) entries.push(entry);
 	}
-
 	return entries;
+}
+
+async function refreshKrokiFixture(
+	spec: KrokiFixtureSpec,
+	deps: KrokiFixtureDeps,
+): Promise<FixtureEntry | null> {
+	const request = createKrokiFixtureRequest(spec.tag, deps.svgOnlyTags);
+	process.stderr.write(`  kroki/${spec.tag} (${request.format}) ... `);
+
+	try {
+		const response = await requestKrokiFixture(deps.http, request.url, spec.source);
+		const png = await krokiResponseToPng(response, request, deps.svgToPng);
+		return writeKrokiFixture(spec.tag, png);
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		process.stderr.write(`SKIP (${msg})\n`);
+		return null;
+	}
+}
+
+function createKrokiFixtureRequest(
+	tag: string,
+	svgOnlyTags: ReadonlySet<string>,
+): KrokiFixtureRequest {
+	const isSvgOnly = svgOnlyTags.has(tag);
+	const format = isSvgOnly ? "svg" : "png";
+	return {
+		format,
+		isSvgOnly,
+		url: `https://kroki.io/${tag}/${format}`,
+	};
+}
+
+async function requestKrokiFixture(
+	http: HttpClient,
+	url: string,
+	source: string,
+): Promise<HttpResponse> {
+	const response = await http.request({
+		method: "POST",
+		url,
+		headers: { "content-type": "text/plain" },
+		body: source,
+	});
+	if (response.status !== 200) throw new Error(`HTTP ${response.status}`);
+	return response;
+}
+
+async function krokiResponseToPng(
+	response: HttpResponse,
+	request: KrokiFixtureRequest,
+	svgToPng: (svg: Buffer) => Promise<Buffer>,
+): Promise<Buffer> {
+	const png = request.isSvgOnly ? await svgToPng(response.body) : response.body;
+	if (png.length < PNG_MAGIC.length || Buffer.compare(png.subarray(0, PNG_MAGIC.length), PNG_MAGIC) !== 0) {
+		throw new Error("not PNG");
+	}
+	return png;
+}
+
+function writeKrokiFixture(tag: string, png: Buffer): FixtureEntry {
+	const entry = writeFixture(`kroki/${tag}.png`, png);
+	process.stderr.write(`${png.length} bytes\n`);
+	return entry;
 }
 
 // ---------------------------------------------------------------------------

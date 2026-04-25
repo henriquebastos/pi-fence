@@ -24,7 +24,7 @@
  *   - Endpoint is configurable at construction; defaults to https://kroki.io.
  */
 
-import type { HttpClient } from "./io/http-client.ts";
+import type { HttpClient, HttpResponse } from "./io/http-client.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
@@ -169,6 +169,148 @@ export function isDarkThemeName(name: string | undefined): boolean {
 	return true;
 }
 
+interface KrokiRequestContext {
+	tag: string;
+	krokiTag: string;
+	url: string;
+	isSvgOnly: boolean;
+	appearance: "light" | "dark" | undefined;
+}
+
+interface SuccessfulKrokiRequest {
+	ok: true;
+	response: HttpResponse;
+}
+
+interface FailedKrokiRequest {
+	ok: false;
+	result: FenceResult;
+}
+
+type KrokiRequestResult = SuccessfulKrokiRequest | FailedKrokiRequest;
+
+function createKrokiRequestContext(
+	base: string,
+	tag: string,
+	appearance?: KrokiAppearanceResolver,
+): KrokiRequestContext {
+	const krokiTag = KROKI_ALIASES[tag] ?? tag;
+	const appearanceMode = appearance?.();
+	const query = appearanceMode === "dark" ? "?theme=dark" : "";
+	const isSvgOnly = KROKI_SVG_ONLY_TAGS.has(krokiTag);
+	const format = isSvgOnly ? "svg" : "png";
+
+	return {
+		tag,
+		krokiTag,
+		url: `${base}/${krokiTag}/${format}${query}`,
+		isSvgOnly,
+		appearance: appearanceMode,
+	};
+}
+
+function logKrokiRequest(
+	logger: Logger,
+	context: KrokiRequestContext,
+	source: string,
+): void {
+	logger.debug("kroki", "request", {
+		tag: context.tag,
+		krokiTag: context.krokiTag,
+		url: context.url,
+		appearance: context.appearance ?? "default",
+		sourceBytes: Buffer.byteLength(source, "utf8"),
+	});
+}
+
+async function requestKroki(
+	http: HttpClient,
+	logger: Logger,
+	context: KrokiRequestContext,
+	source: string,
+	signal: AbortSignal | undefined,
+): Promise<KrokiRequestResult> {
+	try {
+		const response = await http.request({
+			method: "POST",
+			url: context.url,
+			headers: { "content-type": "text/plain" },
+			body: source,
+			signal,
+		});
+		return { ok: true, response };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		logger.error("kroki", message, { url: context.url, tag: context.tag });
+		return { ok: false, result: { ok: false, error: message } };
+	}
+}
+
+async function renderKrokiResponse(
+	response: HttpResponse,
+	context: KrokiRequestContext,
+	logger: Logger,
+): Promise<FenceResult> {
+	return response.status >= 200 && response.status < 300
+		? renderSuccessfulKrokiResponse(response, context, logger)
+		: renderFailedKrokiResponse(response, context, logger);
+}
+
+async function renderSuccessfulKrokiResponse(
+	response: HttpResponse,
+	context: KrokiRequestContext,
+	logger: Logger,
+): Promise<FenceResult> {
+	const rendered = await responseBodyToPng(response.body, context, logger);
+	if (!rendered.ok) return rendered;
+
+	logger.debug("kroki", "response ok", {
+		status: response.status,
+		tag: context.tag,
+		bytes: rendered.png.length,
+	});
+	return { ok: true, png: rendered.png };
+}
+
+async function responseBodyToPng(
+	body: Buffer,
+	context: KrokiRequestContext,
+	logger: Logger,
+): Promise<{ ok: true; png: Buffer } | { ok: false; error: string }> {
+	if (!context.isSvgOnly) return { ok: true, png: body };
+
+	try {
+		const png = await svgToPng(body);
+		logger.debug("kroki", "svg→png rasterized", {
+			tag: context.tag,
+			svgBytes: body.length,
+			pngBytes: png.length,
+		});
+		return { ok: true, png };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		logger.error("kroki", `svg→png failed: ${message}`, { tag: context.tag });
+		return { ok: false, error: `SVG rasterization failed: ${message}` };
+	}
+}
+
+function renderFailedKrokiResponse(
+	response: HttpResponse,
+	context: KrokiRequestContext,
+	logger: Logger,
+): FenceResult {
+	const text = response.body.toString("utf8");
+	const truncated = text.length > ERROR_BODY_MAX_CHARS
+		? text.slice(0, ERROR_BODY_MAX_CHARS)
+		: text;
+	logger.warn("kroki", "response error", {
+		status: response.status,
+		tag: context.tag,
+		bodyBytes: response.body.length,
+	});
+	return { ok: false, error: truncated };
+}
+
 export function createKrokiProcessor(
 	http: HttpClient,
 	endpoint: string = DEFAULT_ENDPOINT,
@@ -199,71 +341,13 @@ export function createKrokiProcessor(
 				signal,
 				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
 			]);
-			const krokiTag = KROKI_ALIASES[tag] ?? tag;
-			const mode = appearance?.();
-			const query = mode === "dark" ? "?theme=dark" : "";
-			const isSvgOnly = KROKI_SVG_ONLY_TAGS.has(krokiTag);
-			const format = isSvgOnly ? "svg" : "png";
-			const url = `${base}/${krokiTag}/${format}${query}`;
+			const context = createKrokiRequestContext(base, tag, appearance);
 
-			logger.debug("kroki", "request", {
-				tag,
-				krokiTag,
-				url,
-				appearance: mode ?? "default",
-				sourceBytes: Buffer.byteLength(source, "utf8"),
-			});
-
-			let response;
-			try {
-				response = await http.request({
-					method: "POST",
-					url,
-					headers: { "content-type": "text/plain" },
-					body: source,
-					signal: combinedSignal,
-				});
-			} catch (err) {
-				const message = err instanceof Error ? err.message : String(err);
-				logger.error("kroki", message, { url, tag });
-				return { ok: false, error: message };
-			}
-
-			if (response.status >= 200 && response.status < 300) {
-				let png: Buffer;
-				if (isSvgOnly) {
-					try {
-						png = await svgToPng(response.body);
-						logger.debug("kroki", "svg→png rasterized", {
-							tag,
-							svgBytes: response.body.length,
-							pngBytes: png.length,
-						});
-					} catch (err) {
-						const message = err instanceof Error ? err.message : String(err);
-						logger.error("kroki", `svg→png failed: ${message}`, { tag });
-						return { ok: false, error: `SVG rasterization failed: ${message}` };
-					}
-				} else {
-					png = response.body;
-				}
-				logger.debug("kroki", "response ok", {
-					status: response.status,
-					tag,
-					bytes: png.length,
-				});
-				return { ok: true, png };
-			}
-
-			const text = response.body.toString("utf8");
-			const truncated =
-				text.length > ERROR_BODY_MAX_CHARS ? text.slice(0, ERROR_BODY_MAX_CHARS) : text;
-			logger.warn("kroki", "response error", {
-				status: response.status,
-				tag,
-				bodyBytes: response.body.length,
-			});
-			return { ok: false, error: truncated };
+			logKrokiRequest(logger, context, source);
+			const requested = await requestKroki(http, logger, context, source, combinedSignal);
+			return requested.ok
+				? renderKrokiResponse(requested.response, context, logger)
+				: requested.result;
 		}),
 	};
 }

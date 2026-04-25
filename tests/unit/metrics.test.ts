@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { MetricsCollector } from "../../extensions/pi-fence/metrics.ts";
+import { formatMetricsLines, MetricsCollector } from "../../extensions/pi-fence/metrics.ts";
 
 describe("MetricsCollector", () => {
 	it("starts with zero counts", () => {
@@ -57,5 +57,51 @@ describe("MetricsCollector", () => {
 		expect(s.byTag.mermaid).toEqual({ ok: 1, errors: 1 });
 		expect(s.byTag.plantuml).toEqual({ ok: 1, errors: 0 });
 		expect(s.byTag.csv).toEqual({ ok: 1, errors: 0 });
+	});
+});
+
+describe("formatMetricsLines", () => {
+	it("formats empty-session metrics with a no-renders note", () => {
+		expect(formatMetricsLines({
+			total: 0,
+			ok: 0,
+			errors: 0,
+			byProcessor: {},
+			byTag: {},
+		})).toEqual([
+			"Session metrics",
+			"",
+			"Total renders: 0 (0 ok, 0 errors)",
+			"",
+			"No renders in this session yet.",
+		]);
+	});
+
+	it("formats processor and tag breakdowns", () => {
+		expect(formatMetricsLines({
+			total: 3,
+			ok: 2,
+			errors: 1,
+			byProcessor: {
+				kroki: { ok: 1, errors: 1 },
+				table: { ok: 1, errors: 0 },
+			},
+			byTag: {
+				mermaid: { ok: 1, errors: 1 },
+				csv: { ok: 1, errors: 0 },
+			},
+		})).toEqual([
+			"Session metrics",
+			"",
+			"Total renders: 3 (2 ok, 1 errors)",
+			"",
+			"By processor:",
+			"  kroki: 2 (1 ok, 1 errors)",
+			"  table: 1 (1 ok, 0 errors)",
+			"",
+			"By tag:",
+			"  mermaid: 2 (1 ok, 1 errors)",
+			"  csv: 1 (1 ok, 0 errors)",
+		]);
 	});
 });

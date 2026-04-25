@@ -83,12 +83,12 @@ export function validatePiFenceConfig(
 		return DEFAULT_CONFIG;
 	}
 
-	const disabled = parsed.disabled !== undefined
-		? validateDisabled(parsed.disabled, label, logger)
-		: undefined;
-	const kroki = parsed.kroki !== undefined
-		? validateKroki(parsed.kroki, label, logger)
-		: undefined;
+	const disabled = parsed.disabled === undefined
+		? undefined
+		: validateDisabled(parsed.disabled, label, logger);
+	const kroki = parsed.kroki === undefined
+		? undefined
+		: validateKroki(parsed.kroki, label, logger);
 	const out: PiFenceConfig = { bindings: validateBindings(parsed.bindings, label, logger) };
 	if (disabled !== undefined) out.disabled = disabled;
 	if (kroki !== undefined) out.kroki = kroki;
@@ -135,34 +135,58 @@ function validateKroki(
 		});
 		return undefined;
 	}
+
 	const out: NonNullable<PiFenceConfig["kroki"]> = {};
-	if (rawKroki.endpoint !== undefined) {
-		if (typeof rawKroki.endpoint === "string") {
-			out.endpoint = rawKroki.endpoint;
-		} else {
-			logger?.warn("config", `${label} config 'kroki.endpoint' is not a string`, {
-				got: typeof rawKroki.endpoint,
-			});
-		}
-	}
-	if (rawKroki.docker !== undefined) {
-		if (isRecordLike(rawKroki.docker)) {
-			const docker: NonNullable<NonNullable<PiFenceConfig["kroki"]>["docker"]> = {};
-			if (typeof rawKroki.docker.autoStart === "boolean") {
-				docker.autoStart = rawKroki.docker.autoStart;
-			} else if (rawKroki.docker.autoStart !== undefined) {
-				logger?.warn("config", `${label} config 'kroki.docker.autoStart' is not a boolean`, {
-					got: typeof rawKroki.docker.autoStart,
-				});
-			}
-			if (Object.keys(docker).length > 0) out.docker = docker;
-		} else {
-			logger?.warn("config", `${label} config 'kroki.docker' is not an object`, {
-				got: typeof rawKroki.docker,
-			});
-		}
-	}
+	const endpoint = validateKrokiEndpoint(rawKroki.endpoint, label, logger);
+	const docker = validateKrokiDocker(rawKroki.docker, label, logger);
+	if (endpoint !== undefined) out.endpoint = endpoint;
+	if (docker !== undefined) out.docker = docker;
 	return out;
+}
+
+function validateKrokiEndpoint(
+	rawEndpoint: unknown,
+	label: string,
+	logger?: Logger,
+): string | undefined {
+	if (rawEndpoint === undefined) return undefined;
+	if (typeof rawEndpoint === "string") return rawEndpoint;
+
+	logger?.warn("config", `${label} config 'kroki.endpoint' is not a string`, {
+		got: typeof rawEndpoint,
+	});
+	return undefined;
+}
+
+function validateKrokiDocker(
+	rawDocker: unknown,
+	label: string,
+	logger?: Logger,
+): NonNullable<NonNullable<PiFenceConfig["kroki"]>["docker"]> | undefined {
+	if (rawDocker === undefined) return undefined;
+	if (!isRecordLike(rawDocker)) {
+		logger?.warn("config", `${label} config 'kroki.docker' is not an object`, {
+			got: typeof rawDocker,
+		});
+		return undefined;
+	}
+
+	const autoStart = validateKrokiDockerAutoStart(rawDocker.autoStart, label, logger);
+	return autoStart === undefined ? undefined : { autoStart };
+}
+
+function validateKrokiDockerAutoStart(
+	rawAutoStart: unknown,
+	label: string,
+	logger?: Logger,
+): boolean | undefined {
+	if (rawAutoStart === undefined) return undefined;
+	if (typeof rawAutoStart === "boolean") return rawAutoStart;
+
+	logger?.warn("config", `${label} config 'kroki.docker.autoStart' is not a boolean`, {
+		got: typeof rawAutoStart,
+	});
+	return undefined;
 }
 
 function validateDisabled(

@@ -182,6 +182,17 @@ describe("config core", () => {
 		expect(result.kroki?.docker?.autoStart).toBe(true);
 	});
 
+	it("validates kroki: preserves endpoint and docker settings together", () => {
+		const result = validatePiFenceConfig(
+			{ kroki: { endpoint: "http://localhost:8000", docker: { autoStart: true } } },
+			"test",
+		);
+		expect(result.kroki).toEqual({
+			endpoint: "http://localhost:8000",
+			docker: { autoStart: true },
+		});
+	});
+
 	it("validates kroki.docker.autoStart: non-boolean dropped with a warn", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(

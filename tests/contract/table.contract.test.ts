@@ -6,8 +6,16 @@
  * `Buffer.isBuffer(result.png)`.
  */
 
+import { describe, expect, it } from "vitest";
+
 import { runFenceProcessorContract } from "./fence-processor.ts";
 import { createTableProcessor } from "../../extensions/pi-fence/table.ts";
+
+describe("table contract harness", () => {
+	it("builds the processor under test", () => {
+		expect(createTableProcessor().tags).toContain("csv");
+	});
+});
 
 runFenceProcessorContract(
 	"table",

@@ -42,8 +42,9 @@ describe("package.json scripts", () => {
 		);
 		expect(scripts["inspect:crap:ext"]).toBe("tsx scripts/inspect-crap-ext.ts");
 		expect(scripts["inspect:sonar"]).toBe(
-			"pnpm run inspect:sonar:scan && pnpm run inspect:sonar:report",
+			"pnpm run inspect:sonar:coverage && pnpm run inspect:sonar:scan && pnpm run inspect:sonar:report",
 		);
+		expect(scripts["inspect:sonar:coverage"]).toContain("--coverage.reportsDirectory=coverage/sonar");
 		expect(scripts["live:up"]).toBe("tsx scripts/live.ts up");
 		expect(scripts["live:down"]).toBe("tsx scripts/live.ts down");
 		expect(scripts["live:status"]).toBe("tsx scripts/live.ts status");

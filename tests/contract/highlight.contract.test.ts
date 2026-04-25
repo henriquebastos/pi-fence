@@ -5,8 +5,16 @@
  * helper asserts `typeof result.text === "string"`.
  */
 
+import { describe, expect, it } from "vitest";
+
 import { runFenceProcessorContract } from "./fence-processor.ts";
 import { createHighlightProcessor } from "../../extensions/pi-fence/highlight.ts";
+
+describe("highlight contract harness", () => {
+	it("builds the processor under test", () => {
+		expect(createHighlightProcessor().tags).toContain("sql");
+	});
+});
 
 runFenceProcessorContract(
 	"highlight",

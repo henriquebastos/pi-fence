@@ -86,30 +86,27 @@ export function formatDoctorLines(
 	input: DoctorInput,
 	processorLines: readonly string[],
 ): string[] {
-	const lines: string[] = [];
+	return [
+		...formatDoctorConfigLines(input),
+		...processorLines,
+		"",
+		...formatDoctorIssueLines(computeDoctorIssues(input)),
+	];
+}
 
-	// Config section.
-	lines.push("Config");
-	lines.push(`  global: ${input.globalPath} (${formatConfigStatus(input.globalStatus)})`);
-	lines.push(`  project: ${input.projectPath} (${formatConfigStatus(input.projectStatus)})`);
-	lines.push("");
+function formatDoctorConfigLines(input: DoctorInput): string[] {
+	return [
+		"Config",
+		`  global: ${input.globalPath} (${formatConfigStatus(input.globalStatus)})`,
+		`  project: ${input.projectPath} (${formatConfigStatus(input.projectStatus)})`,
+		"",
+	];
+}
 
-	// Processors + bindings (reuse formatProcessorLines output).
-	for (const line of processorLines) {
-		lines.push(line);
-	}
-	lines.push("");
-
-	// Issues section.
-	const issues = computeDoctorIssues(input);
-	if (issues.length === 0) {
-		lines.push("No issues found.");
-	} else {
-		lines.push("Issues");
-		for (const issue of issues) {
-			lines.push(`  - ${issue.message}`);
-		}
-	}
-
-	return lines;
+function formatDoctorIssueLines(issues: readonly DoctorIssue[]): string[] {
+	if (issues.length === 0) return ["No issues found."];
+	return [
+		"Issues",
+		...issues.map((issue) => `  - ${issue.message}`),
+	];
 }

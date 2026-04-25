@@ -54,6 +54,43 @@ const HIGHLIGHTERS: Record<string, (source: string) => string> = {
 	jq: highlightJq,
 };
 
+interface HighlightMatch {
+	text: string;
+	end: number;
+}
+
+type HighlightRule = (source: string, index: number) => HighlightMatch | null;
+
+function highlightWithRules(source: string, rules: readonly HighlightRule[]): string {
+	let result = "";
+	let i = 0;
+
+	while (i < source.length) {
+		const match = firstHighlightMatch(source, i, rules);
+		if (match) {
+			result += match.text;
+			i = match.end;
+		} else {
+			result += source[i];
+			i++;
+		}
+	}
+
+	return result;
+}
+
+function firstHighlightMatch(
+	source: string,
+	index: number,
+	rules: readonly HighlightRule[],
+): HighlightMatch | null {
+	for (const rule of rules) {
+		const match = rule(source, index);
+		if (match) return match;
+	}
+	return null;
+}
+
 // ── SQL highlighter ─────────────────────────────────────────────────
 
 const SQL_KEYWORDS = new Set([
@@ -74,75 +111,69 @@ const SQL_KEYWORDS = new Set([
 	"WINDOW", "FETCH", "NEXT", "FIRST", "LAST", "ONLY",
 ]);
 
+const SQL_RULES: readonly HighlightRule[] = [
+	sqlLineCommentRule,
+	sqlBlockCommentRule,
+	sqlStringRule,
+	sqlNumberRule,
+	sqlWordRule,
+];
+
 function highlightSql(source: string): string {
-	let result = "";
-	let i = 0;
+	return highlightWithRules(source, SQL_RULES);
+}
 
-	while (i < source.length) {
-		// Line comment: --
-		if (source[i] === "-" && source[i + 1] === "-") {
-			const end = source.indexOf("\n", i);
-			const comment = end === -1 ? source.slice(i) : source.slice(i, end);
-			result += ansi(DIM, comment);
-			i += comment.length;
-			continue;
+function sqlLineCommentRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== "-" || source[index + 1] !== "-") return null;
+	const comment = scanLineComment(source, index);
+	return { text: ansi(DIM, comment), end: index + comment.length };
+}
+
+function sqlBlockCommentRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== "/" || source[index + 1] !== "*") return null;
+	const end = source.indexOf("*/", index + 2);
+	const comment = end === -1 ? source.slice(index) : source.slice(index, end + 2);
+	return { text: ansi(DIM, comment), end: index + comment.length };
+}
+
+function sqlStringRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== "'") return null;
+	const end = scanSqlString(source, index);
+	return { text: ansi(GREEN, source.slice(index, end)), end };
+}
+
+function scanSqlString(source: string, start: number): number {
+	let j = start + 1;
+	while (j < source.length) {
+		if (source[j] === "'" && source[j + 1] === "'") {
+			j += 2;
+		} else if (source[j] === "'") {
+			return j + 1;
+		} else {
+			j++;
 		}
-
-		// Block comment: /* ... */
-		if (source[i] === "/" && source[i + 1] === "*") {
-			const end = source.indexOf("*/", i + 2);
-			const comment = end === -1 ? source.slice(i) : source.slice(i, end + 2);
-			result += ansi(DIM, comment);
-			i += comment.length;
-			continue;
-		}
-
-		// Single-quoted string
-		if (source[i] === "'") {
-			let j = i + 1;
-			while (j < source.length) {
-				if (source[j] === "'" && source[j + 1] === "'") {
-					j += 2; // escaped quote
-				} else if (source[j] === "'") {
-					j++;
-					break;
-				} else {
-					j++;
-				}
-			}
-			result += ansi(GREEN, source.slice(i, j));
-			i = j;
-			continue;
-		}
-
-		// Number
-		if (/\d/.test(source[i]) && (i === 0 || /[\s,=(]/.test(source[i - 1]))) {
-			let j = i;
-			while (j < source.length && /[\d.]/.test(source[j])) j++;
-			result += ansi(MAGENTA, source.slice(i, j));
-			i = j;
-			continue;
-		}
-
-		// Word (potential keyword)
-		if (/[a-zA-Z_]/.test(source[i])) {
-			let j = i;
-			while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
-			const word = source.slice(i, j);
-			if (SQL_KEYWORDS.has(word.toUpperCase())) {
-				result += ansi(BOLD + BLUE, word);
-			} else {
-				result += word;
-			}
-			i = j;
-			continue;
-		}
-
-		result += source[i];
-		i++;
 	}
+	return j;
+}
 
-	return result;
+function sqlNumberRule(source: string, index: number): HighlightMatch | null {
+	if (!isNumberStart(source, index)) return null;
+	const end = scanNumber(source, index);
+	return { text: ansi(MAGENTA, source.slice(index, end)), end };
+}
+
+function isNumberStart(source: string, index: number): boolean {
+	return /\d/.test(source[index]) && (index === 0 || /[\s,=(]/.test(source[index - 1]));
+}
+
+function sqlWordRule(source: string, index: number): HighlightMatch | null {
+	if (!/[a-zA-Z_]/.test(source[index])) return null;
+	const end = scanWord(source, index);
+	const word = source.slice(index, end);
+	return {
+		text: SQL_KEYWORDS.has(word.toUpperCase()) ? ansi(BOLD + BLUE, word) : word,
+		end,
+	};
 }
 
 // ── regex highlighter ───────────────────────────────────────────────
@@ -236,73 +267,66 @@ const JQ_BUILTINS = new Set([
 	"def", "as", "import", "include", "and", "or", "null", "true", "false",
 ]);
 
+const JQ_RULES: readonly HighlightRule[] = [
+	jqStringRule,
+	jqCommentRule,
+	jqAltOperatorRule,
+	jqPipeRule,
+	jqDotAccessorRule,
+	jqNumberRule,
+	jqWordRule,
+];
+
 function highlightJq(source: string): string {
-	let result = "";
-	let i = 0;
+	return highlightWithRules(source, JQ_RULES);
+}
 
-	while (i < source.length) {
-		const ch = source[i];
+function jqStringRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== '"') return null;
+	const end = scanDoubleQuotedString(source, index);
+	return { text: ansi(GREEN, source.slice(index, end)), end };
+}
 
-		// String
-		if (ch === '"') {
-			const end = scanDoubleQuotedString(source, i);
-			result += ansi(GREEN, source.slice(i, end));
-			i = end;
-			continue;
-		}
+function jqCommentRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== "#") return null;
+	const comment = scanLineComment(source, index);
+	return { text: ansi(DIM, comment), end: index + comment.length };
+}
 
-		// Comment
-		if (ch === "#") {
-			const comment = scanLineComment(source, i);
-			result += ansi(DIM, comment);
-			i += comment.length;
-			continue;
-		}
+function jqAltOperatorRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== "/" || source[index + 1] !== "/") return null;
+	return { text: ansi(BOLD + YELLOW, "//"), end: index + 2 };
+}
 
-		// Alt operator //
-		if (ch === "/" && source[i + 1] === "/") {
-			result += ansi(BOLD + YELLOW, "//");
-			i += 2;
-			continue;
-		}
+function jqPipeRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== "|") return null;
+	return { text: ansi(BOLD + YELLOW, source[index]), end: index + 1 };
+}
 
-		// Pipe
-		if (ch === "|") {
-			result += ansi(BOLD + YELLOW, ch);
-			i++;
-			continue;
-		}
+function jqDotAccessorRule(source: string, index: number): HighlightMatch | null {
+	if (source[index] !== ".") return null;
+	const end = scanDotAccessor(source, index);
+	return { text: ansi(CYAN, source.slice(index, end)), end };
+}
 
-		// Dot accessor
-		if (ch === ".") {
-			const end = scanDotAccessor(source, i);
-			result += ansi(CYAN, source.slice(i, end));
-			i = end;
-			continue;
-		}
+function jqNumberRule(source: string, index: number): HighlightMatch | null {
+	if (!isJqNumberStart(source, index)) return null;
+	const end = scanNumber(source, index);
+	return { text: ansi(MAGENTA, source.slice(index, end)), end };
+}
 
-		// Number
-		if (/\d/.test(ch) && (i === 0 || /[\s,|:([]/.test(source[i - 1]))) {
-			const end = scanNumber(source, i);
-			result += ansi(MAGENTA, source.slice(i, end));
-			i = end;
-			continue;
-		}
+function isJqNumberStart(source: string, index: number): boolean {
+	return /\d/.test(source[index]) && (index === 0 || /[\s,|:([]/.test(source[index - 1]));
+}
 
-		// Word (potential builtin)
-		if (/[a-zA-Z_]/.test(ch)) {
-			const end = scanWord(source, i);
-			const word = source.slice(i, end);
-			result += JQ_BUILTINS.has(word) ? ansi(BOLD + BLUE, word) : word;
-			i = end;
-			continue;
-		}
-
-		result += ch;
-		i++;
-	}
-
-	return result;
+function jqWordRule(source: string, index: number): HighlightMatch | null {
+	if (!/[a-zA-Z_]/.test(source[index])) return null;
+	const end = scanWord(source, index);
+	const word = source.slice(index, end);
+	return {
+		text: JQ_BUILTINS.has(word) ? ansi(BOLD + BLUE, word) : word,
+		end,
+	};
 }
 
 // ── Shared scan helpers ─────────────────────────────────────────────
@@ -325,7 +349,7 @@ function scanLineComment(source: string, start: number): string {
 function scanDotAccessor(source: string, start: number): number {
 	if (start + 1 < source.length && /[a-zA-Z_[]/.test(source[start + 1])) {
 		let j = start + 1;
-		while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
+		while (j < source.length && /\w/.test(source[j])) j++;
 		return j;
 	}
 	return start + 1;
@@ -339,6 +363,6 @@ function scanNumber(source: string, start: number): number {
 
 function scanWord(source: string, start: number): number {
 	let j = start;
-	while (j < source.length && /[a-zA-Z0-9_]/.test(source[j])) j++;
+	while (j < source.length && /\w/.test(source[j])) j++;
 	return j;
 }

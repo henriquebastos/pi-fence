@@ -83,6 +83,16 @@ describe("table processor — render CSV", () => {
 		expect(lines.length).toBeGreaterThanOrEqual(5); // header + separator + 2 rows + borders
 	});
 
+	it("handles CRLF line endings", async () => {
+		const processor = createTableProcessor();
+		const result = await processor.render("csv", "name,age\r\nAlice,30\r\nBob,25");
+
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("Alice");
+		expect(result.text).toContain("Bob");
+	});
+
 	it("returns error for empty input", async () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "");

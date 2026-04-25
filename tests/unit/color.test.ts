@@ -59,6 +59,22 @@ describe("color processor — hex colors", () => {
 		if (!result.ok || !("text" in result)) return;
 		expect(result.text).toContain(SWATCH_CHAR);
 	});
+
+	it("maps hex channels to exact ANSI truecolor values", async () => {
+		const result = await createColorProcessor().render("color", "#123456");
+
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("\x1b[38;2;18;52;86m");
+	});
+
+	it("expands shorthand hex channels before rendering", async () => {
+		const result = await createColorProcessor().render("color", "#0f8");
+
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("\x1b[38;2;0;255;136m");
+	});
 });
 
 describe("color processor — rgb() colors", () => {
@@ -77,6 +93,14 @@ describe("color processor — rgb() colors", () => {
 		expect(result.ok).toBe(true);
 		if (!result.ok || !("text" in result)) return;
 		expect(result.text).toContain(SWATCH_CHAR);
+	});
+
+	it("clamps rgb() channels before rendering", async () => {
+		const result = await createColorProcessor().render("color", "rgb(300, 12, 0)");
+
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("text" in result)) return;
+		expect(result.text).toContain("\x1b[38;2;255;12;0m");
 	});
 });
 
