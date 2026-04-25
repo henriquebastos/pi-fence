@@ -10,4 +10,4 @@ Drive the configured SonarQube project from the existing red quality gate to zer
 
 | Code | Story | State |
 |------|-------|-------|
-| [`CV8.E3.S1`](cv8-e3-s1--sonar-zero-issues.md) | **Sonar zero issues** | In progress |
+| [`CV8.E3.S1`](cv8-e3-s1--sonar-zero-issues.md) | **Sonar zero issues** | Done |

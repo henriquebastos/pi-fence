@@ -1,6 +1,6 @@
 # CV8.E3.S1 — Sonar zero issues
 
-**Status:** In progress
+**Status:** Done
 
 **Epic:** [CV8.E3 — Sonar Quality Gate](cv8-e3--sonar-zero.md)
 **Date:** 2026-04-25 (spec)
@@ -51,10 +51,12 @@ SonarQube reports 38 open issues after CV8. Fix them one finding at a time, keep
 
 ## Verification
 
-1. Focused test command per finding.
-2. `pnpm run inspect:sonar` after each finding or tightly coupled duplicate cluster.
-3. `pnpm run feedback` before implementation commit.
-4. `pnpm run inspect` before close-out.
+1. Focused test commands ran during each finding/cluster.
+2. `pnpm run inspect:sonar` passed with quality gate `OK`, `Issues: 0`, coverage `90.3`, and new coverage `90.9`.
+3. `pnpm run feedback` passed with 589 fast-suite tests.
+4. `pnpm run inspect` passed.
+5. `pnpm test:live` passed: 36 passed, 11 skipped.
+6. `pnpm run render:verify` passed: 5 scenario/variant renders.
 
 ## Current Sonar inventory
 

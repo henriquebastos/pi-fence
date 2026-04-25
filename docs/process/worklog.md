@@ -1995,3 +1995,38 @@ This closes CV8.E2 (Robustness) and **CV8 (Internal Quality)**.
 4. **Tests got named adapters.** Remaining test harness type gaps use explicit structural adapters instead of `as never`, keeping the smell out of the whole repo.
 
 **Carry-forward.** CV8 is done. Next roadmap candidates remain CV6 (Fixture Completeness) and CV7 (Companion Backends); choose priority before starting the next CV because CV8 was intentionally pulled forward for internal quality.
+
+---
+
+### 2026-04-25 — CV8.E3.S1 closed; Sonar quality gate green
+
+**What shipped.** SonarQube now reports zero open issues and an `OK` quality gate. The cleanup removed the 38 carried Sonar findings by splitting high-complexity parser/renderer paths, replacing style-only findings with clearer primitives, adding explicit contract-file smoke tests, and wiring Sonar coverage import so the gate evaluates real Vitest LCOV instead of `0.0` coverage.
+
+This closes CV8.E3 (Sonar Quality Gate) and returns **CV8 (Internal Quality)** to done.
+
+**Spec commit.**
+
+1. `d0af271` — spec CV8.E3.S1: make Sonar cleanup explicit
+
+**Implementation commits.**
+
+1. `f58e283` — step 1: clear Sonar quality gate
+
+**Test count.** 589 fast-suite (was 578; +11: contract harness smoke tests, color channel characterization, config combined Kroki validation, metrics formatter characterization, and CRLF CSV coverage).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed.
+3. `pnpm run inspect:sonar` — passed: quality gate `OK`, issues `0`, coverage `90.3`, new coverage `90.9`.
+4. `pnpm test:live` — passed: 36 passed, 11 skipped.
+5. `pnpm run render:verify` — passed: 5 scenario/variant renders.
+
+**Design decisions that survived implementation.**
+
+1. **Sonar as the red/green signal for style-only findings.** Behavior stayed pinned by focused unit/contract tests; style-only findings were verified by refreshing the Sonar report after each finding or duplicate cluster.
+2. **Split complexity without widening public APIs.** Kroki, Highlight, Table, Config, Doctor, and refresh-fixtures were decomposed into private helpers; exported processor surfaces stayed unchanged.
+3. **Coverage belongs in the Sonar lane.** `inspect:sonar` now generates an LCOV report and `sonar-project.properties` imports it. Scripts remain analyzed for issues but excluded from coverage so developer tooling helpers do not distort the extension coverage gate.
+4. **Contract harnesses are explicit to static analyzers.** The shared contract helper still owns the real processor contract, while each formerly empty-looking contract file now has a tiny smoke test Sonar can recognize.
+
+**Carry-forward.** Sonar is green. Next roadmap candidate returns to CV6 (Fixture Completeness), starting with `docs/project/roadmap/cv6--fixture-completeness/cv6-e1-s1--mermaid-local-live-gate.md`.
