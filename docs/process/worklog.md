@@ -1964,3 +1964,34 @@ This starts CV8.E2 (Robustness).
 3. **No fake promotion.** Hanging-shell behavior stayed as an inline unit-test stub because it is a single scenario, not a reusable fake seam.
 
 **Carry-forward.** Next: CV8.E2.S2 (Eliminate `as never` casts).
+
+---
+
+### 2026-04-25 — CV8.E2.S2 closed; CV8.E2 and CV8 done
+
+**What shipped.** Boundary `as never` casts were removed from the extension runtime. Message content now uses local structural `TextContent` / `ImageContent` types, custom-message details use explicit generic inference, renderer primitives match pi-tui constructor shapes, and renderer registration no longer needs casts. Test-only `as never` casts in the focused command and extension harnesses were also replaced with named structural adapters.
+
+This closes CV8.E2 (Robustness) and **CV8 (Internal Quality)**.
+
+**Implementation commits.**
+
+1. `f811e4c` — step 1: remove boundary never casts
+
+**Test count.** 578 fast-suite (unchanged — existing messages, renderer, command, and extension tests cover the same behavior).
+
+**Verification.**
+
+1. `rg "as never" extensions/pi-fence` — no matches.
+2. `pnpm run feedback` — passed.
+3. `pnpm run inspect` — passed. SonarQube remains quality-gate `ERROR` with 38 open issues outside this story.
+4. `pnpm test:live` — passed: 36 passed, 11 skipped.
+5. `pnpm run render:verify` — passed: 5 scenario/variant renders.
+
+**Design decisions that survived implementation.**
+
+1. **Structural content types.** Local `TextContent` and `ImageContent` interfaces match pi's content shape without importing non-re-exported upstream types.
+2. **Generic details typing.** `sendMessage<T>` call sites now state the details type directly instead of forcing it with casts.
+3. **Renderer signatures aligned to pi-tui.** The renderer accepts real pi-tui constructor shapes and returns `Component`, with only a minimal `Container` interface for `addChild`.
+4. **Tests got named adapters.** Remaining test harness type gaps use explicit structural adapters instead of `as never`, keeping the smell out of the whole repo.
+
+**Carry-forward.** CV8 is done. Next roadmap candidates remain CV6 (Fixture Completeness) and CV7 (Companion Backends); choose priority before starting the next CV because CV8 was intentionally pulled forward for internal quality.
