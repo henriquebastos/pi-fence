@@ -16,3 +16,4 @@ A CV is **done** only when every Story in its Epics is done.
 | [CV3 — Beyond Diagrams](cv3--beyond-diagrams/README.md) | `legibility` | Done | The platform proves itself on non-diagram text-to-visual use cases. |
 | [CV4 — Platform](cv4--platform/README.md) | `extensibility` | Done | Third parties write processors as first-class citizens. |
 | [CVx — Verifiability](cvx--verifiability/README.md) | `verifiability` | Done | Testing and inspection infrastructure make correctness provable. |
+| [CV5 — SVG Languages](cv5--svg-languages/README.md) | `legibility` | Not done | Unlock 9 Kroki languages the public endpoint serves only as SVG. |
