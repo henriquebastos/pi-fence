@@ -1883,3 +1883,28 @@ This starts **CV8 (Internal Quality)** and CV8.E1 (Duplication Removal).
 3. **No behavior-specific knobs.** Empty input remains the existing `${tag}: empty input` template for all pure-logic processors.
 
 **Carry-forward.** Next: CV8.E1.S3 (Config loader deduplication). The remaining Sonar issues in the changed processor files are pre-existing parser/formatting findings and not part of this guard extraction.
+
+---
+
+### 2026-04-25 — CV8.E1.S3 closed
+
+**What shipped.** Config loading now has one read path and one public loader. The status-bearing loader was renamed to `loadPiFenceConfig`, the old status-less production API was deleted, and tests use a local `loadConfig` helper when they only need the merged config.
+
+**Implementation commits.**
+
+1. `19b277f` — step 1: simplify config loading
+
+**Test count.** 572 fast-suite (unchanged — existing config and extension tests were migrated, not expanded).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed. SonarQube remains quality-gate `ERROR` with 38 open issues outside this story; overall complexity dropped from 983 to 974 in the latest report.
+
+**Design decisions that survived implementation.**
+
+1. **Delete, don't delegate.** The old status-less loader had no production callers, so keeping it as a wrapper would preserve dead API surface.
+2. **Bare name for the only loader.** `loadPiFenceConfig` now returns `ConfigLoadResult`; the return type communicates status availability without a `WithStatus` suffix.
+3. **Tests hide status only where useful.** `config.test.ts` keeps status assertions on the production return shape and uses a local `loadConfig` alias only for tests that care solely about the merged config.
+
+**Carry-forward.** Next: CV8.E1.S4 (Micro cleanup).
