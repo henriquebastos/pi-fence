@@ -19,4 +19,4 @@ A CV is **done** only when every Story in its Epics is done.
 | [CV5 — SVG Languages](cv5--svg-languages/README.md) | `legibility` | Done | Unlock Kroki languages the public endpoint serves only as SVG. |
 | [CV6 — Fixture Completeness](cv6--fixture-completeness/README.md) | `verifiability` | Not started | Every I/O-seam processor has live-derived fixtures; drift is detected automatically. |
 | [CV7 — Companion Backends](cv7--companion-backends/README.md) | `legibility` | Not started | Languages behind Kroki companion containers render via a shipped Compose stack. |
-| [CV8 — Internal Quality](cv8--internal-quality/README.md) | `simplification` | Done | Simplify internals that accumulated duplication or unnecessary indirection during feature delivery. |
+| [CV8 — Internal Quality](cv8--internal-quality/README.md) | `simplification` | In progress | Simplify internals that accumulated duplication or unnecessary indirection during feature delivery. |
