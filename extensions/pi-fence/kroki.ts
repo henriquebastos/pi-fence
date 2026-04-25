@@ -25,9 +25,8 @@
  */
 
 import type { HttpClient } from "./io/http-client.ts";
-import type { Logger } from "./io/logger.ts";
+import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
-	NULL_LOGGER,
 	withSignalGuard,
 	type FenceProcessor,
 	type FenceResult,
@@ -36,10 +35,6 @@ import { svgToPng } from "./svg-to-png.ts";
 
 const DEFAULT_ENDPOINT = "https://kroki.io";
 
-/**
- * Tags that Kroki's public endpoint serves only as SVG. The processor
- * requests `/{tag}/svg` and rasterizes locally via `svgToPng`.
- */
 /**
  * Tags that Kroki's public endpoint serves only as SVG. The processor
  * requests `/{tag}/svg` and rasterizes locally via `svgToPng`.
@@ -172,15 +167,6 @@ export function isDarkThemeName(name: string | undefined): boolean {
 	}
 	return true;
 }
-
-// Back-compat alias for kroki-specific code that imported KrokiResult
-// directly. New code should prefer `FenceResult` from `./processor.ts`.
-export type KrokiResult = FenceResult;
-
-// Retained as a narrower alias over the shared FenceProcessor. Not strictly
-// necessary but keeps existing call sites typed as "a kroki renderer" when
-// they care about provenance.
-export type KrokiProcessor = FenceProcessor;
 
 export function createKrokiProcessor(
 	http: HttpClient,

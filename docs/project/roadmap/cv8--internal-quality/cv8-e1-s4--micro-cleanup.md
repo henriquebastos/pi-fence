@@ -1,6 +1,6 @@
 # CV8.E1.S4 — Micro cleanup
 
-**Status:** Ready
+**Status:** In progress
 
 **Epic:** [CV8.E1 — Duplication Removal](cv8-e1--resolution-trace-unification.md)
 **Date:** 2026-04-25 (spec)

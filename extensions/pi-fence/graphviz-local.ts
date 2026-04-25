@@ -35,9 +35,8 @@
  */
 
 import type { ShellRunner } from "./io/shell-runner.ts";
-import type { Logger } from "./io/logger.ts";
+import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
-	NULL_LOGGER,
 	withSignalGuard,
 	type Availability,
 	type FenceProcessor,

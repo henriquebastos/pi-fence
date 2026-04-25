@@ -9,8 +9,7 @@
  */
 
 import type { ShellRunner } from "./io/shell-runner.ts";
-import type { Logger } from "./io/logger.ts";
-import { NULL_LOGGER } from "./processor.ts";
+import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 
 const CONTAINER_NAME = "pi-fence-kroki";
 const IMAGE = "yuzutech/kroki";

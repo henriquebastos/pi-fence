@@ -8,7 +8,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { NodeLogger, shouldLog, type LogEntry, type Logger } from "../../extensions/pi-fence/io/logger.ts";
+import { shouldLog, type LogEntry, type Logger } from "../../extensions/pi-fence/io/logger.ts";
+import { NodeLogger } from "../../extensions/pi-fence/io/node-logger.ts";
 import { FakeLogger } from "./logger.ts";
 
 describe("FakeLogger", () => {
@@ -128,6 +129,16 @@ describe("NodeLogger", () => {
 		process.env.PI_FENCE_LOG_LEVEL = "debug";
 		const log = new NodeLogger();
 		log.debug("parser", "detail");
+		expect(writeSpy).toHaveBeenCalledOnce();
+	});
+
+	it("captures the log threshold at construction time", () => {
+		process.env.PI_FENCE_LOG_LEVEL = "debug";
+		const log = new NodeLogger();
+		process.env.PI_FENCE_LOG_LEVEL = "info";
+
+		log.debug("parser", "detail");
+
 		expect(writeSpy).toHaveBeenCalledOnce();
 	});
 

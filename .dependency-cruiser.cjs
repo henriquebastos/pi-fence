@@ -63,13 +63,13 @@ module.exports = {
 		{
 			name: 'only-index-wires-node-impls',
 			comment:
-				'Only the composition root (index.ts) may value-import from io/ modules. Others use type-only imports for the interfaces.',
+				'Only the composition root (index.ts) may value-import concrete io/ adapters. The logger seam module is a contract + NULL_LOGGER utility, not a Node adapter.',
 			severity: 'error',
 			from: {
 				path: '^extensions/pi-fence/(?!index\\.ts$|io/).*\\.ts$',
 			},
 			to: {
-				path: '^extensions/pi-fence/io/',
+				path: '^extensions/pi-fence/io/(?!logger\\.ts$)',
 				dependencyTypesNot: ['type-only'],
 			},
 		},

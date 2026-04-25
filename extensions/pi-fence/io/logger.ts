@@ -22,6 +22,14 @@ export interface Logger {
 	error(subsystem: string, message: string, meta?: Record<string, unknown>): void;
 }
 
+/** No-op logger for factories that take an optional Logger. */
+export const NULL_LOGGER: Logger = {
+	debug: () => {},
+	info: () => {},
+	warn: () => {},
+	error: () => {},
+};
+
 const LEVEL_ORDER: Record<LogLevel, number> = {
 	debug: 0,
 	info: 1,
@@ -35,39 +43,3 @@ export function shouldLog(threshold: LogLevel, entryLevel: LogLevel): boolean {
 	return LEVEL_ORDER[entryLevel] >= thresholdRank;
 }
 
-function thresholdFromEnv(): LogLevel {
-	const raw = process.env.PI_FENCE_LOG_LEVEL;
-	if (raw && raw in LEVEL_ORDER) return raw as LogLevel;
-	return "info";
-}
-
-/**
- * Production logger. Writes to process.stderr. Each call is a single line
- * terminated with `\n`. Meta (when provided) is JSON-serialised at the end.
- */
-export class NodeLogger implements Logger {
-	debug(subsystem: string, message: string, meta?: Record<string, unknown>): void {
-		this.write("debug", subsystem, message, meta);
-	}
-	info(subsystem: string, message: string, meta?: Record<string, unknown>): void {
-		this.write("info", subsystem, message, meta);
-	}
-	warn(subsystem: string, message: string, meta?: Record<string, unknown>): void {
-		this.write("warn", subsystem, message, meta);
-	}
-	error(subsystem: string, message: string, meta?: Record<string, unknown>): void {
-		this.write("error", subsystem, message, meta);
-	}
-
-	private write(
-		level: LogLevel,
-		subsystem: string,
-		message: string,
-		meta?: Record<string, unknown>,
-	): void {
-		if (shouldLog(thresholdFromEnv(), level)) {
-			const metaStr = meta === undefined ? "" : ` ${JSON.stringify(meta)}`;
-			process.stderr.write(`[pi-fence:${subsystem}] ${level}: ${message}${metaStr}\n`);
-		}
-	}
-}

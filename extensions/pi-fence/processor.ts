@@ -14,16 +14,6 @@
  * `FenceOutput` variant; today all we ship is image output.
  */
 
-import type { Logger } from "./io/logger.ts";
-
-/** No-op logger for processor factories that take an optional Logger. */
-export const NULL_LOGGER: Logger = {
-	debug: () => {},
-	info: () => {},
-	warn: () => {},
-	error: () => {},
-};
-
 export type FenceResult =
 	| { ok: true; png: Buffer }
 	| { ok: true; text: string }

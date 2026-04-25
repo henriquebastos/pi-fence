@@ -22,7 +22,7 @@ import {
 import type { HttpClient } from "./io/http-client.ts";
 import { NodeHttpClient } from "./io/http-client.ts";
 import type { Logger } from "./io/logger.ts";
-import { NodeLogger } from "./io/logger.ts";
+import { NodeLogger } from "./io/node-logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
 import { createColorProcessor } from "./color.ts";
