@@ -15,3 +15,5 @@ scripts/out/
 .obsidian/
 .vscode/
 .idea/
+*.md
+tmp*.md

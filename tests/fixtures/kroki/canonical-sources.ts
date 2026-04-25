@@ -289,6 +289,60 @@ export const KROKI_TEXT_LANGUAGES: readonly KrokiTextLanguageSpec[] = [
 		sizeFloorBytes: 1000,
 		note: "Minimal Vega-Lite bar chart.",
 	},
+
+	// --- SVG-only Kroki languages (CV5.E1.S1) ---
+	// Public endpoint returns SVG only; pi-fence rasterizes locally via
+	// @resvg/resvg-js. sizeFloorBytes calibrated from SVG→PNG rasterization
+	// on 2026-04-24.
+	{
+		tag: "d2",
+		source: "x -> y: hello",
+		aliases: [],
+		sizeFloorBytes: 5_000,
+		note: "D2 diagram. SVG-only on public Kroki; rasterized locally.",
+	},
+	{
+		tag: "bytefield",
+		source: '(defattrs :bg-green {:fill "#a0ffa0"})\n(draw-column-headers)\n(draw-box "A" :bg-green)\n(draw-box "B")',
+		aliases: [],
+		sizeFloorBytes: 2_000,
+		note: "Byte-field diagrams from Clojure-like syntax. SVG-only on public Kroki.",
+	},
+	{
+		tag: "dbml",
+		source: 'Table users {\n  id integer [primary key]\n  name varchar\n}',
+		aliases: [],
+		sizeFloorBytes: 2_000,
+		note: "Database Markup Language. SVG-only on public Kroki.",
+	},
+	{
+		tag: "nomnoml",
+		source: "[A]->[B]",
+		aliases: [],
+		sizeFloorBytes: 5_000,
+		note: "Simple UML-ish diagrams. SVG-only on public Kroki.",
+	},
+	{
+		tag: "pikchr",
+		source: 'box "A"; arrow; box "B"',
+		aliases: [],
+		sizeFloorBytes: 1_000,
+		note: "SQLite project's PIC-derived diagram language. SVG-only on public Kroki.",
+	},
+	{
+		tag: "svgbob",
+		source: "+--+\n|  |\n+--+",
+		aliases: [],
+		sizeFloorBytes: 3_000,
+		note: "ASCII-art to SVG. SVG-only on public Kroki.",
+	},
+	{
+		tag: "wavedrom",
+		source: JSON.stringify({ signal: [{ name: "clk", wave: "p..." }] }),
+		aliases: [],
+		sizeFloorBytes: 2_000,
+		note: "Digital timing diagrams. JSON source. SVG-only on public Kroki.",
+	},
 ];
 
 /**

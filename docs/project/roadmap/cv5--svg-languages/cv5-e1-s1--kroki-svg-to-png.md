@@ -9,19 +9,21 @@
 
 9 Kroki languages return SVG only on the public endpoint — requesting PNG yields `400: Unsupported output format: png`. pi-fence's rendering pipeline requires PNG (Kitty graphics protocol). This story extends the Kroki processor to request SVG for those tags and rasterize locally via `@resvg/resvg-js`, a zero-dep Rust-based SVG→PNG library (~3.5 MB native binary, lazy-loaded).
 
-**Tags unlocked:** `d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`, `excalidraw`.
+**Tags unlocked:** `d2`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`.
+
+**Excluded:** `bpmn` and `excalidraw` — Kroki's public endpoint lacks backend wiring (ECONNREFUSED), same category as `diagramsnet`. Not an SVG-only problem.
 
 **Spike result:** all 9 tags confirmed working — Kroki returns valid SVG, resvg rasterizes to valid PNG with correct magic bytes.
 
 ## Done criterion
 
-1. The Kroki processor serves all 9 SVG-only tags via the SVG→PNG path.
+1. The Kroki processor serves all 7 SVG-only tags via the SVG→PNG path.
 2. `@resvg/resvg-js` is a production dependency, lazy-loaded on first SVG-only render.
 3. Tags appear in `/fence list` and `KROKI_CANONICAL_TAGS`.
-4. Canonical sources exist in `tests/fixtures/kroki/canonical-sources.ts` for all 9 tags.
+4. Canonical sources exist in `tests/fixtures/kroki/canonical-sources.ts` for all 7 tags.
 5. Unit tests cover the SVG→PNG path through `FakeHttpClient` (fake SVG in, real PNG out via resvg).
 6. Contract tests cover one SVG-only tag.
-7. Live tests verify all 9 tags against `https://kroki.io` (data-driven, same as existing tags).
+7. Live tests verify all 7 tags against `https://kroki.io` (data-driven, same as existing tags).
 8. Live-derived fixtures are refreshed to include the new tags.
 9. `pnpm run feedback` is green.
 10. Docs updated: `kroki-support.md`, `getting-started.md`, `README.md`, `CHANGELOG.md`.

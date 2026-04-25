@@ -435,3 +435,58 @@ describe("createKrokiProcessor", () => {
 		});
 	});
 });
+
+describe("createKrokiProcessor — SVG-only tags", () => {
+	const MINIMAL_SVG =
+		'<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">' +
+		'<rect width="10" height="10" fill="red"/></svg>';
+
+	const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+	it("requests /svg for SVG-only tags and rasterizes to PNG", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/d2/svg", {
+			status: 200,
+			headers: { "content-type": "image/svg+xml" },
+			body: Buffer.from(MINIMAL_SVG),
+		});
+		const kroki = createKrokiProcessor(http, undefined, new FakeLogger());
+
+		const result = await kroki.render("d2", "x -> y: hello");
+
+		expect(result.ok).toBe(true);
+		if (!result.ok || !("png" in result)) return;
+		expect(Buffer.compare(result.png.subarray(0, 8), PNG_MAGIC)).toBe(0);
+		expect(http.requests[0].url).toBe("https://kroki.io/d2/svg");
+	});
+
+	it("still requests /png for non-SVG-only tags", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/mermaid/png", {
+			status: 200,
+			headers: { "content-type": "image/png" },
+			body: Buffer.from([0x89, 0x50]),
+		});
+		const kroki = createKrokiProcessor(http, undefined, new FakeLogger());
+
+		await kroki.render("mermaid", "flowchart LR\nA --> B");
+
+		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png");
+	});
+
+	it("returns ok:false when SVG rasterization fails", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/d2/svg", {
+			status: 200,
+			headers: { "content-type": "image/svg+xml" },
+			body: Buffer.from("not valid svg at all"),
+		});
+		const kroki = createKrokiProcessor(http, undefined, new FakeLogger());
+
+		const result = await kroki.render("d2", "x -> y");
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.error).toContain("SVG rasterization failed");
+	});
+});

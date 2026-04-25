@@ -27,10 +27,32 @@
 import type { HttpClient } from "./io/http-client.ts";
 import type { Logger } from "./io/logger.ts";
 import { NULL_LOGGER, type FenceProcessor, type FenceResult } from "./processor.ts";
+import { svgToPng } from "./svg-to-png.ts";
 
 
 
 const DEFAULT_ENDPOINT = "https://kroki.io";
+
+/**
+ * Tags that Kroki's public endpoint serves only as SVG. The processor
+ * requests `/{tag}/svg` and rasterizes locally via `svgToPng`.
+ */
+/**
+ * Tags that Kroki's public endpoint serves only as SVG. The processor
+ * requests `/{tag}/svg` and rasterizes locally via `svgToPng`.
+ *
+ * Excluded: `bpmn` and `excalidraw` — Kroki's public endpoint lacks the
+ * backend wiring (ECONNREFUSED), same category as `diagramsnet`.
+ */
+export const KROKI_SVG_ONLY_TAGS: ReadonlySet<string> = new Set([
+	"d2",
+	"bytefield",
+	"dbml",
+	"nomnoml",
+	"pikchr",
+	"svgbob",
+	"wavedrom",
+]);
 const DEFAULT_TIMEOUT_MS = 15_000;
 const ERROR_BODY_MAX_CHARS = 500;
 
@@ -81,6 +103,15 @@ export const KROKI_CANONICAL_TAGS: readonly string[] = [
 	// dispatch needed (verified against the public endpoint in CV0.E1.S5).
 	"vega",
 	"vegalite",
+	// SVG-only on public endpoint — Kroki returns SVG, pi-fence rasterizes
+	// to PNG locally via @resvg/resvg-js (CV5.E1.S1).
+	"d2",
+	"bytefield",
+	"dbml",
+	"nomnoml",
+	"pikchr",
+	"svgbob",
+	"wavedrom",
 ];
 
 /**
@@ -183,7 +214,9 @@ export function createKrokiProcessor(
 			const krokiTag = KROKI_ALIASES[tag] ?? tag;
 			const mode = appearance?.();
 			const query = mode === "dark" ? "?theme=dark" : "";
-			const url = `${base}/${krokiTag}/png${query}`;
+			const isSvgOnly = KROKI_SVG_ONLY_TAGS.has(krokiTag);
+			const format = isSvgOnly ? "svg" : "png";
+			const url = `${base}/${krokiTag}/${format}${query}`;
 
 			logger.debug("kroki", "request", {
 				tag,
@@ -209,12 +242,29 @@ export function createKrokiProcessor(
 			}
 
 			if (response.status >= 200 && response.status < 300) {
+				let png: Buffer;
+				if (isSvgOnly) {
+					try {
+						png = await svgToPng(response.body);
+						logger.debug("kroki", "svg→png rasterized", {
+							tag,
+							svgBytes: response.body.length,
+							pngBytes: png.length,
+						});
+					} catch (err) {
+						const message = err instanceof Error ? err.message : String(err);
+						logger.error("kroki", `svg→png failed: ${message}`, { tag });
+						return { ok: false, error: `SVG rasterization failed: ${message}` };
+					}
+				} else {
+					png = response.body;
+				}
 				logger.debug("kroki", "response ok", {
 					status: response.status,
 					tag,
-					bytes: response.body.length,
+					bytes: png.length,
 				});
-				return { ok: true, png: response.body };
+				return { ok: true, png };
 			}
 
 			const text = response.body.toString("utf8");
