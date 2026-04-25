@@ -1908,3 +1908,32 @@ This starts **CV8 (Internal Quality)** and CV8.E1 (Duplication Removal).
 3. **Tests hide status only where useful.** `config.test.ts` keeps status assertions on the production return shape and uses a local `loadConfig` alias only for tests that care solely about the merged config.
 
 **Carry-forward.** Next: CV8.E1.S4 (Micro cleanup).
+
+---
+
+### 2026-04-25 — CV8.E1.S4 closed; CV8.E1 done
+
+**What shipped.** Four small cleanup items landed together: `NULL_LOGGER` moved out of `processor.ts` and into the logger seam, dead Kroki type aliases were deleted, duplicate `KROKI_SVG_ONLY_TAGS` JSDoc was removed, and `NodeLogger` now captures `PI_FENCE_LOG_LEVEL` once at construction time.
+
+This closes CV8.E1 (Duplication Removal). The logger cleanup also split the concrete `NodeLogger` adapter into `io/node-logger.ts`, preserving the dependency-cruiser rule that non-composition-root modules may only value-import the logger seam contract/`NULL_LOGGER`, not concrete I/O adapters.
+
+**Implementation commits.**
+
+1. `ff3bc9a` — step 1: trim micro cleanup noise
+
+**Test count.** 573 fast-suite (was 572; +1 focused NodeLogger threshold-caching test).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed. SonarQube remains quality-gate `ERROR` with 38 open issues outside this story.
+3. `pnpm test:live` — passed: 36 passed, 11 skipped.
+4. `pnpm run render:verify` — passed: 5 scenario/variant renders.
+
+**Design decisions that survived implementation.**
+
+1. **Logger seam vs adapter split.** Moving `NULL_LOGGER` into `io/logger.ts` made value imports from the seam necessary, so `NodeLogger` moved to `io/node-logger.ts` and the architecture rule now allows the seam while still blocking concrete adapter imports outside `index.ts`.
+2. **Construction-time threshold.** `NodeLogger` now reads `PI_FENCE_LOG_LEVEL` once per instance. This removes repeated env reads without changing normal startup semantics.
+3. **Dead aliases removed.** No production or test imports used `KrokiResult` or `KrokiProcessor`, so they were deleted instead of preserved as compatibility noise.
+
+**Carry-forward.** CV8.E1 is done. Next: CV8.E2.S1 (Shell processor render timeout).
