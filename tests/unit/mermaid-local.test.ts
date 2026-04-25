@@ -5,9 +5,10 @@
  * Live tests with real mmdc live in tests/integration/.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createMermaidLocalProcessor } from "../../extensions/pi-fence/mermaid-local.ts";
+import { DEFAULT_RENDER_TIMEOUT_MS } from "../../extensions/pi-fence/processor.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 
@@ -89,6 +90,48 @@ describe("mermaid-local — render()", () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
 			expect(result.error).toContain("Parse error");
+		}
+	});
+
+	it("aborts a hanging render after the default timeout", async () => {
+		const timeoutController = new AbortController();
+		const timeoutSpy = vi
+			.spyOn(AbortSignal, "timeout")
+			.mockReturnValue(timeoutController.signal);
+		try {
+			class HangingShellRunner {
+				calls = 0;
+				async run(_cmd: string, _args: string[], opts?: { signal?: AbortSignal }) {
+					this.calls++;
+					return new Promise<never>((_resolve, reject) => {
+						opts?.signal?.addEventListener(
+							"abort",
+							() => reject(new Error("render timed out")),
+							{ once: true },
+						);
+					});
+				}
+			}
+			const shell = new HangingShellRunner();
+			const proc = createMermaidLocalProcessor(shell);
+
+			const render = proc.render("mermaid", "flowchart LR\nA --> B");
+			expect(timeoutSpy).toHaveBeenCalledWith(DEFAULT_RENDER_TIMEOUT_MS);
+			await vi.waitFor(() => expect(shell.calls).toBe(1));
+			timeoutController.abort();
+			const result = await Promise.race([
+				render,
+				new Promise<"pending">((resolve) => setTimeout(() => resolve("pending"), 10)),
+			]);
+
+			expect(result).not.toBe("pending");
+			if (result !== "pending") {
+				expect(result.ok).toBe(false);
+				if (!result.ok) expect(result.error).toMatch(/timed out|abort/i);
+			}
+			expect(shell.calls).toBe(1);
+		} finally {
+			timeoutSpy.mockRestore();
 		}
 	});
 });

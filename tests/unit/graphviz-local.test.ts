@@ -25,7 +25,7 @@
  *         no shell-out
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 import { FakeLogger } from "../utilities/logger.ts";
@@ -34,6 +34,7 @@ import {
 	GRAPHVIZ_LOCAL_ALIASES,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 } from "../../extensions/pi-fence/graphviz-local.ts";
+import { DEFAULT_RENDER_TIMEOUT_MS } from "../../extensions/pi-fence/processor.ts";
 
 const TINY_PNG = Buffer.from([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad, 0xbe, 0xef,
@@ -286,6 +287,47 @@ describe("createGraphvizLocalProcessor — render()", () => {
 			expect(result.error).toMatch(/abort/i);
 		}
 		expect(shell.calls).toHaveLength(0);
+	});
+
+	it("aborts a hanging render after the default timeout", async () => {
+		const timeoutController = new AbortController();
+		const timeoutSpy = vi
+			.spyOn(AbortSignal, "timeout")
+			.mockReturnValue(timeoutController.signal);
+		try {
+			class HangingShellRunner {
+				calls = 0;
+				async run(_cmd: string, _args: string[], opts?: { signal?: AbortSignal }) {
+					this.calls++;
+					return new Promise<never>((_resolve, reject) => {
+						opts?.signal?.addEventListener(
+							"abort",
+							() => reject(new Error("render timed out")),
+							{ once: true },
+						);
+					});
+				}
+			}
+			const shell = new HangingShellRunner();
+			const processor = createGraphvizLocalProcessor(shell);
+
+			const render = processor.render("graphviz", "digraph {}");
+			expect(timeoutSpy).toHaveBeenCalledWith(DEFAULT_RENDER_TIMEOUT_MS);
+			timeoutController.abort();
+			const result = await Promise.race([
+				render,
+				new Promise<"pending">((resolve) => setTimeout(() => resolve("pending"), 10)),
+			]);
+
+			expect(result).not.toBe("pending");
+			if (result !== "pending") {
+				expect(result.ok).toBe(false);
+				if (!result.ok) expect(result.error).toMatch(/timed out|abort/i);
+			}
+			expect(shell.calls).toBe(1);
+		} finally {
+			timeoutSpy.mockRestore();
+		}
 	});
 });
 

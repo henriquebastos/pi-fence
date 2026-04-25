@@ -1,10 +1,32 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	mergeSignals,
 	withRenderGuards,
 	withSignalGuard,
 	type FenceResult,
 } from "../../extensions/pi-fence/processor.ts";
+
+describe("processor signal helpers", () => {
+	it("mergeSignals returns undefined when there are no real signals", () => {
+		expect(mergeSignals([undefined])).toBeUndefined();
+	});
+
+	it("mergeSignals returns the only real signal unchanged", () => {
+		const controller = new AbortController();
+		expect(mergeSignals([undefined, controller.signal])).toBe(controller.signal);
+	});
+
+	it("mergeSignals aborts when any input signal aborts", () => {
+		const first = new AbortController();
+		const second = new AbortController();
+		const merged = mergeSignals([first.signal, second.signal]);
+
+		second.abort();
+
+		expect(merged?.aborted).toBe(true);
+	});
+});
 
 describe("processor render guards", () => {
 	it("withSignalGuard returns an abort error without delegating", async () => {

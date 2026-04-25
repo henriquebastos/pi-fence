@@ -27,6 +27,8 @@
 import type { HttpClient } from "./io/http-client.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
+	DEFAULT_RENDER_TIMEOUT_MS,
+	mergeSignals,
 	withSignalGuard,
 	type FenceProcessor,
 	type FenceResult,
@@ -51,7 +53,6 @@ export const KROKI_SVG_ONLY_TAGS: ReadonlySet<string> = new Set([
 	"svgbob",
 	"wavedrom",
 ]);
-const DEFAULT_TIMEOUT_MS = 15_000;
 const ERROR_BODY_MAX_CHARS = 500;
 
 /**
@@ -194,7 +195,10 @@ export function createKrokiProcessor(
 		},
 
 		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
-			const combinedSignal = mergeSignals([signal, AbortSignal.timeout(DEFAULT_TIMEOUT_MS)]);
+			const combinedSignal = mergeSignals([
+				signal,
+				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
+			]);
 			const krokiTag = KROKI_ALIASES[tag] ?? tag;
 			const mode = appearance?.();
 			const query = mode === "dark" ? "?theme=dark" : "";
@@ -262,32 +266,4 @@ export function createKrokiProcessor(
 			return { ok: false, error: truncated };
 		}),
 	};
-}
-
-/**
- * Combine a caller's AbortSignal with an internal timeout signal. Aborting
- * either one aborts the combined result. Returns `undefined` when all inputs
- * are `undefined` so we don't pass a dummy signal to HttpClient.
- */
-function mergeSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
-	const real = signals.filter((s): s is AbortSignal => s !== undefined);
-	if (real.length === 0) return undefined;
-	if (real.length === 1) return real[0];
-
-	// AbortSignal.any was added in Node 20 and is present in pi's supported
-	// runtime. Using it keeps this trivial; the fallback exists only for
-	// defensive paranoia.
-	if (typeof AbortSignal.any === "function") {
-		return AbortSignal.any(real);
-	}
-
-	const controller = new AbortController();
-	for (const s of real) {
-		if (s.aborted) {
-			controller.abort(s.reason);
-			break;
-		}
-		s.addEventListener("abort", () => controller.abort(s.reason), { once: true });
-	}
-	return controller.signal;
 }

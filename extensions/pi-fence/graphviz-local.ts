@@ -37,6 +37,8 @@
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
+	DEFAULT_RENDER_TIMEOUT_MS,
+	mergeSignals,
 	withSignalGuard,
 	type Availability,
 	type FenceProcessor,
@@ -115,6 +117,11 @@ export function createGraphvizLocalProcessor(
 		},
 
 		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+			const combinedSignal = mergeSignals([
+				signal,
+				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
+			]);
+
 			logger.debug("graphviz-local", "shelling out to dot", {
 				tag,
 				sourceBytes: Buffer.byteLength(source, "utf8"),
@@ -122,7 +129,7 @@ export function createGraphvizLocalProcessor(
 
 			let result;
 			try {
-				result = await shell.run("dot", ["-Tpng"], { input: source, signal });
+				result = await shell.run("dot", ["-Tpng"], { input: source, signal: combinedSignal });
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				logger.error("graphviz-local", message, { tag });

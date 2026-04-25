@@ -19,6 +19,15 @@ export type FenceResult =
 	| { ok: true; text: string }
 	| { ok: false; error: string };
 
+export const DEFAULT_RENDER_TIMEOUT_MS = 15_000;
+
+export function mergeSignals(signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+	const real = signals.filter((signal): signal is AbortSignal => signal !== undefined);
+	if (real.length === 0) return undefined;
+	if (real.length === 1) return real[0];
+	return AbortSignal.any(real);
+}
+
 export type RenderFunction = (
 	tag: string,
 	source: string,

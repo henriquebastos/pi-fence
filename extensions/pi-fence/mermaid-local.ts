@@ -24,6 +24,8 @@ import { randomUUID } from "node:crypto";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
+	DEFAULT_RENDER_TIMEOUT_MS,
+	mergeSignals,
 	withSignalGuard,
 	type Availability,
 	type FenceProcessor,
@@ -75,6 +77,10 @@ export function createMermaidLocalProcessor(
 		},
 
 		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+			const combinedSignal = mergeSignals([
+				signal,
+				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
+			]);
 			const id = randomUUID().slice(0, 8);
 			const inPath = join(tmpdir(), `pi-fence-mmd-${id}.mmd`);
 			const outPath = join(tmpdir(), `pi-fence-mmd-${id}.png`);
@@ -90,7 +96,7 @@ export function createMermaidLocalProcessor(
 				const result = await shell.run(
 					"mmdc",
 					["-i", inPath, "-o", outPath, "-b", "transparent"],
-					{ signal },
+					{ signal: combinedSignal },
 				);
 
 				if (result.exitCode !== 0) {
