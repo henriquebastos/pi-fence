@@ -82,6 +82,7 @@ export function createGraphvizLocalProcessor(
 ): FenceProcessor {
 	return {
 		id: "graphviz-local",
+		placement: "host",
 		tags: GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 		aliases: GRAPHVIZ_LOCAL_ALIASES,
 

@@ -12,6 +12,7 @@ import { withRenderGuards, type Availability, type FenceProcessor, type FenceRes
 export function createQrProcessor(): FenceProcessor {
 	return {
 		id: "qr",
+		placement: "embedded",
 		tags: ["qr"],
 		aliases: {},
 

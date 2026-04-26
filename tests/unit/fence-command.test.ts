@@ -37,6 +37,7 @@ function stubProcessor(
 ): FenceProcessor {
 	return {
 		id,
+		placement: "remote",
 		tags,
 		aliases,
 		async available(): Promise<Availability> {

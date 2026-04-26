@@ -321,6 +321,7 @@ export function createKrokiProcessor(
 
 	return {
 		id: "kroki",
+		placement: "remote",
 		tags: KROKI_CANONICAL_TAGS,
 		aliases: KROKI_ALIASES,
 

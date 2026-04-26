@@ -29,6 +29,7 @@ function ansi(code: string, text: string): string {
 export function createHighlightProcessor(): FenceProcessor {
 	return {
 		id: "highlight",
+		placement: "embedded",
 		tags: ["sql", "regex", "jq"],
 		aliases: {},
 

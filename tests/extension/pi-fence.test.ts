@@ -722,6 +722,7 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
 				pi.events.emit("pi-fence:register", {
 					id: "custom-upper",
+					placement: "embedded",
 					tags: ["upper"],
 					aliases: {},
 					available: async () => ({ ok: true }),

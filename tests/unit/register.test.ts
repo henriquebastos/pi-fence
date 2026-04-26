@@ -17,6 +17,7 @@ import type { FenceProcessor, Availability } from "../../extensions/pi-fence/pro
 function makeValidProcessor(overrides?: Partial<FenceProcessor>): FenceProcessor {
 	return {
 		id: "test-proc",
+		placement: "embedded",
 		tags: ["test"],
 		aliases: {},
 		available: async () => ({ ok: true }),
@@ -57,6 +58,26 @@ describe("validateProcessor", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it("rejects missing placement", () => {
+		const proc = makeValidProcessor();
+		const { placement: _, ...rest } = proc as unknown as Record<string, unknown>;
+		const result = validateProcessor(rest);
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.error).toContain("placement");
+	});
+
+	it("rejects invalid placement", () => {
+		const result = validateProcessor({ ...makeValidProcessor(), placement: "local" });
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.error).toContain("embedded, host, sandbox, remote");
+	});
+
+	it("preserves accepted placement", () => {
+		const result = validateProcessor(makeValidProcessor({ placement: "remote" }));
+		expect(result.ok).toBe(true);
+		if (result.ok) expect(result.processor.placement).toBe("remote");
+	});
+
 	it("rejects missing tags", () => {
 		const proc = makeValidProcessor();
 		const { tags: _, ...rest } = proc as unknown as Record<string, unknown>;
@@ -71,24 +92,24 @@ describe("validateProcessor", () => {
 	});
 
 	it("rejects non-array tags", () => {
-		const result = validateProcessor({ id: "x", tags: "mermaid", aliases: {}, available: async () => ({ ok: true }), render: async () => ({ ok: true, text: "" }) });
+		const result = validateProcessor({ id: "x", placement: "remote", tags: "mermaid", aliases: {}, available: async () => ({ ok: true }), render: async () => ({ ok: true, text: "" }) });
 		expect(result.ok).toBe(false);
 	});
 
 	it("rejects missing render function", () => {
-		const result = validateProcessor({ id: "x", tags: ["t"], aliases: {}, available: async () => ({ ok: true }) });
+		const result = validateProcessor({ id: "x", placement: "remote", tags: ["t"], aliases: {}, available: async () => ({ ok: true }) });
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.error).toContain("render");
 	});
 
 	it("rejects missing available function", () => {
-		const result = validateProcessor({ id: "x", tags: ["t"], aliases: {}, render: async () => ({ ok: true, text: "" }) });
+		const result = validateProcessor({ id: "x", placement: "remote", tags: ["t"], aliases: {}, render: async () => ({ ok: true, text: "" }) });
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.error).toContain("available");
 	});
 
 	it("accepts processor without aliases (defaults to {})", () => {
-		const result = validateProcessor({ id: "x", tags: ["t"], available: async () => ({ ok: true }), render: async () => ({ ok: true, text: "" }) });
+		const result = validateProcessor({ id: "x", placement: "remote", tags: ["t"], available: async () => ({ ok: true }), render: async () => ({ ok: true, text: "" }) });
 		expect(result.ok).toBe(true);
 	});
 });

@@ -46,6 +46,7 @@ export function createMermaidLocalProcessor(
 ): FenceProcessor {
 	return {
 		id: "mermaid-local",
+		placement: "host",
 		tags: MERMAID_LOCAL_CANONICAL_TAGS,
 		aliases: MERMAID_LOCAL_ALIASES,
 

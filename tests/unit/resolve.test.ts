@@ -9,7 +9,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { Availability, FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
+import type {
+	Availability,
+	FenceProcessor,
+	FenceResult,
+	ProcessorPlacement,
+} from "../../extensions/pi-fence/processor.ts";
 import {
 	collectSupportedTags,
 	probeAvailability,
@@ -22,6 +27,7 @@ interface FakeProcessorOptions {
 	id: string;
 	tags?: readonly string[];
 	aliases?: Record<string, string>;
+	placement?: ProcessorPlacement;
 	availability?: Availability;
 	availableThrows?: unknown;
 }
@@ -29,6 +35,7 @@ interface FakeProcessorOptions {
 function makeFakeProcessor(opts: FakeProcessorOptions): FenceProcessor {
 	return {
 		id: opts.id,
+		placement: opts.placement ?? "remote",
 		tags: opts.tags ?? [],
 		aliases: opts.aliases ?? {},
 		async available(): Promise<Availability> {

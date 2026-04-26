@@ -11,6 +11,7 @@ import { join } from "node:path";
 
 import {
 	DEFAULT_CONFIG,
+	EMPTY_CONFIG_LAYER,
 	mergePiFenceConfigs,
 	type PiFenceConfig,
 	validatePiFenceConfig,
@@ -53,7 +54,7 @@ export async function loadPiFenceConfig(
 	const [globalConfig, globalStatus] = await readConfigFileWithStatus(globalPath, "global", logger);
 	const [projectConfig, projectStatus] = await readConfigFileWithStatus(projectPath, "project", logger);
 	return {
-		config: mergePiFenceConfigs(globalConfig, projectConfig),
+		config: mergePiFenceConfigs(DEFAULT_CONFIG, globalConfig, projectConfig),
 		globalStatus,
 		globalPath,
 		projectStatus,
@@ -72,13 +73,13 @@ async function readConfigFileWithStatus(
 	} catch (err) {
 		const code = (err as NodeJS.ErrnoException)?.code;
 		if (code === "ENOENT") {
-			return [DEFAULT_CONFIG, "not-found"];
+			return [EMPTY_CONFIG_LAYER, "not-found"];
 		}
 		logger?.warn("config", `failed to read ${label} config`, {
 			path,
 			error: err instanceof Error ? err.message : String(err),
 		});
-		return [DEFAULT_CONFIG, "read-error"];
+		return [EMPTY_CONFIG_LAYER, "read-error"];
 	}
 
 	let parsed: unknown;
@@ -89,7 +90,7 @@ async function readConfigFileWithStatus(
 			path,
 			error: err instanceof Error ? err.message : String(err),
 		});
-		return [DEFAULT_CONFIG, "malformed-json"];
+		return [EMPTY_CONFIG_LAYER, "malformed-json"];
 	}
 
 	return [validatePiFenceConfig(parsed, label, logger), "loaded"];

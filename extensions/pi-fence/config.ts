@@ -6,6 +6,10 @@
  */
 
 import type { Logger } from "./io/logger.ts";
+import {
+	PROCESSOR_PLACEMENTS,
+	type ProcessorPlacement,
+} from "./processor.ts";
 
 export interface PiFenceConfig {
 	/**
@@ -27,6 +31,11 @@ export interface PiFenceConfig {
 	 * a lower layer.
 	 */
 	disabled?: string[];
+	/**
+	 * Placement allowlist and selection order. Omitted in a layer means inherit;
+	 * an explicit list replaces lower-priority lists.
+	 */
+	processorPrecedence?: ProcessorPlacement[];
 	/** Per-processor configuration. Currently only Kroki has settings. */
 	kroki?: {
 		/** Kroki endpoint URL. Default: https://kroki.io */
@@ -39,7 +48,19 @@ export interface PiFenceConfig {
 	};
 }
 
-export const DEFAULT_CONFIG: PiFenceConfig = { bindings: {} };
+export const DEFAULT_PROCESSOR_PRECEDENCE: readonly ProcessorPlacement[] = [
+	"embedded",
+	"host",
+	"sandbox",
+	"remote",
+];
+
+export const DEFAULT_CONFIG: PiFenceConfig = {
+	bindings: {},
+	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
+};
+
+export const EMPTY_CONFIG_LAYER: PiFenceConfig = { bindings: {} };
 
 /**
  * Shallow merge at the top level; inside `bindings` later configs win on the
@@ -50,11 +71,15 @@ export function mergePiFenceConfigs(
 ): PiFenceConfig {
 	const bindings: Record<string, string> = {};
 	let disabled: string[] | undefined;
+	let processorPrecedence: ProcessorPlacement[] | undefined;
 	let kroki: PiFenceConfig["kroki"];
 	for (const config of configs) {
 		Object.assign(bindings, config.bindings);
 		if (config.disabled !== undefined) {
 			disabled = config.disabled;
+		}
+		if (config.processorPrecedence !== undefined) {
+			processorPrecedence = [...config.processorPrecedence];
 		}
 		if (config.kroki !== undefined) {
 			kroki = config.kroki;
@@ -62,14 +87,15 @@ export function mergePiFenceConfigs(
 	}
 	const out: PiFenceConfig = { bindings };
 	if (disabled !== undefined) out.disabled = disabled;
+	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
 }
 
 /**
- * Hand-rolled shape validation. One level deep, one key known
- * (`bindings`). Unknown top-level keys are tolerated silently so a
- * future config surface can add keys without breaking existing files.
+ * Hand-rolled shape validation. Unknown top-level keys are tolerated
+ * silently so a future config surface can add keys without breaking
+ * existing files.
  */
 export function validatePiFenceConfig(
 	parsed: unknown,
@@ -80,17 +106,21 @@ export function validatePiFenceConfig(
 		logger?.warn("config", `${label} config top-level is not an object`, {
 			got: Array.isArray(parsed) ? "array" : typeof parsed,
 		});
-		return DEFAULT_CONFIG;
+		return EMPTY_CONFIG_LAYER;
 	}
 
 	const disabled = parsed.disabled === undefined
 		? undefined
 		: validateDisabled(parsed.disabled, label, logger);
+	const processorPrecedence = parsed.processorPrecedence === undefined
+		? undefined
+		: validateProcessorPrecedence(parsed.processorPrecedence, label, logger);
 	const kroki = parsed.kroki === undefined
 		? undefined
 		: validateKroki(parsed.kroki, label, logger);
 	const out: PiFenceConfig = { bindings: validateBindings(parsed.bindings, label, logger) };
 	if (disabled !== undefined) out.disabled = disabled;
+	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
 }
@@ -214,6 +244,37 @@ function validateDisabled(
 		}
 	}
 	return out;
+}
+
+function validateProcessorPrecedence(
+	rawPrecedence: unknown,
+	label: string,
+	logger?: Logger,
+): ProcessorPlacement[] | undefined {
+	if (!Array.isArray(rawPrecedence)) {
+		logger?.warn("config", `${label} config 'processorPrecedence' is not an array`, {
+			got: typeof rawPrecedence,
+		});
+		return [];
+	}
+
+	const out: ProcessorPlacement[] = [];
+	let sawInvalid = false;
+	for (const item of rawPrecedence) {
+		if (isProcessorPlacement(item)) {
+			out.push(item);
+			continue;
+		}
+		sawInvalid = true;
+		logger?.warn("config", `invalid entry in ${label} processorPrecedence`, {
+			got: typeof item === "string" ? item : typeof item,
+		});
+	}
+	return sawInvalid ? [] : out;
+}
+
+function isProcessorPlacement(value: unknown): value is ProcessorPlacement {
+	return typeof value === "string" && PROCESSOR_PLACEMENTS.includes(value as ProcessorPlacement);
 }
 
 function isRecordLike(value: unknown): value is Record<string, unknown> {

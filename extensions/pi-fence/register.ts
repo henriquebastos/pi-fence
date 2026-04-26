@@ -8,7 +8,12 @@
  * Landing with CV4.E1.S1.
  */
 
-import type { Availability, FenceProcessor } from "./processor.ts";
+import {
+	PROCESSOR_PLACEMENTS,
+	type Availability,
+	type FenceProcessor,
+	type ProcessorPlacement,
+} from "./processor.ts";
 
 // ── Registry type ───────────────────────────────────────────────────
 
@@ -39,6 +44,10 @@ export function validateProcessor(value: unknown): ValidationResult {
 		return { ok: false, error: "processor.id must be a non-empty string" };
 	}
 
+	if (!PROCESSOR_PLACEMENTS.includes(obj.placement as ProcessorPlacement)) {
+		return { ok: false, error: `processor.placement must be one of ${PROCESSOR_PLACEMENTS.join(", ")}` };
+	}
+
 	if (!Array.isArray(obj.tags) || obj.tags.length === 0) {
 		return { ok: false, error: "processor.tags must be a non-empty array of strings" };
 	}
@@ -66,6 +75,7 @@ export function validateProcessor(value: unknown): ValidationResult {
 		ok: true,
 		processor: {
 			id: obj.id,
+			placement: obj.placement as ProcessorPlacement,
 			tags: obj.tags as readonly string[],
 			aliases,
 			available: obj.available as FenceProcessor["available"],
@@ -104,7 +114,7 @@ export async function registerProcessor(
 		avail = { ok: false, reason: `available() threw: ${msg}` };
 	}
 
-	// Insert before kroki (the catch-all fallback) if present.
+	// Insert before Kroki (the catch-all fallback) if present.
 	const krokiIndex = registry.processors.findIndex((p) => p.id === "kroki");
 	if (krokiIndex >= 0) {
 		registry.processors.splice(krokiIndex, 0, processor);

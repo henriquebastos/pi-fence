@@ -58,10 +58,10 @@ describe("config core", () => {
 		});
 	});
 
-	it("returns defaults when validation sees a non-object top level", () => {
+	it("returns an empty layer when validation sees a non-object top level", () => {
 		const logger = new FakeLogger();
 
-		expect(validatePiFenceConfig(["nope"], "global", logger)).toBe(DEFAULT_CONFIG);
+		expect(validatePiFenceConfig(["nope"], "global", logger)).toEqual({ bindings: {} });
 		expect(logger.byLevel("warn")[0]?.message).toContain("not an object");
 	});
 
@@ -91,6 +91,104 @@ describe("config core", () => {
 
 	it("defaults disabled to undefined (absent = inherit)", () => {
 		expect(DEFAULT_CONFIG.disabled).toBeUndefined();
+	});
+
+	it("defaults processorPrecedence to embedded, host, sandbox, remote", () => {
+		expect(DEFAULT_CONFIG.processorPrecedence).toEqual([
+			"embedded",
+			"host",
+			"sandbox",
+			"remote",
+		]);
+	});
+
+	it("merges processorPrecedence: last config with the key replaces the earlier list", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, processorPrecedence: ["embedded", "remote"] },
+			{ bindings: {}, processorPrecedence: ["host"] },
+		);
+		expect(merged.processorPrecedence).toEqual(["host"]);
+	});
+
+	it("merges processorPrecedence: absent key inherits from earlier config", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, processorPrecedence: ["remote"] },
+			{ bindings: {} },
+		);
+		expect(merged.processorPrecedence).toEqual(["remote"]);
+	});
+
+	it("merges processorPrecedence: empty array explicitly replaces earlier config", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, processorPrecedence: ["embedded", "remote"] },
+			{ bindings: {}, processorPrecedence: [] },
+		);
+		expect(merged.processorPrecedence).toEqual([]);
+	});
+
+	it("merges processorPrecedence: copies the winning array", () => {
+		const precedence: ["remote"] = ["remote"];
+		const merged = mergePiFenceConfigs({ bindings: {}, processorPrecedence: precedence });
+		expect(merged.processorPrecedence).toEqual(["remote"]);
+		expect(merged.processorPrecedence).not.toBe(precedence);
+	});
+
+	it("validates processorPrecedence: accepts placement strings in user order", () => {
+		const result = validatePiFenceConfig(
+			{ processorPrecedence: ["remote", "host"] },
+			"test",
+		);
+		expect(result.processorPrecedence).toEqual(["remote", "host"]);
+	});
+
+	it("validates processorPrecedence: accepts every declared placement", () => {
+		const result = validatePiFenceConfig(
+			{ processorPrecedence: ["embedded", "host", "sandbox", "remote"] },
+			"test",
+		);
+		expect(result.processorPrecedence).toEqual([
+			"embedded",
+			"host",
+			"sandbox",
+			"remote",
+		]);
+	});
+
+	it("validates processorPrecedence: any invalid entry fails closed with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ processorPrecedence: ["remote", "bogus", 42, "host"] },
+			"test",
+			logger,
+		);
+		expect(result.processorPrecedence).toEqual([]);
+		const warnings = logger.byLevel("warn");
+		expect(warnings).toHaveLength(2);
+		expect(warnings.every((entry) => entry.message.includes("processorPrecedence"))).toBe(true);
+	});
+
+	it("validates processorPrecedence: non-array fails closed with a warn", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ processorPrecedence: "remote" },
+			"test",
+			logger,
+		);
+		expect(result.processorPrecedence).toEqual([]);
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"test config 'processorPrecedence' is not an array",
+		]);
+	});
+
+	it("validates processorPrecedence: all-invalid non-empty array fails closed", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ processorPrecedence: ["remtoe"] },
+			"test",
+			logger,
+		);
+		expect(result.processorPrecedence).toEqual([]);
+		expect(logger.byLevel("warn")).toHaveLength(1);
 	});
 
 	it("validates disabled: accepts array of strings", () => {
@@ -226,7 +324,8 @@ describe("loadPiFenceConfig — missing files", () => {
 			projectConfigPath: join(empty, "also-missing.json"),
 		});
 
-		expect(config).toEqual({ bindings: {} });
+		expect(config).toEqual(DEFAULT_CONFIG);
+		expect(config.processorPrecedence).not.toBe(DEFAULT_CONFIG.processorPrecedence);
 	});
 
 	it("does NOT log warn when files are simply missing (common case, silent)", async () => {
@@ -259,6 +358,21 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		});
 
 		expect(config.bindings).toEqual({ graphviz: "kroki" });
+	});
+
+	it("reads processorPrecedence from file-backed config", async () => {
+		const globalDir = makeTempDir();
+		const globalPath = writeConfig(
+			globalDir,
+			JSON.stringify({ processorPrecedence: ["remote", "host"] }),
+		);
+
+		const config = await loadConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: join(globalDir, "no-project-file.json"),
+		});
+
+		expect(config.processorPrecedence).toEqual(["remote", "host"]);
 	});
 
 	it("reads the project config when only project is present", async () => {
@@ -320,6 +434,46 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		expect(config.bindings.graphviz).toBe("graphviz-local");
 	});
 
+	it("project processorPrecedence replaces global processorPrecedence", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const globalPath = writeConfig(
+			globalDir,
+			JSON.stringify({ processorPrecedence: ["remote"] }),
+		);
+		const projectPath = writeConfig(
+			projectDir,
+			JSON.stringify({ processorPrecedence: ["host"] }),
+		);
+
+		const config = await loadConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+		});
+
+		expect(config.processorPrecedence).toEqual(["host"]);
+	});
+
+	it("project processorPrecedence can replace global precedence with an empty list", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const globalPath = writeConfig(
+			globalDir,
+			JSON.stringify({ processorPrecedence: ["remote"] }),
+		);
+		const projectPath = writeConfig(
+			projectDir,
+			JSON.stringify({ processorPrecedence: [] }),
+		);
+
+		const config = await loadConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+		});
+
+		expect(config.processorPrecedence).toEqual([]);
+	});
+
 	it("honours custom home + cwd to derive the default paths", async () => {
 		const home = makeTempDir();
 		const cwd = makeTempDir();
@@ -360,7 +514,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config.bindings).toEqual({});
+		expect(config).toEqual(DEFAULT_CONFIG);
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
 		expect(warns).toHaveLength(1);
 		expect(warns[0].message).toContain("malformed JSON");
@@ -377,7 +531,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config.bindings).toEqual({});
+		expect(config).toEqual(DEFAULT_CONFIG);
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
 		expect(warns.some((e) => e.message.includes("not an object"))).toBe(true);
 	});
@@ -393,7 +547,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config.bindings).toEqual({});
+		expect(config).toEqual(DEFAULT_CONFIG);
 		expect(
 			logger.bySubsystem("config").some((e) => e.message.includes("not an object")),
 		).toBe(true);
@@ -494,6 +648,30 @@ describe("loadPiFenceConfig — malformed files", () => {
 		});
 
 		expect(config.bindings).toEqual({ mermaid: "kroki" });
+		expect(config.processorPrecedence).toEqual(DEFAULT_CONFIG.processorPrecedence);
+		expect(
+			logger.bySubsystem("config").some((e) => e.message.includes("malformed JSON")),
+		).toBe(true);
+	});
+
+	it("is robust to a valid global file plus a malformed project file — preserves global precedence", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const globalPath = writeConfig(
+			globalDir,
+			JSON.stringify({ bindings: { dot: "kroki" }, processorPrecedence: ["remote"] }),
+		);
+		const projectPath = writeConfig(projectDir, "malformed{");
+		const logger = new FakeLogger();
+
+		const config = await loadConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+			logger,
+		});
+
+		expect(config.bindings).toEqual({ dot: "kroki" });
+		expect(config.processorPrecedence).toEqual(["remote"]);
 		expect(
 			logger.bySubsystem("config").some((e) => e.message.includes("malformed JSON")),
 		).toBe(true);

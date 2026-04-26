@@ -14,6 +14,10 @@
  * `FenceOutput` variant; today all we ship is image output.
  */
 
+export const PROCESSOR_PLACEMENTS = ["embedded", "host", "sandbox", "remote"] as const;
+
+export type ProcessorPlacement = typeof PROCESSOR_PLACEMENTS[number];
+
 export type FenceResult =
 	| { ok: true; png: Buffer }
 	| { ok: true; text: string }
@@ -73,6 +77,9 @@ export type Availability =
 export interface FenceProcessor {
 	/** Stable id used for logs, settings, and future registry lookups. */
 	readonly id: string;
+
+	/** Trust/control boundary used by policy-driven resolution. */
+	readonly placement: ProcessorPlacement;
 
 	/**
 	 * Canonical tag names this processor handles. Non-empty. Used by the

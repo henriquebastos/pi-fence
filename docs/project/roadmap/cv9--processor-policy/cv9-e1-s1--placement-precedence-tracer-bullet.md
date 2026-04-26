@@ -1,6 +1,6 @@
 # CV9.E1.S1 — Placement precedence tracer bullet
 
-**Status:** Ready
+**Status:** In progress
 
 **Epic:** [CV9.E1 — Policy-driven Resolution](cv9-e1--policy-driven-resolution.md)
 **Date:** 2026-04-25 (spec)
