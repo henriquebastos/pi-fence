@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV9.E1.S1 — Placement precedence tracer bullet)
+
+- Built-in processor ids now include their trust/control placement: `table-embedded`, `highlight-embedded`, `qr-embedded`, `color-embedded`, `graphviz-host`, `mermaid-host`, and `kroki-remote`.
+- Processor resolution now follows `processorPrecedence` (`embedded`, `host`, `sandbox`, `remote`) instead of registration order across placements. Omitting a placement disables that placement for resolution.
+- Safety controls merge restrictively: higher-priority config can narrow placement policy and add disabled processors, but cannot widen lower-priority privacy settings. Known legacy processor ids in `bindings` and `disabled` are normalized to the new ids.
+- Same-placement multi-candidate matches now produce an ambiguity result instead of silently selecting the first registered processor.
+
 ### Changed (CV8.E2.S1 — Shell processor render timeout)
 
 - `graphviz-local` and `mermaid-local` renders now use the same 15-second default render timeout as Kroki, preventing hung local binaries from blocking the render loop indefinitely.

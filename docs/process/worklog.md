@@ -6,15 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-All planned CVs (CV0–CV4, CVx) are done. The roadmap is clear for new work.
+CV9 — Processor Policy is in progress. CV9.E1.S1 is done; CV9.E1 (Policy-driven Resolution) continues.
 
 ## Next
 
-No story is currently in progress. Candidates for future work:
-
-- SVG→PNG rasterization: would unlock 8 deferred Kroki languages (`d2`, `bpmn`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`). Surfaced by CV0.E1.S4’s research pass; not yet specced.
-- Automatic fixture staleness detection: CI job that re-refreshes fixtures and fails on diff.
-- Mermaid-local fixtures: extend `refresh-fixtures` once the kroki + graphviz pattern proves stable.
+Next story: CV9.E1.S2 — Object bindings and ambiguity.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -2030,3 +2026,43 @@ This closes CV8.E3 (Sonar Quality Gate) and returns **CV8 (Internal Quality)** t
 4. **Contract harnesses are explicit to static analyzers.** The shared contract helper still owns the real processor contract, while each formerly empty-looking contract file now has a tiny smoke test Sonar can recognize.
 
 **Carry-forward.** Sonar is green. Next roadmap candidate returns to CV6 (Fixture Completeness), starting with `docs/project/roadmap/cv6--fixture-completeness/cv6-e1-s1--mermaid-local-live-gate.md`.
+
+---
+
+### 2026-04-26 — CV9.E1.S1 closed
+
+**What shipped.** Processor resolution now uses explicit placement policy instead of registration order across trust boundaries. Every built-in processor declares a placement and has a placement-qualified id: `table-embedded`, `highlight-embedded`, `qr-embedded`, `color-embedded`, `graphviz-host`, `mermaid-host`, and `kroki-remote`. Config can now set `processorPrecedence` as both placement allowlist and order, and pi-fence carries that policy from config loading through availability probing, resolver selection, `/fence list`, metrics, logs, fixtures, and render-image scenarios.
+
+This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and closes CV9.E1.S1 (Placement precedence tracer bullet).
+
+**Spec commit.**
+
+1. `b578ed0` — spec CV9: define processor policy roadmap
+
+**Process commit.**
+
+1. `0563e04` — docs: define implementation loop
+
+**Implementation commits.**
+
+1. `05e1006` — step 1: placement precedence config
+2. `bddb182` — step 2: placement policy tracer bullet
+
+**Test count.** 649 fast-suite (was 589; +60: config precedence/merge/fail-closed tests, processor placement/id contract checks, placement-aware resolver coverage, extension tracer bullets, list/doctor/metrics/fixture updates, and refreshed render-image goldens).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 42 files, 649 tests; extension coverage remained above thresholds.
+2. `pnpm run inspect` — passed; Sonar quality gate `OK`, issues `0`, coverage `90.9`, complexity `1130`.
+3. `pnpm test:live` — passed: 36 passed, 11 skipped.
+4. `pnpm run render:verify` — passed: 5 scenario/variant renders.
+5. `git diff --check HEAD` — passed before committing the implementation diff.
+
+**Design decisions that survived implementation.**
+
+1. **Placement controls are safety controls.** Higher-priority config can narrow placement policy and add disabled processors, but cannot widen lower-priority privacy settings.
+2. **Known legacy ids normalize at config boundaries.** `kroki`, `graphviz-local`, `mermaid-local`, `table`, `highlight`, `qr`, and `color` map to the new placement-qualified ids in `bindings`/`disabled` so existing privacy-oriented config does not fail open during the rename.
+3. **Availability probes respect policy.** Disabled processors and processors outside the effective placement allowlist are not probed, preventing disabled host/remote paths from performing side effects at startup.
+4. **Ambiguity beats hidden order.** Same-placement multiple-candidate matches now return no selected processor and expose an ambiguity trace instead of quietly choosing whichever processor registered first.
+
+**Carry-forward.** CV9.E1.S2 should replace string-only tag bindings with object-valued selector constraints and carry the ambiguity model into user-facing binding diagnostics. CV9.E1.S3 then handles blocked tags/processors as the stronger policy layer.

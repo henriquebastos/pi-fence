@@ -61,7 +61,7 @@ A variant suffix is used only when multiple processors in the same family and pl
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv9-e1-s1--placement-precedence-tracer-bullet.md) | **Placement precedence tracer bullet** | In progress |
+| [S1](cv9-e1-s1--placement-precedence-tracer-bullet.md) | **Placement precedence tracer bullet** | Done |
 | [S2](cv9-e1-s2--object-bindings-and-ambiguity.md) | **Object bindings and ambiguity** | Ready |
 | [S3](cv9-e1-s3--blocked-tags-and-processors.md) | **Blocked tags and processors** | Ready |
 | [S4](cv9-e1-s4--sandbox-control-contract.md) | **Sandbox control contract** | Draft |
