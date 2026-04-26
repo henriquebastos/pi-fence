@@ -41,22 +41,22 @@ import { paintComponent } from "../utilities/render.ts";
 
 describe("formatLabel", () => {
 	it("describes a successful render by tag and processor", () => {
-		expect(formatLabel({ kind: "ok", tag: "mermaid", processor: "kroki" })).toBe(
-			"Rendered mermaid via kroki",
+		expect(formatLabel({ kind: "ok", tag: "mermaid", processor: "kroki-remote" })).toBe(
+			"Rendered mermaid via kroki-remote",
 		);
 	});
 
 	it("describes an error render including the processor", () => {
-		expect(formatLabel({ kind: "error", tag: "mermaid", processor: "kroki" })).toBe(
-			"Error rendering mermaid via kroki",
+		expect(formatLabel({ kind: "error", tag: "mermaid", processor: "kroki-remote" })).toBe(
+			"Error rendering mermaid via kroki-remote",
 		);
 	});
 
 	it("is case-faithful to the tag — user saw `Mermaid` if they wrote `Mermaid`", () => {
 		// We never normalise the tag here. Normalisation is the parser's
 		// concern; the label surfaces exactly what was on the fence.
-		expect(formatLabel({ kind: "ok", tag: "PlantUML", processor: "kroki" })).toBe(
-			"Rendered PlantUML via kroki",
+		expect(formatLabel({ kind: "ok", tag: "PlantUML", processor: "kroki-remote" })).toBe(
+			"Rendered PlantUML via kroki-remote",
 		);
 	});
 });
@@ -203,7 +203,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 				content: [{ type: "image", data: TINY_PNG_BASE64, mimeType: "image/png" }],
 				details: {
 					tag: "mermaid",
-					processor: "kroki",
+					processor: "kroki-remote",
 					kind: "ok",
 					source: "flowchart LR\nA --> B",
 				},
@@ -215,7 +215,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 		const terminal = await paintComponent(component);
 
 		const viewport = terminal.getViewport();
-		expect(viewport.some((line) => line.includes("Rendered mermaid via kroki"))).toBe(
+		expect(viewport.some((line) => line.includes("Rendered mermaid via kroki-remote"))).toBe(
 			true,
 		);
 
@@ -242,7 +242,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 				],
 				details: {
 					tag: "mermaid",
-					processor: "kroki",
+					processor: "kroki-remote",
 					kind: "error",
 					source: "bad",
 				},
@@ -255,7 +255,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 
 		const viewport = terminal.getViewport();
 		expect(
-			viewport.some((line) => line.includes("Error rendering mermaid via kroki")),
+			viewport.some((line) => line.includes("Error rendering mermaid via kroki-remote")),
 		).toBe(true);
 		expect(viewport.some((line) => line.includes("syntax"))).toBe(true);
 
@@ -271,7 +271,7 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 				content: [{ type: "image", data: TINY_PNG_BASE64, mimeType: "image/png" }],
 				details: {
 					tag: "mermaid",
-					processor: "kroki",
+					processor: "kroki-remote",
 					kind: "ok",
 					source: "flowchart LR\nA --> B\nC --> D",
 				},
@@ -313,8 +313,8 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 				content: [{ type: "text", text: "ignored — renderer uses details.lines" }],
 				details: {
 					lines: [
-						"kroki [registered] — mermaid",
-						"graphviz-local [registered] — graphviz (dot)",
+						"kroki-remote [registered] — mermaid",
+						"graphviz-host [registered] — graphviz (dot)",
 					],
 				},
 			},
@@ -327,11 +327,11 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 		const viewport = terminal.getViewport();
 		expect(viewport.some((line) => line.includes("Processors"))).toBe(true);
 		expect(
-			viewport.some((line) => line.includes("kroki [registered] — mermaid")),
+			viewport.some((line) => line.includes("kroki-remote [registered] — mermaid")),
 		).toBe(true);
 		expect(
 			viewport.some((line) =>
-				line.includes("graphviz-local [registered] — graphviz (dot)"),
+				line.includes("graphviz-host [registered] — graphviz (dot)"),
 			),
 		).toBe(true);
 	});
@@ -363,11 +363,11 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 				content: [],
 				details: {
 					lines: [
-						"graphviz-local [registered] — graphviz (dot)",
-						"kroki [registered] — mermaid, graphviz (dot)",
+						"graphviz-host [registered] — graphviz (dot)",
+						"kroki-remote [registered] — mermaid, graphviz (dot)",
 						"",
 						"Bindings",
-						"  graphviz → kroki",
+						"  graphviz → kroki-remote",
 						"",
 						"Ignored bindings",
 						"  mermaid → nonexistent (unknown processor)",
@@ -382,7 +382,7 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 
 		const viewport = terminal.getViewport();
 		expect(viewport.some((line) => line.includes("Bindings"))).toBe(true);
-		expect(viewport.some((line) => line.includes("graphviz → kroki"))).toBe(true);
+		expect(viewport.some((line) => line.includes("graphviz → kroki-remote"))).toBe(true);
 		expect(viewport.some((line) => line.includes("Ignored bindings"))).toBe(true);
 		expect(
 			viewport.some((line) => line.includes("mermaid → nonexistent (unknown processor)")),
@@ -399,9 +399,9 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 				content: [],
 				details: {
 					lines: [
-						"graphviz-local [unavailable] — graphviz (dot)",
+						"graphviz-host [unavailable] — graphviz (dot)",
 						"    dot binary not found on PATH. apt install graphviz",
-						"kroki [registered] — mermaid, graphviz (dot)",
+						"kroki-remote [registered] — mermaid, graphviz (dot)",
 					],
 				},
 			},

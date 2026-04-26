@@ -35,7 +35,7 @@ interface FakeProcessorOptions {
 function makeFakeProcessor(opts: FakeProcessorOptions): FenceProcessor {
 	return {
 		id: opts.id,
-		placement: opts.placement ?? "remote",
+		placement: opts.placement ?? inferPlacementFromId(opts.id),
 		tags: opts.tags ?? [],
 		aliases: opts.aliases ?? {},
 		async available(): Promise<Availability> {
@@ -50,6 +50,14 @@ function makeFakeProcessor(opts: FakeProcessorOptions): FenceProcessor {
 	};
 }
 
+function inferPlacementFromId(id: string): ProcessorPlacement {
+	if (id.endsWith("-embedded")) return "embedded";
+	if (id.endsWith("-host")) return "host";
+	if (id.endsWith("-sandbox")) return "sandbox";
+	if (id.endsWith("-remote")) return "remote";
+	return "remote";
+}
+
 function expectResolution(
 	result: ReturnType<typeof resolveProcessor>,
 	processorId: string | null,
@@ -60,7 +68,7 @@ function expectResolution(
 }
 
 describe("resolveProcessor", () => {
-	it("returns the first available processor whose canonical tags include the tag", () => {
+	it("returns the available processor in the winning placement whose canonical tags include the tag", () => {
 		const a = makeFakeProcessor({ id: "a", tags: ["graphviz"] });
 		const b = makeFakeProcessor({ id: "b", tags: ["mermaid"] });
 		const availability = new Map<string, Availability>([
@@ -69,16 +77,16 @@ describe("resolveProcessor", () => {
 		]);
 
 		expectResolution(resolveProcessor([a, b], availability, "graphviz"), "a", [
-			{ id: "a", outcome: "selected-first-available" },
+			{ id: "a", outcome: "selected-by-placement" },
 			{ id: "b", outcome: "skipped-already-resolved" },
 		]);
 		expectResolution(resolveProcessor([a, b], availability, "mermaid"), "b", [
 			{ id: "a", outcome: "skipped-no-claim" },
-			{ id: "b", outcome: "selected-first-available" },
+			{ id: "b", outcome: "selected-by-placement" },
 		]);
 	});
 
-	it("returns the first available processor whose aliases include the tag", () => {
+	it("returns the available processor in the winning placement whose aliases include the tag", () => {
 		const a = makeFakeProcessor({
 			id: "a",
 			tags: ["graphviz"],
@@ -87,71 +95,157 @@ describe("resolveProcessor", () => {
 		const availability = new Map<string, Availability>([["a", { ok: true }]]);
 
 		expectResolution(resolveProcessor([a], availability, "dot"), "a", [
-			{ id: "a", outcome: "selected-first-available" },
+			{ id: "a", outcome: "selected-by-placement" },
 		]);
 	});
 
 	it("skips processors whose availability is not ok and returns the next match", () => {
-		// Mirrors the production scenario: graphviz-local registered
-		// first (but unavailable: dot not on PATH), kroki registered
+		// Mirrors the production scenario: graphviz-host registered
+		// first (but unavailable: dot not on PATH), krokiRemote registered
 		// second (available). resolve('graphviz') must fall through to
-		// kroki.
+		// kroki-remote.
 		const local = makeFakeProcessor({
-			id: "graphviz-local",
+			id: "graphviz-host",
 			tags: ["graphviz"],
 			aliases: { dot: "graphviz" },
 		});
-		const kroki = makeFakeProcessor({
-			id: "kroki",
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
 			tags: ["graphviz", "mermaid"],
 			aliases: { dot: "graphviz", puml: "plantuml" },
 		});
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: false, reason: "dot not found on PATH" }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: false, reason: "dot not found on PATH" }],
+			["kroki-remote", { ok: true }],
 		]);
 
-		expectResolution(resolveProcessor([local, kroki], availability, "graphviz"), "kroki", [
-			{ id: "graphviz-local", outcome: "skipped-unavailable" },
-			{ id: "kroki", outcome: "selected-first-available" },
+		expectResolution(resolveProcessor([local, krokiRemote], availability, "graphviz"), "kroki-remote", [
+			{ id: "graphviz-host", outcome: "skipped-unavailable" },
+			{ id: "kroki-remote", outcome: "selected-by-placement" },
 		]);
-		expectResolution(resolveProcessor([local, kroki], availability, "dot"), "kroki", [
-			{ id: "graphviz-local", outcome: "skipped-unavailable" },
-			{ id: "kroki", outcome: "selected-first-available" },
+		expectResolution(resolveProcessor([local, krokiRemote], availability, "dot"), "kroki-remote", [
+			{ id: "graphviz-host", outcome: "skipped-unavailable" },
+			{ id: "kroki-remote", outcome: "selected-by-placement" },
 		]);
 	});
 
-	it("preserves registration order: first available match wins", () => {
-		// Both processors available, both claim graphviz → the first
-		// registered one wins. This is the one piece of precedence
-		// CV0.E2 commits to (explicit user binding defers to S2).
-		const local = makeFakeProcessor({
-			id: "graphviz-local",
+	it("uses placement precedence instead of registration order across placements", () => {
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
 			tags: ["graphviz"],
 			aliases: { dot: "graphviz" },
 		});
-		const kroki = makeFakeProcessor({
-			id: "kroki",
+		const local = makeFakeProcessor({
+			id: "graphviz-host",
 			tags: ["graphviz"],
 			aliases: { dot: "graphviz" },
 		});
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["kroki-remote", { ok: true }],
+			["graphviz-host", { ok: true }],
 		]);
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "graphviz"),
-			"graphviz-local",
+			resolveProcessor([krokiRemote, local], availability, "graphviz"),
+			"graphviz-host",
 			[
-				{ id: "graphviz-local", outcome: "selected-first-available" },
-				{ id: "kroki", outcome: "skipped-already-resolved" },
+				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+				{ id: "graphviz-host", outcome: "selected-by-placement" },
 			],
 		);
-		expectResolution(resolveProcessor([local, kroki], availability, "dot"), "graphviz-local", [
-			{ id: "graphviz-local", outcome: "selected-first-available" },
-			{ id: "kroki", outcome: "skipped-already-resolved" },
+		expectResolution(resolveProcessor([krokiRemote, local], availability, "dot"), "graphviz-host", [
+			{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+			{ id: "graphviz-host", outcome: "selected-by-placement" },
 		]);
+	});
+
+	it("skips placements omitted from processorPrecedence", () => {
+		const local = makeFakeProcessor({
+			id: "graphviz-host",
+			tags: ["graphviz"],
+			aliases: { dot: "graphviz" },
+		});
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
+			tags: ["graphviz"],
+			aliases: { dot: "graphviz" },
+		});
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				availability,
+				"graphviz",
+				undefined,
+				undefined,
+				["remote"],
+			),
+			"kroki-remote",
+			[
+				{ id: "graphviz-host", outcome: "skipped-placement-disabled" },
+				{ id: "kroki-remote", outcome: "selected-by-placement" },
+			],
+		);
+	});
+
+	it("uses processorPrecedence order when multiple placements are allowed", () => {
+		const local = makeFakeProcessor({
+			id: "graphviz-host",
+			tags: ["graphviz"],
+			aliases: { dot: "graphviz" },
+		});
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
+			tags: ["graphviz"],
+			aliases: { dot: "graphviz" },
+		});
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				availability,
+				"graphviz",
+				undefined,
+				undefined,
+				["remote", "host"],
+			),
+			"kroki-remote",
+			[
+				{ id: "graphviz-host", outcome: "skipped-lower-precedence" },
+				{ id: "kroki-remote", outcome: "selected-by-placement" },
+			],
+		);
+	});
+
+	it("returns an ambiguity when multiple available candidates share the winning placement", () => {
+		const a = makeFakeProcessor({ id: "a-host", tags: ["graphviz"] });
+		const b = makeFakeProcessor({ id: "b-host", tags: ["graphviz"] });
+		const fallback = makeFakeProcessor({ id: "kroki-remote", tags: ["graphviz"] });
+		const availability = new Map<string, Availability>([
+			["a-host", { ok: true }],
+			["b-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const result = resolveProcessor([a, b, fallback], availability, "graphviz");
+
+		expectResolution(result, null, [
+			{ id: "a-host", outcome: "skipped-ambiguous-same-placement" },
+			{ id: "b-host", outcome: "skipped-ambiguous-same-placement" },
+			{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+		]);
+		expect(result.ambiguity).toEqual({
+			placement: "host",
+			processorIds: ["a-host", "b-host"],
+		});
 	});
 
 	it("returns null when no registered processor claims the tag", () => {
@@ -193,52 +287,76 @@ describe("resolveProcessor", () => {
 
 describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 	const local = makeFakeProcessor({
-		id: "graphviz-local",
+		id: "graphviz-host",
 		tags: ["graphviz"],
 		aliases: { dot: "graphviz" },
 	});
-	const kroki = makeFakeProcessor({
-		id: "kroki",
+	const krokiRemote = makeFakeProcessor({
+		id: "kroki-remote",
 		tags: ["graphviz", "mermaid", "plantuml"],
 		aliases: { dot: "graphviz", puml: "plantuml" },
 	});
 
 	it("binding wins over capability order when bound processor is available", () => {
 		// Both processors available. Without a binding, registration order
-		// (graphviz-local first) wins for the 'graphviz' tag. With a
-		// binding 'graphviz → kroki', Kroki wins instead.
+		// (graphviz-host first) wins for the 'graphviz' tag. With a
+		// binding 'graphviz → kroki-remote', Kroki wins instead.
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { graphviz: "kroki" };
+		const bindings = { graphviz: "kroki-remote" };
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "graphviz", bindings),
-			"kroki",
+			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
+			"kroki-remote",
 			[
-				{ id: "graphviz-local", outcome: "skipped-binding-prefers-other" },
-				{ id: "kroki", outcome: "selected-by-binding" },
+				{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "selected-by-binding" },
+			],
+		);
+	});
+
+	it("binding falls through when bound processor placement is omitted", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+		const bindings = { graphviz: "kroki-remote" };
+
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				availability,
+				"graphviz",
+				bindings,
+				undefined,
+				["host"],
+			),
+			"graphviz-host",
+			[
+				{ id: "graphviz-host", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-placement-disabled" },
 			],
 		);
 	});
 
 	it("binding falls through when bound processor is unavailable", () => {
-		// User bound 'graphviz → graphviz-local' but dot is not installed.
+		// User bound 'graphviz → graphviz-host' but dot is not installed.
 		// Bindings are preferences, not hard requirements: fall back to
-		// capability-based rule (Kroki wins).
+		// placement-policy rule (Kroki wins).
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: false, reason: "dot not found" }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: false, reason: "dot not found" }],
+			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { graphviz: "graphviz-local" };
+		const bindings = { graphviz: "graphviz-host" };
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "graphviz", bindings),
-			"kroki",
+			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
+			"kroki-remote",
 			[
-				{ id: "graphviz-local", outcome: "skipped-unavailable" },
-				{ id: "kroki", outcome: "selected-first-available" },
+				{ id: "graphviz-host", outcome: "skipped-unavailable" },
+				{ id: "kroki-remote", outcome: "selected-by-placement" },
 			],
 		);
 	});
@@ -246,17 +364,17 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 	it("binding falls through when the processor id is unknown", () => {
 		// Typo in the config. Capability-based rule still applies.
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 		const bindings = { graphviz: "nonexistent-typo" };
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "graphviz", bindings),
-			"graphviz-local",
+			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
+			"graphviz-host",
 			[
-				{ id: "graphviz-local", outcome: "selected-first-available" },
-				{ id: "kroki", outcome: "skipped-already-resolved" },
+				{ id: "graphviz-host", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
 			],
 		);
 	});
@@ -267,116 +385,116 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		// to the same processor at resolution time because `dot` is a key
 		// on each processor's aliases map.
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { dot: "kroki" };
+		const bindings = { dot: "kroki-remote" };
 
-		expectResolution(resolveProcessor([local, kroki], availability, "dot", bindings), "kroki", [
-			{ id: "graphviz-local", outcome: "skipped-binding-prefers-other" },
-			{ id: "kroki", outcome: "selected-by-binding" },
+		expectResolution(resolveProcessor([local, krokiRemote], availability, "dot", bindings), "kroki-remote", [
+			{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
+			{ id: "kroki-remote", outcome: "selected-by-binding" },
 		]);
 	});
 
-	it("binding can select a processor that does not claim the tag", () => {
+	it("binding is ignored when the processor does not claim the tag", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { unknown: "kroki" };
+		const bindings = { unknown: "kroki-remote" };
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "unknown", bindings),
-			"kroki",
+			resolveProcessor([local, krokiRemote], availability, "unknown", bindings),
+			null,
 			[
-				{ id: "graphviz-local", outcome: "skipped-no-claim" },
-				{ id: "kroki", outcome: "selected-by-binding" },
+				{ id: "graphviz-host", outcome: "skipped-no-claim" },
+				{ id: "kroki-remote", outcome: "skipped-no-claim" },
 			],
 		);
 	});
 
 	it("behaves identically to S1 when bindings is undefined", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "graphviz"),
-			"graphviz-local",
+			resolveProcessor([local, krokiRemote], availability, "graphviz"),
+			"graphviz-host",
 			[
-				{ id: "graphviz-local", outcome: "selected-first-available" },
-				{ id: "kroki", outcome: "skipped-already-resolved" },
+				{ id: "graphviz-host", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
 			],
 		);
 	});
 
 	it("behaves identically to S1 when bindings is an empty object", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 
 		expectResolution(
-			resolveProcessor([local, kroki], availability, "graphviz", {}),
-			"graphviz-local",
+			resolveProcessor([local, krokiRemote], availability, "graphviz", {}),
+			"graphviz-host",
 			[
-				{ id: "graphviz-local", outcome: "selected-first-available" },
-				{ id: "kroki", outcome: "skipped-already-resolved" },
+				{ id: "graphviz-host", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
 			],
 		);
 	});
 
 	it("returns null when the binding + capability both fail to produce a match", () => {
 		const availability = new Map<string, Availability>([
-			["kroki", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
-		const solo = makeFakeProcessor({ id: "kroki", tags: ["mermaid"] });
+		const solo = makeFakeProcessor({ id: "kroki-remote", tags: ["mermaid"] });
 		const bindings = { mermaid: "nonexistent" };
 
 		// Bound to unknown → fall through. Capability sees Kroki claims
 		// mermaid and is available → returns Kroki.
-		expectResolution(resolveProcessor([solo], availability, "mermaid", bindings), "kroki", [
-			{ id: "kroki", outcome: "selected-first-available" },
+		expectResolution(resolveProcessor([solo], availability, "mermaid", bindings), "kroki-remote", [
+			{ id: "kroki-remote", outcome: "selected-by-placement" },
 		]);
 
-		// Now bind mermaid to kroki and ask for graphviz — no claimer.
+		// Now bind mermaid to kroki-remote and ask for graphviz — no claimer.
 		expectResolution(
-			resolveProcessor([solo], availability, "graphviz", { mermaid: "kroki" }),
+			resolveProcessor([solo], availability, "graphviz", { mermaid: "kroki-remote" }),
 			null,
-			[{ id: "kroki", outcome: "skipped-no-claim" }],
+			[{ id: "kroki-remote", outcome: "skipped-no-claim" }],
 		);
 	});
 });
 
 describe("resolveProcessor — disabled set", () => {
 	const local = makeFakeProcessor({
-		id: "graphviz-local",
+		id: "graphviz-host",
 		tags: ["graphviz"],
 		aliases: { dot: "graphviz" },
 	});
-	const kroki = makeFakeProcessor({
-		id: "kroki",
+	const krokiRemote = makeFakeProcessor({
+		id: "kroki-remote",
 		tags: ["graphviz", "mermaid"],
 	});
 	const bothAvailable = new Map<string, Availability>([
-		["graphviz-local", { ok: true }],
-		["kroki", { ok: true }],
+		["graphviz-host", { ok: true }],
+		["kroki-remote", { ok: true }],
 	]);
 
-	it("skips a disabled processor in capability-based resolution", () => {
+	it("skips a disabled processor in placement-policy resolution", () => {
 		expectResolution(
 			resolveProcessor(
-				[local, kroki],
+				[local, krokiRemote],
 				bothAvailable,
 				"graphviz",
 				undefined,
-				new Set(["graphviz-local"]),
+				new Set(["graphviz-host"]),
 			),
-			"kroki",
+			"kroki-remote",
 			[
-				{ id: "graphviz-local", outcome: "skipped-disabled" },
-				{ id: "kroki", outcome: "selected-first-available" },
+				{ id: "graphviz-host", outcome: "skipped-disabled" },
+				{ id: "kroki-remote", outcome: "selected-by-placement" },
 			],
 		);
 	});
@@ -385,16 +503,16 @@ describe("resolveProcessor — disabled set", () => {
 		// Binding target is disabled → falls through to capability.
 		expectResolution(
 			resolveProcessor(
-				[local, kroki],
+				[local, krokiRemote],
 				bothAvailable,
 				"graphviz",
-				{ graphviz: "graphviz-local" },
-				new Set(["graphviz-local"]),
+				{ graphviz: "graphviz-host" },
+				new Set(["graphviz-host"]),
 			),
-			"kroki",
+			"kroki-remote",
 			[
-				{ id: "graphviz-local", outcome: "skipped-disabled" },
-				{ id: "kroki", outcome: "selected-first-available" },
+				{ id: "graphviz-host", outcome: "skipped-disabled" },
+				{ id: "kroki-remote", outcome: "selected-by-placement" },
 			],
 		);
 	});
@@ -402,16 +520,16 @@ describe("resolveProcessor — disabled set", () => {
 	it("returns null when all processors for a tag are disabled", () => {
 		expectResolution(
 			resolveProcessor(
-				[local, kroki],
+				[local, krokiRemote],
 				bothAvailable,
 				"graphviz",
 				undefined,
-				new Set(["graphviz-local", "kroki"]),
+				new Set(["graphviz-host", "kroki-remote"]),
 			),
 			null,
 			[
-				{ id: "graphviz-local", outcome: "skipped-disabled" },
-				{ id: "kroki", outcome: "skipped-disabled" },
+				{ id: "graphviz-host", outcome: "skipped-disabled" },
+				{ id: "kroki-remote", outcome: "skipped-disabled" },
 			],
 		);
 	});
@@ -419,16 +537,16 @@ describe("resolveProcessor — disabled set", () => {
 	it("empty disabled set has no effect", () => {
 		expectResolution(
 			resolveProcessor(
-				[local, kroki],
+				[local, krokiRemote],
 				bothAvailable,
 				"graphviz",
 				undefined,
 				new Set(),
 			),
-			"graphviz-local",
+			"graphviz-host",
 			[
-				{ id: "graphviz-local", outcome: "selected-first-available" },
-				{ id: "kroki", outcome: "skipped-already-resolved" },
+				{ id: "graphviz-host", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
 			],
 		);
 	});
@@ -436,34 +554,34 @@ describe("resolveProcessor — disabled set", () => {
 
 describe("resolveBindings", () => {
 	const local = makeFakeProcessor({
-		id: "graphviz-local",
+		id: "graphviz-host",
 		tags: ["graphviz"],
 		aliases: { dot: "graphviz" },
 	});
-	const kroki = makeFakeProcessor({
-		id: "kroki",
+	const krokiRemote = makeFakeProcessor({
+		id: "kroki-remote",
 		tags: ["mermaid", "graphviz"],
 	});
 
 	it("categorises an effective binding (registered + available)", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 
-		const rows = resolveBindings([local, kroki], availability, {
-			graphviz: "kroki",
+		const rows = resolveBindings([local, krokiRemote], availability, {
+			graphviz: "kroki-remote",
 		});
 
 		expect(rows).toEqual([
-			{ status: "effective", tag: "graphviz", processorId: "kroki" },
+			{ status: "effective", tag: "graphviz", processorId: "kroki-remote" },
 		]);
 	});
 
 	it("categorises ignored-unknown-processor", () => {
-		const availability = new Map<string, Availability>([["kroki", { ok: true }]]);
+		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
 
-		const rows = resolveBindings([kroki], availability, {
+		const rows = resolveBindings([krokiRemote], availability, {
 			graphviz: "nonexistent",
 		});
 
@@ -479,22 +597,22 @@ describe("resolveBindings", () => {
 
 	it("categorises ignored-processor-disabled", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 
 		const rows = resolveBindings(
-			[local, kroki],
+			[local, krokiRemote],
 			availability,
-			{ graphviz: "graphviz-local" },
-			new Set(["graphviz-local"]),
+			{ graphviz: "graphviz-host" },
+			new Set(["graphviz-host"]),
 		);
 
 		expect(rows).toEqual([
 			{
 				status: "ignored",
 				tag: "graphviz",
-				processorId: "graphviz-local",
+				processorId: "graphviz-host",
 				reason: "processor-disabled",
 			},
 		]);
@@ -502,34 +620,78 @@ describe("resolveBindings", () => {
 
 	it("categorises ignored-processor-unavailable", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: false, reason: "dot not found" }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: false, reason: "dot not found" }],
+			["kroki-remote", { ok: true }],
 		]);
 
-		const rows = resolveBindings([local, kroki], availability, {
-			graphviz: "graphviz-local",
+		const rows = resolveBindings([local, krokiRemote], availability, {
+			graphviz: "graphviz-host",
 		});
 
 		expect(rows).toEqual([
 			{
 				status: "ignored",
 				tag: "graphviz",
-				processorId: "graphviz-local",
+				processorId: "graphviz-host",
 				reason: "processor-unavailable",
+			},
+		]);
+	});
+
+	it("categorises ignored-processor-placement-disabled", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings(
+			[local, krokiRemote],
+			availability,
+			{ graphviz: "kroki-remote" },
+			undefined,
+			["host"],
+		);
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				processorId: "kroki-remote",
+				reason: "processor-placement-disabled",
+			},
+		]);
+	});
+
+	it("categorises ignored-processor-does-not-claim-tag", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings([local, krokiRemote], availability, {
+			csv: "kroki-remote",
+		});
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "csv",
+				processorId: "kroki-remote",
+				reason: "processor-does-not-claim-tag",
 			},
 		]);
 	});
 
 	it("preserves iteration order of bindings", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: true }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 
-		const rows = resolveBindings([local, kroki], availability, {
-			mermaid: "kroki",
-			graphviz: "kroki",
-			dot: "kroki",
+		const rows = resolveBindings([local, krokiRemote], availability, {
+			mermaid: "kroki-remote",
+			graphviz: "kroki-remote",
+			dot: "kroki-remote",
 		});
 
 		expect(rows.map((r) => r.tag)).toEqual(["mermaid", "graphviz", "dot"]);
@@ -541,13 +703,13 @@ describe("resolveBindings", () => {
 
 	it("mixes effective + ignored rows in one call", () => {
 		const availability = new Map<string, Availability>([
-			["graphviz-local", { ok: false, reason: "nope" }],
-			["kroki", { ok: true }],
+			["graphviz-host", { ok: false, reason: "nope" }],
+			["kroki-remote", { ok: true }],
 		]);
 
-		const rows = resolveBindings([local, kroki], availability, {
-			graphviz: "graphviz-local", // ignored: unavailable
-			mermaid: "kroki", // effective
+		const rows = resolveBindings([local, krokiRemote], availability, {
+			graphviz: "graphviz-host", // ignored: unavailable
+			mermaid: "kroki-remote", // effective
 			puml: "nonexistent", // ignored: unknown
 		});
 
@@ -616,17 +778,17 @@ describe("probeAvailability", () => {
 describe("collectSupportedTags", () => {
 	it("returns the union of canonical tags and alias keys across processors", () => {
 		const local = makeFakeProcessor({
-			id: "graphviz-local",
+			id: "graphviz-host",
 			tags: ["graphviz"],
 			aliases: { dot: "graphviz" },
 		});
-		const kroki = makeFakeProcessor({
-			id: "kroki",
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
 			tags: ["graphviz", "mermaid", "plantuml"],
 			aliases: { dot: "graphviz", puml: "plantuml" },
 		});
 
-		const tags = collectSupportedTags([local, kroki]);
+		const tags = collectSupportedTags([local, krokiRemote]);
 
 		// The parser's allowlist — order doesn't matter, membership does.
 		expect(new Set(tags)).toEqual(

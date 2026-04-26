@@ -20,40 +20,40 @@ describe("MetricsCollector", () => {
 
 	it("records a successful render", () => {
 		const m = new MetricsCollector();
-		m.recordRender("kroki", "mermaid", true);
+		m.recordRender("kroki-remote", "mermaid", true);
 
 		const s = m.getSummary();
 		expect(s.total).toBe(1);
 		expect(s.ok).toBe(1);
 		expect(s.errors).toBe(0);
-		expect(s.byProcessor.kroki).toEqual({ ok: 1, errors: 0 });
+		expect(s.byProcessor["kroki-remote"]).toEqual({ ok: 1, errors: 0 });
 		expect(s.byTag.mermaid).toEqual({ ok: 1, errors: 0 });
 	});
 
 	it("records a failed render", () => {
 		const m = new MetricsCollector();
-		m.recordRender("kroki", "mermaid", false);
+		m.recordRender("kroki-remote", "mermaid", false);
 
 		const s = m.getSummary();
 		expect(s.total).toBe(1);
 		expect(s.ok).toBe(0);
 		expect(s.errors).toBe(1);
-		expect(s.byProcessor.kroki).toEqual({ ok: 0, errors: 1 });
+		expect(s.byProcessor["kroki-remote"]).toEqual({ ok: 0, errors: 1 });
 	});
 
 	it("accumulates across multiple renders", () => {
 		const m = new MetricsCollector();
-		m.recordRender("kroki", "mermaid", true);
-		m.recordRender("kroki", "plantuml", true);
-		m.recordRender("table", "csv", true);
-		m.recordRender("kroki", "mermaid", false);
+		m.recordRender("kroki-remote", "mermaid", true);
+		m.recordRender("kroki-remote", "plantuml", true);
+		m.recordRender("table-embedded", "csv", true);
+		m.recordRender("kroki-remote", "mermaid", false);
 
 		const s = m.getSummary();
 		expect(s.total).toBe(4);
 		expect(s.ok).toBe(3);
 		expect(s.errors).toBe(1);
-		expect(s.byProcessor.kroki).toEqual({ ok: 2, errors: 1 });
-		expect(s.byProcessor.table).toEqual({ ok: 1, errors: 0 });
+		expect(s.byProcessor["kroki-remote"]).toEqual({ ok: 2, errors: 1 });
+		expect(s.byProcessor["table-embedded"]).toEqual({ ok: 1, errors: 0 });
 		expect(s.byTag.mermaid).toEqual({ ok: 1, errors: 1 });
 		expect(s.byTag.plantuml).toEqual({ ok: 1, errors: 0 });
 		expect(s.byTag.csv).toEqual({ ok: 1, errors: 0 });
@@ -83,8 +83,8 @@ describe("formatMetricsLines", () => {
 			ok: 2,
 			errors: 1,
 			byProcessor: {
-				kroki: { ok: 1, errors: 1 },
-				table: { ok: 1, errors: 0 },
+				"kroki-remote": { ok: 1, errors: 1 },
+				"table-embedded": { ok: 1, errors: 0 },
 			},
 			byTag: {
 				mermaid: { ok: 1, errors: 1 },
@@ -96,8 +96,8 @@ describe("formatMetricsLines", () => {
 			"Total renders: 3 (2 ok, 1 errors)",
 			"",
 			"By processor:",
-			"  kroki: 2 (1 ok, 1 errors)",
-			"  table: 1 (1 ok, 0 errors)",
+			"  kroki-remote: 2 (1 ok, 1 errors)",
+			"  table-embedded: 1 (1 ok, 0 errors)",
 			"",
 			"By tag:",
 			"  mermaid: 2 (1 ok, 1 errors)",

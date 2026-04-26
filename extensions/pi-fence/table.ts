@@ -34,7 +34,7 @@ const BOX = {
 
 export function createTableProcessor(): FenceProcessor {
 	return {
-		id: "table",
+		id: "table-embedded",
 		placement: "embedded",
 		tags: ["csv", "jsonl"],
 		aliases: {},

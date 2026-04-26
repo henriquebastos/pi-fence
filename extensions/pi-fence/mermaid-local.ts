@@ -1,8 +1,8 @@
 /**
- * mermaid-local processor — renders Mermaid source via the local `mmdc`
+ * mermaid-host processor — renders Mermaid source via the local `mmdc`
  * binary (@mermaid-js/mermaid-cli). Wins the `mermaid` tag when `mmdc`
- * is on PATH; otherwise the extension's capability-based resolver falls
- * through to Kroki.
+ * is on PATH; otherwise the extension's placement-policy resolver falls
+ * through to the next allowed processor, typically kroki-remote.
  *
  * DI-only: callers supply a `ShellRunner` and a temp-dir factory.
  * Production wires `NodeShellRunner`; tests wire `FakeShellRunner`.
@@ -45,7 +45,7 @@ export function createMermaidLocalProcessor(
 	logger: Logger = NULL_LOGGER,
 ): FenceProcessor {
 	return {
-		id: "mermaid-local",
+		id: "mermaid-host",
 		placement: "host",
 		tags: MERMAID_LOCAL_CANONICAL_TAGS,
 		aliases: MERMAID_LOCAL_ALIASES,
@@ -54,7 +54,7 @@ export function createMermaidLocalProcessor(
 			try {
 				const probe = await shell.run("mmdc", ["--version"]);
 				if (probe.exitCode === 0) {
-					logger.debug("mermaid-local", "available", {
+					logger.debug("mermaid-host", "available", {
 						version: probe.stdout.trim(),
 					});
 					return { ok: true };
@@ -66,7 +66,7 @@ export function createMermaidLocalProcessor(
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				logger.debug("mermaid-local", "unavailable (spawn failure)", {
+				logger.debug("mermaid-host", "unavailable (spawn failure)", {
 					error: message,
 				});
 				return {
@@ -89,7 +89,7 @@ export function createMermaidLocalProcessor(
 			try {
 				await fs.writeFile(inPath, source, "utf8");
 
-				logger.debug("mermaid-local", "shelling out to mmdc", {
+				logger.debug("mermaid-host", "shelling out to mmdc", {
 					tag,
 					sourceBytes: Buffer.byteLength(source, "utf8"),
 				});
@@ -105,7 +105,7 @@ export function createMermaidLocalProcessor(
 						0,
 						ERROR_BODY_MAX_CHARS,
 					);
-					logger.warn("mermaid-local", "mmdc error", {
+					logger.warn("mermaid-host", "mmdc error", {
 						tag,
 						exitCode: result.exitCode,
 					});
@@ -113,11 +113,11 @@ export function createMermaidLocalProcessor(
 				}
 
 				const png = await fs.readFile(outPath);
-				logger.info("mermaid-local", "mmdc ok", { tag, bytes: png.length });
+				logger.info("mermaid-host", "mmdc ok", { tag, bytes: png.length });
 				return { ok: true, png };
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				logger.error("mermaid-local", message, { tag });
+				logger.error("mermaid-host", message, { tag });
 				return { ok: false, error: message };
 			} finally {
 				// Best-effort cleanup.

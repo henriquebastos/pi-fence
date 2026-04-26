@@ -4,11 +4,11 @@
  * Covers the loader's contract:
  *   - Two optional files: global (~/.pi/agent/pi-fence.config.json) +
  *     project (<cwd>/.pi/pi-fence.config.json).
- *   - Project overrides global; global overrides defaults.
- *   - Every error path returns defaults and logs a warn (except the
- *     common missing-file case, which stays silent).
+ *   - Project bindings override global; safety controls can only restrict lower layers.
+ *   - Error paths warn and continue (except the common missing-file
+ *     case, which stays silent); malformed safety controls fail closed.
  *   - Shape validation: non-object top level, non-object bindings,
- *     non-string values inside bindings — all dropped with a warn.
+ *     non-string values inside bindings — invalid entries warn.
  *   - Unknown top-level keys are tolerated so CV1.E1's future keys
  *     don't break existing files.
  *
@@ -46,13 +46,13 @@ async function loadConfig(opts: LoadConfigOptions = {}) {
 describe("config core", () => {
 	it("merges bindings left-to-right with later configs winning", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: { graphviz: "kroki", mermaid: "one" }, disabled: [] },
+			{ bindings: { graphviz: "kroki-remote", mermaid: "one" }, disabled: [] },
 			{ bindings: { mermaid: "two" }, disabled: [] },
 			{ bindings: { plantuml: "three" }, disabled: [] },
 		);
 
 		expect(merged.bindings).toEqual({
-			graphviz: "kroki",
+			graphviz: "kroki-remote",
 			mermaid: "two",
 			plantuml: "three",
 		});
@@ -61,32 +61,35 @@ describe("config core", () => {
 	it("returns an empty layer when validation sees a non-object top level", () => {
 		const logger = new FakeLogger();
 
-		expect(validatePiFenceConfig(["nope"], "global", logger)).toEqual({ bindings: {} });
+		expect(validatePiFenceConfig(["nope"], "global", logger)).toEqual({
+			bindings: {},
+			processorPrecedence: ["embedded"],
+		});
 		expect(logger.byLevel("warn")[0]?.message).toContain("not an object");
 	});
 
-	it("merges disabled: last config with a disabled key wins entirely", () => {
+	it("merges disabled: later layers add to lower-priority disabled ids", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: {}, disabled: ["kroki"] },
-			{ bindings: {}, disabled: ["graphviz-local"] },
+			{ bindings: {}, disabled: ["kroki-remote"] },
+			{ bindings: {}, disabled: ["graphviz-host"] },
 		);
-		expect(merged.disabled).toEqual(["graphviz-local"]);
+		expect(merged.disabled).toEqual(["kroki-remote", "graphviz-host"]);
 	});
 
 	it("merges disabled: absent disabled inherits from earlier config", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: {}, disabled: ["kroki"] },
+			{ bindings: {}, disabled: ["kroki-remote"] },
 			{ bindings: {} },
 		);
-		expect(merged.disabled).toEqual(["kroki"]);
+		expect(merged.disabled).toEqual(["kroki-remote"]);
 	});
 
-	it("merges disabled: empty array overrides earlier non-empty", () => {
+	it("merges disabled: empty array cannot re-enable lower-priority disabled ids", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: {}, disabled: ["kroki"] },
+			{ bindings: {}, disabled: ["kroki-remote"] },
 			{ bindings: {}, disabled: [] },
 		);
-		expect(merged.disabled).toEqual([]);
+		expect(merged.disabled).toEqual(["kroki-remote"]);
 	});
 
 	it("defaults disabled to undefined (absent = inherit)", () => {
@@ -102,12 +105,12 @@ describe("config core", () => {
 		]);
 	});
 
-	it("merges processorPrecedence: last config with the key replaces the earlier list", () => {
+	it("merges processorPrecedence: later layers can only restrict lower-priority placements", () => {
 		const merged = mergePiFenceConfigs(
 			{ bindings: {}, processorPrecedence: ["embedded", "remote"] },
 			{ bindings: {}, processorPrecedence: ["host"] },
 		);
-		expect(merged.processorPrecedence).toEqual(["host"]);
+		expect(merged.processorPrecedence).toEqual([]);
 	});
 
 	it("merges processorPrecedence: absent key inherits from earlier config", () => {
@@ -118,12 +121,20 @@ describe("config core", () => {
 		expect(merged.processorPrecedence).toEqual(["remote"]);
 	});
 
-	it("merges processorPrecedence: empty array explicitly replaces earlier config", () => {
+	it("merges processorPrecedence: empty array explicitly disables every lower-priority placement", () => {
 		const merged = mergePiFenceConfigs(
 			{ bindings: {}, processorPrecedence: ["embedded", "remote"] },
 			{ bindings: {}, processorPrecedence: [] },
 		);
 		expect(merged.processorPrecedence).toEqual([]);
+	});
+
+	it("merges processorPrecedence: preserves later-layer order within the lower-priority allowlist", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, processorPrecedence: ["host", "remote"] },
+			{ bindings: {}, processorPrecedence: ["remote", "host"] },
+		);
+		expect(merged.processorPrecedence).toEqual(["remote", "host"]);
 	});
 
 	it("merges processorPrecedence: copies the winning array", () => {
@@ -193,32 +204,74 @@ describe("config core", () => {
 
 	it("validates disabled: accepts array of strings", () => {
 		const result = validatePiFenceConfig(
-			{ disabled: ["kroki", "graphviz-local"] },
+			{ disabled: ["kroki-remote", "graphviz-host"] },
 			"test",
 		);
-		expect(result.disabled).toEqual(["kroki", "graphviz-local"]);
+		expect(result.disabled).toEqual(["kroki-remote", "graphviz-host"]);
 	});
 
-	it("validates disabled: drops non-string entries with a warn", () => {
+	it("validates disabled: normalizes all known legacy processor ids to placement-aware ids", () => {
+		const logger = new FakeLogger();
+		const legacyIds = [
+			"kroki",
+			"graphviz-local",
+			"mermaid-local",
+			"table",
+			"highlight",
+			"qr",
+			"color",
+		];
+		const result = validatePiFenceConfig({ disabled: legacyIds }, "test", logger);
+
+		expect(result.disabled).toEqual([
+			"kroki-remote",
+			"graphviz-host",
+			"mermaid-host",
+			"table-embedded",
+			"highlight-embedded",
+			"qr-embedded",
+			"color-embedded",
+		]);
+		expect(logger.byLevel("warn")).toHaveLength(legacyIds.length);
+	});
+
+	it("validates disabled: drops non-string entries with a warn and fails closed", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
-			{ disabled: ["kroki", 42, true] },
+			{ disabled: ["kroki-remote", 42, true] },
 			"test",
 			logger,
 		);
-		expect(result.disabled).toEqual(["kroki"]);
+		expect(result.disabled).toEqual(["kroki-remote"]);
+		expect(result.processorPrecedence).toEqual(["embedded"]);
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
 
-	it("validates disabled: non-array becomes empty with a warn", () => {
+	it("validates disabled: string shorthand becomes a single disabled processor with a warn", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
 			{ disabled: "kroki" },
 			"test",
 			logger,
 		);
-		expect(result.disabled).toEqual([]);
+		expect(result.disabled).toEqual(["kroki-remote"]);
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("validates bindings: normalizes known legacy processor ids to placement-aware ids", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ bindings: { dot: "kroki", graphviz: "graphviz-local", csv: "table" } },
+			"test",
+			logger,
+		);
+
+		expect(result.bindings).toEqual({
+			dot: "kroki-remote",
+			graphviz: "graphviz-host",
+			csv: "table-embedded",
+		});
+		expect(logger.byLevel("warn")).toHaveLength(3);
 	});
 
 	it("validates kroki.endpoint: accepts a string", () => {
@@ -242,10 +295,11 @@ describe("config core", () => {
 			logger,
 		);
 		expect(result.kroki).toBeUndefined();
+		expect(result.processorPrecedence).toEqual(["embedded"]);
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
 
-	it("validates kroki.endpoint: non-string endpoint dropped with a warn", () => {
+	it("validates kroki.endpoint: non-string endpoint dropped with a warn and fails closed", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
 			{ kroki: { endpoint: 42 } },
@@ -253,15 +307,16 @@ describe("config core", () => {
 			logger,
 		);
 		expect(result.kroki?.endpoint).toBeUndefined();
+		expect(result.processorPrecedence).toEqual(["embedded"]);
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
 
-	it("merges kroki.endpoint: project overrides global", () => {
+	it("merges kroki.endpoint: global endpoint cannot be replaced by project config", () => {
 		const merged = mergePiFenceConfigs(
 			{ bindings: {}, kroki: { endpoint: "http://global:8000" } },
 			{ bindings: {}, kroki: { endpoint: "http://project:9000" } },
 		);
-		expect(merged.kroki?.endpoint).toBe("http://project:9000");
+		expect(merged.kroki?.endpoint).toBe("http://global:8000");
 	});
 
 	it("merges kroki.endpoint: absent project inherits global", () => {
@@ -349,7 +404,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		const globalDir = makeTempDir();
 		const globalPath = writeConfig(
 			globalDir,
-			JSON.stringify({ bindings: { graphviz: "kroki" } }),
+			JSON.stringify({ bindings: { graphviz: "kroki-remote" } }),
 		);
 
 		const config = await loadConfig({
@@ -357,7 +412,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			projectConfigPath: join(globalDir, "no-project-file.json"),
 		});
 
-		expect(config.bindings).toEqual({ graphviz: "kroki" });
+		expect(config.bindings).toEqual({ graphviz: "kroki-remote" });
 	});
 
 	it("reads processorPrecedence from file-backed config", async () => {
@@ -379,7 +434,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		const projectDir = makeTempDir();
 		const projectPath = writeConfig(
 			projectDir,
-			JSON.stringify({ bindings: { mermaid: "kroki" } }),
+			JSON.stringify({ bindings: { mermaid: "kroki-remote" } }),
 		);
 
 		const config = await loadConfig({
@@ -387,7 +442,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			projectConfigPath: projectPath,
 		});
 
-		expect(config.bindings).toEqual({ mermaid: "kroki" });
+		expect(config.bindings).toEqual({ mermaid: "kroki-remote" });
 	});
 
 	it("merges disjoint bindings keys from global + project", async () => {
@@ -395,11 +450,11 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(
 			globalDir,
-			JSON.stringify({ bindings: { graphviz: "kroki" } }),
+			JSON.stringify({ bindings: { graphviz: "kroki-remote" } }),
 		);
 		const projectPath = writeConfig(
 			projectDir,
-			JSON.stringify({ bindings: { mermaid: "graphviz-local" } }),
+			JSON.stringify({ bindings: { mermaid: "graphviz-host" } }),
 		);
 
 		const config = await loadConfig({
@@ -408,8 +463,8 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		});
 
 		expect(config.bindings).toEqual({
-			graphviz: "kroki",
-			mermaid: "graphviz-local",
+			graphviz: "kroki-remote",
+			mermaid: "graphviz-host",
 		});
 	});
 
@@ -418,11 +473,11 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(
 			globalDir,
-			JSON.stringify({ bindings: { graphviz: "kroki" } }),
+			JSON.stringify({ bindings: { graphviz: "kroki-remote" } }),
 		);
 		const projectPath = writeConfig(
 			projectDir,
-			JSON.stringify({ bindings: { graphviz: "graphviz-local" } }),
+			JSON.stringify({ bindings: { graphviz: "graphviz-host" } }),
 		);
 
 		const config = await loadConfig({
@@ -431,10 +486,10 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		});
 
 		// Project wins on the overlapping key.
-		expect(config.bindings.graphviz).toBe("graphviz-local");
+		expect(config.bindings.graphviz).toBe("graphviz-host");
 	});
 
-	it("project processorPrecedence replaces global processorPrecedence", async () => {
+	it("project processorPrecedence cannot widen global processorPrecedence", async () => {
 		const globalDir = makeTempDir();
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(
@@ -451,10 +506,10 @@ describe("loadPiFenceConfig — file-present paths", () => {
 			projectConfigPath: projectPath,
 		});
 
-		expect(config.processorPrecedence).toEqual(["host"]);
+		expect(config.processorPrecedence).toEqual([]);
 	});
 
-	it("project processorPrecedence can replace global precedence with an empty list", async () => {
+	it("project processorPrecedence can restrict global precedence to an empty list", async () => {
 		const globalDir = makeTempDir();
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(
@@ -503,7 +558,7 @@ describe("loadPiFenceConfig — file-present paths", () => {
 describe("loadPiFenceConfig — malformed files", () => {
 	afterEach(() => cleanupTempDirs());
 
-	it("returns defaults + logs warn on malformed JSON", async () => {
+	it("fails closed on malformed global JSON and logs warn", async () => {
 		const dir = makeTempDir();
 		const path = writeConfig(dir, "not valid json{");
 		const logger = new FakeLogger();
@@ -514,13 +569,16 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config).toEqual(DEFAULT_CONFIG);
+		expect(config).toEqual({
+			...DEFAULT_CONFIG,
+			processorPrecedence: ["embedded"],
+		});
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
 		expect(warns).toHaveLength(1);
 		expect(warns[0].message).toContain("malformed JSON");
 	});
 
-	it("returns defaults + logs warn on top-level array", async () => {
+	it("fails closed on top-level array and logs warn", async () => {
 		const dir = makeTempDir();
 		const path = writeConfig(dir, JSON.stringify(["this", "is", "not", "an", "object"]));
 		const logger = new FakeLogger();
@@ -531,12 +589,12 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config).toEqual(DEFAULT_CONFIG);
+		expect(config).toEqual({ ...DEFAULT_CONFIG, processorPrecedence: ["embedded"] });
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
 		expect(warns.some((e) => e.message.includes("not an object"))).toBe(true);
 	});
 
-	it("returns defaults + logs warn on top-level string", async () => {
+	it("fails closed + logs warn on top-level string", async () => {
 		const dir = makeTempDir();
 		const path = writeConfig(dir, JSON.stringify("just a string"));
 		const logger = new FakeLogger();
@@ -547,7 +605,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config).toEqual(DEFAULT_CONFIG);
+		expect(config).toEqual({ ...DEFAULT_CONFIG, processorPrecedence: ["embedded"] });
 		expect(
 			logger.bySubsystem("config").some((e) => e.message.includes("not an object")),
 		).toBe(true);
@@ -559,11 +617,11 @@ describe("loadPiFenceConfig — malformed files", () => {
 			dir,
 			JSON.stringify({
 				bindings: {
-					graphviz: "kroki", // valid
+					graphviz: "kroki-remote", // valid
 					mermaid: 42, // dropped
 					dot: null, // dropped
 					puml: true, // dropped
-					plantuml: "kroki", // valid
+					plantuml: "kroki-remote", // valid
 				},
 			}),
 		);
@@ -576,8 +634,8 @@ describe("loadPiFenceConfig — malformed files", () => {
 		});
 
 		expect(config.bindings).toEqual({
-			graphviz: "kroki",
-			plantuml: "kroki",
+			graphviz: "kroki-remote",
+			plantuml: "kroki-remote",
 		});
 
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
@@ -612,7 +670,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		const path = writeConfig(
 			dir,
 			JSON.stringify({
-				bindings: { graphviz: "kroki" },
+				bindings: { graphviz: "kroki-remote" },
 				endpoint: "http://localhost:8000",
 				futureKey: { nested: true },
 			}),
@@ -625,7 +683,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config.bindings).toEqual({ graphviz: "kroki" });
+		expect(config.bindings).toEqual({ graphviz: "kroki-remote" });
 		// No warn for the unknown keys — forward-compat.
 		const warns = logger.bySubsystem("config").filter((e) => e.level === "warn");
 		expect(warns).toHaveLength(0);
@@ -637,7 +695,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 		const globalPath = writeConfig(globalDir, "malformed{");
 		const projectPath = writeConfig(
 			projectDir,
-			JSON.stringify({ bindings: { mermaid: "kroki" } }),
+			JSON.stringify({ bindings: { mermaid: "kroki-remote" } }),
 		);
 		const logger = new FakeLogger();
 
@@ -647,19 +705,74 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config.bindings).toEqual({ mermaid: "kroki" });
-		expect(config.processorPrecedence).toEqual(DEFAULT_CONFIG.processorPrecedence);
+		expect(config.bindings).toEqual({ mermaid: "kroki-remote" });
+		expect(config.processorPrecedence).toEqual(["embedded"]);
 		expect(
 			logger.bySubsystem("config").some((e) => e.message.includes("malformed JSON")),
 		).toBe(true);
 	});
 
-	it("is robust to a valid global file plus a malformed project file — preserves global precedence", async () => {
+	it("malformed global config fails closed even when project attempts remote-only precedence", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const globalPath = writeConfig(globalDir, "malformed{");
+		const projectPath = writeConfig(
+			projectDir,
+			JSON.stringify({ processorPrecedence: ["remote"] }),
+		);
+
+		const config = await loadConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+		});
+
+		expect(config.processorPrecedence).toEqual([]);
+	});
+
+	it("project config cannot re-enable remote after a global read error", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const projectPath = writeConfig(
+			projectDir,
+			JSON.stringify({ processorPrecedence: ["remote"] }),
+		);
+
+		const result = await loadPiFenceConfig({
+			globalConfigPath: globalDir,
+			projectConfigPath: projectPath,
+		});
+
+		expect(result.globalStatus).toBe("read-error");
+		expect(result.config.processorPrecedence).toEqual([]);
+	});
+
+	it("does not let project config re-enable globally disabled processors or placements", async () => {
 		const globalDir = makeTempDir();
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(
 			globalDir,
-			JSON.stringify({ bindings: { dot: "kroki" }, processorPrecedence: ["remote"] }),
+			JSON.stringify({ disabled: ["kroki-remote"], processorPrecedence: ["host"] }),
+		);
+		const projectPath = writeConfig(
+			projectDir,
+			JSON.stringify({ disabled: [], processorPrecedence: ["remote"] }),
+		);
+
+		const config = await loadConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+		});
+
+		expect(config.disabled).toEqual(["kroki-remote"]);
+		expect(config.processorPrecedence).toEqual([]);
+	});
+
+	it("is robust to a valid global file plus a malformed project file — fails closed", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const globalPath = writeConfig(
+			globalDir,
+			JSON.stringify({ bindings: { dot: "kroki-remote" }, processorPrecedence: ["remote"] }),
 		);
 		const projectPath = writeConfig(projectDir, "malformed{");
 		const logger = new FakeLogger();
@@ -670,8 +783,8 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger,
 		});
 
-		expect(config.bindings).toEqual({ dot: "kroki" });
-		expect(config.processorPrecedence).toEqual(["remote"]);
+		expect(config.bindings).toEqual({ dot: "kroki-remote" });
+		expect(config.processorPrecedence).toEqual([]);
 		expect(
 			logger.bySubsystem("config").some((e) => e.message.includes("malformed JSON")),
 		).toBe(true);
@@ -717,6 +830,18 @@ describe("loadPiFenceConfig — status reporting", () => {
 		});
 
 		expect(result.globalStatus).toBe("malformed-json");
+	});
+
+	it("reports 'invalid-shape' for syntactically valid non-object JSON", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(dir, JSON.stringify(["not", "an", "object"]));
+
+		const result = await loadPiFenceConfig({
+			globalConfigPath: path,
+			projectConfigPath: join(dir, "no-project.json"),
+		});
+
+		expect(result.globalStatus).toBe("invalid-shape");
 	});
 
 	it("reports 'not-found' for missing files", async () => {

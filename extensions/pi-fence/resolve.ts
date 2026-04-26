@@ -17,59 +17,87 @@
  *
  * Landed in CV0.E2.S1 when pi-fence stopped assuming a single processor
  * and needed a resolution rule between "parsed a block" and "render it".
- * Capability-based only for now; CV0.E2.S2 adds an explicit per-tag
- * override from user settings.
+ * CV9.E1.S1 made that rule placement-aware: user policy picks the
+ * allowed placement order, while bindings remain tag-scoped preferences.
  */
 
-import type { Availability, FenceProcessor } from "./processor.ts";
+import { DEFAULT_PROCESSOR_PRECEDENCE } from "./config.ts";
+import type {
+	Availability,
+	FenceProcessor,
+	ProcessorPlacement,
+} from "./processor.ts";
 
 export type StepOutcome =
 	| "selected-by-binding"
-	| "selected-first-available"
+	| "selected-by-placement"
 	| "skipped-already-resolved"
+	| "skipped-ambiguous-same-placement"
+	| "skipped-binding-prefers-other"
 	| "skipped-disabled"
+	| "skipped-lower-precedence"
 	| "skipped-no-claim"
-	| "skipped-unavailable"
-	| "skipped-binding-prefers-other";
+	| "skipped-placement-disabled"
+	| "skipped-unavailable";
 
 export interface TraceStep {
 	id: string;
 	outcome: StepOutcome;
 }
 
+export interface ResolveAmbiguity {
+	placement: ProcessorPlacement;
+	processorIds: string[];
+}
+
 export interface ResolveProcessorResult {
 	processor: FenceProcessor | null;
 	steps: TraceStep[];
+	ambiguity?: ResolveAmbiguity;
 }
 
-interface CandidateEvaluation {
-	step: TraceStep;
-	selected?: FenceProcessor;
-	fallback?: FenceProcessor;
+interface ResolveContext {
+	availability: ReadonlyMap<string, Availability>;
+	allowedPlacements: ReadonlySet<ProcessorPlacement>;
+	boundId?: string;
+	disabled?: ReadonlySet<string>;
+	placementRank: ReadonlyMap<ProcessorPlacement, number>;
+	tag: string;
 }
 
-interface FallbackCandidate {
+interface Selection {
 	index: number;
+	mode: "binding" | "placement";
 	processor: FenceProcessor;
 }
 
+interface PlacementDecision {
+	ambiguity?: ResolveAmbiguity;
+	selection?: Selection;
+}
+
+type BlockingOutcome =
+	| "skipped-disabled"
+	| "skipped-no-claim"
+	| "skipped-placement-disabled"
+	| "skipped-unavailable";
+
 /**
- * Return the first processor that can serve `tag` on this session.
+ * Return the processor that can serve `tag` under user placement policy.
  *
- * Resolution rule (CV0.E2.S2):
- *   1. User binding wins. If `bindings[tag]` names a registered
- *      processor whose availability is ok, return that processor.
- *   2. Otherwise, capability-based order. Iterate `processors` in
- *      registration order; return the first whose availability is ok
- *      AND whose tags/aliases cover the tag.
- *   3. `{ processor: null, steps }` if neither produces a match.
+ * Resolution rule (CV9.E1.S1):
+ *   1. Disabled ids and omitted placements are hard skips.
+ *   2. A user binding wins only when its processor is registered,
+ *      available, enabled, and in an allowed placement.
+ *   3. Otherwise, gather available candidates that claim the tag and
+ *      choose the first placement in `processorPrecedence` with exactly
+ *      one candidate.
+ *   4. Multiple candidates in that winning placement are ambiguous;
+ *      do not fall through to a lower-trust placement by registration order.
  *
- * Bindings are preferences, not hard requirements. A binding to an
- * unknown processor id OR to an unavailable processor falls through
- * to capability-based resolution rather than returning null. Strict
- * mode (respect unavailable, refuse capability fallback) is a future
- * story — see `resolveBindings` below for the separate helper that
- * surfaces why a binding was ignored.
+ * Bindings are still preferences, not hard requirements. A binding to an
+ * unknown, unavailable, disabled, or placement-disabled processor falls
+ * through to placement policy. Strict mode remains deferred to S2/S3.
  *
  * Pure. The caller logs at wire time; `resolve.ts` has no logger.
  */
@@ -79,98 +107,164 @@ export function resolveProcessor(
 	tag: string,
 	bindings?: Readonly<Record<string, string>>,
 	disabled?: ReadonlySet<string>,
+	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): ResolveProcessorResult {
-	const boundId = bindings?.[tag];
-	const steps: TraceStep[] = [];
-	let processor: FenceProcessor | null = null;
-	let fallback: FallbackCandidate | null = null;
+	const context: ResolveContext = {
+		availability,
+		allowedPlacements: new Set(processorPrecedence),
+		boundId: bindings?.[tag],
+		disabled,
+		placementRank: buildPlacementRank(processorPrecedence),
+		tag,
+	};
+	const bindingSelection = selectBinding(processors, context);
+	const placementDecision = bindingSelection
+		? {}
+		: selectByPlacement(processors, context, processorPrecedence);
+	const selection = bindingSelection ?? placementDecision.selection;
+	const steps = buildTraceSteps(processors, context, selection, placementDecision.ambiguity);
 
-	for (const candidate of processors) {
-		const evaluation = evaluateCandidate(candidate, {
-			alreadySelected: processor !== null,
-			availability,
-			boundId,
-			disabled,
-			tag,
-		});
-		steps.push(evaluation.step);
-		if (evaluation.selected) processor = evaluation.selected;
-		if (evaluation.fallback && !fallback) {
-			fallback = { index: steps.length - 1, processor: evaluation.fallback };
-		}
-	}
-
-	if (!processor && fallback) {
-		processor = fallback.processor;
-		applyFallbackSelection(steps, fallback);
-	}
-
-	return { processor, steps };
-}
-
-interface EvaluateCandidateContext {
-	alreadySelected: boolean;
-	availability: ReadonlyMap<string, Availability>;
-	boundId?: string;
-	disabled?: ReadonlySet<string>;
-	tag: string;
-}
-
-function evaluateCandidate(
-	candidate: FenceProcessor,
-	context: EvaluateCandidateContext,
-): CandidateEvaluation {
-	if (context.alreadySelected) {
-		return { step: { id: candidate.id, outcome: "skipped-already-resolved" } };
-	}
-	if (isSelectedBinding(candidate, context)) {
-		return {
-			selected: candidate,
-			step: { id: candidate.id, outcome: "selected-by-binding" },
-		};
-	}
-	if (context.disabled?.has(candidate.id)) {
-		return { step: { id: candidate.id, outcome: "skipped-disabled" } };
-	}
-	if (context.availability.get(candidate.id)?.ok !== true) {
-		return { step: { id: candidate.id, outcome: "skipped-unavailable" } };
-	}
-	if (!claimsTag(candidate, context.tag)) {
-		return { step: { id: candidate.id, outcome: "skipped-no-claim" } };
-	}
-	if (context.boundId !== undefined) {
-		return {
-			fallback: candidate,
-			step: { id: candidate.id, outcome: "skipped-binding-prefers-other" },
-		};
-	}
 	return {
-		selected: candidate,
-		step: { id: candidate.id, outcome: "selected-first-available" },
+		processor: selection?.processor ?? null,
+		steps,
+		...(placementDecision.ambiguity ? { ambiguity: placementDecision.ambiguity } : {}),
 	};
 }
 
-function isSelectedBinding(
-	candidate: FenceProcessor,
-	context: EvaluateCandidateContext,
-): boolean {
-	return (
-		candidate.id === context.boundId &&
-		context.availability.get(candidate.id)?.ok === true &&
-		!context.disabled?.has(candidate.id)
-	);
-}
-
-function applyFallbackSelection(steps: TraceStep[], fallback: FallbackCandidate): void {
-	steps[fallback.index] = {
-		id: fallback.processor.id,
-		outcome: "selected-first-available",
-	};
-	for (let index = fallback.index + 1; index < steps.length; index += 1) {
-		if (steps[index]?.outcome === "skipped-binding-prefers-other") {
-			steps[index] = { id: steps[index].id, outcome: "skipped-already-resolved" };
-		}
+function selectBinding(
+	processors: readonly FenceProcessor[],
+	context: ResolveContext,
+): Selection | undefined {
+	if (context.boundId === undefined) return undefined;
+	const index = processors.findIndex((processor) => processor.id === context.boundId);
+	if (index < 0) return undefined;
+	const processor = processors[index];
+	if (bindingBlocked(processor, context) || !claimsTag(processor, context.tag)) {
+		return undefined;
 	}
+	return { index, mode: "binding", processor };
+}
+
+function selectByPlacement(
+	processors: readonly FenceProcessor[],
+	context: ResolveContext,
+	processorPrecedence: readonly ProcessorPlacement[],
+): PlacementDecision {
+	const candidates = processors
+		.map((processor, index) => ({ index, processor }))
+		.filter(({ processor }) => candidateBlocked(processor, context) === undefined);
+
+	for (const placement of processorPrecedence) {
+		const group = candidates.filter(({ processor }) => processor.placement === placement);
+		if (group.length === 0) continue;
+		if (group.length === 1) {
+			return {
+				selection: {
+					index: group[0].index,
+					mode: "placement",
+					processor: group[0].processor,
+				},
+			};
+		}
+		return {
+			ambiguity: {
+				placement,
+				processorIds: group.map(({ processor }) => processor.id),
+			},
+		};
+	}
+
+	return {};
+}
+
+function buildTraceSteps(
+	processors: readonly FenceProcessor[],
+	context: ResolveContext,
+	selection?: Selection,
+	ambiguity?: ResolveAmbiguity,
+): TraceStep[] {
+	const ambiguousIds = new Set(ambiguity?.processorIds ?? []);
+	return processors.map((processor, index) => ({
+		id: processor.id,
+		outcome: traceOutcome(processor, index, context, selection, ambiguity, ambiguousIds),
+	}));
+}
+
+function traceOutcome(
+	processor: FenceProcessor,
+	index: number,
+	context: ResolveContext,
+	selection: Selection | undefined,
+	ambiguity: ResolveAmbiguity | undefined,
+	ambiguousIds: ReadonlySet<string>,
+): StepOutcome {
+	if (selection?.processor.id === processor.id) {
+		return selection.mode === "binding" ? "selected-by-binding" : "selected-by-placement";
+	}
+
+	const blocked = candidateBlocked(processor, context);
+	if (blocked === "skipped-disabled" || blocked === "skipped-placement-disabled") {
+		return blocked;
+	}
+	if (isLowerPrecedenceThanSelection(processor, selection, context)) {
+		return "skipped-lower-precedence";
+	}
+	if (selection && index > selection.index) {
+		return "skipped-already-resolved";
+	}
+	if (blocked) return blocked;
+
+	if (selection?.mode === "binding") {
+		return "skipped-binding-prefers-other";
+	}
+	if (ambiguity) {
+		return ambiguousIds.has(processor.id)
+			? "skipped-ambiguous-same-placement"
+			: "skipped-lower-precedence";
+	}
+	if (selection) {
+		return "skipped-lower-precedence";
+	}
+	return context.boundId === undefined ? "skipped-no-claim" : "skipped-binding-prefers-other";
+}
+
+function isLowerPrecedenceThanSelection(
+	processor: FenceProcessor,
+	selection: Selection | undefined,
+	context: ResolveContext,
+): boolean {
+	if (selection?.mode !== "placement") return false;
+	const processorRank = context.placementRank.get(processor.placement);
+	const selectedRank = context.placementRank.get(selection.processor.placement);
+	return processorRank !== undefined && selectedRank !== undefined && processorRank > selectedRank;
+}
+
+function buildPlacementRank(
+	processorPrecedence: readonly ProcessorPlacement[],
+): ReadonlyMap<ProcessorPlacement, number> {
+	return new Map(processorPrecedence.map((placement, index) => [placement, index]));
+}
+
+function bindingBlocked(
+	processor: FenceProcessor,
+	context: ResolveContext,
+): Exclude<BlockingOutcome, "skipped-no-claim"> | undefined {
+	if (context.disabled?.has(processor.id)) return "skipped-disabled";
+	if (!context.allowedPlacements.has(processor.placement)) {
+		return "skipped-placement-disabled";
+	}
+	if (context.availability.get(processor.id)?.ok !== true) return "skipped-unavailable";
+	return undefined;
+}
+
+function candidateBlocked(
+	processor: FenceProcessor,
+	context: ResolveContext,
+): BlockingOutcome | undefined {
+	const blocked = bindingBlocked(processor, context);
+	if (blocked) return blocked;
+	if (!claimsTag(processor, context.tag)) return "skipped-no-claim";
+	return undefined;
 }
 
 function claimsTag(processor: FenceProcessor, tag: string): boolean {
@@ -193,7 +287,12 @@ export type BindingResolution =
 			status: "ignored";
 			tag: string;
 			processorId: string;
-			reason: "unknown-processor" | "processor-unavailable" | "processor-disabled";
+			reason:
+				| "unknown-processor"
+				| "processor-unavailable"
+				| "processor-disabled"
+				| "processor-placement-disabled"
+				| "processor-does-not-claim-tag";
 		};
 
 export function resolveBindings(
@@ -201,8 +300,10 @@ export function resolveBindings(
 	availability: ReadonlyMap<string, Availability>,
 	bindings: Readonly<Record<string, string>>,
 	disabled?: ReadonlySet<string>,
+	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): BindingResolution[] {
 	const out: BindingResolution[] = [];
+	const allowedPlacements = new Set(processorPrecedence);
 	for (const [tag, processorId] of Object.entries(bindings)) {
 		const processor = processors.find((p) => p.id === processorId);
 		if (!processor) {
@@ -223,12 +324,30 @@ export function resolveBindings(
 			});
 			continue;
 		}
+		if (!allowedPlacements.has(processor.placement)) {
+			out.push({
+				status: "ignored",
+				tag,
+				processorId,
+				reason: "processor-placement-disabled",
+			});
+			continue;
+		}
 		if (availability.get(processor.id)?.ok !== true) {
 			out.push({
 				status: "ignored",
 				tag,
 				processorId,
 				reason: "processor-unavailable",
+			});
+			continue;
+		}
+		if (!claimsTag(processor, tag)) {
+			out.push({
+				status: "ignored",
+				tag,
+				processorId,
+				reason: "processor-does-not-claim-tag",
 			});
 			continue;
 		}

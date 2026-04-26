@@ -8,7 +8,7 @@ import type { Logger } from "./io/logger.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { formatProcessorLines, listProcessors, type ListProcessorsOptions } from "./list.ts";
 import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts";
-import type { Availability, FenceProcessor } from "./processor.ts";
+import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import { formatMetricsLines } from "./metrics.ts";
 import { collectSupportedTags, type BindingResolution } from "./resolve.ts";
@@ -30,6 +30,7 @@ interface RegisterFenceCommandOptions {
 	availability: ReadonlyMap<string, Availability>;
 	bindingRows: readonly BindingResolution[];
 	disabled: ReadonlySet<string>;
+	processorPrecedence: readonly ProcessorPlacement[];
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
 	shell: ShellRunner;
@@ -43,12 +44,13 @@ export function registerFenceCommand({
 	availability,
 	bindingRows,
 	disabled,
+	processorPrecedence,
 	endpoints,
 	configStatus,
 	shell,
 	metrics,
 }: RegisterFenceCommandOptions): void {
-	const listOpts: ListProcessorsOptions = { disabled, endpoints };
+	const listOpts: ListProcessorsOptions = { disabled, endpoints, processorPrecedence };
 	const dockerMgr = createKrokiDockerManager(shell, logger);
 
 	pi.registerCommand("fence", {
@@ -57,7 +59,15 @@ export function registerFenceCommand({
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
-				sendPiFenceListMessage(pi, processors, availability, bindingRows, disabled, endpoints);
+				sendPiFenceListMessage(
+					pi,
+					processors,
+					availability,
+					bindingRows,
+					disabled,
+					endpoints,
+					processorPrecedence,
+				);
 				return;
 			}
 			if (subcommand === "doctor") {

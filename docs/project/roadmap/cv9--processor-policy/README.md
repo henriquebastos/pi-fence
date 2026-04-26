@@ -3,9 +3,9 @@
 > Processor selection is governed by explicit user policy, not import order, filesystem order, or implicit trust assumptions.
 
 **Type:** `control`
-**Status:** Not started
+**Status:** In progress
 
-Today pi-fence can bind tags to processor ids and block processors, but the default choice still depends on registration order. That becomes brittle once built-in processors are discovered from a folder and multiple backends can serve the same tag.
+At the start of CV9, pi-fence could bind tags to processor ids and block processors, but the default choice still depended on registration order. That becomes brittle once built-in processors are discovered from a folder and multiple backends can serve the same tag.
 
 This CV introduces trust/placement-aware resolution:
 
@@ -28,4 +28,4 @@ This CV is done when every Story in its Epics is done.
 
 | Code | Epic | State |
 |------|------|-------|
-| [CV9.E1](cv9-e1--policy-driven-resolution.md) | **Policy-driven Resolution** | Not started |
+| [CV9.E1](cv9-e1--policy-driven-resolution.md) | **Policy-driven Resolution** | In progress |

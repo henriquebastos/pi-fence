@@ -14,7 +14,7 @@ import type { FenceResult } from "../../extensions/pi-fence/processor.ts";
 describe("buildPiFenceOutputMessage — text output", () => {
 	it("emits a text content item for a text result", () => {
 		const result: FenceResult = { ok: true, text: "| a | b |\n|---|---|\n| 1 | 2 |" };
-		const msg = buildPiFenceOutputMessage("csv", "a,b\n1,2", "table", result);
+		const msg = buildPiFenceOutputMessage("csv", "a,b\n1,2", "table-embedded", result);
 
 		const items = msg.content as Array<{ type: string; text?: string; data?: string }>;
 		expect(items).toHaveLength(1);
@@ -24,17 +24,17 @@ describe("buildPiFenceOutputMessage — text output", () => {
 
 	it("sets details.kind to ok for a text result", () => {
 		const result: FenceResult = { ok: true, text: "table content" };
-		const msg = buildPiFenceOutputMessage("jsonl", "{}", "table", result);
+		const msg = buildPiFenceOutputMessage("jsonl", "{}", "table-embedded", result);
 
 		expect((msg.details as Record<string, unknown>).kind).toBe("ok");
 		expect((msg.details as Record<string, unknown>).tag).toBe("jsonl");
-		expect((msg.details as Record<string, unknown>).processor).toBe("table");
+		expect((msg.details as Record<string, unknown>).processor).toBe("table-embedded");
 	});
 
 	it("still emits an image content item for a png result", () => {
 		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 		const result: FenceResult = { ok: true, png };
-		const msg = buildPiFenceOutputMessage("mermaid", "flowchart LR", "kroki", result);
+		const msg = buildPiFenceOutputMessage("mermaid", "flowchart LR", "kroki-remote", result);
 
 		const items = msg.content as Array<{ type: string; data?: string; mimeType?: string }>;
 		expect(items).toHaveLength(1);

@@ -1,8 +1,8 @@
 /**
  * Contract test for `FenceProcessor`.
  *
- * Any processor implementation — today Kroki, tomorrow graphviz-local,
- * mermaid-local, third-party — imports `runFenceProcessorContract` and
+ * Any processor implementation — built-in or third-party — imports
+ * `runFenceProcessorContract` and
  * calls it with a factory. The factory produces a `FenceProcessor` whose
  * behaviour must satisfy the contract for the (tag, known-good-source)
  * pair passed in. All processors share one contract so the behavioural
@@ -12,7 +12,7 @@
  * Usage, typically from `tests/contract/kroki.contract.test.ts` (lands
  * with step 7):
  *
- *     runFenceProcessorContract("kroki", () => createKrokiProcessor(http), {
+ *     runFenceProcessorContract("kroki-remote", () => createKrokiProcessor(http), {
  *       tag: "mermaid",
  *       goodSource: "flowchart LR\\nA --> B",
  *       badSource: "not actually mermaid",
@@ -25,7 +25,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FenceProcessor } from "../../extensions/pi-fence/processor.ts";
+import { PROCESSOR_PLACEMENTS, type FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 
 export interface FenceProcessorContractCases {
 	/** A tag the processor advertises support for. */
@@ -62,6 +62,11 @@ export function runFenceProcessorContract(
 			expect(processor.id.length).toBeGreaterThan(0);
 		});
 
+		it("exposes a valid placement", () => {
+			const processor = factory();
+			expect(PROCESSOR_PLACEMENTS).toContain(processor.placement);
+		});
+
 		it("exposes a non-empty tags array of strings", () => {
 			const processor = factory();
 			expect(Array.isArray(processor.tags)).toBe(true);
@@ -89,7 +94,7 @@ export function runFenceProcessorContract(
 			// Shape-only. The contract helper does not know whether this
 			// processor *should* be available on the test machine — the Kroki
 			// contract test wires a processor whose probe always returns ok;
-			// the graphviz-local contract test (CV0.E2.S1 step 4) wires one
+			// the graphviz-host contract test (CV0.E2.S1 step 4) wires one
 			// against a canned-good FakeShellRunner so its probe also returns
 			// ok. Live availability (unavailable reason + install hint) is
 			// asserted in per-processor live tests, not here.

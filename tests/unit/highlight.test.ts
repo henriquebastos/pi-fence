@@ -13,8 +13,12 @@ import { createHighlightProcessor } from "../../extensions/pi-fence/highlight.ts
 const ESC = "\x1b[";
 
 describe("highlight processor — metadata", () => {
-	it("has id 'highlight'", () => {
-		expect(createHighlightProcessor().id).toBe("highlight");
+	it("has id 'highlight-embedded'", () => {
+		expect(createHighlightProcessor().id).toBe("highlight-embedded");
+	});
+
+	it("declares embedded placement", () => {
+		expect(createHighlightProcessor().placement).toBe("embedded");
 	});
 
 	it("handles sql, regex, and jq tags", () => {

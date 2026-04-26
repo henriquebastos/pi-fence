@@ -14,26 +14,21 @@ import {
 export interface PiFenceConfig {
 	/**
 	 * Map from canonical or alias tag name to processor id. Takes
-	 * precedence over capability-based resolution when the bound
-	 * processor is registered AND available; falls through otherwise.
+	 * precedence over placement-policy resolution when the bound processor
+	 * is registered, available, enabled, allowed, and claims the tag.
 	 */
 	bindings: Record<string, string>;
 	/**
 	 * Processor ids to disable. A disabled processor is skipped during
 	 * resolution — its tags fall through to the next available processor.
-	 * Merge: project replaces global entirely when present; absent key
-	 * inherits from the lower-priority layer.
-	 */
-	/**
-	 * `undefined` means "not specified in this config layer" — the merge
-	 * inherits from the lower-priority layer. An explicit `[]` means
-	 * "I want everything enabled" and overrides a non-empty list from
-	 * a lower layer.
+	 * `undefined` means "not specified in this config layer". An explicit
+	 * `[]` disables nothing in that layer but cannot re-enable ids from
+	 * lower layers; higher-priority layers only add disabled ids.
 	 */
 	disabled?: string[];
 	/**
 	 * Placement allowlist and selection order. Omitted in a layer means inherit;
-	 * an explicit list replaces lower-priority lists.
+	 * an explicit list can only reorder or remove lower-priority placements.
 	 */
 	processorPrecedence?: ProcessorPlacement[];
 	/** Per-processor configuration. Currently only Kroki has settings. */
@@ -62,31 +57,47 @@ export const DEFAULT_CONFIG: PiFenceConfig = {
 
 export const EMPTY_CONFIG_LAYER: PiFenceConfig = { bindings: {} };
 
+const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = {
+	color: "color-embedded",
+	"graphviz-local": "graphviz-host",
+	highlight: "highlight-embedded",
+	kroki: "kroki-remote",
+	"mermaid-local": "mermaid-host",
+	qr: "qr-embedded",
+	table: "table-embedded",
+};
+
 /**
  * Shallow merge at the top level; inside `bindings` later configs win on the
- * same key and preserve non-conflicting keys.
+ * same key and preserve non-conflicting keys. Safety controls are restrictive:
+ * `disabled` is a union, and `processorPrecedence` is an ordered intersection.
  */
 export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
 ): PiFenceConfig {
 	const bindings: Record<string, string> = {};
-	let disabled: string[] | undefined;
+	const disabled = new Set<string>();
+	let sawDisabled = false;
 	let processorPrecedence: ProcessorPlacement[] | undefined;
 	let kroki: PiFenceConfig["kroki"];
 	for (const config of configs) {
 		Object.assign(bindings, config.bindings);
 		if (config.disabled !== undefined) {
-			disabled = config.disabled;
+			sawDisabled = true;
+			for (const id of config.disabled) disabled.add(id);
 		}
 		if (config.processorPrecedence !== undefined) {
-			processorPrecedence = [...config.processorPrecedence];
+			processorPrecedence = mergeProcessorPrecedence(
+				processorPrecedence,
+				config.processorPrecedence,
+			);
 		}
 		if (config.kroki !== undefined) {
-			kroki = config.kroki;
+			kroki = mergeKrokiConfig(kroki, config.kroki);
 		}
 	}
 	const out: PiFenceConfig = { bindings };
-	if (disabled !== undefined) out.disabled = disabled;
+	if (sawDisabled) out.disabled = [...disabled];
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
@@ -106,15 +117,19 @@ export function validatePiFenceConfig(
 		logger?.warn("config", `${label} config top-level is not an object`, {
 			got: Array.isArray(parsed) ? "array" : typeof parsed,
 		});
-		return EMPTY_CONFIG_LAYER;
+		return { bindings: {}, processorPrecedence: ["embedded"] };
 	}
 
+	const failClosed = hasInvalidPrivacyControl(parsed);
 	const disabled = parsed.disabled === undefined
 		? undefined
 		: validateDisabled(parsed.disabled, label, logger);
-	const processorPrecedence = parsed.processorPrecedence === undefined
-		? undefined
-		: validateProcessorPrecedence(parsed.processorPrecedence, label, logger);
+	const processorPrecedence = validateProcessorPrecedenceField(
+		parsed.processorPrecedence,
+		failClosed,
+		label,
+		logger,
+	);
 	const kroki = parsed.kroki === undefined
 		? undefined
 		: validateKroki(parsed.kroki, label, logger);
@@ -123,6 +138,56 @@ export function validatePiFenceConfig(
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
+}
+
+function mergeKrokiConfig(
+	current: PiFenceConfig["kroki"],
+	next: NonNullable<PiFenceConfig["kroki"]>,
+): NonNullable<PiFenceConfig["kroki"]> {
+	const merged: NonNullable<PiFenceConfig["kroki"]> = current ? { ...current } : {};
+	if (merged.endpoint === undefined && next.endpoint !== undefined) {
+		merged.endpoint = next.endpoint;
+	}
+	if (next.docker !== undefined) {
+		merged.docker = next.docker;
+	}
+	return merged;
+}
+
+function mergeProcessorPrecedence(
+	current: ProcessorPlacement[] | undefined,
+	next: readonly ProcessorPlacement[],
+): ProcessorPlacement[] {
+	if (current === undefined) return [...next];
+	const currentPlacements = new Set(current);
+	return next.filter((placement) => currentPlacements.has(placement));
+}
+
+function validateProcessorPrecedenceField(
+	rawPrecedence: unknown,
+	failClosed: boolean,
+	label: string,
+	logger?: Logger,
+): ProcessorPlacement[] | undefined {
+	if (failClosed) return ["embedded"];
+	if (rawPrecedence === undefined) return undefined;
+	return validateProcessorPrecedence(rawPrecedence, label, logger);
+}
+
+function hasInvalidPrivacyControl(parsed: Record<string, unknown>): boolean {
+	return hasInvalidDisabled(parsed.disabled) || hasInvalidKrokiEndpoint(parsed.kroki);
+}
+
+function hasInvalidDisabled(rawDisabled: unknown): boolean {
+	if (rawDisabled === undefined) return false;
+	if (typeof rawDisabled === "string") return false;
+	return !Array.isArray(rawDisabled) || rawDisabled.some((item) => typeof item !== "string");
+}
+
+function hasInvalidKrokiEndpoint(rawKroki: unknown): boolean {
+	if (rawKroki === undefined) return false;
+	if (!isRecordLike(rawKroki)) return true;
+	return rawKroki.endpoint !== undefined && typeof rawKroki.endpoint !== "string";
 }
 
 function validateBindings(
@@ -143,7 +208,7 @@ function validateBindings(
 
 	for (const [key, value] of Object.entries(rawBindings)) {
 		if (typeof value === "string") {
-			bindings[key] = value;
+			bindings[key] = normalizeLegacyProcessorId(value, label, `bindings.${key}`, logger);
 			continue;
 		}
 		logger?.warn("config", `non-string value in ${label} bindings`, {
@@ -231,12 +296,14 @@ function validateDisabled(
 		logger?.warn("config", `${label} config 'disabled' is not an array`, {
 			got: typeof rawDisabled,
 		});
-		return [];
+		return typeof rawDisabled === "string"
+			? [normalizeLegacyProcessorId(rawDisabled, label, "disabled", logger)]
+			: [];
 	}
 	const out: string[] = [];
 	for (const item of rawDisabled) {
 		if (typeof item === "string") {
-			out.push(item);
+			out.push(normalizeLegacyProcessorId(item, label, "disabled", logger));
 		} else {
 			logger?.warn("config", `non-string entry in ${label} disabled`, {
 				got: typeof item,
@@ -244,6 +311,21 @@ function validateDisabled(
 		}
 	}
 	return out;
+}
+
+function normalizeLegacyProcessorId(
+	id: string,
+	label: string,
+	path: string,
+	logger?: Logger,
+): string {
+	const replacement = LEGACY_PROCESSOR_ID_ALIASES[id];
+	if (replacement === undefined) return id;
+	logger?.warn("config", `legacy processor id in ${label} config '${path}'`, {
+		from: id,
+		to: replacement,
+	});
+	return replacement;
 }
 
 function validateProcessorPrecedence(

@@ -16,7 +16,7 @@ describe("color contract harness", () => {
 });
 
 runFenceProcessorContract(
-	"color",
+	"color-embedded",
 	() => createColorProcessor(),
 	{
 		tag: "color",

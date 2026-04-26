@@ -13,8 +13,12 @@ const ESC = "\x1b[";
 const SWATCH_CHAR = "█";
 
 describe("color processor — metadata", () => {
-	it("has id 'color'", () => {
-		expect(createColorProcessor().id).toBe("color");
+	it("has id 'color-embedded'", () => {
+		expect(createColorProcessor().id).toBe("color-embedded");
+	});
+
+	it("declares embedded placement", () => {
+		expect(createColorProcessor().placement).toBe("embedded");
 	});
 
 	it("handles color and palette tags", () => {

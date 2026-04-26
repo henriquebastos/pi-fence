@@ -4,9 +4,9 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Logger } from "./io/logger.ts";
 import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
-import { extractFencedBlocks } from "./parser.ts";
+import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
-import type { Availability, FenceProcessor } from "./processor.ts";
+import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import { resolveProcessor } from "./resolve.ts";
 
 export interface ThemeState {
@@ -20,6 +20,7 @@ interface RegisterAgentEndHandlerOptions {
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, string>>;
 	disabled: ReadonlySet<string>;
+	processorPrecedence: readonly ProcessorPlacement[];
 	supportedTags: string[] | (() => string[]);
 	themeState: ThemeState;
 	maxBlocksPerTurn: number;
@@ -33,6 +34,7 @@ export function registerPiFenceAgentEndHandler({
 	availability,
 	bindings,
 	disabled,
+	processorPrecedence,
 	supportedTags,
 	themeState,
 	maxBlocksPerTurn,
@@ -61,68 +63,123 @@ export function registerPiFenceAgentEndHandler({
 		}
 
 		for (const block of toRender) {
-			const { processor, steps } = resolveProcessor(
+			await renderBlock(block, {
+				pi,
+				logger,
 				processors,
 				availability,
-				block.tag,
 				bindings,
 				disabled,
-			);
-			logger.debug("pi-fence", "processor resolution", {
-				tag: block.tag,
-				processor: processor?.id ?? null,
-				steps,
+				processorPrecedence,
+				metrics,
 			});
-			if (!processor) {
-				logger.warn("pi-fence", "no available processor for tag", { tag: block.tag });
-				continue;
-			}
-			logger.debug("pi-fence", "rendering block", {
-				tag: block.tag,
-				processor: processor.id,
-				sourceBytes: block.source.length,
-			});
-			const result = await processor.render(block.tag, block.source);
-			if (result.ok) {
-				const bytes =
-					"png" in result ? result.png.length : Buffer.byteLength(result.text, "utf8");
-				logger.info("pi-fence", "block rendered", {
-					tag: block.tag,
-					processor: processor.id,
-					bytes,
-				});
-			} else {
-				logger.warn("pi-fence", "block render failed", {
-					tag: block.tag,
-					processor: processor.id,
-					error: result.error.slice(0, 200),
-				});
-			}
-			pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
-			metrics?.recordRender(processor.id, block.tag, result.ok);
-
-			// Feed the error back to the LLM so it can self-correct (D2).
-			if (!result.ok) {
-				const content: TextContent[] = [
-					{
-						type: "text",
-						text: `pi-fence: render error for \`${block.tag}\` via ${processor.id}: ${result.error}`,
-					},
-				];
-				pi.sendMessage(
-					{
-						customType: "pi-fence:error-followup",
-						content,
-						display: false,
-					},
-					{ deliverAs: "followUp" },
-				);
-				logger.debug("pi-fence", "error follow-up sent to LLM", {
-					tag: block.tag,
-					processor: processor.id,
-				});
-			}
 		}
+	});
+}
+
+interface RenderBlockOptions {
+	pi: ExtensionAPI;
+	logger: Logger;
+	processors: readonly FenceProcessor[];
+	availability: ReadonlyMap<string, Availability>;
+	bindings: Readonly<Record<string, string>>;
+	disabled: ReadonlySet<string>;
+	processorPrecedence: readonly ProcessorPlacement[];
+	metrics?: MetricsCollector;
+}
+
+async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Promise<void> {
+	const { processor, steps, ambiguity } = resolveProcessor(
+		options.processors,
+		options.availability,
+		block.tag,
+		options.bindings,
+		options.disabled,
+		options.processorPrecedence,
+	);
+	options.logger.debug("pi-fence", "processor resolution", {
+		tag: block.tag,
+		processor: processor?.id ?? null,
+		steps,
+		...(ambiguity ? { ambiguity } : {}),
+	});
+	if (!processor) {
+		logUnresolvedBlock(block, options.logger, ambiguity);
+		return;
+	}
+
+	options.logger.debug("pi-fence", "rendering block", {
+		tag: block.tag,
+		processor: processor.id,
+		sourceBytes: block.source.length,
+	});
+	const result = await processor.render(block.tag, block.source);
+	logRenderResult(block, processor, result, options.logger);
+	options.pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
+	options.metrics?.recordRender(processor.id, block.tag, result.ok);
+	if (!result.ok) sendErrorFollowup(block, processor.id, result.error, options);
+}
+
+function logUnresolvedBlock(
+	block: FencedBlock,
+	logger: Logger,
+	ambiguity: ReturnType<typeof resolveProcessor>["ambiguity"],
+): void {
+	if (ambiguity) {
+		logger.warn("pi-fence", "ambiguous processor resolution", {
+			tag: block.tag,
+			...ambiguity,
+		});
+		return;
+	}
+	logger.warn("pi-fence", "no available processor for tag", { tag: block.tag });
+}
+
+function logRenderResult(
+	block: FencedBlock,
+	processor: FenceProcessor,
+	result: Awaited<ReturnType<FenceProcessor["render"]>>,
+	logger: Logger,
+): void {
+	if (result.ok) {
+		const bytes = "png" in result ? result.png.length : Buffer.byteLength(result.text, "utf8");
+		logger.info("pi-fence", "block rendered", {
+			tag: block.tag,
+			processor: processor.id,
+			bytes,
+		});
+		return;
+	}
+	logger.warn("pi-fence", "block render failed", {
+		tag: block.tag,
+		processor: processor.id,
+		error: result.error.slice(0, 200),
+	});
+}
+
+function sendErrorFollowup(
+	block: FencedBlock,
+	processorId: string,
+	error: string,
+	options: Pick<RenderBlockOptions, "pi" | "logger">,
+): void {
+	const content: TextContent[] = [
+		{
+			type: "text",
+			text: `pi-fence: render error for \`${block.tag}\` via ${processorId}: ${error}`,
+		},
+	];
+	options.pi.sendMessage(
+		{
+			customType: "pi-fence:error-followup",
+			content,
+			display: false,
+		},
+		{ deliverAs: "followUp" },
+	);
+	options.logger.debug("pi-fence", "error follow-up sent to LLM", {
+		tag: block.tag,
+		processor: processorId,
 	});
 }
 

@@ -16,14 +16,14 @@ describe("FakeLogger", () => {
 	it("captures entries at every level", () => {
 		const log: Logger = new FakeLogger();
 		log.debug("parser", "trace-ish");
-		log.info("kroki", "ok");
+		log.info("kroki-remote", "ok");
 		log.warn("registry", "no processor for tag", { tag: "unknown" });
-		log.error("kroki", "timeout", { url: "https://kroki.io/mermaid/png" });
+		log.error("kroki-remote", "timeout", { url: "https://kroki.io/mermaid/png" });
 
 		const entries = (log as FakeLogger).entries;
 		expect(entries).toHaveLength(4);
 		expect(entries[0]).toMatchObject({ level: "debug", subsystem: "parser", message: "trace-ish" });
-		expect(entries[1]).toMatchObject({ level: "info", subsystem: "kroki", message: "ok" });
+		expect(entries[1]).toMatchObject({ level: "info", subsystem: "kroki-remote", message: "ok" });
 		expect(entries[2]).toMatchObject({
 			level: "warn",
 			subsystem: "registry",
@@ -32,7 +32,7 @@ describe("FakeLogger", () => {
 		});
 		expect(entries[3]).toMatchObject({
 			level: "error",
-			subsystem: "kroki",
+			subsystem: "kroki-remote",
 			message: "timeout",
 			meta: { url: "https://kroki.io/mermaid/png" },
 		});
@@ -52,7 +52,7 @@ describe("FakeLogger", () => {
 		const log = new FakeLogger();
 		log.debug("parser", "one");
 		log.info("parser", "two");
-		log.warn("kroki", "three");
+		log.warn("kroki-remote", "three");
 
 		expect(log.bySubsystem("parser")).toHaveLength(2);
 		expect(log.byLevel("warn")).toHaveLength(1);
@@ -145,8 +145,8 @@ describe("NodeLogger", () => {
 	it("always writes warn and error regardless of default", () => {
 		delete process.env.PI_FENCE_LOG_LEVEL;
 		const log = new NodeLogger();
-		log.warn("kroki", "slow");
-		log.error("kroki", "failed");
+		log.warn("kroki-remote", "slow");
+		log.error("kroki-remote", "failed");
 		expect(writeSpy).toHaveBeenCalledTimes(2);
 	});
 

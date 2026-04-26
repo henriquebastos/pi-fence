@@ -89,7 +89,7 @@ describe("scenario registry", () => {
 			expect(bytes).not.toContain("\x1b_G");
 			// The error label shape is a user-visible surface; pinning it
 			// in the bytes guards against silent phrasing drift.
-			expect(bytes).toContain("Error rendering mermaid via kroki");
+			expect(bytes).toContain("Error rendering mermaid via kroki-remote");
 		},
 		20_000,
 	);

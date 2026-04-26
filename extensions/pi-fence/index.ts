@@ -11,6 +11,7 @@ import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
+import { DEFAULT_PROCESSOR_PRECEDENCE } from "./config.ts";
 import { registerFenceCommand } from "./command.ts";
 import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
@@ -69,16 +70,29 @@ export async function createPiFenceExtension(
 		themeState,
 		config.kroki?.endpoint,
 	);
-	const availability = await probeAvailability(processors);
-	logAvailability(processors, availability, deps.logger);
 	const bindings: Readonly<Record<string, string>> = config.bindings;
 	const disabled: ReadonlySet<string> = new Set(config.disabled ?? []);
-	const bindingRows = resolveBindings(processors, availability, bindings, disabled);
+	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
+	const probedProcessors = filterProcessorsForAvailabilityProbe(
+		processors,
+		disabled,
+		processorPrecedence,
+	);
+	const availability = await probeAvailability(probedProcessors);
+	logAvailability(probedProcessors, availability, deps.logger);
+	const bindingRows = resolveBindings(
+		processors,
+		availability,
+		bindings,
+		disabled,
+		processorPrecedence,
+	);
 	logBindingResolution(bindingRows, deps.logger);
 	logDisabled(disabled, deps.logger);
+	logProcessorPrecedence(processorPrecedence, deps.logger);
 
-	// Auto-start Docker Kroki if configured.
-	if (config.kroki?.docker?.autoStart) {
+	// Auto-start Docker Kroki if configured and policy allows kroki-remote.
+	if (config.kroki?.docker?.autoStart && isProcessorAllowed("kroki-remote", "remote", disabled, processorPrecedence)) {
 		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
 		const dockerStatus = await dockerMgr.status();
 		if (dockerStatus.status === "running") {
@@ -101,7 +115,7 @@ export async function createPiFenceExtension(
 
 	// Build the endpoints map for /fence list display.
 	const endpoints: Record<string, string> = {};
-	if (config.kroki?.endpoint) endpoints.kroki = config.kroki.endpoint;
+	if (config.kroki?.endpoint) endpoints["kroki-remote"] = config.kroki.endpoint;
 
 	// Build the shared mutable registry for dynamic processor registration.
 	const registry: ProcessorRegistry = { processors, availability };
@@ -115,7 +129,10 @@ export async function createPiFenceExtension(
 				pi.events.emit("pi-fence:register-error", { error: validated.error });
 				return;
 			}
-			const result = await registerProcessor(registry, validated.processor);
+			const result = await registerProcessor(registry, validated.processor, {
+				disabled,
+				processorPrecedence,
+			});
 			if (!result.ok) {
 				deps.logger.warn("pi-fence", "register rejected", { error: result.error });
 				pi.events.emit("pi-fence:register-error", { error: result.error });
@@ -139,6 +156,7 @@ export async function createPiFenceExtension(
 		availability,
 		bindingRows,
 		disabled,
+		processorPrecedence,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
 		configStatus: {
 			globalPath: configResult.globalPath,
@@ -156,11 +174,31 @@ export async function createPiFenceExtension(
 		availability,
 		bindings,
 		disabled,
+		processorPrecedence,
 		supportedTags: () => collectSupportedTags(processors),
 		themeState,
 		maxBlocksPerTurn: MAX_BLOCKS_PER_TURN,
 		metrics,
 	});
+}
+
+function filterProcessorsForAvailabilityProbe(
+	processors: readonly FenceProcessor[],
+	disabled: ReadonlySet<string>,
+	processorPrecedence: readonly string[],
+): FenceProcessor[] {
+	return processors.filter((processor) =>
+		isProcessorAllowed(processor.id, processor.placement, disabled, processorPrecedence),
+	);
+}
+
+function isProcessorAllowed(
+	processorId: string,
+	placement: string,
+	disabled: ReadonlySet<string>,
+	processorPrecedence: readonly string[],
+): boolean {
+	return !disabled.has(processorId) && processorPrecedence.includes(placement);
 }
 
 function createDefaultProcessors(
@@ -226,6 +264,15 @@ function logDisabled(
 	if (disabled.size === 0) return;
 	logger.info("pi-fence", "processors disabled by config", {
 		ids: [...disabled],
+	});
+}
+
+function logProcessorPrecedence(
+	processorPrecedence: readonly string[],
+	logger: Logger,
+): void {
+	logger.debug("pi-fence", "processor precedence", {
+		placements: [...processorPrecedence],
 	});
 }
 

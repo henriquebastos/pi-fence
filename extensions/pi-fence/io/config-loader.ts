@@ -26,7 +26,12 @@ export interface LoadConfigOptions {
 	logger?: Logger;
 }
 
-export type ConfigFileStatus = "loaded" | "not-found" | "read-error" | "malformed-json";
+export type ConfigFileStatus =
+	| "loaded"
+	| "not-found"
+	| "read-error"
+	| "malformed-json"
+	| "invalid-shape";
 
 export interface ConfigLoadResult {
 	config: PiFenceConfig;
@@ -54,12 +59,29 @@ export async function loadPiFenceConfig(
 	const [globalConfig, globalStatus] = await readConfigFileWithStatus(globalPath, "global", logger);
 	const [projectConfig, projectStatus] = await readConfigFileWithStatus(projectPath, "project", logger);
 	return {
-		config: mergePiFenceConfigs(DEFAULT_CONFIG, globalConfig, projectConfig),
+		config: mergePiFenceConfigs(
+			DEFAULT_CONFIG,
+			configFailurePrivacyLayer(globalStatus, globalConfig),
+			configFailurePrivacyLayer(projectStatus, projectConfig),
+		),
 		globalStatus,
 		globalPath,
 		projectStatus,
 		projectPath,
 	};
+}
+
+function configFailurePrivacyLayer(
+	status: ConfigFileStatus,
+	config: PiFenceConfig,
+): PiFenceConfig {
+	if (status === "malformed-json" || status === "read-error" || status === "invalid-shape") {
+		return {
+			bindings: config.bindings,
+			processorPrecedence: ["embedded"],
+		};
+	}
+	return config;
 }
 
 async function readConfigFileWithStatus(
@@ -93,5 +115,13 @@ async function readConfigFileWithStatus(
 		return [EMPTY_CONFIG_LAYER, "malformed-json"];
 	}
 
+	if (!isConfigObject(parsed)) {
+		return [validatePiFenceConfig(parsed, label, logger), "invalid-shape"];
+	}
+
 	return [validatePiFenceConfig(parsed, label, logger), "loaded"];
+}
+
+function isConfigObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

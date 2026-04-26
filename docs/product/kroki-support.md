@@ -2,9 +2,9 @@
 
 # Kroki language support
 
-pi-fence's default processor posts fenced-block sources to [Kroki](https://kroki.io)'s public endpoint at `https://kroki.io/<tag>/png`. This page documents, per language Kroki hosts, whether pi-fence can render it today and why (or why not).
+pi-fence's `kroki-remote` processor posts fenced-block sources to [Kroki](https://kroki.io)'s public endpoint at `https://kroki.io/<tag>/png` unless config points it at a self-hosted endpoint. This page documents, per language Kroki hosts, whether pi-fence can render it today and why (or why not).
 
-Last updated: 2026-04-22 (CV0.E1.S5).
+Last updated: 2026-04-26 (CV9.E1.S1).
 
 ## Quick summary
 
@@ -19,7 +19,7 @@ Each entry is verified by a live integration test at `tests/integration/kroki.li
 | Tag | Aliases pi-fence accepts | Notes |
 |-----|--------------------------|-------|
 | `mermaid` | — | Flowcharts, sequence diagrams, state diagrams, class diagrams, etc. |
-| `graphviz` | `dot` | DOT language; aliases to `/graphviz/png`. **Local precedence:** if `graphviz` is installed on the host (`dot` on PATH), pi-fence's `graphviz-local` processor renders this tag via the local binary instead of kroki.io. See [getting-started](../getting-started.md#going-offline-for-dot). |
+| `graphviz` | `dot` | DOT language; aliases to `/graphviz/png`. **Default local precedence:** if `graphviz` is installed on the host (`dot` on PATH) and `host` placement is allowed, pi-fence's `graphviz-host` processor renders this tag via the local binary instead of kroki.io unless a binding or precedence config chooses another processor. See [getting-started](../getting-started.md#going-offline-for-dot). |
 | `plantuml` | `puml` | Full PlantUML. Aliases to `/plantuml/png`. |
 | `blockdiag` | — | Box-and-arrow block diagrams. |
 | `seqdiag` | — | Sequence diagrams in the blockdiag family. |

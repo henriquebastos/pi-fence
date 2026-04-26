@@ -57,7 +57,7 @@ describe("mermaid-local contract harness", () => {
 	});
 });
 
-runFenceProcessorContract("mermaid-local", makeMermaidLocal, {
+runFenceProcessorContract("mermaid-host", makeMermaidLocal, {
 	tag: "mermaid",
 	goodSource: "flowchart LR\nA --> B",
 	badSource: "not actually mermaid",

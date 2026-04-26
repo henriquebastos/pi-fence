@@ -12,8 +12,12 @@ import { createQrProcessor } from "../../extensions/pi-fence/qr.ts";
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 describe("qr processor — metadata", () => {
-	it("has id 'qr'", () => {
-		expect(createQrProcessor().id).toBe("qr");
+	it("has id 'qr-embedded'", () => {
+		expect(createQrProcessor().id).toBe("qr-embedded");
+	});
+
+	it("declares embedded placement", () => {
+		expect(createQrProcessor().placement).toBe("embedded");
 	});
 
 	it("handles qr tag", () => {

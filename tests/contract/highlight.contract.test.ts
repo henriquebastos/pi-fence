@@ -17,7 +17,7 @@ describe("highlight contract harness", () => {
 });
 
 runFenceProcessorContract(
-	"highlight",
+	"highlight-embedded",
 	() => createHighlightProcessor(),
 	{
 		tag: "sql",

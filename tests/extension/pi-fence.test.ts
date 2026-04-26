@@ -74,7 +74,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "mermaid",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 			});
 			expectImageBytes(outputs[0].content, TINY_PNG);
@@ -93,7 +93,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			const terminal = await paintCustomMessage(captured, outputs[0], "pi-fence:output");
 			expect(
 				terminal.getViewport().some((line) =>
-					line.includes("Rendered mermaid via kroki"),
+					line.includes("Rendered mermaid via kroki-remote"),
 				),
 			).toBe(true);
 			expect(terminal.getWrites()).toContain("\x1b_G");
@@ -118,7 +118,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			// even though Kroki's endpoint is /graphviz/png.
 			expect(outputs[0].details).toMatchObject({
 				tag: "dot",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 			});
 			expectImageBytes(outputs[0].content, TINY_PNG);
@@ -145,9 +145,9 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			const fenceEntries = logger.bySubsystem("pi-fence");
 			expect(fenceEntries.find((e) => e.message.includes("agent_end parsed"))).toBeDefined();
 			const resolution = fenceEntries.find((e) => e.message.includes("processor resolution"));
-			expect(resolution?.meta).toMatchObject({ tag: "mermaid", processor: "kroki" });
+			expect(resolution?.meta).toMatchObject({ tag: "mermaid", processor: "kroki-remote" });
 			expect(resolution?.meta?.steps).toEqual(
-				expect.arrayContaining([{ id: "kroki", outcome: "selected-first-available" }]),
+				expect.arrayContaining([{ id: "kroki-remote", outcome: "selected-by-placement" }]),
 			);
 			expect(fenceEntries.find((e) => e.message.includes("rendering block"))).toBeDefined();
 			expect(
@@ -155,7 +155,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			).toBeDefined();
 
 			// Kroki processor traced request + response.
-			const krokiEntries = logger.bySubsystem("kroki");
+			const krokiEntries = logger.bySubsystem("kroki-remote");
 			expect(krokiEntries.filter((e) => e.level === "debug").length).toBeGreaterThanOrEqual(2);
 		},
 		20_000,
@@ -173,7 +173,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "color",
-				processor: "color",
+				processor: "color-embedded",
 				kind: "ok",
 			});
 
@@ -202,7 +202,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "qr",
-				processor: "qr",
+				processor: "qr-embedded",
 				kind: "ok",
 			});
 
@@ -231,7 +231,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "csv",
-				processor: "table",
+				processor: "table-embedded",
 				kind: "ok",
 			});
 
@@ -262,7 +262,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "sql",
-				processor: "highlight",
+				processor: "highlight-embedded",
 				kind: "ok",
 			});
 
@@ -292,7 +292,7 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "jsonl",
-				processor: "table",
+				processor: "table-embedded",
 				kind: "ok",
 			});
 
@@ -311,13 +311,12 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 	});
 
 	it(
-		"emits a pi-fence:list custom message describing both processors — graphviz-local unavailable + kroki registered",
+		"emits a pi-fence:list custom message describing built-in processors",
 		async () => {
 			// Default test shell has `dot -V` failing with exit 127 so
-			// graphviz-local probes as unavailable and Kroki still serves
-			// every tag. Asserts the full CV0.E2 two-processor shape:
-			// graphviz-local first with [unavailable] status + reason +
-			// installHint; kroki second with [registered].
+			// graphviz-host probes as unavailable and kroki-remote still serves
+			// diagram tags. Asserts the graphviz-host unavailable row plus the
+			// current built-in registry shape.
 			const http = new FakeHttpClient();
 			const captured = await runExtensionWithCommand(http, "/fence list");
 
@@ -340,7 +339,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 
 			expect(details.listings).toHaveLength(7);
 			expect(details.listings[0]).toMatchObject({
-				id: "graphviz-local",
+				id: "graphviz-host",
 				status: "unavailable",
 				tags: GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 				aliases: GRAPHVIZ_LOCAL_ALIASES,
@@ -348,31 +347,31 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 			expect(details.listings[0].unavailableReason).toBeDefined();
 			expect(details.listings[0].installHint).toContain("graphviz");
 			expect(details.listings[1]).toMatchObject({
-				id: "mermaid-local",
+				id: "mermaid-host",
 				status: "unavailable",
 			});
 			expect(details.listings[2]).toMatchObject({
-				id: "table",
+				id: "table-embedded",
 				status: "registered",
 				tags: ["csv", "jsonl"],
 			});
 			expect(details.listings[3]).toMatchObject({
-				id: "highlight",
+				id: "highlight-embedded",
 				status: "registered",
 				tags: ["sql", "regex", "jq"],
 			});
 			expect(details.listings[4]).toMatchObject({
-				id: "qr",
+				id: "qr-embedded",
 				status: "registered",
 				tags: ["qr"],
 			});
 			expect(details.listings[5]).toMatchObject({
-				id: "color",
+				id: "color-embedded",
 				status: "registered",
 				tags: ["color", "palette"],
 			});
 			expect(details.listings[6]).toMatchObject({
-				id: "kroki",
+				id: "kroki-remote",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
 				aliases: KROKI_ALIASES,
@@ -394,16 +393,16 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 	);
 });
 
-describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
+describe("pi-fence extension — graphviz-host vs kroki-remote resolution", () => {
 	afterEach(() => {
 		cleanupTempDirs();
 	});
 
 	it(
-		"renders a `dot` block via graphviz-local when `dot` is on PATH — zero HTTP traffic",
+		"renders a `dot` block via graphviz-host when `dot` is on PATH — zero HTTP traffic",
 		async () => {
 			// Shell programmed so:
-			//   - `dot -V` exits 0 (graphviz-local probes as available).
+			//   - `dot -V` exits 0 (graphviz-host probes as available).
 			//   - `dot -Tpng` reads source on stdin, responds with PNG bytes.
 			// HTTP is not programmed with any response; the test asserts
 			// kroki.io never gets a request.
@@ -431,7 +430,7 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "dot",
-				processor: "graphviz-local",
+				processor: "graphviz-host",
 				kind: "ok",
 			});
 			expectImageBytes(outputs[0].content, TINY_PNG);
@@ -448,18 +447,18 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 				args: ["-Tpng"],
 				input: "digraph { web -> api; api -> db }",
 			});
-			// No HTTP — graphviz-local handled it.
+			// No HTTP — graphviz-host handled it.
 			expect(http.requests).toHaveLength(0);
 		},
 		20_000,
 	);
 
 	it(
-		"falls through to Kroki for a `dot` block when graphviz-local is unavailable",
+		"falls through to Kroki for a `dot` block when graphviz-host is unavailable",
 		async () => {
-			// Default test shell reports `dot` as not-found — graphviz-local
+			// Default test shell reports `dot` as not-found — graphviz-host
 			// probes as unavailable and Kroki serves the graphviz tag per
-			// the registration-order fallback rule. HTTP is programmed with
+			// placement-policy fallback. HTTP is programmed with
 			// a /graphviz/png response.
 			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
 			const captured = await runExtensionWithAssistantText(
@@ -471,7 +470,7 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "dot",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 			});
 			expectImageBytes(outputs[0].content, TINY_PNG);
@@ -484,9 +483,9 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 	);
 
 	it(
-		"leaves mermaid blocks to Kroki regardless of graphviz-local availability",
+		"leaves mermaid blocks to Kroki regardless of graphviz-host availability",
 		async () => {
-			// Mermaid is a Kroki-only tag. Whether or not graphviz-local is
+			// Mermaid is a Kroki-only tag. Whether or not graphviz-host is
 			// available should not affect this path at all.
 			const shell = new FakeShellRunner();
 			shell.setResponse("dot", ["-V"], {
@@ -506,14 +505,254 @@ describe("pi-fence extension — graphviz-local vs kroki resolution", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "mermaid",
-				processor: "kroki",
+				processor: "kroki-remote",
 			});
 
 			// Wire-time probes: dot -V + mmdc --version. No render-time
-			// shell call because mermaid goes to Kroki, not graphviz-local.
+			// shell call because mermaid goes to Kroki, not graphviz-host.
 			const dotCalls = shell.calls.filter((c) => c.cmd === "dot");
 			expect(dotCalls).toHaveLength(1);
 			expect(dotCalls[0].args).toEqual(["-V"]);
+		},
+		20_000,
+	);
+});
+
+describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"remote-only precedence skips graphviz-host and renders dot through kroki-remote",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ processorPrecedence: ["remote"] }),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki-remote",
+				kind: "ok",
+			});
+			expect(http.requests).toHaveLength(1);
+			expect(shell.calls.filter((c) => c.cmd === "dot")).toHaveLength(0);
+
+			const resolution = captured.logger!
+				.bySubsystem("pi-fence")
+				.find((e) => e.message === "processor resolution");
+			expect(resolution?.meta?.steps).toEqual(
+				expect.arrayContaining([
+					{ id: "graphviz-host", outcome: "skipped-placement-disabled" },
+					{ id: "kroki-remote", outcome: "selected-by-placement" },
+				]),
+			);
+		},
+		20_000,
+	);
+
+	it(
+		"/fence list marks processors outside precedence as disabled",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ processorPrecedence: ["remote"] }),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(message) => message.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+			const details = listMessages[0].details as { lines: string[] };
+			expect(details.lines).toEqual(
+				expect.arrayContaining([
+					"graphviz-host [disabled] — graphviz (dot)",
+					expect.stringContaining("kroki-remote [registered]"),
+				]),
+			);
+			expect(shell.calls.filter((c) => c.cmd === "dot")).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"host-only precedence renders dot through graphviz-host and makes zero Kroki calls",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+			const http = new FakeHttpClient();
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ processorPrecedence: ["host"] }),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "graphviz-host",
+				kind: "ok",
+			});
+			expect(http.requests).toHaveLength(0);
+			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(1);
+
+			const resolution = captured.logger!
+				.bySubsystem("pi-fence")
+				.find((e) => e.message === "processor resolution");
+			expect(resolution?.meta?.steps).toEqual(
+				expect.arrayContaining([
+					{ id: "graphviz-host", outcome: "selected-by-placement" },
+					{ id: "kroki-remote", outcome: "skipped-placement-disabled" },
+				]),
+			);
+		},
+		20_000,
+	);
+
+	it(
+		"host-only precedence prevents bindings from routing dot to kroki-remote",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					bindings: { dot: "kroki-remote" },
+					processorPrecedence: ["host"],
+				}),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "graphviz-host",
+				kind: "ok",
+			});
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"disabled remote placement prevents Docker Kroki auto-start",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["embedded"],
+					kroki: { docker: { autoStart: true } },
+				}),
+			);
+			const shell = new FakeShellRunner();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"malformed global config fails closed before remote rendering",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(join(home, ".pi", "agent", "pi-fence.config.json"), "malformed{");
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
+			expect(http.requests).toHaveLength(0);
 		},
 		20_000,
 	);
@@ -531,7 +770,7 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ disabled: ["kroki"] }),
+				JSON.stringify({ disabled: ["kroki-remote"] }),
 			);
 
 			const http = new FakeHttpClient();
@@ -552,13 +791,37 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 	);
 
 	it(
-		"/fence list shows disabled kroki as [disabled]",
+		"legacy disabled kroki id still suppresses kroki-remote at runtime",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({ disabled: ["kroki"] }),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"/fence list shows disabled kroki as [disabled]",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ disabled: ["kroki-remote"] }),
 			);
 
 			const http = new FakeHttpClient();
@@ -579,7 +842,7 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 				lines: string[];
 			};
 
-			const krokiListing = details.listings.find((l) => l.id === "kroki");
+			const krokiListing = details.listings.find((l) => l.id === "kroki-remote");
 			expect(krokiListing?.status).toBe("disabled");
 			expect(details.lines.some((l) => l.includes("[disabled]"))).toBe(true);
 		},
@@ -607,10 +870,10 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			expect(details.lines.some((l) => l.startsWith("Config"))).toBe(true);
 			expect(details.lines.some((l) => l.includes("global:"))).toBe(true);
 			expect(details.lines.some((l) => l.includes("project:"))).toBe(true);
-			// Default test shell has dot unavailable → graphviz-local issue.
+			// Default test shell has dot unavailable → graphviz-host issue.
 			expect(details.lines).toContain("Issues");
 			expect(
-				details.lines.some((l) => l.includes("graphviz-local is unavailable")),
+				details.lines.some((l) => l.includes("graphviz-host is unavailable")),
 			).toBe(true);
 		},
 		20_000,
@@ -623,7 +886,7 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ disabled: ["kroki"] }),
+				JSON.stringify({ disabled: ["kroki-remote"] }),
 			);
 
 			const http = new FakeHttpClient();
@@ -639,7 +902,7 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			)?.details as { lines: string[] };
 			expect(details.lines).toContain("Issues");
 			expect(
-				details.lines.some((l) => l.includes("kroki is disabled")),
+				details.lines.some((l) => l.includes("kroki-remote is disabled")),
 			).toBe(true);
 		},
 		20_000,
@@ -826,7 +1089,7 @@ describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "mermaid",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 			});
 
@@ -846,12 +1109,12 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	});
 
 	it(
-		"global config binds graphviz to kroki — dot block goes through kroki even when dot is installed",
+		"global config binds graphviz to kroki-remote — dot block goes through kroki-remote even when dot is installed",
 		async () => {
-			// Shell: graphviz-local probes as available. Config: binds
-			// graphviz → kroki. Expect kroki to serve the block despite
-			// graphviz-local being available — the binding overrides
-			// capability-based resolution.
+			// Shell: graphviz-host probes as available. Config: binds
+			// graphviz → kroki-remote. Expect kroki-remote to serve the block despite
+			// graphviz-host being available — the binding overrides
+			// placement-policy resolution.
 			const shell = new FakeShellRunner();
 			shell.setResponse("dot", ["-V"], {
 				stdout: "",
@@ -871,7 +1134,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			// shows both exactly for this reason).
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "kroki", dot: "kroki" } }),
+				JSON.stringify({ bindings: { graphviz: "kroki-remote", dot: "kroki-remote" } }),
 			);
 
 			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
@@ -887,7 +1150,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "dot",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 			});
 
@@ -895,7 +1158,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			expect(http.requests).toHaveLength(1);
 			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png?theme=dark");
 
-			// graphviz-local got its wire-time probe and nothing else — the
+			// graphviz-host got its wire-time probe and nothing else — the
 			// binding steered around the render-time shell-out.
 			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(0);
 		},
@@ -905,8 +1168,8 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	it(
 		"project config overrides global config",
 		async () => {
-			// Global: graphviz → kroki. Project: graphviz → graphviz-local.
-			// Expect graphviz-local to win (project precedence).
+			// Global: graphviz → kroki-remote. Project: graphviz → graphviz-host.
+			// Expect graphviz-host to win (project precedence).
 			const shell = new FakeShellRunner();
 			shell.setResponse("dot", ["-V"], {
 				stdout: "",
@@ -924,14 +1187,14 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "kroki" } }),
+				JSON.stringify({ bindings: { graphviz: "kroki-remote" } }),
 			);
 
 			const cwd = makeTempDir();
 			mkdirSync(join(cwd, ".pi"), { recursive: true });
 			writeFileSync(
 				join(cwd, ".pi", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "graphviz-local" } }),
+				JSON.stringify({ bindings: { graphviz: "graphviz-host" } }),
 			);
 
 			const http = new FakeHttpClient(); // no Kroki response needed; project says local wins
@@ -947,10 +1210,10 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				tag: "graphviz",
-				processor: "graphviz-local",
+				processor: "graphviz-host",
 			});
 
-			// graphviz-local served it — one probe + one render shell-out.
+			// graphviz-host served it — one probe + one render shell-out.
 			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(1);
 			// No Kroki HTTP — project-level binding steered to local.
 			expect(http.requests).toHaveLength(0);
@@ -959,7 +1222,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	);
 
 	it(
-		"binding to an unknown processor id is ignored and logs a warn — capability-based resolution applies",
+		"binding to an unknown processor id is ignored and logs a warn — placement-policy resolution applies",
 		async () => {
 			const shell = new FakeShellRunner();
 			shell.setResponse("dot", ["-V"], {
@@ -990,12 +1253,12 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				{ home, cwd: makeTempDir() },
 			);
 
-			// Capability-based fallback: graphviz-local is first registered
+			// Placement-policy fallback: graphviz-host is host placement
 			// + available, so it wins.
 			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
 			expect(outputs[0].details).toMatchObject({
 				tag: "dot",
-				processor: "graphviz-local",
+				processor: "graphviz-host",
 			});
 
 			// Ignored-binding logged at warn level.
@@ -1016,15 +1279,15 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	it(
 		"binding to an unavailable processor falls through to capability — logs ignore-reason",
 		async () => {
-			// Default test shell: dot -V fails. graphviz-local is
-			// unavailable. Config binds graphviz to graphviz-local anyway.
+			// Default test shell: dot -V fails. graphviz-host is
+			// unavailable. Config binds graphviz to graphviz-host anyway.
 			// Expect the binding to be ignored (bindings are preferences,
 			// not hard requirements) and Kroki to serve via capability.
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "graphviz-local" } }),
+				JSON.stringify({ bindings: { graphviz: "graphviz-host" } }),
 			);
 
 			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
@@ -1039,7 +1302,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
 			expect(outputs[0].details).toMatchObject({
 				tag: "dot",
-				processor: "kroki",
+				processor: "kroki-remote",
 			});
 
 			// Kroki served it via capability fallback.
@@ -1053,7 +1316,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			expect(warns).toHaveLength(1);
 			expect(warns[0].meta).toMatchObject({
 				tag: "graphviz",
-				processorId: "graphviz-local",
+				processorId: "graphviz-host",
 				reason: "processor-unavailable",
 			});
 		},
@@ -1069,7 +1332,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
 					bindings: {
-						mermaid: "kroki",
+						mermaid: "kroki-remote",
 						graphviz: "nonexistent",
 					},
 				}),
@@ -1102,7 +1365,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			expect(details.bindings).toHaveLength(2);
 			expect(details.bindings.find((b) => b.tag === "mermaid")).toMatchObject({
 				status: "effective",
-				processorId: "kroki",
+				processorId: "kroki-remote",
 			});
 			expect(details.bindings.find((b) => b.tag === "graphviz")).toMatchObject({
 				status: "ignored",
@@ -1113,7 +1376,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			// lines array reflects the section structure.
 			expect(details.lines).toContain("Bindings");
 			expect(details.lines).toContain("Ignored bindings");
-			expect(details.lines.some((l) => l.includes("mermaid → kroki"))).toBe(true);
+			expect(details.lines.some((l) => l.includes("mermaid → kroki-remote"))).toBe(true);
 			expect(
 				details.lines.some((l) =>
 					l.includes("graphviz → nonexistent (unknown processor)"),
@@ -1295,11 +1558,11 @@ async function buildSessionWithExtension(
 			);
 		}) as ExtensionAPI["registerMessageRenderer"];
 
-		// Default shell: `dot -V` fails with exit 127 so graphviz-local
+		// Default shell: `dot -V` fails with exit 127 so graphviz-host
 		// probes as unavailable at wire time, leaving Kroki as the sole
 		// processor for every tag — matches CV0.E1 behaviour for the
 		// inherited test cases that don't specifically exercise
-		// graphviz-local. Tests that need graphviz-local available pass
+		// graphviz-host. Tests that need graphviz-host available pass
 		// an explicit `shell` through `buildSessionWithExtension`.
 		const shellToUse =
 			shell ??

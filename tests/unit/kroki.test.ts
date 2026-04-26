@@ -38,6 +38,15 @@ function pngResponse(bytes: Buffer): HttpResponse {
 	};
 }
 
+describe("createKrokiProcessor — metadata", () => {
+	it("declares the remote processor id and placement", () => {
+		const kroki = createKrokiProcessor(new FakeHttpClient());
+
+		expect(kroki.id).toBe("kroki-remote");
+		expect(kroki.placement).toBe("remote");
+	});
+});
+
 describe("createKrokiProcessor — logging", () => {
 	it("logs a debug entry with the resolved URL when the request goes out", async () => {
 		const http = new FakeHttpClient();
@@ -51,7 +60,7 @@ describe("createKrokiProcessor — logging", () => {
 
 		await kroki.render("mermaid", "flowchart LR\nA --> B");
 
-		const krokiLogs = logger.bySubsystem("kroki");
+		const krokiLogs = logger.bySubsystem("kroki-remote");
 		expect(krokiLogs.length).toBeGreaterThanOrEqual(1);
 		const requestLog = krokiLogs.find((e) => e.level === "debug");
 		expect(requestLog?.meta).toMatchObject({ url: "https://kroki.io/mermaid/png" });
@@ -70,7 +79,7 @@ describe("createKrokiProcessor — logging", () => {
 		await kroki.render("mermaid", "x");
 
 		const successLogs = logger
-			.bySubsystem("kroki")
+			.bySubsystem("kroki-remote")
 			.filter((e) => e.meta && typeof (e.meta as { status?: number }).status === "number");
 		expect(successLogs).toHaveLength(1);
 		expect((successLogs[0].meta as { status: number }).status).toBe(200);
@@ -89,7 +98,7 @@ describe("createKrokiProcessor — logging", () => {
 
 		await kroki.render("mermaid", "bad source");
 
-		const warnLogs = logger.bySubsystem("kroki").filter((e) => e.level === "warn");
+		const warnLogs = logger.bySubsystem("kroki-remote").filter((e) => e.level === "warn");
 		expect(warnLogs).toHaveLength(1);
 		expect((warnLogs[0].meta as { status?: number }).status).toBe(400);
 	});
@@ -104,7 +113,7 @@ describe("createKrokiProcessor — logging", () => {
 
 		await kroki.render("mermaid", "x");
 
-		const errorLogs = logger.bySubsystem("kroki").filter((e) => e.level === "error");
+		const errorLogs = logger.bySubsystem("kroki-remote").filter((e) => e.level === "error");
 		expect(errorLogs).toHaveLength(1);
 		expect(errorLogs[0].message).toContain("network went away");
 	});

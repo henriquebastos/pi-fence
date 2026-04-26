@@ -39,6 +39,7 @@ interface Manifest {
 const FIXTURES_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures/live");
 const MANIFEST_PATH = resolve(FIXTURES_DIR, "manifest.json");
 const manifestExists = existsSync(MANIFEST_PATH);
+const MANIFEST_PROCESSOR_IDS = new Set(["kroki-remote", "graphviz-host"]);
 
 function loadManifest(): Manifest {
 	return JSON.parse(readFileSync(MANIFEST_PATH, "utf8")) as Manifest;
@@ -52,6 +53,12 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 	const manifest = manifestExists ? loadManifest() : { refreshedAt: "", fixtures: [] };
 
 	describe("manifest integrity", () => {
+		it("uses only current processor ids", () => {
+			expect(new Set(manifest.fixtures.map((entry) => entry.processor))).toEqual(
+				MANIFEST_PROCESSOR_IDS,
+			);
+		});
+
 		for (const entry of manifest.fixtures) {
 			it(`${entry.processor}/${entry.tag} — bytes and SHA-256 match`, () => {
 				const bytes = loadFixture(entry);
@@ -63,12 +70,16 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 	});
 
 	describe("kroki fixture replay", () => {
-		const krokiFixtures = manifest.fixtures.filter((f) => f.processor === "kroki");
+		const krokiFixtures = manifest.fixtures.filter((f) => f.processor === "kroki-remote");
 		const pngDirectFixtures = krokiFixtures.filter((f) => !KROKI_SVG_ONLY_TAGS.has(f.tag));
 		const svgOnlyFixtures = krokiFixtures.filter((f) => KROKI_SVG_ONLY_TAGS.has(f.tag));
 
+		it("has kroki-remote fixtures", () => {
+			expect(krokiFixtures.length).toBeGreaterThan(0);
+		});
+
 		for (const entry of pngDirectFixtures) {
-			it(`replays ${entry.tag} through FakeHttpClient → kroki processor (PNG-direct)`, async () => {
+			it(`replays ${entry.tag} through FakeHttpClient → kroki-remote processor (PNG-direct)`, async () => {
 				const pngBytes = loadFixture(entry);
 				const spec = KROKI_TEXT_LANGUAGES.find((l) => l.tag === entry.tag);
 				expect(spec).toBeDefined();
@@ -80,8 +91,8 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 					body: pngBytes,
 				});
 
-				const kroki = createKrokiProcessor(http, undefined, new FakeLogger());
-				const result = await kroki.render(entry.tag, spec!.source);
+				const krokiRemote = createKrokiProcessor(http, undefined, new FakeLogger());
+				const result = await krokiRemote.render(entry.tag, spec!.source);
 
 				expect(result.ok).toBe(true);
 				if (!result.ok || !("png" in result)) return;
@@ -90,7 +101,7 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 		}
 
 		for (const entry of svgOnlyFixtures) {
-			it(`replays ${entry.tag} through FakeHttpClient → kroki processor (SVG→PNG)`, async () => {
+			it(`replays ${entry.tag} through FakeHttpClient → kroki-remote processor (SVG→PNG)`, async () => {
 				const expectedPng = loadFixture(entry);
 				const spec = KROKI_TEXT_LANGUAGES.find((l) => l.tag === entry.tag);
 				expect(spec).toBeDefined();
@@ -114,8 +125,8 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 					body: Buffer.from(fakeSvg),
 				});
 
-				const kroki = createKrokiProcessor(http, undefined, new FakeLogger());
-				const result = await kroki.render(entry.tag, spec!.source);
+				const krokiRemote = createKrokiProcessor(http, undefined, new FakeLogger());
+				const result = await krokiRemote.render(entry.tag, spec!.source);
 
 				expect(result.ok).toBe(true);
 				if (!result.ok || !("png" in result)) return;
@@ -127,10 +138,14 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 	});
 
 	describe("graphviz fixture replay", () => {
-		const gvFixtures = manifest.fixtures.filter((f) => f.processor === "graphviz");
+		const gvFixtures = manifest.fixtures.filter((f) => f.processor === "graphviz-host");
+
+		it("has graphviz-host fixtures", () => {
+			expect(gvFixtures.length).toBeGreaterThan(0);
+		});
 
 		for (const entry of gvFixtures) {
-			it(`replays ${entry.tag} through FakeShellRunner → graphviz-local processor`, async () => {
+			it(`replays ${entry.tag} through FakeShellRunner → graphviz-host processor`, async () => {
 				const pngBytes = loadFixture(entry);
 
 				const shell = new FakeShellRunner();

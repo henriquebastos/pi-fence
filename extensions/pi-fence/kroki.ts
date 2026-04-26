@@ -118,7 +118,7 @@ export const KROKI_CANONICAL_TAGS: readonly string[] = [
  * a user or LLM writes a tag Kroki doesn't recognise directly.
  *
  * Kept inline in this module because Kroki is the only consumer today. A
- * second processor (graphviz-local in CV0.E2) calls `dot` directly, so
+ * second processor (graphviz-host in CV0.E2) calls `dot` directly, so
  * this map doesn't apply there. Extract to a shared module only when a
  * second alias map earns its place.
  *
@@ -214,7 +214,7 @@ function logKrokiRequest(
 	context: KrokiRequestContext,
 	source: string,
 ): void {
-	logger.debug("kroki", "request", {
+	logger.debug("kroki-remote", "request", {
 		tag: context.tag,
 		krokiTag: context.krokiTag,
 		url: context.url,
@@ -241,7 +241,7 @@ async function requestKroki(
 		return { ok: true, response };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		logger.error("kroki", message, { url: context.url, tag: context.tag });
+		logger.error("kroki-remote", message, { url: context.url, tag: context.tag });
 		return { ok: false, result: { ok: false, error: message } };
 	}
 }
@@ -264,7 +264,7 @@ async function renderSuccessfulKrokiResponse(
 	const rendered = await responseBodyToPng(response.body, context, logger);
 	if (!rendered.ok) return rendered;
 
-	logger.debug("kroki", "response ok", {
+	logger.debug("kroki-remote", "response ok", {
 		status: response.status,
 		tag: context.tag,
 		bytes: rendered.png.length,
@@ -281,7 +281,7 @@ async function responseBodyToPng(
 
 	try {
 		const png = await svgToPng(body);
-		logger.debug("kroki", "svg→png rasterized", {
+		logger.debug("kroki-remote", "svg→png rasterized", {
 			tag: context.tag,
 			svgBytes: body.length,
 			pngBytes: png.length,
@@ -289,7 +289,7 @@ async function responseBodyToPng(
 		return { ok: true, png };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		logger.error("kroki", `svg→png failed: ${message}`, { tag: context.tag });
+		logger.error("kroki-remote", `svg→png failed: ${message}`, { tag: context.tag });
 		return { ok: false, error: `SVG rasterization failed: ${message}` };
 	}
 }
@@ -303,7 +303,7 @@ function renderFailedKrokiResponse(
 	const truncated = text.length > ERROR_BODY_MAX_CHARS
 		? text.slice(0, ERROR_BODY_MAX_CHARS)
 		: text;
-	logger.warn("kroki", "response error", {
+	logger.warn("kroki-remote", "response error", {
 		status: response.status,
 		tag: context.tag,
 		bodyBytes: response.body.length,
@@ -320,7 +320,7 @@ export function createKrokiProcessor(
 	const base = endpoint.replace(/\/+$/, "");
 
 	return {
-		id: "kroki",
+		id: "kroki-remote",
 		placement: "remote",
 		tags: KROKI_CANONICAL_TAGS,
 		aliases: KROKI_ALIASES,
@@ -332,7 +332,7 @@ export function createKrokiProcessor(
 		// endpoint, classify connection / DNS / 5xx) lands with the future
 		// `/fence doctor` story; today's one-liner matches Kroki's contract
 		// with the rest of the registry and keeps `/fence list` honest for
-		// the graphviz-local alongside-Kroki shape CV0.E2 introduces.
+		// the graphviz-host alongside-Kroki shape CV0.E2 introduces.
 		async available(): Promise<{ ok: true }> {
 			return { ok: true };
 		},

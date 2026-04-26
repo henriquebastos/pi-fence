@@ -46,12 +46,16 @@ function ensureDir(dir: string): void {
 	if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
-function writeFixture(relPath: string, data: Buffer): FixtureEntry & { relPath: string } {
+function writeFixture(
+	relPath: string,
+	data: Buffer,
+	processor: string,
+): FixtureEntry & { relPath: string } {
 	const absPath = resolve(FIXTURES_DIR, relPath);
 	ensureDir(dirname(absPath));
 	writeFileSync(absPath, data);
 	return {
-		processor: relPath.split("/")[0],
+		processor,
 		tag: relPath.split("/")[1].replace(/\.png$/, ""),
 		file: relPath,
 		bytes: data.length,
@@ -174,7 +178,7 @@ async function krokiResponseToPng(
 }
 
 function writeKrokiFixture(tag: string, png: Buffer): FixtureEntry {
-	const entry = writeFixture(`kroki/${tag}.png`, png);
+	const entry = writeFixture(`kroki/${tag}.png`, png, "kroki-remote");
 	process.stderr.write(`${png.length} bytes\n`);
 	return entry;
 }
@@ -207,7 +211,7 @@ async function refreshGraphviz(): Promise<FixtureEntry[]> {
 		return entries;
 	}
 
-	const entry = writeFixture("graphviz/graphviz.png", result.stdoutBuffer);
+	const entry = writeFixture("graphviz/graphviz.png", result.stdoutBuffer, "graphviz-host");
 	entries.push(entry);
 	process.stderr.write(`${result.stdoutBuffer.length} bytes\n`);
 
@@ -230,10 +234,10 @@ function loadExistingManifest(): Manifest | null {
 function mergeManifest(
 	existing: Manifest | null,
 	newEntries: FixtureEntry[],
-	refreshedSets: Set<string>,
+	refreshedProcessors: ReadonlySet<string>,
 ): Manifest {
 	// Keep entries from sets we didn't refresh; replace entries from sets we did.
-	const kept = existing?.fixtures.filter((e) => !refreshedSets.has(e.processor)) ?? [];
+	const kept = existing?.fixtures.filter((e) => !refreshedProcessors.has(e.processor)) ?? [];
 	return {
 		refreshedAt: new Date().toISOString(),
 		fixtures: [...kept, ...newEntries].sort((a, b) =>
@@ -248,6 +252,28 @@ function mergeManifest(
 
 type FixtureSet = "kroki" | "graphviz";
 const KNOWN_SETS: readonly FixtureSet[] = ["kroki", "graphviz"];
+
+function processorIdsForFixtureSet(set: FixtureSet): readonly string[] {
+	return set === "kroki" ? ["kroki-remote", "kroki"] : ["graphviz-host", "graphviz"];
+}
+
+function fixtureSetForProcessor(processorId: string): FixtureSet | null {
+	if (processorId === "kroki-remote" || processorId === "kroki") return "kroki";
+	if (processorId === "graphviz-host" || processorId === "graphviz") return "graphviz";
+	return null;
+}
+
+function processorIdsForCapturedEntries(entries: readonly FixtureEntry[]): Set<string> {
+	const out = new Set<string>();
+	for (const entry of entries) {
+		const set = fixtureSetForProcessor(entry.processor);
+		if (!set) continue;
+		for (const processorId of processorIdsForFixtureSet(set)) {
+			out.add(processorId);
+		}
+	}
+	return out;
+}
 
 async function main(argv: readonly string[]): Promise<number> {
 	const requestedSets: FixtureSet[] =
@@ -264,14 +290,15 @@ async function main(argv: readonly string[]): Promise<number> {
 	process.stderr.write(`[refresh-fixtures] refreshing: ${requestedSets.join(", ")}\n`);
 
 	const allEntries: FixtureEntry[] = [];
-	const refreshedSets = new Set<string>();
+	const refreshedProcessors = new Set<string>();
 
 	for (const set of requestedSets) {
-		refreshedSets.add(set);
-		if (set === "kroki") {
-			allEntries.push(...(await refreshKroki()));
-		} else if (set === "graphviz") {
-			allEntries.push(...(await refreshGraphviz()));
+		const entries = set === "kroki" ? await refreshKroki() : await refreshGraphviz();
+		allEntries.push(...entries);
+		if (entries.length > 0) {
+			for (const processorId of processorIdsForFixtureSet(set)) {
+				refreshedProcessors.add(processorId);
+			}
 		}
 	}
 
@@ -281,7 +308,7 @@ async function main(argv: readonly string[]): Promise<number> {
 	}
 
 	const existing = loadExistingManifest();
-	const manifest = mergeManifest(existing, allEntries, refreshedSets);
+	const manifest = mergeManifest(existing, allEntries, refreshedProcessors);
 	ensureDir(FIXTURES_DIR);
 	writeFileSync(MANIFEST_PATH, JSON.stringify(manifest, null, 2) + "\n");
 	process.stderr.write(
@@ -297,4 +324,10 @@ if (invokedDirectly) {
 	process.exit(code);
 }
 
-export { main as refreshFixtures, refreshKroki, refreshGraphviz };
+export {
+	main as refreshFixtures,
+	refreshKroki,
+	refreshGraphviz,
+	mergeManifest,
+	processorIdsForCapturedEntries,
+};

@@ -213,7 +213,7 @@ async function buildMermaidHappyPath(
 			display: true,
 			details: {
 				tag: "mermaid",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 				source: "flowchart LR\n  A --> B\n  B --> C",
 			},
@@ -272,7 +272,7 @@ async function buildKrokiTallImage(
 			display: true,
 			details: {
 				tag: "wireviz",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "ok",
 				source,
 			},
@@ -300,7 +300,7 @@ async function buildMermaidErrorPath(
 			content: [
 				// Just the raw upstream error body — the pi-fence renderer's
 				// red header already labels this as "Error rendering mermaid
-				// via kroki" from `details`, so re-speaking that prefix in the
+				// via kroki-remote" from `details`, so re-speaking that prefix in the
 				// body produces a visible duplicate.
 				{
 					type: "text",
@@ -310,7 +310,7 @@ async function buildMermaidErrorPath(
 			display: true,
 			details: {
 				tag: "mermaid",
-				processor: "kroki",
+				processor: "kroki-remote",
 				kind: "error",
 				source: "flowchrt LR\n  A --> B",
 			},

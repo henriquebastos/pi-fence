@@ -6,12 +6,15 @@ This guide shows how to create a pi extension that registers a custom processor 
 
 ## The FenceProcessor interface
 
-A processor is a plain object with five fields:
+A processor is a plain object with six fields:
 
 ```typescript
 interface FenceProcessor {
   /** Stable id for logs, settings, and registry lookups. */
   readonly id: string;
+
+  /** Trust/control boundary used by policy-driven resolution. */
+  readonly placement: "embedded" | "host" | "sandbox" | "remote";
 
   /** Tags this processor handles (e.g. ["csv", "jsonl"]). Non-empty. */
   readonly tags: readonly string[];
@@ -49,7 +52,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 export default function activate(pi: ExtensionAPI): void {
   // Register the processor with pi-fence via the event bus.
   pi.events.emit("pi-fence:register", {
-    id: "my-upper",
+    id: "my-upper-embedded",
+    placement: "embedded",
     tags: ["upper"],
     aliases: {},
 
@@ -107,11 +111,11 @@ pi.events.on("pi-fence:register-error", (data) => {
 
 - **Emit in your extension factory.** pi-fence's factory runs first (it's loaded before yours). The event listener is ready by the time your factory executes.
 - **Or emit in `session_start`.** All extension factories complete before `session_start` fires.
-- The registration is async internally (pi-fence probes `available()`). If you emit in your factory, allow a tick for the probe to complete before relying on the tag being active.
+- The registration is async internally. When policy allows your processor, pi-fence probes `available()` before the tag becomes active. If you emit in your factory, allow a tick for registration to complete before relying on the tag being active.
 
 ## Availability probes
 
-`available()` is called once at registration time. If your processor depends on an external binary or service, probe it here:
+`available()` is called once at registration time when the processor is enabled by id and placement policy. If your processor depends on an external binary or service, probe it here:
 
 ```typescript
 async available() {
@@ -134,14 +138,14 @@ async available() {
 
 ## Resolution order
 
-pi-fence resolves processors in registration order: built-in locals first, then third-party, then kroki as catch-all. Your processor is inserted before kroki automatically.
+pi-fence resolves processors by placement policy and availability. Third-party processors are registered before `kroki-remote`, the catch-all remote processor, so user policy and explicit bindings can choose them without relying on Kroki being last.
 
-If two processors claim the same tag, the first available one wins — unless the user explicitly binds the tag to a processor in their config:
+If two processors in different placements claim the same tag, `processorPrecedence` decides which placement wins. If multiple available processors in the winning placement claim the tag, pi-fence reports an ambiguity instead of choosing by registration order. Users can still explicitly bind the tag to a processor in their config:
 
 ```json
 {
   "bindings": {
-    "upper": "my-upper"
+    "upper": "my-upper-embedded"
   }
 }
 ```

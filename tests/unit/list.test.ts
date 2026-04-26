@@ -7,7 +7,7 @@
  *     `FenceProcessor[]` + availability map into `ProcessorListing[]`.
  *     Status is `"registered"` when availability is ok,
  *     `"unavailable"` otherwise. CV0.E2.S1 widened the status union
- *     so the second-processor scenario (graphviz-local alongside
+ *     so the second-processor scenario (graphviz-host alongside
  *     Kroki) can surface which processor actually serves a given tag.
  *
  *   - `formatProcessorLines(listings)` turns listings into readable
@@ -20,7 +20,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { Availability, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
+import type {
+	Availability,
+	FenceProcessor,
+	ProcessorPlacement,
+} from "../../extensions/pi-fence/processor.ts";
 import { formatProcessorLines, listProcessors } from "../../extensions/pi-fence/list.ts";
 
 // A minimal processor stub for test use — implements the interface
@@ -30,10 +34,11 @@ function stubProcessor(
 	id: string,
 	tags: readonly string[],
 	aliases: Readonly<Record<string, string>> = {},
+	placement: ProcessorPlacement = "remote",
 ): FenceProcessor {
 	return {
 		id,
-		placement: "remote",
+		placement,
 		tags,
 		aliases,
 		async available(): Promise<Availability> {
@@ -53,16 +58,16 @@ const allOk = (ids: readonly string[]): Map<string, Availability> =>
 
 describe("listProcessors", () => {
 	it("returns a row per processor with status 'registered' when availability is ok", () => {
-		const kroki = stubProcessor("kroki", ["mermaid", "graphviz", "plantuml", "d2"], {
+		const krokiRemote = stubProcessor("kroki-remote", ["mermaid", "graphviz", "plantuml", "d2"], {
 			dot: "graphviz",
 			puml: "plantuml",
 		});
 
-		const listings = listProcessors([kroki], allOk(["kroki"]));
+		const listings = listProcessors([krokiRemote], allOk(["kroki-remote"]));
 
 		expect(listings).toHaveLength(1);
 		expect(listings[0]).toEqual({
-			id: "kroki",
+			id: "kroki-remote",
 			status: "registered",
 			tags: ["mermaid", "graphviz", "plantuml", "d2"],
 			aliases: { dot: "graphviz", puml: "plantuml" },
@@ -70,10 +75,10 @@ describe("listProcessors", () => {
 	});
 
 	it("returns status 'unavailable' with reason + installHint when availability is not ok", () => {
-		const local = stubProcessor("graphviz-local", ["graphviz"], { dot: "graphviz" });
+		const local = stubProcessor("graphviz-host", ["graphviz"], { dot: "graphviz" });
 		const availability = new Map<string, Availability>([
 			[
-				"graphviz-local",
+				"graphviz-host",
 				{
 					ok: false,
 					reason: "dot binary not found on PATH",
@@ -86,7 +91,7 @@ describe("listProcessors", () => {
 
 		expect(listings).toHaveLength(1);
 		expect(listings[0]).toEqual({
-			id: "graphviz-local",
+			id: "graphviz-host",
 			status: "unavailable",
 			tags: ["graphviz"],
 			aliases: { dot: "graphviz" },
@@ -96,18 +101,34 @@ describe("listProcessors", () => {
 	});
 
 	it("returns status 'disabled' when the processor id is in the disabled set", () => {
-		const kroki = stubProcessor("kroki", ["mermaid"]);
+		const krokiRemote = stubProcessor("kroki-remote", ["mermaid"]);
 		const listings = listProcessors(
-			[kroki],
-			allOk(["kroki"]),
-			{ disabled: new Set(["kroki"]) },
+			[krokiRemote],
+			allOk(["kroki-remote"]),
+			{ disabled: new Set(["kroki-remote"]) },
 		);
 
 		expect(listings).toHaveLength(1);
 		expect(listings[0]).toMatchObject({
-			id: "kroki",
+			id: "kroki-remote",
 			status: "disabled",
 		});
+	});
+
+	it("returns status 'disabled' when the processor placement is omitted from precedence", () => {
+		const local = stubProcessor("graphviz-host", ["graphviz"], { dot: "graphviz" }, "host");
+		const krokiRemote = stubProcessor("kroki-remote", ["graphviz"], { dot: "graphviz" }, "remote");
+
+		const listings = listProcessors(
+			[local, krokiRemote],
+			allOk(["graphviz-host", "kroki-remote"]),
+			{ processorPrecedence: ["remote"] },
+		);
+
+		expect(listings.map((listing) => [listing.id, listing.status])).toEqual([
+			["graphviz-host", "disabled"],
+			["kroki-remote", "registered"],
+		]);
 	});
 
 	it("omits installHint from the listing when the processor did not provide one", () => {
@@ -150,17 +171,17 @@ describe("listProcessors", () => {
 	});
 
 	it("mixes registered + unavailable rows in the CV0.E2 two-processor scenario", () => {
-		const local = stubProcessor("graphviz-local", ["graphviz"], { dot: "graphviz" });
-		const kroki = stubProcessor("kroki", ["mermaid", "graphviz"], { dot: "graphviz" });
+		const local = stubProcessor("graphviz-host", ["graphviz"], { dot: "graphviz" });
+		const krokiRemote = stubProcessor("kroki-remote", ["mermaid", "graphviz"], { dot: "graphviz" });
 		const availability = new Map<string, Availability>([
 			[
-				"graphviz-local",
+				"graphviz-host",
 				{ ok: false, reason: "dot not found", installHint: "apt install graphviz" },
 			],
-			["kroki", { ok: true }],
+			["kroki-remote", { ok: true }],
 		]);
 
-		const listings = listProcessors([local, kroki], availability);
+		const listings = listProcessors([local, krokiRemote], availability);
 
 		expect(listings.map((l) => l.status)).toEqual(["unavailable", "registered"]);
 	});
@@ -170,7 +191,7 @@ describe("formatProcessorLines", () => {
 	it("renders a single-processor listing with canonical tags and aliases", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "kroki",
+				id: "kroki-remote",
 				status: "registered",
 				tags: ["mermaid", "graphviz", "plantuml", "d2"],
 				aliases: { dot: "graphviz", puml: "plantuml" },
@@ -178,15 +199,15 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
+			"kroki-remote [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
 		]);
 	});
 
-	it("includes endpoint in parentheses for kroki when non-default", () => {
+	it("includes endpoint in parentheses for kroki-remote when non-default", () => {
 		const lines = formatProcessorLines(
 			[
 				{
-					id: "kroki",
+					id: "kroki-remote",
 					status: "registered",
 					tags: ["mermaid"],
 					aliases: {},
@@ -196,14 +217,14 @@ describe("formatProcessorLines", () => {
 		);
 
 		expect(lines).toEqual([
-			"kroki [registered] (http://localhost:8000) \u2014 mermaid",
+			"kroki-remote [registered] (http://localhost:8000) \u2014 mermaid",
 		]);
 	});
 
 	it("omits endpoint when it is the default kroki.io", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "kroki",
+				id: "kroki-remote",
 				status: "registered",
 				tags: ["mermaid"],
 				aliases: {},
@@ -217,27 +238,27 @@ describe("formatProcessorLines", () => {
 	it("renders a disabled processor with [disabled] badge", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "kroki",
+				id: "kroki-remote",
 				status: "disabled",
 				tags: ["mermaid"],
 				aliases: {},
 			},
 		]);
 
-		expect(lines).toEqual(["kroki [disabled] \u2014 mermaid"]);
+		expect(lines).toEqual(["kroki-remote [disabled] \u2014 mermaid"]);
 	});
 
 	it("renders a processor with no aliases as plain comma-separated tags", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "graphviz-local",
+				id: "graphviz-host",
 				status: "registered",
 				tags: ["graphviz"],
 				aliases: {},
 			},
 		]);
 
-		expect(lines).toEqual(["graphviz-local [registered] — graphviz"]);
+		expect(lines).toEqual(["graphviz-host [registered] — graphviz"]);
 	});
 
 	it("groups multiple aliases for the same canonical tag in one parenthesis", () => {
@@ -256,13 +277,13 @@ describe("formatProcessorLines", () => {
 	it("renders multiple processors in order, one line each", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "kroki",
+				id: "kroki-remote",
 				status: "registered",
 				tags: ["mermaid"],
 				aliases: {},
 			},
 			{
-				id: "graphviz-local",
+				id: "graphviz-host",
 				status: "registered",
 				tags: ["graphviz"],
 				aliases: { dot: "graphviz" },
@@ -270,15 +291,15 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"kroki [registered] — mermaid",
-			"graphviz-local [registered] — graphviz (dot)",
+			"kroki-remote [registered] — mermaid",
+			"graphviz-host [registered] — graphviz (dot)",
 		]);
 	});
 
 	it("renders an unavailable processor as two lines: header + indented reason + installHint", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "graphviz-local",
+				id: "graphviz-host",
 				status: "unavailable",
 				tags: ["graphviz"],
 				aliases: { dot: "graphviz" },
@@ -288,7 +309,7 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"graphviz-local [unavailable] — graphviz (dot)",
+			"graphviz-host [unavailable] — graphviz (dot)",
 			"    dot binary not found on PATH. apt install graphviz (Debian/Ubuntu) · brew install graphviz (macOS)",
 		]);
 	});
@@ -313,7 +334,7 @@ describe("formatProcessorLines", () => {
 	it("interleaves registered + unavailable lines for the CV0.E2 two-processor scenario", () => {
 		const lines = formatProcessorLines([
 			{
-				id: "graphviz-local",
+				id: "graphviz-host",
 				status: "unavailable",
 				tags: ["graphviz"],
 				aliases: { dot: "graphviz" },
@@ -321,7 +342,7 @@ describe("formatProcessorLines", () => {
 				installHint: "apt install graphviz",
 			},
 			{
-				id: "kroki",
+				id: "kroki-remote",
 				status: "registered",
 				tags: ["mermaid", "graphviz"],
 				aliases: { dot: "graphviz" },
@@ -329,9 +350,9 @@ describe("formatProcessorLines", () => {
 		]);
 
 		expect(lines).toEqual([
-			"graphviz-local [unavailable] — graphviz (dot)",
+			"graphviz-host [unavailable] — graphviz (dot)",
 			"    dot not found. apt install graphviz",
-			"kroki [registered] — mermaid, graphviz (dot)",
+			"kroki-remote [registered] — mermaid, graphviz (dot)",
 		]);
 	});
 
@@ -356,14 +377,14 @@ describe("formatProcessorLines", () => {
 });
 
 describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
-	const kroki = {
-		id: "kroki" as const,
+	const krokiRemote = {
+		id: "kroki-remote" as const,
 		status: "registered" as const,
 		tags: ["mermaid", "graphviz"],
 		aliases: { dot: "graphviz" },
 	};
 	const local = {
-		id: "graphviz-local" as const,
+		id: "graphviz-host" as const,
 		status: "registered" as const,
 		tags: ["graphviz"],
 		aliases: { dot: "graphviz" },
@@ -371,31 +392,31 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 
 	it("emits the Bindings section for effective rows", () => {
 		const lines = formatProcessorLines(
-			[local, kroki],
+			[local, krokiRemote],
 			[
-				{ status: "effective", tag: "graphviz", processorId: "kroki" },
-				{ status: "effective", tag: "dot", processorId: "kroki" },
+				{ status: "effective", tag: "graphviz", processorId: "kroki-remote" },
+				{ status: "effective", tag: "dot", processorId: "kroki-remote" },
 			],
 		);
 
 		expect(lines).toEqual([
-			"graphviz-local [registered] — graphviz (dot)",
-			"kroki [registered] — mermaid, graphviz (dot)",
+			"graphviz-host [registered] — graphviz (dot)",
+			"kroki-remote [registered] — mermaid, graphviz (dot)",
 			"",
 			"Bindings",
-			"  graphviz → kroki",
-			"  dot → kroki",
+			"  graphviz → kroki-remote",
+			"  dot → kroki-remote",
 		]);
 	});
 
 	it("emits the Ignored bindings section with per-row reasons", () => {
 		const lines = formatProcessorLines(
-			[kroki],
+			[krokiRemote],
 			[
 				{
 					status: "ignored",
 					tag: "graphviz",
-					processorId: "graphviz-local",
+					processorId: "graphviz-host",
 					reason: "processor-unavailable",
 				},
 				{
@@ -408,19 +429,51 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		);
 
 		expect(lines).toEqual([
-			"kroki [registered] — mermaid, graphviz (dot)",
+			"kroki-remote [registered] — mermaid, graphviz (dot)",
 			"",
 			"Ignored bindings",
-			"  graphviz → graphviz-local (processor unavailable)",
+			"  graphviz → graphviz-host (processor unavailable)",
 			"  mermaid → nonexistent (unknown processor)",
 		]);
 	});
 
+	it("renders placement-disabled ignored bindings", () => {
+		const lines = formatProcessorLines(
+			[local, krokiRemote],
+			[
+				{
+					status: "ignored",
+					tag: "graphviz",
+					processorId: "kroki-remote",
+					reason: "processor-placement-disabled",
+				},
+			],
+		);
+
+		expect(lines).toContain("  graphviz → kroki-remote (processor placement disabled)");
+	});
+
+	it("renders does-not-claim-tag ignored bindings", () => {
+		const lines = formatProcessorLines(
+			[local, krokiRemote],
+			[
+				{
+					status: "ignored",
+					tag: "csv",
+					processorId: "kroki-remote",
+					reason: "processor-does-not-claim-tag",
+				},
+			],
+		);
+
+		expect(lines).toContain("  csv → kroki-remote (processor does not claim tag)");
+	});
+
 	it("emits both sections together when bindings split across buckets", () => {
 		const lines = formatProcessorLines(
-			[local, kroki],
+			[local, krokiRemote],
 			[
-				{ status: "effective", tag: "graphviz", processorId: "kroki" },
+				{ status: "effective", tag: "graphviz", processorId: "kroki-remote" },
 				{
 					status: "ignored",
 					tag: "mermaid",
@@ -431,11 +484,11 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		);
 
 		expect(lines).toEqual([
-			"graphviz-local [registered] — graphviz (dot)",
-			"kroki [registered] — mermaid, graphviz (dot)",
+			"graphviz-host [registered] — graphviz (dot)",
+			"kroki-remote [registered] — mermaid, graphviz (dot)",
 			"",
 			"Bindings",
-			"  graphviz → kroki",
+			"  graphviz → kroki-remote",
 			"",
 			"Ignored bindings",
 			"  mermaid → nonexistent (unknown processor)",
@@ -445,27 +498,27 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 	it("hides both sections when bindings is undefined", () => {
 		const lines = formatProcessorLines([local]);
 
-		expect(lines).toEqual(["graphviz-local [registered] — graphviz (dot)"]);
+		expect(lines).toEqual(["graphviz-host [registered] — graphviz (dot)"]);
 	});
 
 	it("hides both sections when bindings is an empty array", () => {
 		const lines = formatProcessorLines([local], []);
 
-		expect(lines).toEqual(["graphviz-local [registered] — graphviz (dot)"]);
+		expect(lines).toEqual(["graphviz-host [registered] — graphviz (dot)"]);
 	});
 
 	it("handles bindings-only with no processors (defensive)", () => {
 		// Shouldn't happen in production but shouldn't crash either.
 		const lines = formatProcessorLines(
 			[],
-			[{ status: "effective", tag: "graphviz", processorId: "kroki" }],
+			[{ status: "effective", tag: "graphviz", processorId: "kroki-remote" }],
 		);
 
 		expect(lines).toEqual([
 			"(no processors registered)",
 			"",
 			"Bindings",
-			"  graphviz → kroki",
+			"  graphviz → kroki-remote",
 		]);
 	});
 });

@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** full Kroki coverage + local graphviz + per-tag user bindings. Every language the public [kroki.io](https://kroki.io) endpoint serves as PNG renders inline — `mermaid`, `graphviz`/`dot`, `plantuml`/`puml`, the `blockdiag` family (`blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`), `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, and `vegalite`/`vega-lite`. With `graphviz` installed locally, `graphviz`/`dot` blocks render via the local `dot` binary instead of kroki.io — privacy and offline work out of the box for DOT. Users can override the default processor per tag in a small config file (`~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`); see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). SVG-only Kroki languages (including `d2` and `excalidraw`), local rendering for other languages, and richer configuration (`/fence doctor`, per-processor settings) are next on the [roadmap](docs/project/roadmap/README.md). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
+**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, disable processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
 
 ---
 
@@ -25,41 +25,43 @@ The same mechanism works for anything text-to-visual: syntax-highlighted code, f
 
 After installing pi-fence into pi:
 
-1. Ask the assistant for any diagram the public [Kroki](https://kroki.io) endpoint renders as PNG.
-2. The assistant writes the natural fenced block: ```` ```mermaid ````, ```` ```dot ````, ```` ```plantuml ````, ```` ```blockdiag ````, ```` ```wireviz ````, etc.
-3. pi-fence intercepts `agent_end`, posts the source to `https://kroki.io`, and emits a custom message below the assistant's text containing the rendered PNG.
-4. Your terminal displays the PNG inline (Ghostty, Kitty, iTerm2, WezTerm).
+1. Ask the assistant for a supported fenced block: diagrams, CSV/JSONL tables, SQL/regex/jq highlighting, QR codes, or color swatches.
+2. The assistant writes the natural fenced block: ```` ```mermaid ````, ```` ```dot ````, ```` ```csv ````, ```` ```qr ````, etc.
+3. pi-fence intercepts `agent_end`, resolves a processor by placement policy, and emits a custom message below the assistant's text.
+4. Your terminal displays the PNG or ANSI text inline (Ghostty, Kitty, iTerm2, WezTerm).
 
-**Supported tags**: `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, `vegalite` (alias `vega-lite`), plus SVG→PNG rasterized: `d2`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom` — 28 canonical languages, three aliases. See [docs/product/kroki-support.md](docs/product/kroki-support.md) for minimal source examples per language, quirks worth knowing, and the list of Kroki languages pi-fence deliberately does *not* advertise yet (SVG-only on the public endpoint or backend unavailable).
+**Supported tags**: diagram tags include `mermaid`, `graphviz` (alias `dot`), `plantuml` (alias `puml`), `blockdiag`, `seqdiag`, `actdiag`, `nwdiag`, `packetdiag`, `rackdiag`, `c4plantuml`, `ditaa`, `erd`, `structurizr`, `symbolator`, `tikz`, `umlet`, `wireviz`, `vega`, `vegalite` (alias `vega-lite`), plus SVG→PNG rasterized `d2`, `bytefield`, `dbml`, `nomnoml`, `pikchr`, `svgbob`, `wavedrom`. Embedded tags include `csv`, `jsonl`, `sql`, `regex`, `jq`, `qr`, `color`, and `palette`. See [docs/product/kroki-support.md](docs/product/kroki-support.md) for diagram examples and quirks.
 
 On expansion (ctrl+o on the rendered message) pi-fence also shows the original source in a code block for copy-paste, regardless of which supported tag you used.
 
 **Theme tracking:** pi-fence requests `?theme=dark` from Kroki when pi's current theme is a dark one (any theme whose name does not contain `light`, `latte`, or `day` — including defaults like `dark`, `tokyo-night`, `catppuccin-mocha`, `gruvbox-dark`). On light pi themes the diagram is rendered in Kroki's default light style. The theme is re-read every turn, so switching pi themes mid-session takes effect on the next rendered block.
 
-**Processor registry**: two processors ship in the box.
+**Processor registry**: several processors ship in the box.
 
-- `graphviz-local` — shells out to the local `dot` binary, source on stdin. Wins `graphviz`/`dot` blocks when `dot` is on your PATH; otherwise skipped silently in favour of Kroki. Zero configuration: install `graphviz` (`apt install graphviz` on Debian/Ubuntu, `brew install graphviz` on macOS, <https://graphviz.org/download/> otherwise) and pi-fence picks it up on the next `/reload`. Diagram sources never leave your machine for this tag.
-- `kroki` — posts to the public [kroki.io](https://kroki.io) endpoint for every other tag (and for `graphviz`/`dot` when you don't have `graphviz` installed). Theme-aware (see above).
+- `table-embedded`, `highlight-embedded`, `qr-embedded`, `color-embedded` — run inside pi-fence with no external service or host binary.
+- `graphviz-host` — shells out to the local `dot` binary, source on stdin. By default it wins `graphviz`/`dot` blocks when `dot` is on your PATH and `host` placement is allowed; otherwise pi-fence falls through to the next allowed processor, typically Kroki. Zero configuration: install `graphviz` (`apt install graphviz` on Debian/Ubuntu, `brew install graphviz` on macOS, <https://graphviz.org/download/> otherwise) and pi-fence picks it up on the next `/reload`. Diagram sources never leave your machine for this tag when `graphviz-host` is selected.
+- `mermaid-host` — shells out to `mmdc` when `@mermaid-js/mermaid-cli` is installed.
+- `kroki-remote` — posts to the public [kroki.io](https://kroki.io) endpoint for every other tag (and for `graphviz`/`dot` when you don't have `graphviz` installed). Theme-aware (see above).
 
-Resolution is capability-based by default: on a given session, the first registered processor whose `available()` probe returns ok and whose tags cover the block wins. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project). Project overrides global. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
+Resolution is placement-policy based by default: available `embedded` processors win before `host`, then `sandbox`, then `remote`. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project), and can restrict allowed placements with `processorPrecedence`. Project bindings override global bindings; safety controls (`disabled`, `processorPrecedence`) can only further restrict lower-priority layers. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
 
 **Slash commands**:
 
-- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see two `[registered]` rows; on a machine without `dot` you see `graphviz-local [unavailable]` with the install hint plus `kroki [registered]`. A `Bindings` section appears when the config file has any effective bindings; an `Ignored bindings` section appears for bindings that point to an unknown or unavailable processor.
+- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; an `Ignored bindings` section appears for bindings that point to an unknown or unavailable processor.
 
 **Tracing**:
 
 Set `PI_FENCE_LOG_LEVEL` in the environment to see pi-fence's internal activity on stderr. Levels: `debug`, `info` (default), `warn`, `error`. Log lines look like:
 
 ```text
-[pi-fence:pi-fence] debug: processor available {"id":"graphviz-local"}
-[pi-fence:pi-fence] debug: processor available {"id":"kroki"}
+[pi-fence:pi-fence] debug: processor available {"id":"graphviz-host"}
+[pi-fence:pi-fence] debug: processor available {"id":"kroki-remote"}
 [pi-fence:pi-fence] debug: agent_end parsed {"assistantTextBytes":142,"blocks":1}
-[pi-fence:pi-fence] debug: processor resolution {"tag":"dot","processor":"graphviz-local","steps":[{"id":"graphviz-local","outcome":"selected-first-available"}]}
-[pi-fence:graphviz-local] debug: shelling out to dot {"tag":"dot","sourceBytes":23}
-[pi-fence:graphviz-local] info: dot ok {"tag":"dot","bytes":2041}
-[pi-fence:kroki] debug: request {"tag":"mermaid","krokiTag":"mermaid","url":"https://kroki.io/mermaid/png","sourceBytes":30}
-[pi-fence:kroki] debug: response ok {"status":200,"tag":"mermaid","bytes":3254}
+[pi-fence:pi-fence] debug: processor resolution {"tag":"dot","processor":"graphviz-host","steps":[{"id":"graphviz-host","outcome":"selected-by-placement"}]}
+[pi-fence:graphviz-host] debug: shelling out to dot {"tag":"dot","sourceBytes":23}
+[pi-fence:graphviz-host] info: dot ok {"tag":"dot","bytes":2041}
+[pi-fence:kroki-remote] debug: request {"tag":"mermaid","krokiTag":"mermaid","url":"https://kroki.io/mermaid/png","sourceBytes":30}
+[pi-fence:kroki-remote] debug: response ok {"status":200,"tag":"mermaid","bytes":3254}
 [pi-fence:command] debug: /fence invoked {"subcommand":"list"}
 ```
 
@@ -73,11 +75,10 @@ Resolution diagnostics live in structured debug logs; `/fence trace` is not part
 
 What does **not** work yet:
 
-- Local rendering for languages other than `graphviz`/`dot` — mermaid via `mmdc`, plantuml via `plantuml.jar`, etc. See [CV2.E1](docs/project/roadmap/README.md).
-- Explicit per-tag processor bindings in settings (CV0.E2.S2).
-- `/fence doctor` (health probing) and configuration via `~/.pi/agent/pi-fence.config.json` (CV1.E1).
-- Error feedback loop to the LLM (CV1.E2).
-- Every CV past that (see [roadmap](docs/project/roadmap/README.md)).
+- Local rendering for diagram languages beyond Graphviz and Mermaid — for example PlantUML via `plantuml.jar`. See the [roadmap](docs/project/roadmap/README.md).
+- Sandbox placement is reserved for policy work; no built-in sandboxed processor ships yet.
+- CV9 object-valued bindings are still in progress; current bindings are simple tag → processor-id preferences.
+- Every later CV (see [roadmap](docs/project/roadmap/README.md)).
 
 ## Docs
 
@@ -96,7 +97,7 @@ pi install npm:pi-fence
 
 Then `/reload` inside pi, or restart.
 
-pi-fence makes a single HTTP request to `https://kroki.io` per fenced block. Privacy-sensitive users can configure a self-hosted Kroki once CV1.E1 lands; until then the public endpoint is the only path.
+By default, diagram tags without a local/embedded processor render through `kroki-remote`, which makes one HTTP request to `https://kroki.io` per fenced block. Privacy-sensitive users can point `kroki.endpoint` at a self-hosted Kroki instance or disable the remote processor with `"disabled": ["kroki-remote"]`.
 
 ## Development
 

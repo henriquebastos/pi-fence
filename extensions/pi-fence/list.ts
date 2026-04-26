@@ -3,12 +3,13 @@
  *
  * Two pure functions:
  *
- *   - `listProcessors(processors, availability)` turns a
+ *   - `listProcessors(processors, availability, opts)` turns a
  *     `FenceProcessor[]` plus a wire-time availability map into
  *     `ProcessorListing[]`. Status is `"registered"` when availability
- *     is ok, `"unavailable"` otherwise. On the unavailable branch the
- *     processor's `reason` + optional `installHint` are carried on the
- *     listing so the formatter can surface them.
+ *     is ok and policy allows the processor, `"disabled"` when a processor
+ *     id or placement is disabled, and `"unavailable"` otherwise. On the
+ *     unavailable branch the processor's `reason` + optional `installHint`
+ *     are carried on the listing so the formatter can surface them.
  *
  *   - `formatProcessorLines(listings, bindings?)` turns listings +
  *     optional binding-resolution rows (from `resolveBindings` in
@@ -23,6 +24,9 @@
  *         Ignored bindings
  *           <tag> → <processorId> (unknown processor)
  *           <tag> → <processorId> (processor unavailable)
+ *           <tag> → <processorId> (processor disabled)
+ *           <tag> → <processorId> (processor placement disabled)
+ *           <tag> → <processorId> (processor does not claim tag)
  *
  *     Both sections are hidden when their bucket is empty.
  *
@@ -36,7 +40,7 @@
  * unit-testable against constructed processor + availability pairs.
  */
 
-import type { Availability, FenceProcessor } from "./processor.ts";
+import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import type { BindingResolution } from "./resolve.ts";
 
 export type ProcessorStatus = "registered" | "unavailable" | "disabled";
@@ -70,6 +74,8 @@ export interface ListProcessorsOptions {
 	disabled?: ReadonlySet<string>;
 	/** Per-processor endpoint overrides to display in the listing. */
 	endpoints?: Readonly<Record<string, string>>;
+	/** Placement allowlist from config. Omitted placements render as disabled. */
+	processorPrecedence?: readonly ProcessorPlacement[];
 }
 
 export function listProcessors(
@@ -77,11 +83,15 @@ export function listProcessors(
 	availability: ReadonlyMap<string, Availability>,
 	opts?: ListProcessorsOptions,
 ): ProcessorListing[] {
-	const { disabled, endpoints } = opts ?? {};
+	const { disabled, endpoints, processorPrecedence } = opts ?? {};
+	const allowedPlacements = processorPrecedence ? new Set(processorPrecedence) : undefined;
 
 	return processors.map((processor) => {
 		const endpoint = endpoints?.[processor.id];
-		if (disabled?.has(processor.id)) {
+		if (
+			disabled?.has(processor.id) ||
+			(allowedPlacements !== undefined && !allowedPlacements.has(processor.placement))
+		) {
 			return {
 				id: processor.id,
 				status: "disabled" as const,
@@ -180,10 +190,17 @@ const UNAVAILABLE_DETAIL_INDENT = "    ";
 const BINDING_INDENT = "  ";
 
 function formatIgnoredReason(
-	reason: "unknown-processor" | "processor-unavailable" | "processor-disabled",
+	reason:
+		| "unknown-processor"
+		| "processor-unavailable"
+		| "processor-disabled"
+		| "processor-placement-disabled"
+		| "processor-does-not-claim-tag",
 ): string {
 	if (reason === "unknown-processor") return "unknown processor";
 	if (reason === "processor-disabled") return "processor disabled";
+	if (reason === "processor-placement-disabled") return "processor placement disabled";
+	if (reason === "processor-does-not-claim-tag") return "processor does not claim tag";
 	return "processor unavailable";
 }
 

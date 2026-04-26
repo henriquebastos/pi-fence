@@ -137,11 +137,12 @@ describe("mermaid-local — render()", () => {
 });
 
 describe("mermaid-local — metadata", () => {
-	it("exposes the expected id, tags, and aliases", () => {
+	it("exposes the expected id, placement, tags, and aliases", () => {
 		const shell = new FakeShellRunner();
 		const proc = createMermaidLocalProcessor(shell);
 
-		expect(proc.id).toBe("mermaid-local");
+		expect(proc.id).toBe("mermaid-host");
+		expect(proc.placement).toBe("host");
 		expect(proc.tags).toEqual(["mermaid"]);
 		expect(proc.aliases).toEqual({});
 	});

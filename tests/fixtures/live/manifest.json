@@ -2,7 +2,7 @@
   "refreshedAt": "2026-04-25T00:39:10.304Z",
   "fixtures": [
     {
-      "processor": "graphviz",
+      "processor": "graphviz-host",
       "tag": "graphviz",
       "file": "graphviz/graphviz.png",
       "bytes": 4244,
@@ -10,7 +10,7 @@
       "relPath": "graphviz/graphviz.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "actdiag",
       "file": "kroki/actdiag.png",
       "bytes": 3522,
@@ -18,7 +18,7 @@
       "relPath": "kroki/actdiag.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "blockdiag",
       "file": "kroki/blockdiag.png",
       "bytes": 2066,
@@ -26,7 +26,7 @@
       "relPath": "kroki/blockdiag.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "bytefield",
       "file": "kroki/bytefield.png",
       "bytes": 2523,
@@ -34,7 +34,7 @@
       "relPath": "kroki/bytefield.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "c4plantuml",
       "file": "kroki/c4plantuml.png",
       "bytes": 16596,
@@ -42,7 +42,7 @@
       "relPath": "kroki/c4plantuml.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "d2",
       "file": "kroki/d2.png",
       "bytes": 15078,
@@ -50,7 +50,7 @@
       "relPath": "kroki/d2.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "dbml",
       "file": "kroki/dbml.png",
       "bytes": 21822,
@@ -58,7 +58,7 @@
       "relPath": "kroki/dbml.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "ditaa",
       "file": "kroki/ditaa.png",
       "bytes": 1186,
@@ -66,7 +66,7 @@
       "relPath": "kroki/ditaa.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "erd",
       "file": "kroki/erd.png",
       "bytes": 4277,
@@ -74,7 +74,7 @@
       "relPath": "kroki/erd.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "graphviz",
       "file": "kroki/graphviz.png",
       "bytes": 3764,
@@ -82,7 +82,7 @@
       "relPath": "kroki/graphviz.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "mermaid",
       "file": "kroki/mermaid.png",
       "bytes": 1475,
@@ -90,7 +90,7 @@
       "relPath": "kroki/mermaid.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "nomnoml",
       "file": "kroki/nomnoml.png",
       "bytes": 20987,
@@ -98,7 +98,7 @@
       "relPath": "kroki/nomnoml.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "nwdiag",
       "file": "kroki/nwdiag.png",
       "bytes": 3768,
@@ -106,7 +106,7 @@
       "relPath": "kroki/nwdiag.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "packetdiag",
       "file": "kroki/packetdiag.png",
       "bytes": 1219,
@@ -114,7 +114,7 @@
       "relPath": "kroki/packetdiag.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "pikchr",
       "file": "kroki/pikchr.png",
       "bytes": 4223,
@@ -122,7 +122,7 @@
       "relPath": "kroki/pikchr.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "plantuml",
       "file": "kroki/plantuml.png",
       "bytes": 990,
@@ -130,7 +130,7 @@
       "relPath": "kroki/plantuml.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "rackdiag",
       "file": "kroki/rackdiag.png",
       "bytes": 2255,
@@ -138,7 +138,7 @@
       "relPath": "kroki/rackdiag.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "seqdiag",
       "file": "kroki/seqdiag.png",
       "bytes": 3280,
@@ -146,7 +146,7 @@
       "relPath": "kroki/seqdiag.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "structurizr",
       "file": "kroki/structurizr.png",
       "bytes": 7503,
@@ -154,7 +154,7 @@
       "relPath": "kroki/structurizr.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "svgbob",
       "file": "kroki/svgbob.png",
       "bytes": 10333,
@@ -162,7 +162,7 @@
       "relPath": "kroki/svgbob.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "symbolator",
       "file": "kroki/symbolator.png",
       "bytes": 2292,
@@ -170,7 +170,7 @@
       "relPath": "kroki/symbolator.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "tikz",
       "file": "kroki/tikz.png",
       "bytes": 752,
@@ -178,7 +178,7 @@
       "relPath": "kroki/tikz.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "umlet",
       "file": "kroki/umlet.png",
       "bytes": 635,
@@ -186,7 +186,7 @@
       "relPath": "kroki/umlet.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "vega",
       "file": "kroki/vega.png",
       "bytes": 448,
@@ -194,7 +194,7 @@
       "relPath": "kroki/vega.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "vegalite",
       "file": "kroki/vegalite.png",
       "bytes": 3253,
@@ -202,7 +202,7 @@
       "relPath": "kroki/vegalite.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "wavedrom",
       "file": "kroki/wavedrom.png",
       "bytes": 7143,
@@ -210,7 +210,7 @@
       "relPath": "kroki/wavedrom.png"
     },
     {
-      "processor": "kroki",
+      "processor": "kroki-remote",
       "tag": "wireviz",
       "file": "kroki/wireviz.png",
       "bytes": 26588,

@@ -28,55 +28,74 @@ export interface DoctorIssue {
 function formatConfigStatus(status: ConfigFileStatus): string {
 	if (status === "loaded") return "loaded";
 	if (status === "not-found") return "not found";
-	if (status === "malformed-json") return "malformed JSON — using defaults";
-	return "read error — using defaults";
+	if (status === "malformed-json") return "malformed JSON — using fail-closed defaults";
+	if (status === "invalid-shape") return "invalid shape — using fail-closed defaults";
+	return "read error — using fail-closed defaults";
 }
 
 /**
  * Compute actionable issues from the extension's runtime state.
  */
 export function computeDoctorIssues(input: DoctorInput): DoctorIssue[] {
-	const issues: DoctorIssue[] = [];
+	return [
+		...computeConfigIssues(input),
+		...computeProcessorIssues(input.listings),
+	];
+}
 
-	// Config file problems.
-	if (input.globalStatus === "malformed-json") {
-		issues.push({ message: `global config is malformed JSON (${input.globalPath})` });
-	}
-	if (input.globalStatus === "read-error") {
-		issues.push({ message: `global config could not be read (${input.globalPath})` });
-	}
-	if (input.projectStatus === "malformed-json") {
-		issues.push({ message: `project config is malformed JSON (${input.projectPath})` });
-	}
-	if (input.projectStatus === "read-error") {
-		issues.push({ message: `project config could not be read (${input.projectPath})` });
-	}
+function computeConfigIssues(input: DoctorInput): DoctorIssue[] {
+	return [
+		...configStatusIssue("global", input.globalStatus, input.globalPath),
+		...configStatusIssue("project", input.projectStatus, input.projectPath),
+	];
+}
 
-	// Processor problems.
-	for (const listing of input.listings) {
-		if (listing.status === "unavailable") {
-			const hint = listing.installHint ? `: ${listing.installHint}` : "";
-			issues.push({
-				message: `${listing.id} is unavailable${hint}`,
-			});
-		}
-		if (listing.status === "disabled") {
-			// Count how many tags lose their only processor.
-			const otherActive = input.listings.filter(
-				(l) => l.id !== listing.id && l.status === "registered",
-			);
-			const orphanedTags = [...listing.tags].filter(
-				(tag) => !otherActive.some((l) => l.tags.includes(tag)),
-			);
-			if (orphanedTags.length > 0) {
-				issues.push({
-					message: `${listing.id} is disabled; ${orphanedTags.length} tag(s) have no available processor`,
-				});
-			}
-		}
+function configStatusIssue(
+	label: "global" | "project",
+	status: ConfigFileStatus,
+	path: string,
+): DoctorIssue[] {
+	if (status === "malformed-json") {
+		return [{ message: `${label} config is malformed JSON (${path})` }];
 	}
+	if (status === "read-error") {
+		return [{ message: `${label} config could not be read (${path})` }];
+	}
+	if (status === "invalid-shape") {
+		return [{ message: `${label} config has invalid shape (${path})` }];
+	}
+	return [];
+}
 
-	return issues;
+function computeProcessorIssues(listings: readonly ProcessorListing[]): DoctorIssue[] {
+	return listings.flatMap((listing) => processorIssue(listing, listings));
+}
+
+function processorIssue(
+	listing: ProcessorListing,
+	listings: readonly ProcessorListing[],
+): DoctorIssue[] {
+	if (listing.status === "unavailable") {
+		const hint = listing.installHint ? `: ${listing.installHint}` : "";
+		return [{ message: `${listing.id} is unavailable${hint}` }];
+	}
+	if (listing.status !== "disabled") return [];
+	const orphanedCount = countOrphanedTags(listing, listings);
+	return orphanedCount > 0
+		? [{ message: `${listing.id} is disabled; ${orphanedCount} tag(s) have no available processor` }]
+		: [];
+}
+
+function countOrphanedTags(
+	listing: ProcessorListing,
+	listings: readonly ProcessorListing[],
+): number {
+	const otherActive = listings.filter(
+		(l) => l.id !== listing.id && l.status === "registered",
+	);
+	return [...listing.tags].filter(
+		(tag) => !otherActive.some((l) => l.tags.includes(tag)),
+	).length;
 }
 
 /**

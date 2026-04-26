@@ -224,7 +224,7 @@ function scenarioForLanguage(fetched: FetchedLanguage): Scenario {
 					display: true,
 					details: {
 						tag: spec.tag,
-						processor: "kroki",
+						processor: "kroki-remote",
 						kind: "ok",
 						source: spec.source,
 					},

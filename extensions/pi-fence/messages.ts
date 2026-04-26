@@ -3,7 +3,12 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { formatProcessorLines, listProcessors, type ProcessorListing } from "./list.ts";
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
+import type {
+	Availability,
+	FenceProcessor,
+	FenceResult,
+	ProcessorPlacement,
+} from "./processor.ts";
 import {
 	type PiFenceListDetails,
 	type PiFenceOutputDetails,
@@ -33,11 +38,12 @@ export function sendPiFenceListMessage(
 	bindingRows: readonly BindingResolution[],
 	disabled?: ReadonlySet<string>,
 	endpoints?: Readonly<Record<string, string>>,
+	processorPrecedence?: readonly ProcessorPlacement[],
 ): void {
 	const listings: ProcessorListing[] = listProcessors(
 		processors,
 		availability,
-		{ disabled, endpoints },
+		{ disabled, endpoints, processorPrecedence },
 	);
 	const lines = formatProcessorLines(listings, bindingRows);
 	const details: PiFenceListDetails & {

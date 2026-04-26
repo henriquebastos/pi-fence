@@ -87,7 +87,7 @@ describe("graphviz-local contract harness", () => {
 	});
 });
 
-runFenceProcessorContract("graphviz-local", makeGraphvizLocal, {
+runFenceProcessorContract("graphviz-host", makeGraphvizLocal, {
 	tag: GRAPHVIZ_LOCAL_CANONICAL_TAGS[0],
 	goodSource: GOOD_SOURCE,
 	badSource: BAD_SOURCE,

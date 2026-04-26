@@ -90,9 +90,16 @@ export type RegistrationResult =
 	| { ok: true; id: string; tags: readonly string[] }
 	| { ok: false; error: string };
 
+export interface RegisterProcessorOptions {
+	disabled?: ReadonlySet<string>;
+	processorPrecedence?: readonly ProcessorPlacement[];
+}
+
 /**
- * Add a validated processor to the registry. Probes availability.
- * Inserts before kroki (the catch-all) if kroki is present;
+ * Add a validated processor to the registry. Probes availability only when
+ * policy allows the processor; disabled placements must not run host/remote
+ * probes as a registration side effect.
+ * Inserts before kroki-remote (the catch-all) if kroki-remote is present;
  * otherwise appends.
  *
  * Rejects duplicate ids.
@@ -100,22 +107,16 @@ export type RegistrationResult =
 export async function registerProcessor(
 	registry: ProcessorRegistry,
 	processor: FenceProcessor,
+	options: RegisterProcessorOptions = {},
 ): Promise<RegistrationResult> {
 	if (registry.processors.some((p) => p.id === processor.id)) {
 		return { ok: false, error: `duplicate processor id: ${processor.id}` };
 	}
 
-	// Probe availability (defensive — never throw).
-	let avail: Availability;
-	try {
-		avail = await processor.available();
-	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		avail = { ok: false, reason: `available() threw: ${msg}` };
-	}
+	const avail = await probeRegistrationAvailability(processor, options);
 
 	// Insert before Kroki (the catch-all fallback) if present.
-	const krokiIndex = registry.processors.findIndex((p) => p.id === "kroki");
+	const krokiIndex = registry.processors.findIndex((p) => p.id === "kroki-remote");
 	if (krokiIndex >= 0) {
 		registry.processors.splice(krokiIndex, 0, processor);
 	} else {
@@ -125,4 +126,34 @@ export async function registerProcessor(
 	registry.availability.set(processor.id, avail);
 
 	return { ok: true, id: processor.id, tags: processor.tags };
+}
+
+async function probeRegistrationAvailability(
+	processor: FenceProcessor,
+	options: RegisterProcessorOptions,
+): Promise<Availability> {
+	const blocked = registrationBlocked(processor, options);
+	if (blocked) return blocked;
+	try {
+		return await processor.available();
+	} catch (err) {
+		const msg = err instanceof Error ? err.message : String(err);
+		return { ok: false, reason: `available() threw: ${msg}` };
+	}
+}
+
+function registrationBlocked(
+	processor: FenceProcessor,
+	options: RegisterProcessorOptions,
+): Availability | undefined {
+	if (options.disabled?.has(processor.id)) {
+		return { ok: false, reason: "processor disabled by config" };
+	}
+	if (
+		options.processorPrecedence !== undefined &&
+		!options.processorPrecedence.includes(processor.placement)
+	) {
+		return { ok: false, reason: "processor placement disabled by config" };
+	}
+	return undefined;
 }

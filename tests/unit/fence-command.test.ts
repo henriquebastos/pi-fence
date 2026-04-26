@@ -73,7 +73,7 @@ async function setupExtension(
 
 describe("/fence command — registration", () => {
 	it("registers the /fence command with a description", async () => {
-		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki-remote", ["mermaid"]));
 
 		const entry = api.registeredCommands.get("fence") as
 			| { description?: string; handler: unknown }
@@ -84,7 +84,7 @@ describe("/fence command — registration", () => {
 	});
 
 	it("registers the pi-fence:list message renderer", async () => {
-		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki-remote", ["mermaid"]));
 
 		expect(api.registeredRenderers.has("pi-fence:list")).toBe(true);
 	});
@@ -92,11 +92,11 @@ describe("/fence command — registration", () => {
 
 describe("/fence list — subcommand", () => {
 	it("emits a pi-fence:list custom message describing the active processor", async () => {
-		const kroki = stubProcessor("kroki", ["mermaid", "graphviz", "plantuml", "d2"], {
+		const krokiRemote = stubProcessor("kroki-remote", ["mermaid", "graphviz", "plantuml", "d2"], {
 			dot: "graphviz",
 			puml: "plantuml",
 		});
-		const { api, logger } = await setupExtension(kroki);
+		const { api, logger } = await setupExtension(krokiRemote);
 
 		await api.invokeCommand("fence", "list");
 
@@ -112,13 +112,13 @@ describe("/fence list — subcommand", () => {
 		expect(message.details).toMatchObject({
 			listings: [
 				{
-					id: "kroki",
+					id: "kroki-remote",
 					status: "registered",
 					tags: ["mermaid", "graphviz", "plantuml", "d2"],
 					aliases: { dot: "graphviz", puml: "plantuml" },
 				},
 			],
-			lines: ["kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2"],
+			lines: ["kroki-remote [registered] — mermaid, graphviz (dot), plantuml (puml), d2"],
 		});
 
 		// Content mirrors the formatted lines for renderers that don't read
@@ -126,7 +126,7 @@ describe("/fence list — subcommand", () => {
 		expect(message.content).toEqual([
 			{
 				type: "text",
-				text: "kroki [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
+				text: "kroki-remote [registered] — mermaid, graphviz (dot), plantuml (puml), d2",
 			},
 		]);
 
@@ -136,7 +136,7 @@ describe("/fence list — subcommand", () => {
 	});
 
 	it("tolerates surrounding whitespace in the arg string", async () => {
-		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki-remote", ["mermaid"]));
 
 		await api.invokeCommand("fence", "  list  ");
 
@@ -158,7 +158,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			http: new FakeHttpClient(),
 			shell,
 			logger,
-			processors: [stubProcessor("kroki", ["mermaid"])],
+			processors: [stubProcessor("kroki-remote", ["mermaid"])],
 		});
 
 		await api.invokeCommand("fence", "kroki status");
@@ -187,7 +187,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			http: new FakeHttpClient(),
 			shell,
 			logger,
-			processors: [stubProcessor("kroki", ["mermaid"])],
+			processors: [stubProcessor("kroki-remote", ["mermaid"])],
 		});
 
 		await api.invokeCommand("fence", "kroki start");
@@ -214,7 +214,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			http: new FakeHttpClient(),
 			shell,
 			logger,
-			processors: [stubProcessor("kroki", ["mermaid"])],
+			processors: [stubProcessor("kroki-remote", ["mermaid"])],
 		});
 
 		await api.invokeCommand("fence", "kroki stop");
@@ -224,7 +224,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 	});
 
 	it("kroki with unknown sub notifies warning", async () => {
-		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki-remote", ["mermaid"]));
 
 		await api.invokeCommand("fence", "kroki bogus");
 
@@ -236,7 +236,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 
 describe("/fence — no subcommand / unknown subcommand", () => {
 	it("notifies with a warning listing the available subcommands when called with no args", async () => {
-		const { api, logger } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api, logger } = await setupExtension(stubProcessor("kroki-remote", ["mermaid"]));
 
 		await api.invokeCommand("fence", "");
 
@@ -254,7 +254,7 @@ describe("/fence — no subcommand / unknown subcommand", () => {
 	});
 
 	it("notifies with a warning on an unknown subcommand and does not send a message", async () => {
-		const { api } = await setupExtension(stubProcessor("kroki", ["mermaid"]));
+		const { api } = await setupExtension(stubProcessor("kroki-remote", ["mermaid"]));
 
 		await api.invokeCommand("fence", "bogus");
 

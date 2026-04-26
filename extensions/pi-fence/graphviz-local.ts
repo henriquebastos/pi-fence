@@ -1,9 +1,9 @@
 /**
- * graphviz-local processor — renders DOT source via the local `dot`
+ * graphviz-host processor — renders DOT source via the local `dot`
  * binary. The second processor pi-fence ships, registered alongside
  * Kroki in CV0.E2.S1. Wins the `graphviz`/`dot` tag when `dot` is on
- * PATH; otherwise the extension's capability-based resolver falls
- * through to Kroki.
+ * PATH; otherwise the extension's placement-policy resolver falls
+ * through to the next allowed processor, typically kroki-remote.
  *
  * DI-only: callers supply a `ShellRunner` (`NodeShellRunner` in
  * production; `FakeShellRunner` in unit tests; `DockerExecShellRunner`
@@ -59,7 +59,7 @@ const INSTALL_HINT =
 	"Install graphviz — apt install graphviz (Debian/Ubuntu) · brew install graphviz (macOS) · https://graphviz.org/download/";
 
 /**
- * Canonical tags graphviz-local handles. Just `graphviz` today; `dot`
+ * Canonical tags graphviz-host handles. Just `graphviz` today; `dot`
  * is exposed as an alias via `GRAPHVIZ_LOCAL_ALIASES`. Exported for the
  * extension's `/fence list` + the resolution rule in `index.ts` so those
  * modules do not duplicate the list.
@@ -81,7 +81,7 @@ export function createGraphvizLocalProcessor(
 	logger: Logger = NULL_LOGGER,
 ): FenceProcessor {
 	return {
-		id: "graphviz-local",
+		id: "graphviz-host",
 		placement: "host",
 		tags: GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 		aliases: GRAPHVIZ_LOCAL_ALIASES,
@@ -90,12 +90,12 @@ export function createGraphvizLocalProcessor(
 			try {
 				const probe = await shell.run("dot", ["-V"]);
 				if (probe.exitCode === 0) {
-					logger.debug("graphviz-local", "available", {
+					logger.debug("graphviz-host", "available", {
 						stderr: probe.stderr.trim(),
 					});
 					return { ok: true };
 				}
-				logger.debug("graphviz-local", "unavailable", {
+				logger.debug("graphviz-host", "unavailable", {
 					exitCode: probe.exitCode,
 					stderr: probe.stderr,
 				});
@@ -106,7 +106,7 @@ export function createGraphvizLocalProcessor(
 				};
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				logger.debug("graphviz-local", "unavailable (spawn failure)", {
+				logger.debug("graphviz-host", "unavailable (spawn failure)", {
 					error: message,
 				});
 				return {
@@ -123,7 +123,7 @@ export function createGraphvizLocalProcessor(
 				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
 			]);
 
-			logger.debug("graphviz-local", "shelling out to dot", {
+			logger.debug("graphviz-host", "shelling out to dot", {
 				tag,
 				sourceBytes: Buffer.byteLength(source, "utf8"),
 			});
@@ -133,7 +133,7 @@ export function createGraphvizLocalProcessor(
 				result = await shell.run("dot", ["-Tpng"], { input: source, signal: combinedSignal });
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				logger.error("graphviz-local", message, { tag });
+				logger.error("graphviz-host", message, { tag });
 				return { ok: false, error: message };
 			}
 
@@ -145,7 +145,7 @@ export function createGraphvizLocalProcessor(
 				// `stdout` as UTF-8 — lossy for real PNGs but fine for
 				// assertion-style tests that never touch bytes.
 				const png = result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
-				logger.info("graphviz-local", "dot ok", { tag, bytes: png.length });
+				logger.info("graphviz-host", "dot ok", { tag, bytes: png.length });
 				return { ok: true, png };
 			}
 
@@ -153,7 +153,7 @@ export function createGraphvizLocalProcessor(
 				0,
 				ERROR_BODY_MAX_CHARS,
 			);
-			logger.warn("graphviz-local", "dot error", {
+			logger.warn("graphviz-host", "dot error", {
 				tag,
 				exitCode: result.exitCode,
 			});

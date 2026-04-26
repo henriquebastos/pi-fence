@@ -40,7 +40,8 @@ No `sandbox` processor is introduced in this story; the placement is reserved so
 7. Resolution selects by placement precedence instead of registration order across placements.
 8. Same-placement multiple-candidate matches return an ambiguity result instead of selecting by registration order.
 9. A full extension test proves a config file can force a different backend choice for a real fenced block.
-10. `pnpm run feedback` passes.
+10. Config and legacy-id edge cases fail closed rather than silently widening from local/embedded to host/remote trust boundaries.
+11. `pnpm run feedback` passes.
 
 ## Scope
 
@@ -52,6 +53,7 @@ No `sandbox` processor is introduced in this story; the placement is reserved so
 4. Resolver policy for placement allowlist + precedence.
 5. Resolution trace outcomes for placement filtering and same-placement ambiguity.
 6. Extension-layer tracer bullet showing config → resolver → render behavior.
+7. Fail-closed handling for config errors and legacy processor ids where needed to keep the placement transition from re-enabling broader trust boundaries.
 
 **Out of scope:**
 
@@ -59,7 +61,7 @@ No `sandbox` processor is introduced in this story; the placement is reserved so
 2. Blocked tags/processors — S3.
 3. Sandbox runtime control — S4.
 4. Processor folder discovery — S7.
-5. Migration/backward compatibility for old config keys or old processor ids.
+5. Broad migration for old config keys or old processor ids. This story only normalizes known legacy processor ids in `bindings`/`disabled` so privacy-oriented disabled configs do not fail open during the rename.
 
 ## Plan
 
@@ -89,15 +91,15 @@ Given `dot` is available, pi-fence must render through `graphviz-host` and make 
 
 | Step | TDD phase | Layer | What | Commit |
 |------|-----------|-------|------|--------|
-| 1 | red | Unit | Add config tests for default precedence, valid custom precedence, invalid entries, and merge replacement semantics. | `step 1: placement precedence config` |
+| 1 | red | Unit | Add config tests for default precedence, valid custom precedence, invalid entries, and restrictive merge semantics. | `step 1: placement precedence config` |
 | 2 | green/refactor | Unit | Add `ProcessorPlacement`, config parsing, and built-in processor placement fields. | same |
-| 3 | red | Unit/contract | Add tests requiring the target processor id convention and valid placement on every processor. | `step 2: processor placement metadata` |
+| 3 | red | Unit/contract | Add tests requiring the target processor id convention and valid placement on every processor. | `step 2: placement policy tracer bullet` |
 | 4 | green/refactor | Unit/contract | Rename built-in processor ids and update contract/list expectations. | same |
-| 5 | red | Unit | Add resolver tests proving placement allowlist, placement order swap, and same-placement ambiguity. | `step 3: placement-aware resolver` |
+| 5 | red | Unit | Add resolver tests proving placement allowlist, placement order swap, and same-placement ambiguity. | same |
 | 6 | green/refactor | Unit | Rewrite resolver candidate selection around placement groups and explicit ambiguity. | same |
-| 7 | red | Extension | Add the tracer-bullet extension tests for `remote`-only and `host`-only precedence on a `dot` block. | `step 4: precedence tracer bullet` |
-| 8 | green/refactor | Extension | Thread `processorPrecedence` through `index.ts`, `agent-end.ts`, `/fence list`, logging, and metrics without widening unrelated behavior. | same |
-| 9 | verify | All fast | Run `pnpm run feedback`, then `pnpm run inspect` if the session feels done. | same |
+| 7 | red | Extension | Add the tracer-bullet extension tests for `remote`-only and `host`-only precedence on a `dot` block. | same |
+| 8 | green/refactor | Extension | Thread `processorPrecedence` through `index.ts`, `agent-end.ts`, `/fence list`, logging, metrics, docs, and fixtures without widening trust boundaries. | same |
+| 9 | verify | All fast/live | Run `pnpm run feedback`, `pnpm run inspect`, and live/render verification for the user-visible id changes. | same |
 
 ## Tests
 
@@ -111,7 +113,7 @@ Given `dot` is available, pi-fence must render through `graphviz-host` and make 
    - `remote` processors are skipped when `remote` is omitted.
    - Same-placement ambiguity produces no hidden first-registered winner.
 3. **Fakes added:** none expected; existing `FakeShellRunner`, `FakeHttpClient`, and `FakeLogger` cover the tracer bullet.
-4. **Live tests:** none new. Existing live tests should still pass because no processor I/O behavior changes; run `pnpm test:live` only if implementation changes a processor I/O seam unexpectedly.
+4. **Live tests:** no new I/O seam. Run `pnpm test:live` because user-visible processor ids affect render-image goldens.
 5. **Deferred:** object binding and blocking diagnostics are deferred to S2/S3.
 
 ## Verification
@@ -119,4 +121,6 @@ Given `dot` is available, pi-fence must render through `graphviz-host` and make 
 ```bash
 pnpm run feedback
 pnpm run inspect
+pnpm test:live
+pnpm run render:verify
 ```

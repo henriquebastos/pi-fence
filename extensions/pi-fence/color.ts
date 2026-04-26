@@ -15,7 +15,7 @@ const SWATCH = "██████";
 
 export function createColorProcessor(): FenceProcessor {
 	return {
-		id: "color",
+		id: "color-embedded",
 		placement: "embedded",
 		tags: ["color", "palette"],
 		aliases: {},

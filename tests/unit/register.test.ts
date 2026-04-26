@@ -156,17 +156,62 @@ describe("registerProcessor", () => {
 		expect(registry.availability.get("test-proc")?.ok).toBe(false);
 	});
 
+	it("does not probe a processor whose placement is disabled by policy", async () => {
+		const registry = makeRegistry();
+		let probes = 0;
+		const proc = makeValidProcessor({
+			placement: "host",
+			available: async () => {
+				probes += 1;
+				return { ok: true };
+			},
+		});
+
+		const result = await registerProcessor(registry, proc, {
+			processorPrecedence: ["embedded", "remote"],
+		});
+
+		expect(result.ok).toBe(true);
+		expect(probes).toBe(0);
+		expect(registry.availability.get("test-proc")).toEqual({
+			ok: false,
+			reason: "processor placement disabled by config",
+		});
+	});
+
+	it("does not probe a disabled processor", async () => {
+		const registry = makeRegistry();
+		let probes = 0;
+		const proc = makeValidProcessor({
+			available: async () => {
+				probes += 1;
+				return { ok: true };
+			},
+		});
+
+		const result = await registerProcessor(registry, proc, {
+			disabled: new Set(["test-proc"]),
+		});
+
+		expect(result.ok).toBe(true);
+		expect(probes).toBe(0);
+		expect(registry.availability.get("test-proc")).toEqual({
+			ok: false,
+			reason: "processor disabled by config",
+		});
+	});
+
 	it("inserts before kroki (last position for built-ins)", async () => {
 		const registry = makeRegistry();
-		const kroki = makeValidProcessor({ id: "kroki", tags: ["mermaid"] });
+		const kroki = makeValidProcessor({ id: "kroki-remote", tags: ["mermaid"] });
 		registry.processors.push(kroki);
-		registry.availability.set("kroki", { ok: true });
+		registry.availability.set("kroki-remote", { ok: true });
 
 		const thirdParty = makeValidProcessor({ id: "custom", tags: ["custom-tag"] });
 		await registerProcessor(registry, thirdParty);
 
 		// Custom should be before kroki in the array.
 		expect(registry.processors[0].id).toBe("custom");
-		expect(registry.processors[1].id).toBe("kroki");
+		expect(registry.processors[1].id).toBe("kroki-remote");
 	});
 });

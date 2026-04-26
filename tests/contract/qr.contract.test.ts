@@ -16,7 +16,7 @@ describe("qr contract harness", () => {
 });
 
 runFenceProcessorContract(
-	"qr",
+	"qr-embedded",
 	() => createQrProcessor(),
 	{
 		tag: "qr",

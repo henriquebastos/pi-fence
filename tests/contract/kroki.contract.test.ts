@@ -43,7 +43,7 @@ describe("kroki contract harness", () => {
 	});
 });
 
-runFenceProcessorContract("kroki", makeKroki, {
+runFenceProcessorContract("kroki-remote", makeKroki, {
 	tag: "mermaid",
 	goodSource: "flowchart LR\nA --> B",
 	badSource: "not actually mermaid",

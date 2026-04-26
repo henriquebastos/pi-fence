@@ -18,9 +18,14 @@ describe("table processor — available()", () => {
 });
 
 describe("table processor — metadata", () => {
-	it("has id 'table'", () => {
+	it("has id 'table-embedded'", () => {
 		const processor = createTableProcessor();
-		expect(processor.id).toBe("table");
+		expect(processor.id).toBe("table-embedded");
+	});
+
+	it("declares embedded placement", () => {
+		const processor = createTableProcessor();
+		expect(processor.placement).toBe("embedded");
 	});
 
 	it("handles csv and jsonl tags", () => {

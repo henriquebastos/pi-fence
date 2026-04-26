@@ -20,4 +20,4 @@ A CV is **done** only when every Story in its Epics is done.
 | [CV6 — Fixture Completeness](cv6--fixture-completeness/README.md) | `verifiability` | Not started | Every I/O-seam processor has live-derived fixtures; drift is detected automatically. |
 | [CV7 — Companion Backends](cv7--companion-backends/README.md) | `legibility` | Not started | Languages behind Kroki companion containers render via a shipped Compose stack. |
 | [CV8 — Internal Quality](cv8--internal-quality/README.md) | `simplification` | Done | Simplify internals that accumulated duplication or unnecessary indirection during feature delivery. |
-| [CV9 — Processor Policy](cv9--processor-policy/README.md) | `control` | Not started | Processor selection is governed by explicit user policy, not import order or implicit trust assumptions. |
+| [CV9 — Processor Policy](cv9--processor-policy/README.md) | `control` | In progress | Processor selection is governed by explicit user policy, not import order or implicit trust assumptions. |

@@ -49,11 +49,12 @@ describe("graphviz-local — shape", () => {
 		expect(GRAPHVIZ_LOCAL_ALIASES).toEqual({ dot: "graphviz" });
 	});
 
-	it("exposes id, tags, aliases on the factory output", () => {
+	it("exposes id, placement, tags, aliases on the factory output", () => {
 		const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
 		const processor = createGraphvizLocalProcessor(shell);
 
-		expect(processor.id).toBe("graphviz-local");
+		expect(processor.id).toBe("graphviz-host");
+		expect(processor.placement).toBe("host");
 		expect(processor.tags).toEqual(["graphviz"]);
 		expect(processor.aliases).toEqual({ dot: "graphviz" });
 	});
@@ -344,7 +345,7 @@ describe("createGraphvizLocalProcessor — logging", () => {
 
 		await processor.render("graphviz", "digraph {}");
 
-		const entries = logger.bySubsystem("graphviz-local");
+		const entries = logger.bySubsystem("graphviz-host");
 		expect(entries.some((e) => e.level === "debug")).toBe(true);
 		expect(entries.some((e) => e.level === "info")).toBe(true);
 	});
@@ -360,7 +361,7 @@ describe("createGraphvizLocalProcessor — logging", () => {
 
 		await processor.render("graphviz", "digraph {}");
 
-		const entries = logger.bySubsystem("graphviz-local");
+		const entries = logger.bySubsystem("graphviz-host");
 		expect(entries.some((e) => e.level === "warn")).toBe(true);
 	});
 
@@ -371,7 +372,7 @@ describe("createGraphvizLocalProcessor — logging", () => {
 
 		await processor.render("graphviz", "digraph {}");
 
-		const entries = logger.bySubsystem("graphviz-local");
+		const entries = logger.bySubsystem("graphviz-host");
 		expect(entries.some((e) => e.level === "error")).toBe(true);
 	});
 

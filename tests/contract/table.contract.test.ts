@@ -18,7 +18,7 @@ describe("table contract harness", () => {
 });
 
 runFenceProcessorContract(
-	"table",
+	"table-embedded",
 	() => createTableProcessor(),
 	{
 		tag: "csv",

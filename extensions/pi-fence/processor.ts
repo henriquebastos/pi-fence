@@ -59,7 +59,7 @@ export function withRenderGuards(render: RenderFunction): RenderFunction {
 
 /**
  * One-shot capability probe result. Landed with CV0.E2.S1 when the second
- * processor (graphviz-local) made availability a real user-visible concern
+ * processor (graphviz-host) made availability a real user-visible concern
  * — a machine without `dot` on PATH should still render `graphviz` blocks,
  * just via Kroki instead. Kroki's own impl is the trivial `{ ok: true }`
  * because its failure mode (unreachable endpoint) surfaces per-render as
