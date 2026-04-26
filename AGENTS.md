@@ -15,7 +15,8 @@ Front door for agents and new contributors. Short on purpose — redirects, does
 
 1. [docs/product/principles.md](docs/product/principles.md) — code, testing, process, conventions (the rules).
 2. [docs/project/briefing.md](docs/project/briefing.md) — architectural decisions D1–D8 (the why).
-3. Tail of [docs/process/worklog.md](docs/process/worklog.md) — what just shipped. The CV0.E1.S3 entry is the canonical example of a story shaped end-to-end.
+3. [docs/process/implementation-loop.md](docs/process/implementation-loop.md) — story/TDD/beans/review workflow (the loop).
+4. Tail of [docs/process/worklog.md](docs/process/worklog.md) — what just shipped. The CV0.E1.S3 entry is the canonical example of a story shaped end-to-end.
 
 ## What's pending
 

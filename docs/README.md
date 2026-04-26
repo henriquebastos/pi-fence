@@ -23,6 +23,8 @@ How we think about it.
 
 How the work moves forward.
 
+- [Implementation loop](process/implementation-loop.md) — story/TDD/beans/review workflow
+- [Meaning-first workflow discovery](process/meaning-first-workflow-discovery.md) — historical note on semantic navigation over ceremony
 - [Worklog](process/worklog.md) — what was done, what's next
 
 ## Guides
