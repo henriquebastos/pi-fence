@@ -2241,3 +2241,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Startup logs remain a snapshot.** Initial binding-resolution logs still describe startup config state; command output owns current interactive diagnostics.
 
 **Carry-forward.** Continue with selector discriminants and stale wording cleanup, then rerun inspection.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: selector discriminants
+
+**What shipped.** Binding diagnostic rows now carry `selector: "processor" | "placement"` consistently, formatter/logging code branches on that discriminator, and stale preference/fallback wording was corrected in code comments, roadmap prose, README, and tests.
+
+**Implementation commits.**
+
+1. `997a101` — refactor: discriminate binding selectors
+
+**Test count.** 667 fast-suite (unchanged; type/refactor and wording cleanup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/list.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run lint:markdown` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Selector rows are discriminated.** Processor rows now expose the same selector axis as placement rows, avoiding property-presence branching.
+2. **Exact binding tests say fail-closed.** The extension test that previously implied fallback now binds the exact `dot` tag and asserts no processor is selected when the bound processor is unavailable.
+
+**Carry-forward.** Round-2 inspection coverage gaps remain: placement bindings omitted by precedence and non-string processor selector validation.
