@@ -2349,7 +2349,7 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 
 ### 2026-04-27 — CV9.E1.S2 inspection fix: legacy alias hardening
 
-**What shipped.** Legacy processor-id alias normalization now uses own-property lookup so processor ids such as `__proto__` and `constructor` remain ordinary strings, not inherited object/function values. Bindings to those ids stay valid malformed selectors and fail closed as unknown processors instead of disappearing and falling through to placement policy.
+**What shipped.** Legacy processor-id alias normalization now uses own-property lookup so processor ids such as `__proto__` and `constructor` remain ordinary strings, not inherited object/function values. Bindings to those ids stay valid processor selectors with unknown ids and fail closed instead of disappearing and falling through to placement policy.
 
 **Implementation commits.**
 
@@ -2422,3 +2422,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 **Known deviations.** Commit `2dc2319` included one worklog wording correction alongside code/docs cleanup; subsequent docs catch-up commits resumed the one-feature-one-docs pattern.
 
 **Carry-forward.** Rerun final inspection and `pnpm run inspect`; if clean, close CV9.E1.S2.
+
+---
+
+### 2026-04-27 — CV9.E1.S2 inspection fix: binding validation complexity
+
+**What shipped.** `validateBindings` was split into focused entry parsing, processor-selector, placement-selector, and warning helpers after Sonar flagged cognitive complexity from own-field hardening. Behavior stayed unchanged.
+
+**Implementation commits.**
+
+1. `cbbb0ab` — refactor: simplify binding validation
+
+**Test count.** 679 fast-suite (unchanged; refactor only).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run inspect:sonar` — passed; quality gate `OK`, issues `0`.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Validation stays table-shaped.** The loop only dispatches each binding entry; selector-specific rules live in helpers.
+2. **Own-field hardening remains explicit.** Entry parsing still computes own `processor`/`placement` presence before accepting a selector.
+
+**Carry-forward.** Rerun final inspection and full `pnpm run inspect`; if clean, close CV9.E1.S2.
