@@ -2651,3 +2651,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 3. **Diagnostics share command lines.** `/fence doctor` reuses the same processor and blocked-tag lines as `/fence list`, then adds Issues entries for blocked policy.
 
 **Carry-forward.** Run story inspection and completion checks for CV9.E1.S3; if clean, close the story docs.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: blocked tag probes
+
+**What shipped.** Availability probing now skips processors whose advertised canonical tag families are all blocked. A config that blocks `dot`/`graphviz` and `mermaid` no longer runs `dot -V`, `mmdc --version`, or render shell commands for those host processors.
+
+**Implementation commits.**
+
+1. `7311341` — fix: suppress probes for blocked tag families
+
+**Test count.** 693 fast-suite tests (was 692; +1 extension regression for blocked host-family probe suppression).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'availability and render shell'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Probe suppression is family-complete.** A processor is skipped only when every canonical tag it advertises is blocked.
+2. **Shared canonicalization.** Startup probing reuses resolver tag-family blocking logic instead of duplicating alias handling.
+
+**Carry-forward.** Fix startup binding diagnostics so initial logs also receive `blockedTags`.
