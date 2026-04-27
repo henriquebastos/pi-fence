@@ -2500,3 +2500,48 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Specific binding warnings win.** When a binding fails closed, logs emit the binding issue and skip the generic unresolved warning.
 
 **Carry-forward.** Rerun final inspection and full `pnpm run inspect`; if clean, close CV9.E1.S2.
+
+---
+
+### 2026-04-27 — Closed CV9.E1.S2: object bindings and ambiguity
+
+**What shipped.** CV9.E1.S2 is complete. Tag bindings are now object-only selector constraints: `{ "processor": "..." }` pins an exact eligible processor, `{ "placement": "..." }` restricts selection to one allowed placement, and unsatisfied bindings fail closed instead of falling back. Same-placement ambiguity is preserved for placement selectors and resolved only by exact processor selectors. `/fence list`, `/fence doctor`, logs, and trace outcomes report effective bindings and binding issues with placement-aware reasons. Binding/config hardening now rejects prototype-chain selector data and keeps diagnostics aligned with render-time resolution.
+
+**Implementation commits.**
+
+1. `2610889` — step 1: require object binding config
+2. `c161fa4` — step 2: constrain resolution by binding selectors
+3. `7c825ed` — step 3: surface binding selector diagnostics
+4. `c14144a` — fix: keep binding constraints fail-closed
+5. `f47acc9` — fix: align binding issue diagnostics
+6. `75b04f3` — refactor: simplify binding diagnostics
+7. `4a764e6` — fix: refresh command binding diagnostics
+8. `997a101` — refactor: discriminate binding selectors
+9. `21f015c` — test: cover binding selector edge cases
+10. `c114026` — fix: harden binding dictionaries
+11. `d7fe714` — refactor: clarify binding issue diagnostics
+12. `c6445b2` — fix: harden legacy processor aliases
+13. `2dc2319` — refactor: share placement binding classification
+14. `d47dc9a` — fix: require own config fields
+15. `cbbb0ab` — refactor: simplify binding validation
+16. `a937115` — fix: align binding issue diagnostics
+17. `0ebe6cd` — fix: clarify binding constraint traces
+
+**Test count.** 683 fast-suite tests (was 642 before S2; +41 total across config, resolver, command/doctor, extension, and hardening coverage).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed; 42 files, 683 tests.
+2. `pnpm run inspect` — passed; Sonar quality gate `OK`, issues `0`, coverage `91.7`.
+3. Final subagent inspection — security and close-check reviewers both reported no issues.
+
+**Design decisions that survived implementation.**
+
+1. **Bindings are constraints, not preferences.** If the selected processor or placement cannot produce exactly one eligible processor, the bound tag has no selected processor.
+2. **Selector shape is explicit.** Binding rows are discriminated by `selector: "processor" | "placement"`, and issue rows use `status: "issue"` rather than stale ignored/preference wording.
+3. **Diagnostics share eligibility classifiers.** Processor and placement binding diagnostics reuse the same eligibility/cardinality logic as runtime resolution.
+4. **Own-data hardening is part of config policy.** Config validation, alias normalization, selector guards, and resolver alias checks ignore prototype-chain data.
+
+**Known deviations.** Commit `2dc2319` included one worklog wording correction alongside code/docs cleanup; later commits restored the feature-then-docs cadence and the close record documents the deviation.
+
+**Carry-forward.** Next story is CV9.E1.S3 — Blocked tags and processors. Keep the one-RED-target guard from this story: add one failing behavior at a time, then green/refactor before widening coverage.
