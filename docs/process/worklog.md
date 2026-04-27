@@ -2701,3 +2701,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Blocked tag bindings are issues.** Even an otherwise eligible processor binding is reported as blocked when the tag family is blocked.
 
 **Carry-forward.** Clean stale disabled terminology and add remaining edge coverage.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: blocked terminology cleanup
+
+**What shipped.** Touched production plumbing now uses `blockedProcessors` for explicit processor blocks while preserving `disabled` for placement omissions. Registration availability failures say `processor blocked by config`, and stale config/list module comments now describe blocked policy rather than the removed top-level `disabled` model.
+
+**Implementation commits.**
+
+1. `588253c` — refactor: clarify blocked processor plumbing
+
+**Test count.** 694 fast-suite tests (unchanged; refactor/comment cleanup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts tests/unit/list.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Two words, two meanings.** Explicit processor-id policy is blocked; placement omission remains disabled.
+2. **Compatibility shims removed in touched code.** `listProcessors`, command wiring, agent-end wiring, and dynamic registration now name explicit processor policy as blocked.
+
+**Carry-forward.** Add remaining edge coverage for tag-blocked placement bindings and invalid `blocked` config shapes.
