@@ -2216,3 +2216,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Trace helpers isolate wording.** `traceOutcome` delegates selected, ambiguous, and unresolved wording to helpers, keeping Sonar below the cognitive-complexity threshold without changing trace semantics.
 
 **Carry-forward.** All inspect5p findings are closed. Rerun inspection or proceed to story-close bookkeeping if no new findings appear.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: command-time binding diagnostics
+
+**What shipped.** `/fence list` and `/fence doctor` now recompute binding diagnostics from the current processor registry instead of using the startup snapshot. Bindings to dynamically registered third-party processors now render and diagnose consistently after event-bus registration.
+
+**Implementation commits.**
+
+1. `4a764e6` — fix: refresh command binding diagnostics
+
+**Test count.** 667 fast-suite (was 666; +1 extension command test for a third-party binding registered after startup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'registered after startup'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Diagnostics are command-time state.** Rendering and command output now read from the same mutable registry/availability map after third-party registration.
+2. **Startup logs remain a snapshot.** Initial binding-resolution logs still describe startup config state; command output owns current interactive diagnostics.
+
+**Carry-forward.** Continue with selector discriminants and stale wording cleanup, then rerun inspection.
