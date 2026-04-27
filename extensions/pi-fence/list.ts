@@ -21,12 +21,15 @@
  *         Bindings
  *           <tag> → <processorId>
  *
- *         Ignored bindings
+ *         Binding issues
  *           <tag> → <processorId> (unknown processor)
  *           <tag> → <processorId> (processor unavailable)
  *           <tag> → <processorId> (processor disabled)
  *           <tag> → <processorId> (processor placement disabled)
  *           <tag> → <processorId> (processor does not claim tag)
+ *           <tag> → placement:<placement> (placement disabled)
+ *           <tag> → placement:<placement> (no matching processor in placement)
+ *           <tag> → placement:<placement> (ambiguous: <processorId>, ...)
  *
  *     Both sections are hidden when their bucket is empty.
  *

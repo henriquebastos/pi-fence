@@ -87,19 +87,17 @@ type BlockingOutcome =
 /**
  * Return the processor that can serve `tag` under user placement policy.
  *
- * Resolution rule (CV9.E1.S1):
+ * Resolution rule (CV9.E1):
  *   1. Disabled ids and omitted placements are hard skips.
- *   2. A user binding wins only when its processor is registered,
- *      available, enabled, and in an allowed placement.
- *   3. Otherwise, gather available candidates that claim the tag and
- *      choose the first placement in `processorPrecedence` with exactly
+ *   2. A tag binding is a selector constraint. It selects only matching,
+ *      enabled, available processors inside allowed placements.
+ *   3. An unsatisfied binding selects no processor for that tag; it does
+ *      not fall through to broader placement policy.
+ *   4. Without a binding, gather available candidates that claim the tag
+ *      and choose the first placement in `processorPrecedence` with exactly
  *      one candidate.
- *   4. Multiple candidates in that winning placement are ambiguous;
+ *   5. Multiple candidates in the winning placement are ambiguous;
  *      do not fall through to a lower-trust placement by registration order.
- *
- * Bindings are still preferences, not hard requirements. A binding to an
- * unknown, unavailable, disabled, or placement-disabled processor falls
- * through to placement policy. Strict mode remains deferred to S2/S3.
  *
  * Pure. The caller logs at wire time; `resolve.ts` has no logger.
  */
@@ -222,7 +220,7 @@ function traceOutcome(
 	ambiguousIds: ReadonlySet<string>,
 ): StepOutcome {
 	if (selection?.processor.id === processor.id) {
-		return selection.mode === "binding" ? "selected-by-binding" : "selected-by-placement";
+		return selectedOutcome(selection);
 	}
 
 	const blocked = candidateBlocked(processor, context);
@@ -239,16 +237,29 @@ function traceOutcome(
 		return "skipped-already-resolved";
 	}
 	if (blocked) return blocked;
-	if (ambiguity) {
-		if (ambiguousIds.has(processor.id)) return "skipped-ambiguous-same-placement";
-		return context.binding === undefined
-			? "skipped-lower-precedence"
-			: "skipped-binding-prefers-other";
-	}
-	if (selection) {
-		return "skipped-lower-precedence";
-	}
-	return context.binding === undefined ? "skipped-no-claim" : "skipped-binding-prefers-other";
+	if (ambiguity) return ambiguityOutcome(processor, context, ambiguousIds);
+	if (selection) return "skipped-lower-precedence";
+	return unresolvedOutcome(context);
+}
+
+function selectedOutcome(selection: Selection): StepOutcome {
+	return selection.mode === "binding" ? "selected-by-binding" : "selected-by-placement";
+}
+
+function ambiguityOutcome(
+	processor: FenceProcessor,
+	context: ResolveContext,
+	ambiguousIds: ReadonlySet<string>,
+): StepOutcome {
+	if (ambiguousIds.has(processor.id)) return "skipped-ambiguous-same-placement";
+	return unresolvedOutcome(context, "skipped-lower-precedence");
+}
+
+function unresolvedOutcome(
+	context: ResolveContext,
+	fallback: StepOutcome = "skipped-no-claim",
+): StepOutcome {
+	return context.binding === undefined ? fallback : "skipped-binding-prefers-other";
 }
 
 function isLowerPrecedenceThanSelection(
@@ -299,14 +310,14 @@ function processorBindingId(binding: TagBinding | undefined): string | undefined
 }
 
 /**
- * Surface per-binding resolution state for `/fence list`. Returns one
- * row per entry in `bindings`, preserving iteration order. Each row
- * says whether the binding is `effective` (registered + available, so
- * resolveProcessor would honour it) or `ignored` (with a reason).
+ * Surface per-binding resolution state for `/fence list` and `/fence doctor`.
+ * Returns one row per entry in `bindings`, preserving iteration order. Effective
+ * rows identify the selected processor; issue rows explain why the selector has
+ * no single eligible processor.
  *
- * Separate from `resolveProcessor` because `/fence list` needs the
- * full categorisation once at render time; the per-block resolver
- * only needs the positive lookup per tag.
+ * Separate from `resolveProcessor` because command output needs full
+ * categorisation once at render time; the per-block resolver only needs the
+ * selected processor, trace, and ambiguity state.
  */
 export type BindingResolution =
 	| { status: "effective"; tag: string; processorId: string }
@@ -351,72 +362,86 @@ export function resolveBindings(
 	disabled?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): BindingResolution[] {
-	const out: BindingResolution[] = [];
 	const allowedPlacements = new Set(processorPrecedence);
-	for (const [tag, binding] of Object.entries(bindings)) {
-		if ("placement" in binding) {
-			const placementRow = resolvePlacementBinding(
-				processors,
-				availability,
-				tag,
-				binding.placement,
-				disabled,
-				processorPrecedence,
-			);
-			if (placementRow !== undefined) out.push(placementRow);
-			continue;
-		}
-		const processorId = processorBindingId(binding);
-		if (processorId === undefined) continue;
-		const processor = processors.find((p) => p.id === processorId);
-		if (!processor) {
-			out.push({
-				status: "ignored",
-				tag,
-				processorId,
-				reason: "unknown-processor",
-			});
-			continue;
-		}
-		if (disabled?.has(processor.id)) {
-			out.push({
-				status: "ignored",
-				tag,
-				processorId,
-				reason: "processor-disabled",
-			});
-			continue;
-		}
-		if (!allowedPlacements.has(processor.placement)) {
-			out.push({
-				status: "ignored",
-				tag,
-				processorId,
-				reason: "processor-placement-disabled",
-			});
-			continue;
-		}
-		if (availability.get(processor.id)?.ok !== true) {
-			out.push({
-				status: "ignored",
-				tag,
-				processorId,
-				reason: "processor-unavailable",
-			});
-			continue;
-		}
-		if (!claimsTag(processor, tag)) {
-			out.push({
-				status: "ignored",
-				tag,
-				processorId,
-				reason: "processor-does-not-claim-tag",
-			});
-			continue;
-		}
-		out.push({ status: "effective", tag, processorId });
+	return Object.entries(bindings).map(([tag, binding]) =>
+		resolveBinding(
+			processors,
+			availability,
+			tag,
+			binding,
+			disabled,
+			processorPrecedence,
+			allowedPlacements,
+		),
+	);
+}
+
+function resolveBinding(
+	processors: readonly FenceProcessor[],
+	availability: ReadonlyMap<string, Availability>,
+	tag: string,
+	binding: TagBinding,
+	disabled: ReadonlySet<string> | undefined,
+	processorPrecedence: readonly ProcessorPlacement[],
+	allowedPlacements: ReadonlySet<ProcessorPlacement>,
+): BindingResolution {
+	if ("placement" in binding) {
+		return resolvePlacementBinding(
+			processors,
+			availability,
+			tag,
+			binding.placement,
+			disabled,
+			processorPrecedence,
+			allowedPlacements,
+		);
 	}
-	return out;
+	return resolveProcessorBinding(
+		processors,
+		availability,
+		tag,
+		binding.processor,
+		disabled,
+		allowedPlacements,
+	);
+}
+
+type ProcessorBindingIssueReason = Extract<
+	BindingResolution,
+	{ status: "ignored"; processorId: string }
+>["reason"];
+
+function resolveProcessorBinding(
+	processors: readonly FenceProcessor[],
+	availability: ReadonlyMap<string, Availability>,
+	tag: string,
+	processorId: string,
+	disabled: ReadonlySet<string> | undefined,
+	allowedPlacements: ReadonlySet<ProcessorPlacement>,
+): BindingResolution {
+	const processor = processors.find((p) => p.id === processorId);
+	if (!processor) return processorBindingIssue(tag, processorId, "unknown-processor");
+	if (disabled?.has(processor.id)) {
+		return processorBindingIssue(tag, processorId, "processor-disabled");
+	}
+	if (!allowedPlacements.has(processor.placement)) {
+		return processorBindingIssue(tag, processorId, "processor-placement-disabled");
+	}
+	if (availability.get(processor.id)?.ok !== true) {
+		return processorBindingIssue(tag, processorId, "processor-unavailable");
+	}
+	if (!claimsTag(processor, tag)) {
+		return processorBindingIssue(tag, processorId, "processor-does-not-claim-tag");
+	}
+	return { status: "effective", tag, processorId };
+}
+
+function processorBindingIssue(
+	tag: string,
+	processorId: string,
+	reason: ProcessorBindingIssueReason,
+): BindingResolution {
+	return { status: "ignored", tag, processorId, reason };
 }
 
 function resolvePlacementBinding(
@@ -426,8 +451,8 @@ function resolvePlacementBinding(
 	placement: ProcessorPlacement,
 	disabled: ReadonlySet<string> | undefined,
 	processorPrecedence: readonly ProcessorPlacement[],
-): BindingResolution | undefined {
-	const allowedPlacements = new Set(processorPrecedence);
+	allowedPlacements: ReadonlySet<ProcessorPlacement>,
+): BindingResolution {
 	if (!allowedPlacements.has(placement)) {
 		return {
 			status: "ignored",
