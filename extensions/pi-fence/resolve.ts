@@ -36,7 +36,7 @@ export type StepOutcome =
 	| "skipped-already-resolved"
 	| "skipped-ambiguous-same-placement"
 	| "skipped-binding-excluded"
-	| "skipped-disabled"
+	| "skipped-processor-blocked"
 	| "skipped-lower-precedence"
 	| "skipped-no-claim"
 	| "skipped-placement-disabled"
@@ -61,7 +61,7 @@ export interface ResolveProcessorResult {
 interface CandidateContext {
 	availability: ReadonlyMap<string, Availability>;
 	allowedPlacements: ReadonlySet<ProcessorPlacement>;
-	disabled?: ReadonlySet<string>;
+	blockedProcessors?: ReadonlySet<string>;
 	tag: string;
 }
 
@@ -89,7 +89,7 @@ interface ResolutionDecision {
 }
 
 type BlockingOutcome =
-	| "skipped-disabled"
+	| "skipped-processor-blocked"
 	| "skipped-no-claim"
 	| "skipped-placement-disabled"
 	| "skipped-unavailable";
@@ -97,7 +97,7 @@ type BlockingOutcome =
 type ProcessorBindingIssueReason =
 	| "unknown-processor"
 	| "processor-unavailable"
-	| "processor-disabled"
+	| "processor-blocked"
 	| "processor-placement-disabled"
 	| "processor-does-not-claim-tag";
 
@@ -105,9 +105,9 @@ type ProcessorBindingIssueReason =
  * Return the processor that can serve `tag` under user placement policy.
  *
  * Resolution rule (CV9.E1):
- *   1. Disabled ids and omitted placements are hard skips.
+ *   1. Blocked processor ids and omitted placements are hard skips.
  *   2. A tag binding is a selector constraint. It selects only matching,
- *      enabled, available processors inside allowed placements.
+ *      unblocked, available processors inside allowed placements.
  *   3. An unsatisfied binding selects no processor for that tag; it does
  *      not fall through to broader placement policy.
  *   4. Without a binding, gather available candidates that claim the tag
@@ -123,7 +123,7 @@ export function resolveProcessor(
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
 	bindings?: Readonly<Record<string, TagBinding>>,
-	disabled?: ReadonlySet<string>,
+	blockedProcessors?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): ResolveProcessorResult {
 	const binding = bindingForTag(bindings, tag);
@@ -132,7 +132,7 @@ export function resolveProcessor(
 		allowedPlacements: new Set(processorPrecedence),
 		binding,
 		boundId: processorBindingId(binding),
-		disabled,
+		blockedProcessors,
 		placementRank: buildPlacementRank(processorPrecedence),
 		tag,
 	};
@@ -288,7 +288,7 @@ function traceOutcome(
 	}
 
 	const blocked = candidateBlocked(processor, context);
-	if (blocked === "skipped-disabled" || blocked === "skipped-placement-disabled") {
+	if (blocked === "skipped-processor-blocked" || blocked === "skipped-placement-disabled") {
 		return blocked;
 	}
 	if (isLowerPrecedenceThanSelection(processor, selection, context)) {
@@ -347,7 +347,7 @@ function bindingBlocked(
 	processor: FenceProcessor,
 	context: CandidateContext,
 ): Exclude<BlockingOutcome, "skipped-no-claim"> | undefined {
-	if (context.disabled?.has(processor.id)) return "skipped-disabled";
+	if (context.blockedProcessors?.has(processor.id)) return "skipped-processor-blocked";
 	if (!context.allowedPlacements.has(processor.placement)) {
 		return "skipped-placement-disabled";
 	}
@@ -371,7 +371,7 @@ function processorBindingIssueReason(
 ): ProcessorBindingIssueReason | undefined {
 	const blocked = candidateBlocked(processor, context);
 	if (blocked === undefined) return undefined;
-	if (blocked === "skipped-disabled") return "processor-disabled";
+	if (blocked === "skipped-processor-blocked") return "processor-blocked";
 	if (blocked === "skipped-placement-disabled") return "processor-placement-disabled";
 	if (blocked === "skipped-unavailable") return "processor-unavailable";
 	return "processor-does-not-claim-tag";
@@ -462,7 +462,7 @@ export function resolveBindings(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	bindings: Readonly<Record<string, TagBinding>>,
-	disabled?: ReadonlySet<string>,
+	blockedProcessors?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): BindingResolution[] {
 	const allowedPlacements = new Set(processorPrecedence);
@@ -473,7 +473,7 @@ export function resolveBindings(
 				availability,
 				tag,
 				binding,
-				disabled,
+				blockedProcessors,
 				allowedPlacements,
 			)]
 			: [],
@@ -485,7 +485,7 @@ function resolveBinding(
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
 	binding: TagBinding,
-	disabled: ReadonlySet<string> | undefined,
+	blockedProcessors: ReadonlySet<string> | undefined,
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 ): BindingResolution {
 	if (isPlacementBinding(binding)) {
@@ -494,7 +494,7 @@ function resolveBinding(
 			availability,
 			tag,
 			binding.placement,
-			disabled,
+			blockedProcessors,
 			allowedPlacements,
 		);
 	}
@@ -503,7 +503,7 @@ function resolveBinding(
 		availability,
 		tag,
 		binding.processor,
-		disabled,
+		blockedProcessors,
 		allowedPlacements,
 	);
 }
@@ -513,7 +513,7 @@ function resolveProcessorBinding(
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
 	processorId: string,
-	disabled: ReadonlySet<string> | undefined,
+	blockedProcessors: ReadonlySet<string> | undefined,
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 ): BindingResolution {
 	const processor = processors.find((p) => p.id === processorId);
@@ -521,7 +521,7 @@ function resolveProcessorBinding(
 	const reason = processorBindingIssueReason(processor, {
 		availability,
 		allowedPlacements,
-		disabled,
+		blockedProcessors,
 		tag,
 	});
 	if (reason) return processorBindingIssue(tag, processorId, reason);
@@ -541,12 +541,12 @@ function resolvePlacementBinding(
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
 	placement: ProcessorPlacement,
-	disabled: ReadonlySet<string> | undefined,
+	blockedProcessors: ReadonlySet<string> | undefined,
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 ): BindingResolution {
 	const classification = classifyPlacementBinding(
 		processors,
-		{ availability, allowedPlacements, disabled, tag },
+		{ availability, allowedPlacements, blockedProcessors, tag },
 		placement,
 	);
 	if (classification.kind === "disabled") {

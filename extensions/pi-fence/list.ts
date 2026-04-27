@@ -196,7 +196,7 @@ function formatIssueReason(
 	reason: Extract<BindingResolution, { status: "issue" }>["reason"],
 ): string {
 	if (reason === "unknown-processor") return "unknown processor";
-	if (reason === "processor-disabled") return "processor disabled";
+	if (reason === "processor-blocked") return "processor blocked";
 	if (reason === "processor-placement-disabled") return "processor placement disabled";
 	if (reason === "placement-disabled") return "placement disabled";
 	if (reason === "placement-no-match") return "no matching processor in placement";

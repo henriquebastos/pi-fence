@@ -624,7 +624,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 	});
 });
 
-describe("resolveProcessor — disabled set", () => {
+describe("resolveProcessor — blocked processor set", () => {
 	const local = makeFakeProcessor({
 		id: "graphviz-host",
 		tags: ["graphviz"],
@@ -639,7 +639,7 @@ describe("resolveProcessor — disabled set", () => {
 		["kroki-remote", { ok: true }],
 	]);
 
-	it("skips a disabled processor in placement-policy resolution", () => {
+	it("skips a blocked processor in placement-policy resolution", () => {
 		expectResolution(
 			resolveProcessor(
 				[local, krokiRemote],
@@ -650,14 +650,14 @@ describe("resolveProcessor — disabled set", () => {
 			),
 			"kroki-remote",
 			[
-				{ id: "graphviz-host", outcome: "skipped-disabled" },
+				{ id: "graphviz-host", outcome: "skipped-processor-blocked" },
 				{ id: "kroki-remote", outcome: "selected-by-placement" },
 			],
 		);
 	});
 
-	it("returns no processor when a disabled processor is the binding target", () => {
-		// Binding target is disabled → constrained to no processor.
+	it("returns no processor when a blocked processor is the binding target", () => {
+		// Binding target is blocked → constrained to no processor.
 		expectResolution(
 			resolveProcessor(
 				[local, krokiRemote],
@@ -668,13 +668,13 @@ describe("resolveProcessor — disabled set", () => {
 			),
 			null,
 			[
-				{ id: "graphviz-host", outcome: "skipped-disabled" },
+				{ id: "graphviz-host", outcome: "skipped-processor-blocked" },
 				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});
 
-	it("returns null when all processors for a tag are disabled", () => {
+	it("returns null when all processors for a tag are blocked", () => {
 		expectResolution(
 			resolveProcessor(
 				[local, krokiRemote],
@@ -685,13 +685,13 @@ describe("resolveProcessor — disabled set", () => {
 			),
 			null,
 			[
-				{ id: "graphviz-host", outcome: "skipped-disabled" },
-				{ id: "kroki-remote", outcome: "skipped-disabled" },
+				{ id: "graphviz-host", outcome: "skipped-processor-blocked" },
+				{ id: "kroki-remote", outcome: "skipped-processor-blocked" },
 			],
 		);
 	});
 
-	it("empty disabled set has no effect", () => {
+	it("empty blocked processor set has no effect", () => {
 		expectResolution(
 			resolveProcessor(
 				[local, krokiRemote],
@@ -790,7 +790,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises issue-processor-disabled", () => {
+	it("categorises issue-processor-blocked", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -809,7 +809,7 @@ describe("resolveBindings", () => {
 				tag: "graphviz",
 				selector: "processor",
 				processorId: "graphviz-host",
-				reason: "processor-disabled",
+				reason: "processor-blocked",
 			},
 		]);
 	});
