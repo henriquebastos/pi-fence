@@ -95,7 +95,7 @@ export async function createPiFenceExtension(
 	logProcessorPrecedence(processorPrecedence, deps.logger);
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-remote.
-	if (config.kroki?.docker?.autoStart && isProcessorAllowed("kroki-remote", "remote", blockedProcessors, processorPrecedence)) {
+	if (config.kroki?.docker?.autoStart && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
 		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
 		const dockerStatus = await dockerMgr.status();
 		if (dockerStatus.status === "running") {
@@ -216,6 +216,18 @@ function isProcessorAllowed(
 	processorPrecedence: readonly string[],
 ): boolean {
 	return !blockedProcessors.has(processorId) && processorPrecedence.includes(placement);
+}
+
+function isKrokiAutoStartAllowed(
+	processors: readonly FenceProcessor[],
+	blockedProcessors: ReadonlySet<string>,
+	blockedTags: ReadonlySet<string>,
+	processorPrecedence: readonly string[],
+): boolean {
+	const krokiRemote = processors.find((processor) => processor.id === "kroki-remote");
+	return krokiRemote !== undefined &&
+		isProcessorAllowed(krokiRemote.id, krokiRemote.placement, blockedProcessors, processorPrecedence) &&
+		!isProcessorFullyTagBlocked(krokiRemote, processors, blockedTags);
 }
 
 function createDefaultProcessors(

@@ -824,6 +824,33 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"blocked Kroki tag families prevent Docker Kroki auto-start",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: KROKI_CANONICAL_TAGS, processors: [] },
+					processorPrecedence: ["remote"],
+					kroki: { docker: { autoStart: true } },
+				}),
+			);
+			const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"disabled remote placement prevents Docker Kroki auto-start",
 		async () => {
 			const home = makeTempDir();
