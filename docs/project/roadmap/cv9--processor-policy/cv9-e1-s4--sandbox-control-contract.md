@@ -163,7 +163,7 @@ Sandbox processor ids follow `<family>-sandbox[-variant]`:
 2. Controller interface for `exec` and `service` sandboxes.
 3. Workspace/exec seam needed by `bundle-sandbox`.
 4. Design constraints for `bundle-sandbox`, `kroki-sandbox`, and `kroki-remote`.
-5. Tests for status normalization and resolver participation using fake controllers/processors.
+5. Tests for status normalization and resolver participation using `FakeShellRunner` and inline fake processors.
 
 **Out of scope:**
 
@@ -176,17 +176,10 @@ Sandbox processor ids follow `<family>-sandbox[-variant]`:
 
 ## Plan
 
-Implement with TDD:
-
-| Step | TDD phase | Layer | What | Commit |
-|------|-----------|-------|------|--------|
-| 1 | red | Unit | Add config tests for `sandboxes.bundle` and `sandboxes.kroki`: kind, runtime, image, `autoStart`, invalid shapes, and merge behavior. | `step 1: sandbox config` |
-| 2 | green/refactor | Unit | Add sandbox config types/defaults without changing runtime behavior. | same |
-| 3 | red | Unit | Add tests for status normalization: ready, absent, stopped, partial, and error. | `step 2: sandbox controller contract` |
-| 4 | green/refactor | Unit | Add controller/status/exec-workspace interfaces and adapter helpers. | same |
-| 5 | red | Unit | Add resolver tests with fake sandbox processors proving `sandbox` precedence and same-placement ambiguity between `bundle-sandbox` and `kroki-sandbox`. | `step 3: sandbox resolver participation` |
-| 6 | green/refactor | Unit | Thread placement-policy types without implementing concrete sandbox processors yet. | same |
-| 7 | verify | All fast | Run `pnpm run feedback`, then `pnpm run inspect`. | same |
+1. **Config contract.** Add named `sandboxes` config for `bundle` and `kroki`, with explicit `kind`, `runtime`, optional `image`, and opt-in `autoStart`. Invalid sandbox policy fails closed.
+2. **Controller contract.** Add sandbox status/lifecycle interfaces, exec workspace interfaces, Docker-backed status normalization for one-container and multi-component runtimes, and an adapter shape for the existing Kroki Docker lifecycle.
+3. **Resolution contract.** Prove fake sandbox processors participate in placement precedence and same-placement ambiguity without introducing concrete sandbox processors.
+4. **Verification.** Run the fast feedback gate, completion inspection, and the live-gate decision required by any new ShellRunner-backed seam.
 
 ## Tests
 
@@ -197,8 +190,8 @@ Implement with TDD:
    - `partial` status is unavailable for processor selection in CV9.
    - `bundle-sandbox` and `kroki-sandbox` create same-placement ambiguity when both support a tag.
    - Remote endpoint config alone does not make a processor `sandbox`.
-3. **Fakes added:** likely `FakeSandboxController` or inline controller stubs if only needed locally.
-4. **Live tests:** none in S4; concrete sandbox live gates land in S5/S6.
+3. **Fakes added:** no new fake class; controller status tests use existing `FakeShellRunner`, and resolver tests use inline fake processors.
+4. **Live tests:** concrete sandbox live gates land in S5/S6; S4 records the live-gate decision for the new ShellRunner-backed status seam.
 5. **Deferred:** non-Docker runtimes and third-party sandbox controller registration.
 
 ## Verification
