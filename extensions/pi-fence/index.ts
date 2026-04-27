@@ -88,6 +88,7 @@ export async function createPiFenceExtension(
 		bindings,
 		blockedProcessors,
 		processorPrecedence,
+		blockedTags,
 	);
 	logBindingResolution(bindingRows, deps.logger);
 	logBlockedProcessors(blockedProcessors, deps.logger);

@@ -1020,6 +1020,44 @@ describe("pi-fence extension — blocked tags", () => {
 	);
 
 	it(
+		"startup binding diagnostics classify blocked tags as issues",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: ["mermaid"], processors: [] },
+					bindings: { mermaid: { processor: "kroki-remote" } },
+				}),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const logger = captured.logger;
+			expect(logger).toBeDefined();
+			expect(
+				logger!.bySubsystem("pi-fence").some((entry) =>
+					entry.message === "binding issue" &&
+					(entry.meta as { reason?: string }).reason === "tag-blocked",
+				),
+			).toBe(true);
+			expect(
+				logger!.bySubsystem("pi-fence").some((entry) =>
+					entry.message === "binding effective" &&
+					(entry.meta as { tag?: string }).tag === "mermaid",
+				),
+			).toBe(false);
+		},
+		20_000,
+	);
+
+	it(
 		"/fence list surfaces blocked processors, tags, and binding issues",
 		async () => {
 			const home = makeTempDir();
