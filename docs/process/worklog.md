@@ -3118,3 +3118,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Ready specs stay reusable.** Execution details remain in beans and worklog entries, not in the Ready story plan.
 
 **Carry-forward.** Resolve the live-gate decision, then rerun inspection/completion checks.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: malformed sandbox layers
+
+**What shipped.** Malformed sandbox layers now fully clear active sandbox controllers. Non-object `sandboxes` and mixed valid/invalid sandbox maps both produce an empty sandbox map while failing closed to embedded placement.
+
+**Implementation commits.**
+
+1. `c274c12` — fix: clear malformed sandbox layers
+
+**Test count.** Fast suite 723 → 725 (+2).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Malformed sandbox policy clears the whole layer.** The config does not try to salvage valid entries when the user-controlled sandbox policy is partially malformed.
+
+**Carry-forward.** Require Docker sandbox identity in generic helpers and the legacy Kroki Docker manager.
