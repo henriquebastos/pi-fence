@@ -99,6 +99,15 @@ describe("config core", () => {
 		expect(DEFAULT_CONFIG.blocked).toEqual({ tags: [], processors: [] });
 	});
 
+	it("defaults named sandbox controllers for bundle and Kroki", () => {
+		expect(DEFAULT_CONFIG).toMatchObject({
+			sandboxes: {
+				bundle: { kind: "exec", runtime: "docker-container", autoStart: true },
+				kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
+			},
+		});
+	});
+
 	it("validates blocked policy: accepts tag and processor string arrays", () => {
 		const result = validatePiFenceConfig(
 			{ blocked: { tags: ["qr", "dot"], processors: ["kroki-remote"] } },
@@ -106,6 +115,74 @@ describe("config core", () => {
 		);
 
 		expect(result.blocked).toEqual({ tags: ["qr", "dot"], processors: ["kroki-remote"] });
+	});
+
+	it("validates sandboxes: accepts complete named sandbox entries", () => {
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: {
+						kind: "exec",
+						runtime: "docker-container",
+						image: "ghcr.io/example/pi-fence-bundle:test",
+						autoStart: false,
+					},
+					kroki: {
+						kind: "service",
+						runtime: "docker-compose",
+						autoStart: true,
+					},
+				},
+			},
+			"test",
+		);
+
+		expect(result.sandboxes).toEqual({
+			bundle: {
+				kind: "exec",
+				runtime: "docker-container",
+				image: "ghcr.io/example/pi-fence-bundle:test",
+				autoStart: false,
+			},
+			kroki: {
+				kind: "service",
+				runtime: "docker-compose",
+				autoStart: true,
+			},
+		});
+	});
+
+	it("validates sandboxes: invalid entry fields warn and fail closed", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "vm", runtime: "docker", image: 42, autoStart: "yes" },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"invalid sandbox config in test sandboxes",
+		]);
+	});
+
+	it("merges sandboxes: later named entries replace earlier entries", () => {
+		const globalBundle = { kind: "exec" as const, runtime: "docker-container" as const, image: "old" };
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, sandboxes: { bundle: globalBundle, kroki: { kind: "service", runtime: "docker-compose" } } },
+			{ bindings: {}, sandboxes: { bundle: { kind: "exec", runtime: "docker-container", image: "new" } } },
+		);
+
+		expect(merged.sandboxes).toEqual({
+			bundle: { kind: "exec", runtime: "docker-container", image: "new" },
+			kroki: { kind: "service", runtime: "docker-compose" },
+		});
+		expect(merged.sandboxes?.bundle).not.toBe(globalBundle);
 	});
 
 	it("validates blocked policy: drops non-string entries with warns and fails closed", () => {

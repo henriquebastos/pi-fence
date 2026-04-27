@@ -20,6 +20,23 @@ export interface BlockPolicy {
 	processors: string[];
 }
 
+export const SANDBOX_KINDS = ["exec", "service"] as const;
+
+export type SandboxKind = typeof SANDBOX_KINDS[number];
+
+export const SANDBOX_RUNTIMES = ["docker-container", "docker-compose"] as const;
+
+export type SandboxRuntime = typeof SANDBOX_RUNTIMES[number];
+
+export interface SandboxConfig {
+	kind: SandboxKind;
+	runtime: SandboxRuntime;
+	autoStart?: boolean;
+	image?: string;
+}
+
+export type SandboxConfigMap = Record<string, SandboxConfig>;
+
 export interface PiFenceConfig {
 	/**
 	 * Map from canonical or alias tag name to a selector constraint.
@@ -33,6 +50,8 @@ export interface PiFenceConfig {
 	 * an explicit list can only reorder or remove lower-priority placements.
 	 */
 	processorPrecedence?: ProcessorPlacement[];
+	/** Named sandbox controllers pi-fence can identify and control. */
+	sandboxes?: SandboxConfigMap;
 	/** Per-processor configuration. Currently only Kroki has settings. */
 	kroki?: {
 		/** Kroki endpoint URL. Default: https://kroki.io */
@@ -56,6 +75,10 @@ export const DEFAULT_CONFIG: PiFenceConfig = {
 	bindings: emptyBindings(),
 	blocked: { tags: [], processors: [] },
 	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
+	sandboxes: {
+		bundle: { kind: "exec", runtime: "docker-container", autoStart: true },
+		kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
+	},
 };
 
 export const EMPTY_CONFIG_LAYER: PiFenceConfig = { bindings: emptyBindings() };
@@ -71,9 +94,9 @@ const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = Object.fre
 });
 
 /**
- * Shallow merge at the top level; inside `bindings` later configs win on the
- * same key and preserve non-conflicting keys. `blocked` replaces by layer;
- * `processorPrecedence` is an ordered intersection.
+ * Shallow merge at the top level; inside `bindings` and `sandboxes` later
+ * configs win on the same key and preserve non-conflicting keys. `blocked`
+ * replaces by layer; `processorPrecedence` is an ordered intersection.
  */
 export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
@@ -81,6 +104,7 @@ export function mergePiFenceConfigs(
 	const bindings = emptyBindings();
 	let blocked: BlockPolicy | undefined;
 	let processorPrecedence: ProcessorPlacement[] | undefined;
+	let sandboxes: SandboxConfigMap | undefined;
 	let kroki: PiFenceConfig["kroki"];
 	for (const config of configs) {
 		for (const [tag, binding] of Object.entries(config.bindings)) {
@@ -95,6 +119,9 @@ export function mergePiFenceConfigs(
 				config.processorPrecedence,
 			);
 		}
+		if (config.sandboxes !== undefined) {
+			sandboxes = mergeSandboxes(sandboxes, config.sandboxes);
+		}
 		if (config.kroki !== undefined) {
 			kroki = mergeKrokiConfig(kroki, config.kroki);
 		}
@@ -102,6 +129,7 @@ export function mergePiFenceConfigs(
 	const out: PiFenceConfig = { bindings };
 	if (blocked !== undefined) out.blocked = blocked;
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
+	if (sandboxes !== undefined) out.sandboxes = sandboxes;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
 }
@@ -125,6 +153,7 @@ export function validatePiFenceConfig(
 
 	const rawBlocked = ownField(parsed, "blocked");
 	const rawPrecedence = ownField(parsed, "processorPrecedence");
+	const rawSandboxes = ownField(parsed, "sandboxes");
 	const rawKroki = ownField(parsed, "kroki");
 	const failClosed = hasInvalidPrivacyControl(parsed);
 	const processorPrecedence = validateProcessorPrecedenceField(
@@ -133,6 +162,9 @@ export function validatePiFenceConfig(
 		label,
 		logger,
 	);
+	const sandboxes = rawSandboxes === undefined
+		? undefined
+		: validateSandboxes(rawSandboxes, label, logger);
 	const kroki = rawKroki === undefined
 		? undefined
 		: validateKroki(rawKroki, label, logger);
@@ -142,12 +174,40 @@ export function validatePiFenceConfig(
 	const out: PiFenceConfig = { bindings: validateBindings(ownField(parsed, "bindings"), label, logger) };
 	if (blocked !== undefined) out.blocked = blocked;
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
+	if (sandboxes !== undefined) out.sandboxes = sandboxes;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
 }
 
 function emptyBindings(): Record<string, TagBinding> {
 	return Object.create(null) as Record<string, TagBinding>;
+}
+
+function emptySandboxes(): SandboxConfigMap {
+	return Object.create(null) as SandboxConfigMap;
+}
+
+function copySandbox(config: SandboxConfig): SandboxConfig {
+	return { ...config };
+}
+
+function copySandboxes(sandboxes: SandboxConfigMap): SandboxConfigMap {
+	const out = emptySandboxes();
+	for (const [id, config] of Object.entries(sandboxes)) {
+		out[id] = copySandbox(config);
+	}
+	return out;
+}
+
+function mergeSandboxes(
+	current: SandboxConfigMap | undefined,
+	next: SandboxConfigMap,
+): SandboxConfigMap {
+	const merged = current === undefined ? emptySandboxes() : copySandboxes(current);
+	for (const [id, config] of Object.entries(next)) {
+		merged[id] = copySandbox(config);
+	}
+	return merged;
 }
 
 function copyBlocked(blocked: BlockPolicy): BlockPolicy {
@@ -193,6 +253,7 @@ function validateProcessorPrecedenceField(
 
 function hasInvalidPrivacyControl(parsed: Record<string, unknown>): boolean {
 	return hasInvalidBlocked(ownField(parsed, "blocked")) ||
+		hasInvalidSandboxes(ownField(parsed, "sandboxes")) ||
 		hasInvalidKrokiEndpoint(ownField(parsed, "kroki"));
 }
 
@@ -201,6 +262,28 @@ function hasInvalidBlocked(rawBlocked: unknown): boolean {
 	if (!isRecordLike(rawBlocked)) return true;
 	return hasInvalidStringArray(ownField(rawBlocked, "tags")) ||
 		hasInvalidStringArray(ownField(rawBlocked, "processors"));
+}
+
+function hasInvalidSandboxes(rawSandboxes: unknown): boolean {
+	if (rawSandboxes === undefined) return false;
+	if (!isRecordLike(rawSandboxes)) return true;
+	return Object.values(rawSandboxes).some(hasInvalidSandboxEntry);
+}
+
+function hasInvalidSandboxEntry(rawSandbox: unknown): boolean {
+	if (!isRecordLike(rawSandbox)) return true;
+	return !isSandboxKind(ownField(rawSandbox, "kind")) ||
+		!isSandboxRuntime(ownField(rawSandbox, "runtime")) ||
+		hasInvalidOptionalString(ownField(rawSandbox, "image")) ||
+		hasInvalidOptionalBoolean(ownField(rawSandbox, "autoStart"));
+}
+
+function hasInvalidOptionalString(rawValue: unknown): boolean {
+	return rawValue !== undefined && typeof rawValue !== "string";
+}
+
+function hasInvalidOptionalBoolean(rawValue: unknown): boolean {
+	return rawValue !== undefined && typeof rawValue !== "boolean";
 }
 
 function hasInvalidStringArray(rawValue: unknown): boolean {
@@ -305,6 +388,62 @@ function validateBlocked(
 		tags: validateStringArray(ownField(rawBlocked, "tags"), label, "blocked.tags", logger),
 		processors: validateStringArray(ownField(rawBlocked, "processors"), label, "blocked.processors", logger),
 	};
+}
+
+function validateSandboxes(
+	rawSandboxes: unknown,
+	label: string,
+	logger?: Logger,
+): SandboxConfigMap | undefined {
+	if (!isRecordLike(rawSandboxes)) {
+		logger?.warn("config", `${label} config 'sandboxes' is not an object`, {
+			got: Array.isArray(rawSandboxes) ? "array" : typeof rawSandboxes,
+		});
+		return undefined;
+	}
+	const sandboxes = emptySandboxes();
+	for (const [id, rawSandbox] of Object.entries(rawSandboxes)) {
+		const sandbox = validateSandboxEntry(id, rawSandbox, label, logger);
+		if (sandbox) sandboxes[id] = sandbox;
+	}
+	return sandboxes;
+}
+
+function validateSandboxEntry(
+	id: string,
+	rawSandbox: unknown,
+	label: string,
+	logger?: Logger,
+): SandboxConfig | undefined {
+	if (!isRecordLike(rawSandbox)) {
+		warnInvalidSandbox(id, label, "entry is not an object", logger);
+		return undefined;
+	}
+	const kind = ownField(rawSandbox, "kind");
+	const runtime = ownField(rawSandbox, "runtime");
+	const image = ownField(rawSandbox, "image");
+	const autoStart = ownField(rawSandbox, "autoStart");
+	if (!isSandboxKind(kind) || !isSandboxRuntime(runtime)) {
+		warnInvalidSandbox(id, label, "kind/runtime are invalid", logger);
+		return undefined;
+	}
+	if (hasInvalidOptionalString(image) || hasInvalidOptionalBoolean(autoStart)) {
+		warnInvalidSandbox(id, label, "optional fields are invalid", logger);
+		return undefined;
+	}
+	const sandbox: SandboxConfig = { kind, runtime };
+	if (typeof image === "string") sandbox.image = image;
+	if (typeof autoStart === "boolean") sandbox.autoStart = autoStart;
+	return sandbox;
+}
+
+function warnInvalidSandbox(
+	id: string,
+	label: string,
+	reason: string,
+	logger?: Logger,
+): void {
+	logger?.warn("config", `invalid sandbox config in ${label} sandboxes`, { id, reason });
 }
 
 function validateStringArray(
@@ -443,6 +582,14 @@ function validateProcessorPrecedence(
 
 function isProcessorPlacement(value: unknown): value is ProcessorPlacement {
 	return typeof value === "string" && PROCESSOR_PLACEMENTS.includes(value as ProcessorPlacement);
+}
+
+function isSandboxKind(value: unknown): value is SandboxKind {
+	return typeof value === "string" && SANDBOX_KINDS.includes(value as SandboxKind);
+}
+
+function isSandboxRuntime(value: unknown): value is SandboxRuntime {
+	return typeof value === "string" && SANDBOX_RUNTIMES.includes(value as SandboxRuntime);
 }
 
 function isRecordLike(value: unknown): value is Record<string, unknown> {
