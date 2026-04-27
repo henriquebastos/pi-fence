@@ -2,6 +2,7 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
+import type { TagBinding } from "./config.ts";
 import { formatDoctorLines, type DoctorInput } from "./doctor.ts";
 import type { ConfigFileStatus } from "./io/config-loader.ts";
 import type { Logger } from "./io/logger.ts";
@@ -11,8 +12,7 @@ import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts"
 import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import { formatMetricsLines } from "./metrics.ts";
-import { collectSupportedTags, type BindingResolution } from "./resolve.ts";
-import type { ShellRunner } from "./io/shell-runner.ts";
+import { collectSupportedTags, resolveBindings } from "./resolve.ts";import type { ShellRunner } from "./io/shell-runner.ts";
 
 const FENCE_SUBCOMMANDS = ["list", "doctor", "stats", "kroki start", "kroki stop", "kroki status"] as const;
 
@@ -28,7 +28,7 @@ interface RegisterFenceCommandOptions {
 	logger: Logger;
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
-	bindingRows: readonly BindingResolution[];
+	bindings: Readonly<Record<string, TagBinding>>;
 	disabled: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	endpoints?: Readonly<Record<string, string>>;
@@ -42,7 +42,7 @@ export function registerFenceCommand({
 	logger,
 	processors,
 	availability,
-	bindingRows,
+	bindings,
 	disabled,
 	processorPrecedence,
 	endpoints,
@@ -52,6 +52,8 @@ export function registerFenceCommand({
 }: RegisterFenceCommandOptions): void {
 	const listOpts: ListProcessorsOptions = { disabled, endpoints, processorPrecedence };
 	const dockerMgr = createKrokiDockerManager(shell, logger);
+	const currentBindingRows = () =>
+		resolveBindings(processors, availability, bindings, disabled, processorPrecedence);
 
 	pi.registerCommand("fence", {
 		description: "List or inspect pi-fence processors (usage: /fence list, /fence doctor)",
@@ -59,6 +61,7 @@ export function registerFenceCommand({
 			const subcommand = args.trim().split(/\s+/)[0] ?? "";
 			logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
+				const bindingRows = currentBindingRows();
 				sendPiFenceListMessage(
 					pi,
 					processors,
@@ -71,6 +74,7 @@ export function registerFenceCommand({
 				return;
 			}
 			if (subcommand === "doctor") {
+				const bindingRows = currentBindingRows();
 				const listings = listProcessors(processors, availability, listOpts);
 				const processorLines = formatProcessorLines(listings, bindingRows);
 				const input: DoctorInput = {

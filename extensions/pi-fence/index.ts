@@ -154,7 +154,7 @@ export async function createPiFenceExtension(
 		logger: deps.logger,
 		processors,
 		availability,
-		bindingRows,
+		bindings,
 		disabled,
 		processorPrecedence,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,

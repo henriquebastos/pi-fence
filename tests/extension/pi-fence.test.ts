@@ -1120,6 +1120,50 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 		},
 		20_000,
 	);
+
+	it(
+		"/fence list resolves bindings against processors registered after startup",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { upper: { processor: "custom-upper" } } }),
+			);
+
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => ({ ok: true, text: "" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const { session, sentCustomMessages } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				{ home, cwd: makeTempDir() },
+				[thirdPartyFactory],
+			);
+			try {
+				await session.prompt("/fence list");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
+
+			const details = sentCustomMessages.find((m) => m.customType === "pi-fence:list")
+				?.details as { bindings: Array<{ status: string; tag: string; processorId: string }> };
+			expect(details.bindings).toEqual([
+				{ status: "effective", tag: "upper", processorId: "custom-upper" },
+			]);
+		},
+		20_000,
+	);
 });
 
 describe("pi-fence extension — /fence stats (CV4.E2.S2)", () => {
