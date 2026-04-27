@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Startup binding diagnostics now classify bindings for blocked tags as `tag-blocked`, matching render-time and command diagnostics.
 - Third-party processors registered after startup skip availability probes when all their advertised tag families are blocked.
 - Kroki Docker auto-start is skipped when `kroki-remote` is fully tag-blocked.
+- `/fence list` and `/fence doctor` report processors skipped by full tag-family blocks as `[blocked]`, not unavailable.
 
 ### Changed (CV9.E1.S2 — Object bindings and ambiguity)
 

@@ -2802,3 +2802,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Partial Kroki blocks still allow auto-start.** The guard only suppresses auto-start when all Kroki canonical families are tag-blocked.
 
 **Carry-forward.** Fix `/fence list` and `/fence doctor` diagnostics for processors skipped by tag-block probe suppression.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: tag-blocked probe diagnostics
+
+**What shipped.** `/fence list` and `/fence doctor` now classify processors whose entire advertised tag families are blocked as `[blocked]`, even when availability probing was suppressed and no availability row exists.
+
+**Implementation commits.**
+
+1. `1f703c6` — fix: report tag-blocked probes as blocked
+
+**Test count.** 700 fast-suite tests (was 698; +2 command regressions for list and doctor).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'fully tag-blocked processors'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Policy beats missing availability.** A processor omitted from probes due to tag policy is not treated as `availability unknown`.
+2. **List and doctor share classification.** `listProcessors` owns the tag-blocked listing status so every diagnostic surface agrees.
+
+**Carry-forward.** Clean the stale `list.ts` formatter comment, then rerun final inspection/completion checks.
