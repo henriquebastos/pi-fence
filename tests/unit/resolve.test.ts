@@ -341,6 +341,86 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		);
 	});
 
+	it("placement binding constrains resolution to that placement", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+		const bindings = { graphviz: { placement: "host" as const } };
+
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				availability,
+				"graphviz",
+				bindings,
+				undefined,
+				["remote", "host"],
+			),
+			"graphviz-host",
+			[
+				{ id: "graphviz-host", outcome: "selected-by-binding" },
+				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+			],
+		);
+	});
+
+	it("processor binding resolves same-placement ambiguity", () => {
+		const a = makeFakeProcessor({ id: "a-host", tags: ["graphviz"] });
+		const b = makeFakeProcessor({ id: "b-host", tags: ["graphviz"] });
+		const fallback = makeFakeProcessor({ id: "kroki-remote", tags: ["graphviz"] });
+		const availability = new Map<string, Availability>([
+			["a-host", { ok: true }],
+			["b-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		expectResolution(
+			resolveProcessor(
+				[a, b, fallback],
+				availability,
+				"graphviz",
+				{ graphviz: { processor: "b-host" } },
+			),
+			"b-host",
+			[
+				{ id: "a-host", outcome: "skipped-binding-prefers-other" },
+				{ id: "b-host", outcome: "selected-by-binding" },
+				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+			],
+		);
+	});
+
+	it("placement binding preserves same-placement ambiguity", () => {
+		const a = makeFakeProcessor({ id: "a-host", tags: ["graphviz"] });
+		const b = makeFakeProcessor({ id: "b-host", tags: ["graphviz"] });
+		const fallback = makeFakeProcessor({ id: "kroki-remote", tags: ["graphviz"] });
+		const availability = new Map<string, Availability>([
+			["a-host", { ok: true }],
+			["b-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const result = resolveProcessor(
+			[a, b, fallback],
+			availability,
+			"graphviz",
+			{ graphviz: { placement: "host" } },
+			undefined,
+			["remote", "host"],
+		);
+
+		expectResolution(result, null, [
+			{ id: "a-host", outcome: "skipped-ambiguous-same-placement" },
+			{ id: "b-host", outcome: "skipped-ambiguous-same-placement" },
+			{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+		]);
+		expect(result.ambiguity).toEqual({
+			placement: "host",
+			processorIds: ["a-host", "b-host"],
+		});
+	});
+
 	it("binding falls through when bound processor is unavailable", () => {
 		// User bound 'graphviz → graphviz-host' but dot is not installed.
 		// Bindings are preferences, not hard requirements: fall back to

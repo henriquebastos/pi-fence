@@ -59,6 +59,7 @@ export interface ResolveProcessorResult {
 interface ResolveContext {
 	availability: ReadonlyMap<string, Availability>;
 	allowedPlacements: ReadonlySet<ProcessorPlacement>;
+	binding?: TagBinding;
 	boundId?: string;
 	disabled?: ReadonlySet<string>;
 	placementRank: ReadonlyMap<ProcessorPlacement, number>;
@@ -112,43 +113,64 @@ export function resolveProcessor(
 	const context: ResolveContext = {
 		availability,
 		allowedPlacements: new Set(processorPrecedence),
+		binding: bindings?.[tag],
 		boundId: processorBindingId(bindings?.[tag]),
 		disabled,
 		placementRank: buildPlacementRank(processorPrecedence),
 		tag,
 	};
-	const bindingSelection = selectBinding(processors, context);
-	const placementDecision = bindingSelection
+	const bindingDecision = selectBinding(processors, context);
+	const placementDecision = bindingDecision.selection || bindingDecision.ambiguity
 		? {}
 		: selectByPlacement(processors, context, processorPrecedence);
-	const selection = bindingSelection ?? placementDecision.selection;
-	const steps = buildTraceSteps(processors, context, selection, placementDecision.ambiguity);
+	const selection = bindingDecision.selection ?? placementDecision.selection;
+	const ambiguity = bindingDecision.ambiguity ?? placementDecision.ambiguity;
+	const steps = buildTraceSteps(processors, context, selection, ambiguity);
 
 	return {
 		processor: selection?.processor ?? null,
 		steps,
-		...(placementDecision.ambiguity ? { ambiguity: placementDecision.ambiguity } : {}),
+		...(ambiguity ? { ambiguity } : {}),
 	};
 }
 
 function selectBinding(
 	processors: readonly FenceProcessor[],
 	context: ResolveContext,
-): Selection | undefined {
-	if (context.boundId === undefined) return undefined;
+): PlacementDecision {
+	if (context.binding === undefined) return {};
+	if ("processor" in context.binding) return selectProcessorBinding(processors, context);
+	return selectPlacementBinding(processors, context, context.binding.placement);
+}
+
+function selectProcessorBinding(
+	processors: readonly FenceProcessor[],
+	context: ResolveContext,
+): PlacementDecision {
+	if (context.boundId === undefined) return {};
 	const index = processors.findIndex((processor) => processor.id === context.boundId);
-	if (index < 0) return undefined;
+	if (index < 0) return {};
 	const processor = processors[index];
 	if (bindingBlocked(processor, context) || !claimsTag(processor, context.tag)) {
-		return undefined;
+		return {};
 	}
-	return { index, mode: "binding", processor };
+	return { selection: { index, mode: "binding", processor } };
+}
+
+function selectPlacementBinding(
+	processors: readonly FenceProcessor[],
+	context: ResolveContext,
+	placement: ProcessorPlacement,
+): PlacementDecision {
+	if (!context.allowedPlacements.has(placement)) return {};
+	return selectByPlacement(processors, context, [placement], "binding");
 }
 
 function selectByPlacement(
 	processors: readonly FenceProcessor[],
 	context: ResolveContext,
 	processorPrecedence: readonly ProcessorPlacement[],
+	mode: Selection["mode"] = "placement",
 ): PlacementDecision {
 	const candidates = processors
 		.map((processor, index) => ({ index, processor }))
@@ -161,7 +183,7 @@ function selectByPlacement(
 			return {
 				selection: {
 					index: group[0].index,
-					mode: "placement",
+					mode,
 					processor: group[0].processor,
 				},
 			};
@@ -209,14 +231,13 @@ function traceOutcome(
 	if (isLowerPrecedenceThanSelection(processor, selection, context)) {
 		return "skipped-lower-precedence";
 	}
+	if (selection?.mode === "binding") {
+		return blocked ?? "skipped-binding-prefers-other";
+	}
 	if (selection && index > selection.index) {
 		return "skipped-already-resolved";
 	}
 	if (blocked) return blocked;
-
-	if (selection?.mode === "binding") {
-		return "skipped-binding-prefers-other";
-	}
 	if (ambiguity) {
 		return ambiguousIds.has(processor.id)
 			? "skipped-ambiguous-same-placement"
@@ -225,7 +246,7 @@ function traceOutcome(
 	if (selection) {
 		return "skipped-lower-precedence";
 	}
-	return context.boundId === undefined ? "skipped-no-claim" : "skipped-binding-prefers-other";
+	return context.binding === undefined ? "skipped-no-claim" : "skipped-binding-prefers-other";
 }
 
 function isLowerPrecedenceThanSelection(
