@@ -6,6 +6,15 @@ This is the operating loop for turning one selected pi-fence story into finished
 
 The loop has one active scope: **the current epic**. Every story, implementation task, bug, review finding, and dependency created during the loop must be represented as a bean under that epic, directly or through descendants. Chat memory is not state.
 
+## Required skills
+
+Before planning or implementing a story, load and follow these skills:
+
+1. `beans` — source of truth for bean CLI syntax, claiming, dependencies, parent/child relationships, and closure commands. This document defines the repo-specific ledger shape; the skill defines the operating details.
+2. `tdd` — source of truth for the red → green → refactor mechanics, vertical tracer bullets, and behavior-focused tests. This document says where TDD fits in the pi-fence loop; the skill says how to execute each cycle.
+
+Do not proceed from memory if either skill has not been loaded in the current session.
+
 ## 1. Bean hierarchy
 
 Use beans as the execution ledger.
