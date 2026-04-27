@@ -431,14 +431,14 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 			[krokiRemote],
 			[
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "graphviz",
 					selector: "processor",
 					processorId: "graphviz-host",
 					reason: "processor-unavailable",
 				},
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "mermaid",
 					selector: "processor",
 					processorId: "nonexistent",
@@ -456,12 +456,12 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		]);
 	});
 
-	it("renders placement-disabled ignored bindings", () => {
+	it("renders placement-disabled issue bindings", () => {
 		const lines = formatProcessorLines(
 			[local, krokiRemote],
 			[
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "graphviz",
 					selector: "processor",
 					processorId: "kroki-remote",
@@ -473,26 +473,26 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		expect(lines).toContain("  graphviz → kroki-remote (processor placement disabled)");
 	});
 
-	it("renders placement selector ignored bindings", () => {
+	it("renders placement selector issue bindings", () => {
 		const lines = formatProcessorLines(
 			[local, krokiRemote],
 			[
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "graphviz",
 					selector: "placement",
 					placement: "host",
 					reason: "placement-disabled",
 				},
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "mermaid",
 					selector: "placement",
 					placement: "host",
 					reason: "placement-no-match",
 				},
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "dot",
 					selector: "placement",
 					placement: "host",
@@ -509,12 +509,12 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		);
 	});
 
-	it("renders does-not-claim-tag ignored bindings", () => {
+	it("renders does-not-claim-tag issue bindings", () => {
 		const lines = formatProcessorLines(
 			[local, krokiRemote],
 			[
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "csv",
 					selector: "processor",
 					processorId: "kroki-remote",
@@ -532,7 +532,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 			[
 				{ status: "effective", tag: "graphviz", selector: "processor", processorId: "kroki-remote" },
 				{
-					status: "ignored",
+					status: "issue",
 					tag: "mermaid",
 					selector: "processor",
 					processorId: "nonexistent",

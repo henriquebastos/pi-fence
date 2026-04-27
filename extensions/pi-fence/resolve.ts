@@ -58,14 +58,17 @@ export interface ResolveProcessorResult {
 	ambiguity?: ResolveAmbiguity;
 }
 
-interface ResolveContext {
+interface CandidateContext {
 	availability: ReadonlyMap<string, Availability>;
 	allowedPlacements: ReadonlySet<ProcessorPlacement>;
+	disabled?: ReadonlySet<string>;
+	tag: string;
+}
+
+interface ResolveContext extends CandidateContext {
 	binding?: TagBinding;
 	boundId?: string;
-	disabled?: ReadonlySet<string>;
 	placementRank: ReadonlyMap<ProcessorPlacement, number>;
-	tag: string;
 }
 
 interface Selection {
@@ -74,7 +77,7 @@ interface Selection {
 	processor: FenceProcessor;
 }
 
-interface PlacementDecision {
+interface ResolutionDecision {
 	ambiguity?: ResolveAmbiguity;
 	constrained?: boolean;
 	selection?: Selection;
@@ -85,6 +88,13 @@ type BlockingOutcome =
 	| "skipped-no-claim"
 	| "skipped-placement-disabled"
 	| "skipped-unavailable";
+
+type ProcessorBindingIssueReason =
+	| "unknown-processor"
+	| "processor-unavailable"
+	| "processor-disabled"
+	| "processor-placement-disabled"
+	| "processor-does-not-claim-tag";
 
 /**
  * Return the processor that can serve `tag` under user placement policy.
@@ -139,7 +149,7 @@ export function resolveProcessor(
 function selectBinding(
 	processors: readonly FenceProcessor[],
 	context: ResolveContext,
-): PlacementDecision {
+): ResolutionDecision {
 	if (context.binding === undefined) return {};
 	if (isProcessorBinding(context.binding)) return selectProcessorBinding(processors, context);
 	return selectPlacementBinding(processors, context, context.binding.placement);
@@ -148,12 +158,12 @@ function selectBinding(
 function selectProcessorBinding(
 	processors: readonly FenceProcessor[],
 	context: ResolveContext,
-): PlacementDecision {
+): ResolutionDecision {
 	if (context.boundId === undefined) return { constrained: true };
 	const index = processors.findIndex((processor) => processor.id === context.boundId);
 	if (index < 0) return { constrained: true };
 	const processor = processors[index];
-	if (bindingBlocked(processor, context) || !claimsTag(processor, context.tag)) {
+	if (processorBindingIssueReason(processor, context)) {
 		return { constrained: true };
 	}
 	return { constrained: true, selection: { index, mode: "binding", processor } };
@@ -163,7 +173,7 @@ function selectPlacementBinding(
 	processors: readonly FenceProcessor[],
 	context: ResolveContext,
 	placement: ProcessorPlacement,
-): PlacementDecision {
+): ResolutionDecision {
 	if (!context.allowedPlacements.has(placement)) return { constrained: true };
 	return { constrained: true, ...selectByPlacement(processors, context, [placement], "binding") };
 }
@@ -173,7 +183,7 @@ function selectByPlacement(
 	context: ResolveContext,
 	processorPrecedence: readonly ProcessorPlacement[],
 	mode: Selection["mode"] = "placement",
-): PlacementDecision {
+): ResolutionDecision {
 	const candidates = processors
 		.map((processor, index) => ({ index, processor }))
 		.filter(({ processor }) => candidateBlocked(processor, context) === undefined);
@@ -284,7 +294,7 @@ function buildPlacementRank(
 
 function bindingBlocked(
 	processor: FenceProcessor,
-	context: ResolveContext,
+	context: CandidateContext,
 ): Exclude<BlockingOutcome, "skipped-no-claim"> | undefined {
 	if (context.disabled?.has(processor.id)) return "skipped-disabled";
 	if (!context.allowedPlacements.has(processor.placement)) {
@@ -296,12 +306,24 @@ function bindingBlocked(
 
 function candidateBlocked(
 	processor: FenceProcessor,
-	context: ResolveContext,
+	context: CandidateContext,
 ): BlockingOutcome | undefined {
 	const blocked = bindingBlocked(processor, context);
 	if (blocked) return blocked;
 	if (!claimsTag(processor, context.tag)) return "skipped-no-claim";
 	return undefined;
+}
+
+function processorBindingIssueReason(
+	processor: FenceProcessor,
+	context: CandidateContext,
+): ProcessorBindingIssueReason | undefined {
+	const blocked = candidateBlocked(processor, context);
+	if (blocked === undefined) return undefined;
+	if (blocked === "skipped-disabled") return "processor-disabled";
+	if (blocked === "skipped-placement-disabled") return "processor-placement-disabled";
+	if (blocked === "skipped-unavailable") return "processor-unavailable";
+	return "processor-does-not-claim-tag";
 }
 
 function claimsTag(processor: FenceProcessor, tag: string): boolean {
@@ -357,26 +379,21 @@ export type BindingResolution =
 			processorId: string;
 	  }
 	| {
-			status: "ignored";
+			status: "issue";
 			tag: string;
 			selector: "processor";
 			processorId: string;
-			reason:
-				| "unknown-processor"
-				| "processor-unavailable"
-				| "processor-disabled"
-				| "processor-placement-disabled"
-				| "processor-does-not-claim-tag";
+			reason: ProcessorBindingIssueReason;
 		}
 	| {
-			status: "ignored";
+			status: "issue";
 			tag: string;
 			selector: "placement";
 			placement: ProcessorPlacement;
 			reason: "placement-disabled" | "placement-no-match";
 		}
 	| {
-			status: "ignored";
+			status: "issue";
 			tag: string;
 			selector: "placement";
 			placement: ProcessorPlacement;
@@ -435,11 +452,6 @@ function resolveBinding(
 	);
 }
 
-type ProcessorBindingIssueReason = Extract<
-	BindingResolution,
-	{ status: "ignored"; processorId: string }
->["reason"];
-
 function resolveProcessorBinding(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
@@ -450,18 +462,13 @@ function resolveProcessorBinding(
 ): BindingResolution {
 	const processor = processors.find((p) => p.id === processorId);
 	if (!processor) return processorBindingIssue(tag, processorId, "unknown-processor");
-	if (disabled?.has(processor.id)) {
-		return processorBindingIssue(tag, processorId, "processor-disabled");
-	}
-	if (!allowedPlacements.has(processor.placement)) {
-		return processorBindingIssue(tag, processorId, "processor-placement-disabled");
-	}
-	if (availability.get(processor.id)?.ok !== true) {
-		return processorBindingIssue(tag, processorId, "processor-unavailable");
-	}
-	if (!claimsTag(processor, tag)) {
-		return processorBindingIssue(tag, processorId, "processor-does-not-claim-tag");
-	}
+	const reason = processorBindingIssueReason(processor, {
+		availability,
+		allowedPlacements,
+		disabled,
+		tag,
+	});
+	if (reason) return processorBindingIssue(tag, processorId, reason);
 	return { status: "effective", tag, selector: "processor", processorId };
 }
 
@@ -470,7 +477,7 @@ function processorBindingIssue(
 	processorId: string,
 	reason: ProcessorBindingIssueReason,
 ): BindingResolution {
-	return { status: "ignored", tag, selector: "processor", processorId, reason };
+	return { status: "issue", tag, selector: "processor", processorId, reason };
 }
 
 function resolvePlacementBinding(
@@ -484,7 +491,7 @@ function resolvePlacementBinding(
 ): BindingResolution {
 	if (!allowedPlacements.has(placement)) {
 		return {
-			status: "ignored",
+			status: "issue",
 			tag,
 			selector: "placement",
 			placement,
@@ -505,7 +512,7 @@ function resolvePlacementBinding(
 	);
 	if (candidates.length === 0) {
 		return {
-			status: "ignored",
+			status: "issue",
 			tag,
 			selector: "placement",
 			placement,
@@ -514,7 +521,7 @@ function resolvePlacementBinding(
 	}
 	if (candidates.length > 1) {
 		return {
-			status: "ignored",
+			status: "issue",
 			tag,
 			selector: "placement",
 			placement,

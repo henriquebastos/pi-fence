@@ -245,9 +245,9 @@ function logBindingResolution(
 		if (row.status === "effective") {
 			logger.info("pi-fence", "binding effective", effectiveBindingLog(row));
 		} else if (row.selector === "placement") {
-			logger.warn("pi-fence", "binding ignored", ignoredPlacementBindingLog(row));
+			logger.warn("pi-fence", "binding issue", issuePlacementBindingLog(row));
 		} else {
-			logger.warn("pi-fence", "binding ignored", {
+			logger.warn("pi-fence", "binding issue", {
 				tag: row.tag,
 				processorId: row.processorId,
 				reason: row.reason,
@@ -262,8 +262,8 @@ function effectiveBindingLog(row: Extract<ReturnType<typeof resolveBindings>[num
 		: { tag: row.tag, processorId: row.processorId };
 }
 
-function ignoredPlacementBindingLog(
-	row: Extract<ReturnType<typeof resolveBindings>[number], { status: "ignored"; selector: "placement" }>,
+function issuePlacementBindingLog(
+	row: Extract<ReturnType<typeof resolveBindings>[number], { status: "issue"; selector: "placement" }>,
 ) {
 	return "processorIds" in row
 		? { tag: row.tag, placement: row.placement, reason: row.reason, processorIds: row.processorIds }

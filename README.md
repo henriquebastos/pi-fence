@@ -43,11 +43,11 @@ On expansion (ctrl+o on the rendered message) pi-fence also shows the original s
 - `mermaid-host` — shells out to `mmdc` when `@mermaid-js/mermaid-cli` is installed.
 - `kroki-remote` — posts to the public [kroki.io](https://kroki.io) endpoint for every other tag (and for `graphviz`/`dot` when you don't have `graphviz` installed). Theme-aware (see above).
 
-Resolution is placement-policy based by default: available `embedded` processors win before `host`, then `sandbox`, then `remote`. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project), and can restrict allowed placements with `processorPrecedence`. Project bindings override global bindings; safety controls (`disabled`, `processorPrecedence`) can only further restrict lower-priority layers. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
+Resolution is placement-policy based by default: available `embedded` processors win before `host`, then `sandbox`, then `remote`. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project), and can restrict allowed placements with `processorPrecedence`. Bindings are exact tag-scoped constraints: use `{ "processor": "..." }` for one processor or `{ "placement": "host|remote|embedded|sandbox" }` for one placement. Aliases such as `dot` and `graphviz` bind independently. Project bindings override global bindings; safety controls (`disabled`, `processorPrecedence`) can only further restrict lower-priority layers. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
 
 **Slash commands**:
 
-- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; a `Binding issues` section appears for bindings that point to an unknown or unavailable processor, disabled placement, placement with no matching processor, or ambiguous placement.
+- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; a `Binding issues` section appears for unsatisfied selectors, including unknown, disabled, unavailable, placement-disabled, non-claiming, no-match, or ambiguous bindings.
 
 **Tracing**:
 
@@ -77,7 +77,6 @@ What does **not** work yet:
 
 - Local rendering for diagram languages beyond Graphviz and Mermaid — for example PlantUML via `plantuml.jar`. See the [roadmap](docs/project/roadmap/README.md).
 - Sandbox placement is reserved for policy work; no built-in sandboxed processor ships yet.
-- Bindings are exact tag-scoped constraints: use `{ "processor": "..." }` for one processor or `{ "placement": "host|remote|embedded|sandbox" }` for one placement. Aliases such as `dot` and `graphviz` bind independently.
 - Every later CV (see [roadmap](docs/project/roadmap/README.md)).
 
 ## Docs

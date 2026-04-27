@@ -12,7 +12,8 @@ import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts"
 import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import { formatMetricsLines } from "./metrics.ts";
-import { collectSupportedTags, resolveBindings } from "./resolve.ts";import type { ShellRunner } from "./io/shell-runner.ts";
+import type { ShellRunner } from "./io/shell-runner.ts";
+import { collectSupportedTags, resolveBindings } from "./resolve.ts";
 
 const FENCE_SUBCOMMANDS = ["list", "doctor", "stats", "kroki start", "kroki stop", "kroki status"] as const;
 

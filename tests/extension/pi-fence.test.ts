@@ -705,7 +705,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 
 			const warns = captured.logger!
 				.bySubsystem("pi-fence")
-				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+				.filter((e) => e.level === "warn" && e.message === "binding issue");
 			expect(warns).toHaveLength(1);
 			expect(warns[0].meta).toMatchObject({
 				tag: "dot",
@@ -812,7 +812,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 
 			const warns = captured.logger!
 				.bySubsystem("pi-fence")
-				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+				.filter((e) => e.level === "warn" && e.message === "binding issue");
 			expect(warns).toHaveLength(1);
 			expect(warns[0].meta).toMatchObject({
 				tag: "dot",
@@ -1048,7 +1048,7 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 
 			const warn = captured.logger!
 				.bySubsystem("pi-fence")
-				.find((e) => e.level === "warn" && e.message === "binding ignored");
+				.find((e) => e.level === "warn" && e.message === "binding issue");
 			expect(warn?.meta).toMatchObject({
 				tag: "dot",
 				placement: "host",
@@ -1456,11 +1456,11 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			expect(outputs).toHaveLength(0);
 			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(0);
 
-			// Ignored-binding logged at warn level.
+			// Binding issue logged at warn level.
 			const logger = captured.logger!;
 			const warns = logger
 				.bySubsystem("pi-fence")
-				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+				.filter((e) => e.level === "warn" && e.message === "binding issue");
 			expect(warns).toHaveLength(1);
 			expect(warns[0].meta).toMatchObject({
 				tag: "dot",
@@ -1500,7 +1500,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			const logger = captured.logger!;
 			const warns = logger
 				.bySubsystem("pi-fence")
-				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+				.filter((e) => e.level === "warn" && e.message === "binding issue");
 			expect(warns).toHaveLength(1);
 			expect(warns[0].meta).toMatchObject({
 				tag: "dot",
@@ -1583,7 +1583,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			const details = listMessages[0].details as {
 				lines: string[];
 				bindings: Array<{
-					status: "effective" | "ignored";
+					status: "effective" | "issue";
 					tag: string;
 					processorId: string;
 					reason?: string;
@@ -1597,7 +1597,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				processorId: "kroki-remote",
 			});
 			expect(details.bindings.find((b) => b.tag === "graphviz")).toMatchObject({
-				status: "ignored",
+				status: "issue",
 				processorId: "nonexistent",
 				reason: "unknown-processor",
 			});

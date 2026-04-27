@@ -193,7 +193,7 @@ const UNAVAILABLE_DETAIL_INDENT = "    ";
 const BINDING_INDENT = "  ";
 
 function formatIgnoredReason(
-	reason: Extract<BindingResolution, { status: "ignored" }>["reason"],
+	reason: Extract<BindingResolution, { status: "issue" }>["reason"],
 ): string {
 	if (reason === "unknown-processor") return "unknown processor";
 	if (reason === "processor-disabled") return "processor disabled";
@@ -217,10 +217,10 @@ function formatBindingLines(bindings: readonly BindingResolution[]): string[] {
 	}
 
 	const effective = bindings.filter((binding) => binding.status === "effective");
-	const ignored = bindings.filter((binding) => binding.status === "ignored");
+	const issues = bindings.filter((binding) => binding.status === "issue");
 	return [
 		...formatBindingSection("Bindings", effective, formatEffectiveBinding),
-		...formatBindingSection("Binding issues", ignored, formatIgnoredBinding),
+		...formatBindingSection("Binding issues", issues, formatIssueBinding),
 	];
 }
 
@@ -242,7 +242,7 @@ function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effec
 	return `${BINDING_INDENT}${row.tag} → ${row.processorId}`;
 }
 
-function formatIgnoredBinding(row: Extract<BindingResolution, { status: "ignored" }>): string {
+function formatIssueBinding(row: Extract<BindingResolution, { status: "issue" }>): string {
 	const reason = formatIgnoredReason(row.reason);
 	if (row.selector === "placement") {
 		const detail = "processorIds" in row ? `${reason}: ${row.processorIds.join(", ")}` : reason;

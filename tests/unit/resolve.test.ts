@@ -726,7 +726,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "processor",
 				processorId: "nonexistent",
@@ -750,7 +750,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "processor",
 				processorId: "graphviz-host",
@@ -771,7 +771,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "processor",
 				processorId: "graphviz-host",
@@ -796,7 +796,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "processor",
 				processorId: "kroki-remote",
@@ -821,7 +821,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "placement",
 				placement: "host",
@@ -846,7 +846,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "placement",
 				placement: "host",
@@ -873,7 +873,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "graphviz",
 				selector: "placement",
 				placement: "host",
@@ -895,7 +895,7 @@ describe("resolveBindings", () => {
 
 		expect(rows).toEqual([
 			{
-				status: "ignored",
+				status: "issue",
 				tag: "csv",
 				selector: "processor",
 				processorId: "kroki-remote",
@@ -935,7 +935,7 @@ describe("resolveBindings", () => {
 			puml: { processor: "nonexistent" }, // ignored: unknown
 		});
 
-		expect(rows.map((r) => r.status)).toEqual(["ignored", "effective", "ignored"]);
+		expect(rows.map((r) => r.status)).toEqual(["issue", "effective", "issue"]);
 	});
 });
 
