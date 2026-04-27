@@ -2396,3 +2396,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **README shows concrete selector values.** Placement binding examples now use a concrete `{ "placement": "host" }` selector and describe `graphviz`/`dot` as independent tag names.
 
 **Carry-forward.** Rerun final inspection and completion checks; if clean, close CV9.E1.S2.
+
+---
+
+### 2026-04-27 — CV9.E1.S2 inspection fix: own-field hardening
+
+**What shipped.** Config validation now reads top-level privacy controls, nested Kroki fields, and binding selector fields through own-property checks only. Resolver binding shape checks also require own selector fields, and processor alias matching only honors declared own alias keys. Prototype-chain data can no longer inject selectors, remote endpoints, placement policy, disabled processors, or alias claims.
+
+**Implementation commits.**
+
+1. `d47dc9a` — fix: require own config fields
+
+**Test count.** 679 fast-suite (was 674; +5 hardening regressions for inherited binding selectors, inherited privacy controls, inherited nested Kroki fields, inherited direct resolver selectors, and inherited processor aliases).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **JSON data means own data.** Config validation treats inherited fields as absent, including nested objects.
+2. **Declared aliases only.** Processor alias matching now mirrors processor contracts: only own alias-map entries count as supported aliases.
+
+**Known deviations.** Commit `2dc2319` included one worklog wording correction alongside code/docs cleanup; subsequent docs catch-up commits resumed the one-feature-one-docs pattern.
+
+**Carry-forward.** Rerun final inspection and `pnpm run inspect`; if clean, close CV9.E1.S2.
