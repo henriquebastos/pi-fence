@@ -240,9 +240,10 @@ function traceOutcome(
 	}
 	if (blocked) return blocked;
 	if (ambiguity) {
-		return ambiguousIds.has(processor.id)
-			? "skipped-ambiguous-same-placement"
-			: "skipped-lower-precedence";
+		if (ambiguousIds.has(processor.id)) return "skipped-ambiguous-same-placement";
+		return context.binding === undefined
+			? "skipped-lower-precedence"
+			: "skipped-binding-prefers-other";
 	}
 	if (selection) {
 		return "skipped-lower-precedence";

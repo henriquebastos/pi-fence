@@ -369,7 +369,7 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 						"Bindings",
 						"  graphviz → kroki-remote",
 						"",
-						"Ignored bindings",
+						"Binding issues",
 						"  mermaid → nonexistent (unknown processor)",
 					],
 				},
@@ -383,7 +383,7 @@ describe("createPiFenceListRenderer — rendered into a VirtualTerminal", () => 
 		const viewport = terminal.getViewport();
 		expect(viewport.some((line) => line.includes("Bindings"))).toBe(true);
 		expect(viewport.some((line) => line.includes("graphviz → kroki-remote"))).toBe(true);
-		expect(viewport.some((line) => line.includes("Ignored bindings"))).toBe(true);
+		expect(viewport.some((line) => line.includes("Binding issues"))).toBe(true);
 		expect(
 			viewport.some((line) => line.includes("mermaid → nonexistent (unknown processor)")),
 		).toBe(true);

@@ -758,6 +758,15 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				kind: "ok",
 			});
 			expect(http.requests).toHaveLength(0);
+
+			const effective = captured.logger!
+				.bySubsystem("pi-fence")
+				.find((e) => e.level === "info" && e.message === "binding effective");
+			expect(effective?.meta).toMatchObject({
+				tag: "dot",
+				placement: "host",
+				processorId: "graphviz-host",
+			});
 		},
 		20_000,
 	);
@@ -956,6 +965,43 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			expect(
 				details.lines.some((l) => l.includes("kroki-remote is disabled")),
 			).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"surfaces placement binding issues in doctor output",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ bindings: { dot: { placement: "host" } } }),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence doctor",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find(
+				(m) => m.customType === "pi-fence:list",
+			)?.details as { lines: string[] };
+			expect(details.lines).toContain("Binding issues");
+			expect(details.lines).toContain(
+				"  dot → placement:host (no matching processor in placement)",
+			);
+
+			const warn = captured.logger!
+				.bySubsystem("pi-fence")
+				.find((e) => e.level === "warn" && e.message === "binding ignored");
+			expect(warn?.meta).toMatchObject({
+				tag: "dot",
+				placement: "host",
+				reason: "placement-no-match",
+			});
 		},
 		20_000,
 	);
@@ -1377,7 +1423,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	);
 
 	it(
-		"/fence list surfaces the Bindings + Ignored bindings sections",
+		"/fence list surfaces the Bindings + Binding issues sections",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
@@ -1428,7 +1474,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 
 			// lines array reflects the section structure.
 			expect(details.lines).toContain("Bindings");
-			expect(details.lines).toContain("Ignored bindings");
+			expect(details.lines).toContain("Binding issues");
 			expect(details.lines.some((l) => l.includes("mermaid → kroki-remote"))).toBe(true);
 			expect(
 				details.lines.some((l) =>
@@ -1698,7 +1744,7 @@ async function runExtensionWithCommand(
 	shell?: FakeShellRunner,
 	configOptions?: LoadConfigOptions,
 ): Promise<Captured> {
-	const { session, sentCustomMessages, registeredRenderers } = await buildSessionWithExtension(
+	const { session, sentCustomMessages, registeredRenderers, logger } = await buildSessionWithExtension(
 		http,
 		shell,
 		configOptions,
@@ -1712,7 +1758,7 @@ async function runExtensionWithCommand(
 
 	await new Promise((r) => setTimeout(r, 50));
 
-	return { sentCustomMessages, registeredRenderers };
+	return { sentCustomMessages, registeredRenderers, logger };
 }
 
 function cannedAssistantStream(_model: Model<any>, text: string) {

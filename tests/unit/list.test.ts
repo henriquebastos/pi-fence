@@ -426,7 +426,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		expect(lines).toContain("  graphviz → placement:host (graphviz-host)");
 	});
 
-	it("emits the Ignored bindings section with per-row reasons", () => {
+	it("emits the Binding issues section with per-row reasons", () => {
 		const lines = formatProcessorLines(
 			[krokiRemote],
 			[
@@ -448,7 +448,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		expect(lines).toEqual([
 			"kroki-remote [registered] — mermaid, graphviz (dot)",
 			"",
-			"Ignored bindings",
+			"Binding issues",
 			"  graphviz → graphviz-host (processor unavailable)",
 			"  mermaid → nonexistent (unknown processor)",
 		]);
@@ -543,7 +543,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 			"Bindings",
 			"  graphviz → kroki-remote",
 			"",
-			"Ignored bindings",
+			"Binding issues",
 			"  mermaid → nonexistent (unknown processor)",
 		]);
 	});

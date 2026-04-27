@@ -217,7 +217,7 @@ function formatBindingLines(bindings: readonly BindingResolution[]): string[] {
 	const ignored = bindings.filter((binding) => binding.status === "ignored");
 	return [
 		...formatBindingSection("Bindings", effective, formatEffectiveBinding),
-		...formatBindingSection("Ignored bindings", ignored, formatIgnoredBinding),
+		...formatBindingSection("Binding issues", ignored, formatIgnoredBinding),
 	];
 }
 

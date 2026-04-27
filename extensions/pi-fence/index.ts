@@ -246,6 +246,7 @@ function logBindingResolution(
 			logger.info("pi-fence", "binding effective", {
 				tag: row.tag,
 				processorId: row.processorId,
+				...("placement" in row ? { placement: row.placement } : {}),
 			});
 		} else if ("placement" in row) {
 			logger.warn("pi-fence", "binding ignored", {

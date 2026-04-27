@@ -437,7 +437,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		expectResolution(result, null, [
 			{ id: "a-host", outcome: "skipped-ambiguous-same-placement" },
 			{ id: "b-host", outcome: "skipped-ambiguous-same-placement" },
-			{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+			{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
 		]);
 		expect(result.ambiguity).toEqual({
 			placement: "host",
