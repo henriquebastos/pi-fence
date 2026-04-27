@@ -2851,3 +2851,27 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 1. **Comment mirrors current API.** The top-of-file contract documents all formatter inputs and sections.
 
 **Carry-forward.** Rerun final inspection/completion checks for CV9.E1.S3; if clean, close the story.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: centralized tag-block helper
+
+**What shipped.** The fully tag-blocked processor policy now lives next to `isTagFamilyBlocked` in `resolve.ts`; startup probing, list/doctor classification, and dynamic registration all call the same helper.
+
+**Implementation commits.**
+
+1. `f58688e` — refactor: centralize tag-blocked policy
+
+**Test count.** 700 fast-suite tests (unchanged; refactor-only cleanup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/list.test.ts tests/unit/register.test.ts tests/extension/pi-fence.test.ts -t 'blocked|tag-blocked|fully tag-blocked|third-party|Kroki tag families'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **One policy helper.** Fully-blocked processor semantics are centralized so future alias/tag-family behavior cannot drift between surfaces.
+
+**Carry-forward.** Rerun final inspection/completion checks for CV9.E1.S3; if clean, close the story.
