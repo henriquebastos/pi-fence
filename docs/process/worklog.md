@@ -3165,3 +3165,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Legacy lifecycle follows the same identity rule.** The existing `pi-fence-kroki` Docker manager is hardened, not exempted.
 
 **Carry-forward.** Record the live-gate outcome in the worklog, then rerun inspection/completion checks.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: live gate outcome
+
+**What shipped.** The S4 worklog now records the live I/O gate result for the new ShellRunner-backed sandbox status seam.
+
+**Implementation commits.**
+
+1. No code commit; verification-only finding closed in beans.
+
+**Test count.** Fast suite unchanged at 726.
+
+**Verification.**
+
+1. `pnpm test:live` — attempted; failed in `tests/integration/kroki.live.test.ts` because public `https://kroki.io` requests timed out, confirmed by `curl -I --max-time 10 https://kroki.io/health` timing out locally.
+2. `pnpm vitest run tests/integration/shell-runner.live.test.ts tests/integration/graphviz-local.live.test.ts` — skipped cleanly (2 files, 11 tests) because local live dependencies were absent.
+3. `pnpm run feedback` — passed after the S4 fake-backed ShellRunner coverage.
+
+**Design decisions that survived implementation.**
+
+1. **S4 remains fake-backed.** It defines the sandbox contract and status seam; concrete live Docker-backed sandbox processors land in S5/S6.
+2. **Public Kroki outage is not an S4 regression.** The failed full live suite was unrelated to the sandbox contract changes and is recorded as an environment/network blocker.
+
+**Carry-forward.** Rerun inspection and completion checks for S4.
