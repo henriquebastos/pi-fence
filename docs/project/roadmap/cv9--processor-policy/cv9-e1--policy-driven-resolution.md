@@ -1,7 +1,7 @@
 # CV9.E1 — Policy-driven Resolution
 
 **CV:** [CV9 — Processor Policy](README.md)
-**Last updated:** 2026-04-27 — S3 done
+**Last updated:** 2026-04-27 — S4 implementation loop
 
 ## Summary
 

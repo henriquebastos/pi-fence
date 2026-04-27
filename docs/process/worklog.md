@@ -3238,3 +3238,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Lifecycle commands refuse ambiguous ownership.** `start()` and `stop()` bail out rather than operate on same-name containers missing expected ownership.
 
 **Carry-forward.** Clean up roadmap/worklog metadata, then rerun final inspection and completion checks.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: roadmap/worklog metadata
+
+**What shipped.** The CV9.E1 epic metadata now reflects the S4 implementation loop, and the worklog records the process deviation from the S4 spec readiness commit.
+
+**Implementation commits.**
+
+1. `2f9aefd` — spec CV9.E1.S4: ready sandbox contract
+2. Roadmap/worklog metadata cleanup (this entry).
+
+**Test count.** Fast suite unchanged at 734 (docs-only cleanup).
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+2. `pnpm run feedback` — passed.
+
+**Plan deviations.**
+
+1. The S4 Ready spec commit `2f9aefd` did not get its own immediate worklog catch-up commit. The next worklog entry batched it with step 1 (`ffed7d8`). Subsequent S4 feature commits returned to adjacent docs catch-up commits.
+
+**Carry-forward.** Rerun final inspection and completion checks for S4.
