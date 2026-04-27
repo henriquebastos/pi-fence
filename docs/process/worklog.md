@@ -3141,3 +3141,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Malformed sandbox policy clears the whole layer.** The config does not try to salvage valid entries when the user-controlled sandbox policy is partially malformed.
 
 **Carry-forward.** Require Docker sandbox identity in generic helpers and the legacy Kroki Docker manager.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: Docker sandbox identity
+
+**What shipped.** Docker sandbox helpers now require expected image identity, verify the running container image before reporting `ready`, and the legacy Kroki Docker manager rejects a `pi-fence-kroki` container whose image is not `yuzutech/kroki`.
+
+**Implementation commits.**
+
+1. `da3fe8a` — fix: require Docker sandbox identity
+
+**Test count.** Fast suite 725 → 726 (+1 net; helper tests were refactored while adding identity coverage).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/sandbox.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Name-only Docker readiness is not enough.** A Docker-backed sandbox must match the controller's expected image before it is considered owned/ready.
+2. **Legacy lifecycle follows the same identity rule.** The existing `pi-fence-kroki` Docker manager is hardened, not exempted.
+
+**Carry-forward.** Record the live-gate outcome in the worklog, then rerun inspection/completion checks.
