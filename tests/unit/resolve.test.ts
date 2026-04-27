@@ -317,7 +317,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		);
 	});
 
-	it("binding falls through when bound processor placement is omitted", () => {
+	it("processor binding returns no processor when bound processor placement is omitted", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -333,9 +333,9 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 				undefined,
 				["host"],
 			),
-			"graphviz-host",
+			null,
 			[
-				{ id: "graphviz-host", outcome: "selected-by-placement" },
+				{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
 				{ id: "kroki-remote", outcome: "skipped-placement-disabled" },
 			],
 		);
@@ -360,6 +360,30 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			"graphviz-host",
 			[
 				{ id: "graphviz-host", outcome: "selected-by-binding" },
+				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+			],
+		);
+	});
+
+	it("placement binding returns no processor when no processor in that placement is eligible", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: false, reason: "dot not found" }],
+			["kroki-remote", { ok: true }],
+		]);
+		const bindings = { graphviz: { placement: "host" as const } };
+
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				availability,
+				"graphviz",
+				bindings,
+				undefined,
+				["host", "remote"],
+			),
+			null,
+			[
+				{ id: "graphviz-host", outcome: "skipped-unavailable" },
 				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
 			],
 		);
@@ -421,10 +445,9 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		});
 	});
 
-	it("binding falls through when bound processor is unavailable", () => {
+	it("processor binding returns no processor when the bound processor is unavailable", () => {
 		// User bound 'graphviz → graphviz-host' but dot is not installed.
-		// Bindings are preferences, not hard requirements: fall back to
-		// placement-policy rule (Kroki wins).
+		// Object bindings are constraints: do not fall through to Kroki.
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: false, reason: "dot not found" }],
 			["kroki-remote", { ok: true }],
@@ -433,16 +456,16 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 
 		expectResolution(
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
-			"kroki-remote",
+			null,
 			[
 				{ id: "graphviz-host", outcome: "skipped-unavailable" },
-				{ id: "kroki-remote", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
 			],
 		);
 	});
 
-	it("binding falls through when the processor id is unknown", () => {
-		// Typo in the config. Capability-based rule still applies.
+	it("processor binding returns no processor when the processor id is unknown", () => {
+		// Typo in the config. Object bindings are constraints, not preferences.
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -451,10 +474,10 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 
 		expectResolution(
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
-			"graphviz-host",
+			null,
 			[
-				{ id: "graphviz-host", outcome: "selected-by-placement" },
-				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+				{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
 			],
 		);
 	});
@@ -525,17 +548,16 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		);
 	});
 
-	it("returns null when the binding + capability both fail to produce a match", () => {
+	it("returns null when the binding cannot select a processor", () => {
 		const availability = new Map<string, Availability>([
 			["kroki-remote", { ok: true }],
 		]);
 		const solo = makeFakeProcessor({ id: "kroki-remote", tags: ["mermaid"] });
 		const bindings = { mermaid: { processor: "nonexistent" } };
 
-		// Bound to unknown → fall through. Capability sees Kroki claims
-		// mermaid and is available → returns Kroki.
-		expectResolution(resolveProcessor([solo], availability, "mermaid", bindings), "kroki-remote", [
-			{ id: "kroki-remote", outcome: "selected-by-placement" },
+		// Bound to unknown → constrained to no processor.
+		expectResolution(resolveProcessor([solo], availability, "mermaid", bindings), null, [
+			{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
 		]);
 
 		// Now bind mermaid to kroki-remote and ask for graphviz — no claimer.
@@ -579,8 +601,8 @@ describe("resolveProcessor — disabled set", () => {
 		);
 	});
 
-	it("skips a disabled processor even when it is the binding target", () => {
-		// Binding target is disabled → falls through to capability.
+	it("returns no processor when a disabled processor is the binding target", () => {
+		// Binding target is disabled → constrained to no processor.
 		expectResolution(
 			resolveProcessor(
 				[local, krokiRemote],
@@ -589,10 +611,10 @@ describe("resolveProcessor — disabled set", () => {
 				{ graphviz: { processor: "graphviz-host" } },
 				new Set(["graphviz-host"]),
 			),
-			"kroki-remote",
+			null,
 			[
 				{ id: "graphviz-host", outcome: "skipped-disabled" },
-				{ id: "kroki-remote", outcome: "selected-by-placement" },
+				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
 			],
 		);
 	});

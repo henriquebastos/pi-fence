@@ -74,6 +74,7 @@ interface Selection {
 
 interface PlacementDecision {
 	ambiguity?: ResolveAmbiguity;
+	constrained?: boolean;
 	selection?: Selection;
 }
 
@@ -120,7 +121,7 @@ export function resolveProcessor(
 		tag,
 	};
 	const bindingDecision = selectBinding(processors, context);
-	const placementDecision = bindingDecision.selection || bindingDecision.ambiguity
+	const placementDecision = bindingDecision.constrained
 		? {}
 		: selectByPlacement(processors, context, processorPrecedence);
 	const selection = bindingDecision.selection ?? placementDecision.selection;
@@ -147,14 +148,14 @@ function selectProcessorBinding(
 	processors: readonly FenceProcessor[],
 	context: ResolveContext,
 ): PlacementDecision {
-	if (context.boundId === undefined) return {};
+	if (context.boundId === undefined) return { constrained: true };
 	const index = processors.findIndex((processor) => processor.id === context.boundId);
-	if (index < 0) return {};
+	if (index < 0) return { constrained: true };
 	const processor = processors[index];
 	if (bindingBlocked(processor, context) || !claimsTag(processor, context.tag)) {
-		return {};
+		return { constrained: true };
 	}
-	return { selection: { index, mode: "binding", processor } };
+	return { constrained: true, selection: { index, mode: "binding", processor } };
 }
 
 function selectPlacementBinding(
@@ -162,8 +163,8 @@ function selectPlacementBinding(
 	context: ResolveContext,
 	placement: ProcessorPlacement,
 ): PlacementDecision {
-	if (!context.allowedPlacements.has(placement)) return {};
-	return selectByPlacement(processors, context, [placement], "binding");
+	if (!context.allowedPlacements.has(placement)) return { constrained: true };
+	return { constrained: true, ...selectByPlacement(processors, context, [placement], "binding") };
 }
 
 function selectByPlacement(

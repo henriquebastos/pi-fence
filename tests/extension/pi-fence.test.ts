@@ -665,7 +665,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
-		"host-only precedence prevents bindings from routing dot to kroki-remote",
+		"host-only precedence makes a remote processor binding select no processor",
 		async () => {
 			const shell = new FakeShellRunner();
 			shell.setResponse("dot", ["-V"], {
@@ -699,13 +699,19 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			);
 
 			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
-			expect(outputs).toHaveLength(1);
-			expect(outputs[0].details).toMatchObject({
-				tag: "dot",
-				processor: "graphviz-host",
-				kind: "ok",
-			});
+			expect(outputs).toHaveLength(0);
 			expect(http.requests).toHaveLength(0);
+			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(0);
+
+			const warns = captured.logger!
+				.bySubsystem("pi-fence")
+				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+			expect(warns).toHaveLength(1);
+			expect(warns[0].meta).toMatchObject({
+				tag: "dot",
+				processorId: "kroki-remote",
+				reason: "processor-placement-disabled",
+			});
 		},
 		20_000,
 	);
@@ -1273,7 +1279,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	);
 
 	it(
-		"binding to an unknown processor id is ignored and logs a warn — placement-policy resolution applies",
+		"binding to an unknown processor id selects no processor and logs a warn",
 		async () => {
 			const shell = new FakeShellRunner();
 			shell.setResponse("dot", ["-V"], {
@@ -1304,13 +1310,9 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				{ home, cwd: makeTempDir() },
 			);
 
-			// Placement-policy fallback: graphviz-host is host placement
-			// + available, so it wins.
 			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
-			expect(outputs[0].details).toMatchObject({
-				tag: "dot",
-				processor: "graphviz-host",
-			});
+			expect(outputs).toHaveLength(0);
+			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(0);
 
 			// Ignored-binding logged at warn level.
 			const logger = captured.logger!;
