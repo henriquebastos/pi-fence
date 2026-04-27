@@ -624,6 +624,80 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 	});
 });
 
+describe("resolveProcessor — blocked tag families", () => {
+	const local = makeFakeProcessor({
+		id: "graphviz-host",
+		tags: ["graphviz"],
+		aliases: { dot: "graphviz" },
+	});
+	const krokiRemote = makeFakeProcessor({
+		id: "kroki-remote",
+		tags: ["graphviz", "mermaid"],
+		aliases: { dot: "graphviz" },
+	});
+	const bothAvailable = new Map<string, Availability>([
+		["graphviz-host", { ok: true }],
+		["kroki-remote", { ok: true }],
+	]);
+
+	it("blocks an alias request when the canonical tag family is blocked", () => {
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				bothAvailable,
+				"dot",
+				undefined,
+				undefined,
+				["host", "remote"],
+				new Set(["graphviz"]),
+			),
+			null,
+			[
+				{ id: "graphviz-host", outcome: "skipped-tag-blocked" },
+				{ id: "kroki-remote", outcome: "skipped-tag-blocked" },
+			],
+		);
+	});
+
+	it("blocks a canonical request when an alias tag family is blocked", () => {
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				bothAvailable,
+				"graphviz",
+				undefined,
+				undefined,
+				["host", "remote"],
+				new Set(["dot"]),
+			),
+			null,
+			[
+				{ id: "graphviz-host", outcome: "skipped-tag-blocked" },
+				{ id: "kroki-remote", outcome: "skipped-tag-blocked" },
+			],
+		);
+	});
+
+	it("blocks a tag family even when a processor binding names an eligible processor", () => {
+		expectResolution(
+			resolveProcessor(
+				[local, krokiRemote],
+				bothAvailable,
+				"dot",
+				{ dot: { processor: "kroki-remote" } },
+				undefined,
+				["host", "remote"],
+				new Set(["graphviz"]),
+			),
+			null,
+			[
+				{ id: "graphviz-host", outcome: "skipped-tag-blocked" },
+				{ id: "kroki-remote", outcome: "skipped-tag-blocked" },
+			],
+		);
+	});
+});
+
 describe("resolveProcessor — blocked processor set", () => {
 	const local = makeFakeProcessor({
 		id: "graphviz-host",

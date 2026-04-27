@@ -37,6 +37,7 @@ export type StepOutcome =
 	| "skipped-ambiguous-same-placement"
 	| "skipped-binding-excluded"
 	| "skipped-processor-blocked"
+	| "skipped-tag-blocked"
 	| "skipped-lower-precedence"
 	| "skipped-no-claim"
 	| "skipped-placement-disabled"
@@ -63,6 +64,7 @@ interface CandidateContext {
 	allowedPlacements: ReadonlySet<ProcessorPlacement>;
 	blockedProcessors?: ReadonlySet<string>;
 	tag: string;
+	tagBlocked?: boolean;
 }
 
 interface ResolveContext extends CandidateContext {
@@ -125,6 +127,7 @@ export function resolveProcessor(
 	bindings?: Readonly<Record<string, TagBinding>>,
 	blockedProcessors?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
+	blockedTags?: ReadonlySet<string>,
 ): ResolveProcessorResult {
 	const binding = bindingForTag(bindings, tag);
 	const context: ResolveContext = {
@@ -135,8 +138,9 @@ export function resolveProcessor(
 		blockedProcessors,
 		placementRank: buildPlacementRank(processorPrecedence),
 		tag,
+		tagBlocked: isTagFamilyBlocked(processors, tag, blockedTags),
 	};
-	const bindingDecision = selectBinding(processors, context);
+	const bindingDecision = context.tagBlocked ? { constrained: true } : selectBinding(processors, context);
 	const placementDecision = bindingDecision.constrained
 		? {}
 		: selectByPlacement(processors, context, processorPrecedence);
@@ -286,6 +290,7 @@ function traceOutcome(
 	if (selection?.processor.id === processor.id) {
 		return selectedOutcome(selection);
 	}
+	if (context.tagBlocked) return "skipped-tag-blocked";
 
 	const blocked = candidateBlocked(processor, context);
 	if (blocked === "skipped-processor-blocked" || blocked === "skipped-placement-disabled") {
@@ -379,6 +384,28 @@ function processorBindingIssueReason(
 
 function claimsTag(processor: FenceProcessor, tag: string): boolean {
 	return processor.tags.includes(tag) || Object.hasOwn(processor.aliases, tag);
+}
+
+function isTagFamilyBlocked(
+	processors: readonly FenceProcessor[],
+	tag: string,
+	blockedTags: ReadonlySet<string> | undefined,
+): boolean {
+	if (blockedTags === undefined || blockedTags.size === 0) return false;
+	const requestedFamily = canonicalTagFamily(processors, tag);
+	for (const blockedTag of blockedTags) {
+		if (canonicalTagFamily(processors, blockedTag) === requestedFamily) return true;
+	}
+	return false;
+}
+
+function canonicalTagFamily(processors: readonly FenceProcessor[], tag: string): string {
+	for (const processor of processors) {
+		const aliasTarget = Object.hasOwn(processor.aliases, tag) ? processor.aliases[tag] : undefined;
+		if (aliasTarget) return aliasTarget;
+		if (processor.tags.includes(tag)) return tag;
+	}
+	return tag;
 }
 
 function processorBindingId(binding: TagBinding | undefined): string | undefined {
