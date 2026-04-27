@@ -171,6 +171,26 @@ describe("config core", () => {
 		]);
 	});
 
+	it("validates sandboxes: any invalid entry clears otherwise valid entries", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "exec", runtime: "docker-container", autoStart: true },
+					kroki: { kind: "service", runtime: "docker-compose", autoStart: "yes" },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"invalid sandbox config in test sandboxes",
+		]);
+	});
+
 	it("merges sandboxes: later layers replace the lower-priority sandbox map", () => {
 		const globalBundle = { kind: "exec" as const, runtime: "docker-container" as const, image: "old" };
 		const merged = mergePiFenceConfigs(
@@ -951,6 +971,26 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger
 				.bySubsystem("config")
 				.some((e) => e.message.includes("invalid sandbox config")),
+		).toBe(true);
+	});
+
+	it("fails closed on non-object file-backed sandboxes and clears sandbox controllers", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(dir, JSON.stringify({ sandboxes: "bad" }));
+		const logger = new FakeLogger();
+
+		const config = await loadConfig({
+			globalConfigPath: path,
+			projectConfigPath: join(dir, "no-project.json"),
+			logger,
+		});
+
+		expect(config.processorPrecedence).toEqual(["embedded"]);
+		expect(config.sandboxes).toEqual({});
+		expect(
+			logger
+				.bySubsystem("config")
+				.some((e) => e.message.includes("'sandboxes' is not an object")),
 		).toBe(true);
 	});
 

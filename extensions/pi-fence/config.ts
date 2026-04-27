@@ -395,14 +395,19 @@ function validateSandboxes(
 		logger?.warn("config", `${label} config 'sandboxes' is not an object`, {
 			got: Array.isArray(rawSandboxes) ? "array" : typeof rawSandboxes,
 		});
-		return undefined;
+		return emptySandboxes();
 	}
 	const sandboxes = emptySandboxes();
+	let sawInvalid = false;
 	for (const [id, rawSandbox] of Object.entries(rawSandboxes)) {
 		const sandbox = validateSandboxEntry(id, rawSandbox, label, logger);
-		if (sandbox) sandboxes[id] = sandbox;
+		if (sandbox) {
+			sandboxes[id] = sandbox;
+		} else {
+			sawInvalid = true;
+		}
 	}
-	return sandboxes;
+	return sawInvalid ? emptySandboxes() : sandboxes;
 }
 
 function validateSandboxEntry(
