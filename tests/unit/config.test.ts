@@ -124,6 +124,21 @@ describe("config core", () => {
 		]);
 	});
 
+	it("validates blocked policy: non-object value warns and fails closed", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ blocked: "bad" },
+			"test",
+			logger,
+		);
+
+		expect(result.blocked).toBeUndefined();
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"test config 'blocked' is not an object",
+		]);
+	});
+
 	it("merges blocked policy: later layers replace lower-priority arrays", () => {
 		const merged = mergePiFenceConfigs(
 			{ bindings: {}, blocked: { tags: ["qr"], processors: ["kroki-remote"] } },

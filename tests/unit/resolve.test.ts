@@ -934,6 +934,32 @@ describe("resolveBindings", () => {
 		]);
 	});
 
+	it("categorises issue-placement-tag-blocked", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings(
+			[local, krokiRemote],
+			availability,
+			{ graphviz: { placement: "host" } },
+			undefined,
+			["host", "remote"],
+			new Set(["dot"]),
+		);
+
+		expect(rows).toEqual([
+			{
+				status: "issue",
+				tag: "graphviz",
+				selector: "placement",
+				placement: "host",
+				reason: "tag-blocked",
+			},
+		]);
+	});
+
 	it("categorises issue-placement-disabled", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
