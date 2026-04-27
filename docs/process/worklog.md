@@ -3072,3 +3072,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Status-only helpers are honest.** Generic helpers do not pretend to start/stop sandboxes; concrete adapters must own lifecycle commands.
 
 **Carry-forward.** Fix localhost/remote coverage and Ready story spec cleanup findings.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: localhost Kroki placement coverage
+
+**What shipped.** Kroki metadata tests now prove that configuring `http://localhost:*` still produces `kroki-remote` with `placement: "remote"`; localhost endpoint shape does not make a processor sandbox-owned.
+
+**Implementation commits.**
+
+1. `68e29a0` — test: cover localhost Kroki placement
+
+**Test count.** Fast suite 722 → 723 (+1).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki.test.ts tests/unit/resolve.test.ts -t 'localhost|sandbox|remote'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Trust boundary is declared by processor id/placement.** Endpoint hostnames do not change `kroki-remote` into a sandbox processor.
+
+**Carry-forward.** Clean up the Ready story spec plan/tests wording.
