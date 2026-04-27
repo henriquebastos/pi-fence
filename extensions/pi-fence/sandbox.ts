@@ -72,12 +72,14 @@ export function createKrokiDockerSandboxController(
 export interface DockerSandboxComponentOptions {
 	id: string;
 	containerName: string;
+	expectedImage?: string;
 }
 
 export interface DockerContainerSandboxOptions {
 	id: string;
 	kind: SandboxKind;
 	containerName: string;
+	expectedImage?: string;
 	endpoint?: string;
 }
 
@@ -96,6 +98,7 @@ export function createDockerContainerSandboxController(
 		const component = await inspectDockerContainer(shell, {
 			id: options.id,
 			containerName: options.containerName,
+			expectedImage: options.expectedImage,
 		});
 		return {
 			state: component.state,
@@ -109,8 +112,8 @@ export function createDockerContainerSandboxController(
 		kind: options.kind,
 		runtime: "docker-container",
 		status,
-		start: status,
-		stop: status,
+		start: () => unsupportedLifecycle("Start", options.id),
+		stop: () => unsupportedLifecycle("Stop", options.id),
 	};
 }
 
@@ -131,9 +134,16 @@ export function createDockerComposeSandboxController(
 		kind: options.kind,
 		runtime: "docker-compose",
 		status,
-		start: status,
-		stop: status,
+		start: () => unsupportedLifecycle("Start", options.id),
+		stop: () => unsupportedLifecycle("Stop", options.id),
 	};
+}
+
+async function unsupportedLifecycle(
+	operation: "Start" | "Stop",
+	id: string,
+): Promise<SandboxStatus> {
+	return { state: "error", message: `${operation} is not implemented for sandbox ${id}.` };
 }
 
 function normalizeKrokiDockerResult(result: KrokiDockerResult): SandboxStatus {
@@ -164,13 +174,13 @@ async function inspectDockerContainer(
 			component.containerName,
 		]);
 		if (result.exitCode !== 0) {
-			return {
-				id: component.id,
-				state: "absent",
-				message: `Container ${component.containerName} not found.`,
-			};
+			return inspectFailureStatus(component, result.stderr);
 		}
 		const running = result.stdout.trim() === "true";
+		if (running && component.expectedImage !== undefined) {
+			const imageStatus = await inspectContainerImage(shell, component);
+			if (imageStatus) return imageStatus;
+		}
 		return {
 			id: component.id,
 			state: running ? "ready" : "stopped",
@@ -188,11 +198,55 @@ async function inspectDockerContainer(
 	}
 }
 
+function inspectFailureStatus(
+	component: DockerSandboxComponentOptions,
+	stderr: string,
+): SandboxComponentStatus {
+	if (stderr.includes("No such object")) {
+		return {
+			id: component.id,
+			state: "absent",
+			message: `Container ${component.containerName} not found.`,
+		};
+	}
+	const detail = stderr.trim() || "docker inspect failed";
+	return {
+		id: component.id,
+		state: "error",
+		message: `Docker inspect failed for ${component.containerName}: ${detail}`,
+	};
+}
+
+async function inspectContainerImage(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	const result = await shell.run("docker", [
+		"inspect",
+		"--format",
+		"{{.Config.Image}}",
+		component.containerName,
+	]);
+	if (result.exitCode !== 0) {
+		return inspectFailureStatus(component, result.stderr);
+	}
+	const actualImage = result.stdout.trim();
+	if (actualImage === component.expectedImage) return undefined;
+	return {
+		id: component.id,
+		state: "error",
+		message: `Container ${component.containerName} image mismatch: expected ${component.expectedImage}, got ${actualImage}.`,
+	};
+}
+
 function summarizeComponents(
 	id: string,
 	components: readonly SandboxComponentStatus[],
 	endpoint?: string,
 ): SandboxStatus {
+	if (components.length === 0) {
+		return { state: "error", message: `Sandbox ${id} has no configured components.` };
+	}
 	const readyCount = components.filter((component) => component.state === "ready").length;
 	if (components.some((component) => component.state === "error")) {
 		return { state: "error", message: `Sandbox ${id} status failed.`, components };
