@@ -122,23 +122,26 @@ export function validatePiFenceConfig(
 		logger?.warn("config", `${label} config top-level is not an object`, {
 			got: Array.isArray(parsed) ? "array" : typeof parsed,
 		});
-		return { bindings: {}, processorPrecedence: ["embedded"] };
+		return { bindings: emptyBindings(), processorPrecedence: ["embedded"] };
 	}
 
+	const rawDisabled = ownField(parsed, "disabled");
+	const rawPrecedence = ownField(parsed, "processorPrecedence");
+	const rawKroki = ownField(parsed, "kroki");
 	const failClosed = hasInvalidPrivacyControl(parsed);
-	const disabled = parsed.disabled === undefined
+	const disabled = rawDisabled === undefined
 		? undefined
-		: validateDisabled(parsed.disabled, label, logger);
+		: validateDisabled(rawDisabled, label, logger);
 	const processorPrecedence = validateProcessorPrecedenceField(
-		parsed.processorPrecedence,
+		rawPrecedence,
 		failClosed,
 		label,
 		logger,
 	);
-	const kroki = parsed.kroki === undefined
+	const kroki = rawKroki === undefined
 		? undefined
-		: validateKroki(parsed.kroki, label, logger);
-	const out: PiFenceConfig = { bindings: validateBindings(parsed.bindings, label, logger) };
+		: validateKroki(rawKroki, label, logger);
+	const out: PiFenceConfig = { bindings: validateBindings(ownField(parsed, "bindings"), label, logger) };
 	if (disabled !== undefined) out.disabled = disabled;
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
@@ -184,7 +187,7 @@ function validateProcessorPrecedenceField(
 }
 
 function hasInvalidPrivacyControl(parsed: Record<string, unknown>): boolean {
-	return hasInvalidDisabled(parsed.disabled) || hasInvalidKrokiEndpoint(parsed.kroki);
+	return hasInvalidDisabled(ownField(parsed, "disabled")) || hasInvalidKrokiEndpoint(ownField(parsed, "kroki"));
 }
 
 function hasInvalidDisabled(rawDisabled: unknown): boolean {
@@ -196,7 +199,8 @@ function hasInvalidDisabled(rawDisabled: unknown): boolean {
 function hasInvalidKrokiEndpoint(rawKroki: unknown): boolean {
 	if (rawKroki === undefined) return false;
 	if (!isRecordLike(rawKroki)) return true;
-	return rawKroki.endpoint !== undefined && typeof rawKroki.endpoint !== "string";
+	const endpoint = ownField(rawKroki, "endpoint");
+	return endpoint !== undefined && typeof endpoint !== "string";
 }
 
 function validateBindings(
@@ -216,20 +220,26 @@ function validateBindings(
 	}
 
 	for (const [key, value] of Object.entries(rawBindings)) {
-		if (isRecordLike(value) && typeof value.processor === "string" && value.placement === undefined) {
-			bindings[key] = {
-				processor: normalizeLegacyProcessorId(
-					value.processor,
-					label,
-					`bindings.${key}.processor`,
-					logger,
-				),
-			};
-			continue;
-		}
-		if (isRecordLike(value) && value.processor === undefined && isProcessorPlacement(value.placement)) {
-			bindings[key] = { placement: value.placement };
-			continue;
+		if (isRecordLike(value)) {
+			const processor = ownField(value, "processor");
+			const placement = ownField(value, "placement");
+			const hasProcessor = Object.hasOwn(value, "processor");
+			const hasPlacement = Object.hasOwn(value, "placement");
+			if (hasProcessor && !hasPlacement && typeof processor === "string") {
+				bindings[key] = {
+					processor: normalizeLegacyProcessorId(
+						processor,
+						label,
+						`bindings.${key}.processor`,
+						logger,
+					),
+				};
+				continue;
+			}
+			if (!hasProcessor && hasPlacement && isProcessorPlacement(placement)) {
+				bindings[key] = { placement };
+				continue;
+			}
 		}
 		logger?.warn("config", `invalid binding selector in ${label} bindings`, {
 			key,
@@ -252,8 +262,9 @@ function validateKroki(
 	}
 
 	const out: NonNullable<PiFenceConfig["kroki"]> = {};
-	const endpoint = validateKrokiEndpoint(rawKroki.endpoint, label, logger);
-	const docker = validateKrokiDocker(rawKroki.docker, label, logger);
+	const endpoint = validateKrokiEndpoint(ownField(rawKroki, "endpoint"), label, logger);
+	const docker = validateKrokiDocker(ownField(rawKroki, "docker"), label, logger);
+	if (endpoint === undefined && docker === undefined) return undefined;
 	if (endpoint !== undefined) out.endpoint = endpoint;
 	if (docker !== undefined) out.docker = docker;
 	return out;
@@ -286,7 +297,7 @@ function validateKrokiDocker(
 		return undefined;
 	}
 
-	const autoStart = validateKrokiDockerAutoStart(rawDocker.autoStart, label, logger);
+	const autoStart = validateKrokiDockerAutoStart(ownField(rawDocker, "autoStart"), label, logger);
 	return autoStart === undefined ? undefined : { autoStart };
 }
 
@@ -381,4 +392,8 @@ function isProcessorPlacement(value: unknown): value is ProcessorPlacement {
 
 function isRecordLike(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function ownField(record: Record<string, unknown>, key: string): unknown {
+	return Object.hasOwn(record, key) ? record[key] : undefined;
 }

@@ -378,7 +378,7 @@ function processorBindingIssueReason(
 }
 
 function claimsTag(processor: FenceProcessor, tag: string): boolean {
-	return processor.tags.includes(tag) || processor.aliases[tag] !== undefined;
+	return processor.tags.includes(tag) || Object.hasOwn(processor.aliases, tag);
 }
 
 function processorBindingId(binding: TagBinding | undefined): string | undefined {
@@ -396,14 +396,16 @@ function bindingForTag(
 
 function isTagBinding(binding: unknown): binding is TagBinding {
 	if (!isPlainBindingObject(binding)) return false;
+	const hasProcessor = Object.hasOwn(binding, "processor");
+	const hasPlacement = Object.hasOwn(binding, "placement");
 	return (
-		(typeof binding.processor === "string" && binding.placement === undefined) ||
-		(binding.processor === undefined && typeof binding.placement === "string")
+		(hasProcessor && !hasPlacement && typeof binding.processor === "string") ||
+		(!hasProcessor && hasPlacement && typeof binding.placement === "string")
 	);
 }
 
 function isProcessorBinding(binding: TagBinding): binding is { processor: string } {
-	return "processor" in binding;
+	return Object.hasOwn(binding, "processor");
 }
 
 function isPlainBindingObject(value: unknown): value is Record<string, unknown> {

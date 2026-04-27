@@ -86,6 +86,19 @@ describe("resolveProcessor", () => {
 		]);
 	});
 
+	it("does not claim inherited aliases", () => {
+		const a = makeFakeProcessor({
+			id: "a",
+			tags: ["graphviz"],
+			aliases: {},
+		});
+		const availability = new Map<string, Availability>([["a", { ok: true }]]);
+
+		expectResolution(resolveProcessor([a], availability, "constructor"), null, [
+			{ id: "a", outcome: "skipped-no-claim" },
+		]);
+	});
+
 	it("returns the available processor in the winning placement whose aliases include the tag", () => {
 		const a = makeFakeProcessor({
 			id: "a",
@@ -295,6 +308,22 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		id: "kroki-remote",
 		tags: ["graphviz", "mermaid", "plantuml"],
 		aliases: { dot: "graphviz", puml: "plantuml" },
+	});
+
+	it("ignores inherited selector properties on binding values", () => {
+		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
+		const binding = Object.create({ processor: "kroki-remote" });
+
+		expectResolution(
+			resolveProcessor(
+				[krokiRemote],
+				availability,
+				"graphviz",
+				{ graphviz: binding },
+			),
+			"kroki-remote",
+			[{ id: "kroki-remote", outcome: "selected-by-placement" }],
+		);
 	});
 
 	it("ignores inherited binding properties when resolving a tag", () => {

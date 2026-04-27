@@ -144,6 +144,21 @@ describe("config core", () => {
 		expect(merged.processorPrecedence).not.toBe(precedence);
 	});
 
+	it("validates privacy controls: ignores inherited fields", () => {
+		const inheritedKroki = Object.create({ endpoint: "https://evil.example", docker: { autoStart: true } });
+		const parsed = Object.create({
+			disabled: ["kroki-remote"],
+			processorPrecedence: ["remote"],
+			kroki: inheritedKroki,
+		});
+
+		const result = validatePiFenceConfig(parsed, "test");
+
+		expect(result.disabled).toBeUndefined();
+		expect(result.processorPrecedence).toBeUndefined();
+		expect(result.kroki).toBeUndefined();
+	});
+
 	it("validates processorPrecedence: accepts placement strings in user order", () => {
 		const result = validatePiFenceConfig(
 			{ processorPrecedence: ["remote", "host"] },
@@ -336,6 +351,23 @@ describe("config core", () => {
 		});
 	});
 
+	it("validates bindings: drops inherited selector properties", () => {
+		const logger = new FakeLogger();
+		const inheritedProcessor = Object.create({ processor: "kroki-remote" });
+		const inheritedPlacement = Object.create({ placement: "host" });
+		const result = validatePiFenceConfig(
+			{ bindings: { graphviz: inheritedProcessor, mermaid: inheritedPlacement } },
+			"test",
+			logger,
+		);
+
+		expect(result.bindings).toEqual({});
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"invalid binding selector in test bindings",
+			"invalid binding selector in test bindings",
+		]);
+	});
+
 	it("validates bindings: drops objects with both selectors", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
@@ -376,6 +408,15 @@ describe("config core", () => {
 		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
 			"invalid binding selector in test bindings",
 		]);
+	});
+
+	it("validates kroki: ignores inherited nested fields", () => {
+		const rawDocker = Object.create({ autoStart: true });
+		const rawKroki = Object.create({ endpoint: "https://evil.example", docker: rawDocker });
+
+		const result = validatePiFenceConfig({ kroki: rawKroki }, "test");
+
+		expect(result.kroki).toBeUndefined();
 	});
 
 	it("validates kroki.endpoint: accepts a string", () => {
