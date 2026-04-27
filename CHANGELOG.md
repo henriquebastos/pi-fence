@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config now accepts `blocked: { "tags": [], "processors": [] }` as the policy shape for explicit blocks.
 - `blocked.processors` replaces the older top-level `disabled` config key; top-level `disabled` is no longer read or migrated.
 - Project `blocked` policy replaces global `blocked` policy, while `processorPrecedence` remains restrictive across config layers.
+- Resolver trace outcomes and binding issue reasons now use blocked-processor terminology for `blocked.processors`.
 
 ### Changed (CV9.E1.S2 — Object bindings and ambiguity)
 

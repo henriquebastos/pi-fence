@@ -2572,3 +2572,30 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 3. **Malformed block policy fails closed.** Invalid nested block fields keep valid string entries but restrict placement resolution to `embedded`.
 
 **Carry-forward.** Next S3 bean: make resolver selection treat `blocked.processors` as a hard ineligibility constraint, including binding diagnostics.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 step 2 completed
+
+**What shipped.** Resolver processor blocks now use blocked terminology end to end. A processor id from `blocked.processors` is skipped during availability probing and resolution, trace steps report `skipped-processor-blocked`, and processor-binding diagnostics report `processor-blocked` instead of the old disabled wording.
+
+**Implementation commits.**
+
+1. `ca1033e` — step 2: block processors in resolution
+
+**Test count.** 683 fast-suite tests (unchanged; resolver expectations renamed and preserved behavior).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts` — passed.
+2. `pnpm vitest run tests/unit/resolve.test.ts tests/extension/pi-fence.test.ts` — passed.
+3. `pnpm run lint:types` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Blocked processors are hard ineligible.** They are filtered before placement choice, binding satisfaction, and dynamic registration probes.
+2. **Terminology follows config.** Resolver traces and binding diagnostics no longer call an explicit processor block a disabled processor.
+3. **Placement omission is still placement-disabled.** Only explicit processor ids moved to blocked terminology; omitted placements keep the existing placement-disabled wording.
+
+**Carry-forward.** Next S3 bean: canonicalize `blocked.tags` so canonical tags and aliases block the same tag family.
