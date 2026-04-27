@@ -2448,3 +2448,30 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Own-field hardening remains explicit.** Entry parsing still computes own `processor`/`placement` presence before accepting a selector.
 
 **Carry-forward.** Rerun final inspection and full `pnpm run inspect`; if clean, close CV9.E1.S2.
+
+---
+
+### 2026-04-27 — CV9.E1.S2 inspection fix: binding issue diagnostic alignment
+
+**What shipped.** Binding diagnostics now share render-time own-selector guards, so inherited selector fields are ignored in `/fence list`, `/fence doctor`, and startup diagnostics. `/fence doctor` includes binding issue rows in its final Issues summary. Startup binding issues log at debug level to avoid stale warn-level diagnostics before third-party registration; render-time fail-closed binding issues still log warnings for the rendered tag.
+
+**Implementation commits.**
+
+1. `a937115` — fix: align binding issue diagnostics
+
+**Test count.** 682 fast-suite (was 679; +3 regressions for inherited diagnostic selectors, doctor issue summary, and inherited binding dictionary entries).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/doctor.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm vitest run tests/unit/config.test.ts -t 'inherited binding entries'` — passed.
+3. `pnpm run lint:types` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Diagnostics do not out-trust rendering.** `resolveBindings` filters through the same own-selector guard as `resolveProcessor`.
+2. **Doctor summaries include binding health.** A command output with a `Binding issues` section no longer ends with `No issues found.`
+3. **Current registry wins for warnings.** Warn-level binding issue logs are emitted on render-time resolution, not from the startup snapshot that can precede dynamic processor registration.
+
+**Carry-forward.** Rerun final inspection and full `pnpm run inspect`; if clean, close CV9.E1.S2.
