@@ -190,16 +190,14 @@ const UNAVAILABLE_DETAIL_INDENT = "    ";
 const BINDING_INDENT = "  ";
 
 function formatIgnoredReason(
-	reason:
-		| "unknown-processor"
-		| "processor-unavailable"
-		| "processor-disabled"
-		| "processor-placement-disabled"
-		| "processor-does-not-claim-tag",
+	reason: Extract<BindingResolution, { status: "ignored" }>["reason"],
 ): string {
 	if (reason === "unknown-processor") return "unknown processor";
 	if (reason === "processor-disabled") return "processor disabled";
 	if (reason === "processor-placement-disabled") return "processor placement disabled";
+	if (reason === "placement-disabled") return "placement disabled";
+	if (reason === "placement-no-match") return "no matching processor in placement";
+	if (reason === "placement-ambiguous") return "ambiguous";
 	if (reason === "processor-does-not-claim-tag") return "processor does not claim tag";
 	return "processor unavailable";
 }
@@ -235,11 +233,18 @@ function formatBindingSection<T>(
 }
 
 function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effective" }>): string {
+	if ("placement" in row) {
+		return `${BINDING_INDENT}${row.tag} → placement:${row.placement} (${row.processorId})`;
+	}
 	return `${BINDING_INDENT}${row.tag} → ${row.processorId}`;
 }
 
 function formatIgnoredBinding(row: Extract<BindingResolution, { status: "ignored" }>): string {
 	const reason = formatIgnoredReason(row.reason);
+	if ("placement" in row) {
+		const detail = "processorIds" in row ? `${reason}: ${row.processorIds.join(", ")}` : reason;
+		return `${BINDING_INDENT}${row.tag} → placement:${row.placement} (${detail})`;
+	}
 	return `${BINDING_INDENT}${row.tag} → ${row.processorId} (${reason})`;
 }
 

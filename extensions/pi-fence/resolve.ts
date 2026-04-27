@@ -309,6 +309,13 @@ function processorBindingId(binding: TagBinding | undefined): string | undefined
 export type BindingResolution =
 	| { status: "effective"; tag: string; processorId: string }
 	| {
+			status: "effective";
+			tag: string;
+			selector: "placement";
+			placement: ProcessorPlacement;
+			processorId: string;
+	  }
+	| {
 			status: "ignored";
 			tag: string;
 			processorId: string;
@@ -318,6 +325,21 @@ export type BindingResolution =
 				| "processor-disabled"
 				| "processor-placement-disabled"
 				| "processor-does-not-claim-tag";
+		}
+	| {
+			status: "ignored";
+			tag: string;
+			selector: "placement";
+			placement: ProcessorPlacement;
+			reason: "placement-disabled" | "placement-no-match";
+		}
+	| {
+			status: "ignored";
+			tag: string;
+			selector: "placement";
+			placement: ProcessorPlacement;
+			reason: "placement-ambiguous";
+			processorIds: string[];
 		};
 
 export function resolveBindings(
@@ -330,6 +352,18 @@ export function resolveBindings(
 	const out: BindingResolution[] = [];
 	const allowedPlacements = new Set(processorPrecedence);
 	for (const [tag, binding] of Object.entries(bindings)) {
+		if ("placement" in binding) {
+			const placementRow = resolvePlacementBinding(
+				processors,
+				availability,
+				tag,
+				binding.placement,
+				disabled,
+				processorPrecedence,
+			);
+			if (placementRow !== undefined) out.push(placementRow);
+			continue;
+		}
 		const processorId = processorBindingId(binding);
 		if (processorId === undefined) continue;
 		const processor = processors.find((p) => p.id === processorId);
@@ -381,6 +415,64 @@ export function resolveBindings(
 		out.push({ status: "effective", tag, processorId });
 	}
 	return out;
+}
+
+function resolvePlacementBinding(
+	processors: readonly FenceProcessor[],
+	availability: ReadonlyMap<string, Availability>,
+	tag: string,
+	placement: ProcessorPlacement,
+	disabled: ReadonlySet<string> | undefined,
+	processorPrecedence: readonly ProcessorPlacement[],
+): BindingResolution | undefined {
+	const allowedPlacements = new Set(processorPrecedence);
+	if (!allowedPlacements.has(placement)) {
+		return {
+			status: "ignored",
+			tag,
+			selector: "placement",
+			placement,
+			reason: "placement-disabled",
+		};
+	}
+	const context: ResolveContext = {
+		availability,
+		allowedPlacements,
+		binding: { placement },
+		disabled,
+		placementRank: buildPlacementRank(processorPrecedence),
+		tag,
+	};
+	const candidates = processors.filter(
+		(processor) =>
+			processor.placement === placement && candidateBlocked(processor, context) === undefined,
+	);
+	if (candidates.length === 0) {
+		return {
+			status: "ignored",
+			tag,
+			selector: "placement",
+			placement,
+			reason: "placement-no-match",
+		};
+	}
+	if (candidates.length > 1) {
+		return {
+			status: "ignored",
+			tag,
+			selector: "placement",
+			placement,
+			reason: "placement-ambiguous",
+			processorIds: candidates.map((processor) => processor.id),
+		};
+	}
+	return {
+		status: "effective",
+		tag,
+		selector: "placement",
+		placement,
+		processorId: candidates[0].id,
+	};
 }
 
 /**

@@ -409,6 +409,23 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		]);
 	});
 
+	it("formats effective placement bindings", () => {
+		const lines = formatProcessorLines(
+			[local, krokiRemote],
+			[
+				{
+					status: "effective",
+					tag: "graphviz",
+					selector: "placement",
+					placement: "host",
+					processorId: "graphviz-host",
+				},
+			],
+		);
+
+		expect(lines).toContain("  graphviz → placement:host (graphviz-host)");
+	});
+
 	it("emits the Ignored bindings section with per-row reasons", () => {
 		const lines = formatProcessorLines(
 			[krokiRemote],
@@ -451,6 +468,42 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		);
 
 		expect(lines).toContain("  graphviz → kroki-remote (processor placement disabled)");
+	});
+
+	it("renders placement selector ignored bindings", () => {
+		const lines = formatProcessorLines(
+			[local, krokiRemote],
+			[
+				{
+					status: "ignored",
+					tag: "graphviz",
+					selector: "placement",
+					placement: "host",
+					reason: "placement-disabled",
+				},
+				{
+					status: "ignored",
+					tag: "mermaid",
+					selector: "placement",
+					placement: "host",
+					reason: "placement-no-match",
+				},
+				{
+					status: "ignored",
+					tag: "dot",
+					selector: "placement",
+					placement: "host",
+					reason: "placement-ambiguous",
+					processorIds: ["graphviz-host", "other-host"],
+				},
+			],
+		);
+
+		expect(lines).toContain("  graphviz → placement:host (placement disabled)");
+		expect(lines).toContain("  mermaid → placement:host (no matching processor in placement)");
+		expect(lines).toContain(
+			"  dot → placement:host (ambiguous: graphviz-host, other-host)",
+		);
 	});
 
 	it("renders does-not-claim-tag ignored bindings", () => {

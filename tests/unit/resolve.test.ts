@@ -658,6 +658,27 @@ describe("resolveBindings", () => {
 		]);
 	});
 
+	it("categorises an effective placement binding", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings([local, krokiRemote], availability, {
+			graphviz: { placement: "host" },
+		});
+
+		expect(rows).toEqual([
+			{
+				status: "effective",
+				tag: "graphviz",
+				selector: "placement",
+				placement: "host",
+				processorId: "graphviz-host",
+			},
+		]);
+	});
+
 	it("categorises ignored-unknown-processor", () => {
 		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
 
@@ -738,6 +759,84 @@ describe("resolveBindings", () => {
 				tag: "graphviz",
 				processorId: "kroki-remote",
 				reason: "processor-placement-disabled",
+			},
+		]);
+	});
+
+	it("categorises ignored-placement-disabled", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings(
+			[local, krokiRemote],
+			availability,
+			{ graphviz: { placement: "host" } },
+			undefined,
+			["remote"],
+		);
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				selector: "placement",
+				placement: "host",
+				reason: "placement-disabled",
+			},
+		]);
+	});
+
+	it("categorises ignored-placement-no-match", () => {
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: false, reason: "dot missing" }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings(
+			[local, krokiRemote],
+			availability,
+			{ graphviz: { placement: "host" } },
+			undefined,
+			["host", "remote"],
+		);
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				selector: "placement",
+				placement: "host",
+				reason: "placement-no-match",
+			},
+		]);
+	});
+
+	it("categorises ignored-placement-ambiguous", () => {
+		const otherLocal = makeFakeProcessor({ id: "other-host", tags: ["graphviz"] });
+		const availability = new Map<string, Availability>([
+			["graphviz-host", { ok: true }],
+			["other-host", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const rows = resolveBindings(
+			[local, otherLocal, krokiRemote],
+			availability,
+			{ graphviz: { placement: "host" } },
+			undefined,
+			["host", "remote"],
+		);
+
+		expect(rows).toEqual([
+			{
+				status: "ignored",
+				tag: "graphviz",
+				selector: "placement",
+				placement: "host",
+				reason: "placement-ambiguous",
+				processorIds: ["graphviz-host", "other-host"],
 			},
 		]);
 	});

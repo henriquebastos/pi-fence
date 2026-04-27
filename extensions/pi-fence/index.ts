@@ -247,6 +247,13 @@ function logBindingResolution(
 				tag: row.tag,
 				processorId: row.processorId,
 			});
+		} else if ("placement" in row) {
+			logger.warn("pi-fence", "binding ignored", {
+				tag: row.tag,
+				placement: row.placement,
+				reason: row.reason,
+				...("processorIds" in row ? { processorIds: row.processorIds } : {}),
+			});
 		} else {
 			logger.warn("pi-fence", "binding ignored", {
 				tag: row.tag,

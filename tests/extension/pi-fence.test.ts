@@ -711,6 +711,52 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"placement binding routes dot to host when remote has precedence",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					bindings: { dot: { placement: "host" } },
+					processorPrecedence: ["remote", "host"],
+				}),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "graphviz-host",
+				kind: "ok",
+			});
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"disabled remote placement prevents Docker Kroki auto-start",
 		async () => {
 			const home = makeTempDir();
