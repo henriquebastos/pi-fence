@@ -2777,3 +2777,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Registered-but-policy-unavailable.** The processor is still added to the registry with a policy reason so diagnostics can explain why it is inactive.
 
 **Carry-forward.** Fix Docker auto-start and diagnostics for processors skipped by tag-block probe suppression.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: Kroki autostart tag blocks
+
+**What shipped.** Docker Kroki auto-start now checks whether `kroki-remote` is fully tag-blocked before running Docker status/start commands. If every Kroki-served family is blocked through `blocked.tags`, auto-start stays silent.
+
+**Implementation commits.**
+
+1. `30ef2cd` — fix: honor blocked tags for kroki autostart
+
+**Test count.** 698 fast-suite tests (was 697; +1 extension regression for auto-start suppression).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'blocked Kroki tag families'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Auto-start follows render policy.** A Kroki processor that cannot serve any unblocked family no longer causes Docker side effects.
+2. **Partial Kroki blocks still allow auto-start.** The guard only suppresses auto-start when all Kroki canonical families are tag-blocked.
+
+**Carry-forward.** Fix `/fence list` and `/fence doctor` diagnostics for processors skipped by tag-block probe suppression.
