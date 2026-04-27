@@ -95,7 +95,7 @@ Vertical slice rule:
 
 ## 3. Phase B — Implementation
 
-Input: one ready, unclaimed bean under the current epic.
+Input: one ready, unclaimed bean under the current epic. This includes implementation tasks and inspection finding beans.
 
 Goal: close the bean with a verified commit.
 
@@ -104,6 +104,7 @@ Before editing:
 1. State the current **RED target** in chat or progress notes.
 2. If the next edit would add more than one failing behavior test, stop and split the edit.
 3. If a bean or story-plan row lists multiple behaviors, execute only the first unimplemented behavior, then return to this checklist after green/refactor.
+4. If the bean came from inspection, do not treat it as a special "fix mode". It still enters this same TDD micro-loop.
 
 Loop:
 
@@ -115,13 +116,16 @@ Loop:
 6. Implement the simplest solution that makes the test pass.
 7. Run the targeted command and confirm green.
 8. Do not add the next behavior test until the current test is green.
-9. Evaluate the result:
-   - if the code is not yet clear, clean, easy to understand, or easy to change, refactor while green;
-   - otherwise continue with the next behavior needed by this bean.
-10. Repeat red → green → refactor until the bean is done.
-11. Run the bean’s verification command(s).
-12. Commit the completed bean.
-13. Close the bean with the commit hash and verification summary.
+9. Treat steps 4–8 as a hard micro-loop boundary: one RED target, one GREEN fix, then refactor. Do not batch multiple inspection findings or multiple behaviors into one red/green pass.
+10. Evaluate the result:
+
+    - if the code is not yet clear, clean, easy to understand, or easy to change, refactor while green;
+    - otherwise continue with the next behavior needed by this bean.
+
+11. Repeat red → green → refactor until the bean is done.
+12. Run the bean’s verification command(s).
+13. Commit the completed bean.
+14. Close the bean with the commit hash and verification summary.
 
 Refactor rule:
 
@@ -151,9 +155,11 @@ Steps:
 
 1. Run `inspect5p` on the story diff.
 2. Inspection agents analyze changes; they do not fix code directly.
-3. Each concrete finding becomes a `bug` or `task` bean under the current epic.
-4. Add dependencies if a finding must be fixed before another bean can proceed.
-5. When inspection finishes, return to the ready-bean selection loop.
+3. Phase C is discovery only. Do not edit production code, tests, or docs while still triaging inspection output.
+4. Each concrete finding becomes a `bug` or `task` bean under the current epic.
+5. Add dependencies if a finding must be fixed before another bean can proceed.
+6. If one finding contains multiple independent behaviors, split it into child finding beans before editing. Keep the parent as a tracking bean and close it only after the child beans close.
+7. When inspection finishes, return to the ready-bean selection loop. The next edit happens through Phase B, not through a separate inspection-fix mode.
 
 A good inspection finding bean includes:
 
@@ -176,6 +182,15 @@ Parent context:
 Story/task/commit this finding relates to.
 ```
 
+Inspection remediation rules:
+
+1. Every inspection finding is remediated through Phase B.
+2. A correctness, regression, safety, privacy, or user-visible behavior finding must start with one RED test that reproduces the finding.
+3. A missing-coverage finding starts with one behavior test. If the test is already green, record that it was a coverage-only finding and continue with no production edit unless another RED target is identified.
+4. A refactor-only finding starts by naming the preservation target and running the smallest targeted command that characterizes current behavior before editing. Refactor while green, then rerun the same command.
+5. A docs/process-only finding may use markdown/link validation instead of a code RED test, but it must not be bundled with behavior or refactor changes.
+6. If remediation reveals another behavior, create or split a bean for that behavior. Do not add a second RED target inside the current micro-loop.
+
 Severity rules:
 
 1. `bug`: correctness, regression, safety, privacy, or broken user-visible behavior.
@@ -195,6 +210,7 @@ story selected
 → inspect
 → inspection creates more beans
 → pick next ready bean
+→ implement finding with the same TDD micro-loop
 → repeat
 ```
 
@@ -203,7 +219,7 @@ Decision rules after each closed bean:
 1. If ready beans exist under the current epic, pick the highest-value unclaimed ready bean and implement it.
 2. If no ready beans exist but blocked beans remain, report blockers and stop unless the blocker is resolvable by the agent.
 3. If no ready beans or blocked beans remain, run another inspection round for the story.
-4. If inspection creates new beans, return to implementation.
+4. If inspection creates new beans, return to Phase B. Inspection findings do not get a looser fix/refactor/test loop.
 5. If inspection creates no beans, the story implementation loop is complete.
 6. Stop after 5 inspection rounds for the same story, even if inspection still creates demands; summarize remaining findings and ask the user how to proceed.
 
