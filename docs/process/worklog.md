@@ -3047,3 +3047,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Sandbox config is fail-closed.** An invalid sandbox layer replaces defaults with an empty sandbox map and embedded-only placement.
 
 **Carry-forward.** Fix sandbox controller status hardening findings next.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: sandbox status hardening
+
+**What shipped.** Docker-backed sandbox status helpers now support expected-image checks, distinguish absent containers from Docker inspect errors, reject empty Compose component lists, and return explicit unsupported lifecycle errors from status-only helpers. Compose status tests now cover ready, partial, absent, stopped, and error aggregation.
+
+**Implementation commits.**
+
+1. `7b164f5` — fix: harden sandbox status contract
+
+**Test count.** Fast suite 714 → 722 (+8).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Identity is part of sandbox readiness.** A controller can require the expected image before treating a running container as ready.
+2. **Missing is not the same as broken Docker.** `No such object` maps to `absent`; daemon and permission failures map to `error`.
+3. **Status-only helpers are honest.** Generic helpers do not pretend to start/stop sandboxes; concrete adapters must own lifecycle commands.
+
+**Carry-forward.** Fix localhost/remote coverage and Ready story spec cleanup findings.
