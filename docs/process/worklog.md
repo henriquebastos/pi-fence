@@ -2475,3 +2475,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 3. **Current registry wins for warnings.** Warn-level binding issue logs are emitted on render-time resolution, not from the startup snapshot that can precede dynamic processor registration.
 
 **Carry-forward.** Rerun final inspection and full `pnpm run inspect`; if clean, close CV9.E1.S2.
+
+---
+
+### 2026-04-27 — CV9.E1.S2 inspection fix: binding constraint trace cleanup
+
+**What shipped.** Binding trace outcomes now use constraint terminology (`skipped-binding-excluded`) instead of preference wording. Render-time binding issues suppress the extra generic no-processor warning, and config coverage now proves legacy processor-id normalization still works inside object binding selectors.
+
+**Implementation commits.**
+
+1. `0ebe6cd` — fix: clarify binding constraint traces
+
+**Test count.** 683 fast-suite (was 682; +1 legacy object-binding normalization coverage test).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Trace wording matches constraints.** Binding-excluded processors are no longer described as losing a preference race.
+2. **Specific binding warnings win.** When a binding fails closed, logs emit the binding issue and skip the generic unresolved warning.
+
+**Carry-forward.** Rerun final inspection and full `pnpm run inspect`; if clean, close CV9.E1.S2.
