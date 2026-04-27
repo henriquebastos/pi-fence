@@ -238,6 +238,96 @@ describe("resolveProcessor", () => {
 		);
 	});
 
+	it("lets sandbox processors participate in precedence like any other placement", () => {
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
+			tags: ["graphviz"],
+		});
+		const bundleSandbox = makeFakeProcessor({
+			id: "bundle-sandbox",
+			tags: ["graphviz"],
+		});
+		const availability = new Map<string, Availability>([
+			["kroki-remote", { ok: true }],
+			["bundle-sandbox", { ok: true }],
+		]);
+
+		expectResolution(
+			resolveProcessor(
+				[krokiRemote, bundleSandbox],
+				availability,
+				"graphviz",
+				undefined,
+				undefined,
+				["sandbox", "remote"],
+			),
+			"bundle-sandbox",
+			[
+				{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+				{ id: "bundle-sandbox", outcome: "selected-by-placement" },
+			],
+		);
+	});
+
+	it("treats bundle-sandbox and kroki-sandbox as same-placement ambiguity", () => {
+		const bundleSandbox = makeFakeProcessor({ id: "bundle-sandbox", tags: ["graphviz"] });
+		const krokiSandbox = makeFakeProcessor({ id: "kroki-sandbox", tags: ["graphviz"] });
+		const krokiRemote = makeFakeProcessor({ id: "kroki-remote", tags: ["graphviz"] });
+		const availability = new Map<string, Availability>([
+			["bundle-sandbox", { ok: true }],
+			["kroki-sandbox", { ok: true }],
+			["kroki-remote", { ok: true }],
+		]);
+
+		const result = resolveProcessor(
+			[bundleSandbox, krokiSandbox, krokiRemote],
+			availability,
+			"graphviz",
+			undefined,
+			undefined,
+			["sandbox", "remote"],
+		);
+
+		expectResolution(result, null, [
+			{ id: "bundle-sandbox", outcome: "skipped-ambiguous-same-placement" },
+			{ id: "kroki-sandbox", outcome: "skipped-ambiguous-same-placement" },
+			{ id: "kroki-remote", outcome: "skipped-lower-precedence" },
+		]);
+		expect(result.ambiguity).toEqual({
+			placement: "sandbox",
+			processorIds: ["bundle-sandbox", "kroki-sandbox"],
+		});
+	});
+
+	it("keeps kroki-remote remote even when its endpoint is localhost", () => {
+		const krokiRemote = makeFakeProcessor({
+			id: "kroki-remote",
+			placement: "remote",
+			tags: ["graphviz"],
+		});
+		const bundleSandbox = makeFakeProcessor({ id: "bundle-sandbox", tags: ["graphviz"] });
+		const availability = new Map<string, Availability>([
+			["kroki-remote", { ok: true }],
+			["bundle-sandbox", { ok: true }],
+		]);
+
+		expectResolution(
+			resolveProcessor(
+				[krokiRemote, bundleSandbox],
+				availability,
+				"graphviz",
+				undefined,
+				undefined,
+				["remote"],
+			),
+			"kroki-remote",
+			[
+				{ id: "kroki-remote", outcome: "selected-by-placement" },
+				{ id: "bundle-sandbox", outcome: "skipped-placement-disabled" },
+			],
+		);
+	});
+
 	it("returns an ambiguity when multiple available candidates share the winning placement", () => {
 		const a = makeFakeProcessor({ id: "a-host", tags: ["graphviz"] });
 		const b = makeFakeProcessor({ id: "b-host", tags: ["graphviz"] });
