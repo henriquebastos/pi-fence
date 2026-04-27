@@ -47,7 +47,7 @@ Resolution is placement-policy based by default: available `embedded` processors
 
 **Slash commands**:
 
-- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; an `Ignored bindings` section appears for bindings that point to an unknown or unavailable processor.
+- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; an `Ignored bindings` section appears for bindings that point to an unknown or unavailable processor, disabled placement, placement with no matching processor, or ambiguous placement.
 
 **Tracing**:
 

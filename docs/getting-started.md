@@ -127,7 +127,7 @@ pi-fence reads two optional files and merges them:
 
 Project bindings override global bindings. Safety controls are restrictive: project `disabled` adds to global `disabled`, and project `processorPrecedence` can only remove or reorder placements already allowed globally.
 
-Binding values must be selector objects. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
+Binding values must be selector objects. Use `{ "processor": "..." }` to choose one processor, or `{ "placement": "host" }` to choose whichever eligible processor in that placement handles the tag. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
 
 `/reload` inside pi after editing. `/fence list` then shows a `Bindings` section:
 

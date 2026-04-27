@@ -2118,3 +2118,27 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Trace vocabulary stayed stable.** Binding-constrained selections use `selected-by-binding`, and non-selected candidates under a binding use the existing `skipped-binding-prefers-other` outcome.
 
 **Carry-forward.** Next CV9.E1.S2 step: expose placement-aware binding diagnostics through extension config, `/fence list`, `/fence doctor`, and logs.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 step 3 completed
+
+**What shipped.** Binding diagnostics now understand both processor and placement selectors. `resolveBindings`, `/fence list`, `/fence doctor`, and binding logs report effective placement bindings, disallowed placements, placements with no eligible matching processor, and ambiguous placement matches with candidate ids. An extension test now proves a real config `{ "placement": "host" }` can route a `dot` block to `graphviz-host` even when `remote` precedes `host` globally.
+
+**Implementation commits.**
+
+1. `7c825ed` — step 3: surface binding selector diagnostics
+
+**Test count.** 664 fast-suite (was 657; +7 resolver/list/extension diagnostics cases).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/list.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Placement diagnostics are selector-shaped.** Effective rows show `placement:<placement> (<processor>)`; ignored rows keep the selector visible even when no processor id exists.
+2. **Ambiguity remains explicit.** Placement bindings do not choose among same-placement processors; diagnostics list the candidate ids so the user can switch to `{ "processor": "..." }`.
+
+**Carry-forward.** CV9.E1.S2 implementation beans are closed. Next: run story inspection, then close S2 if inspection produces no new findings.
