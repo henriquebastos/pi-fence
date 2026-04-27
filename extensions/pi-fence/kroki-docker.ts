@@ -12,7 +12,8 @@ import type { ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 
 const CONTAINER_NAME = "pi-fence-kroki";
-const IMAGE = "yuzutech/kroki";
+export const KROKI_DOCKER_IMAGE = "yuzutech/kroki";
+const IMAGE = KROKI_DOCKER_IMAGE;
 const HOST_PORT = 8000;
 const CONTAINER_PORT = 8000;
 
@@ -43,6 +44,10 @@ export function createKrokiDockerManager(
 				return { ok: true, status: "absent", message: `Container ${CONTAINER_NAME} not found.` };
 			}
 			const running = result.stdout.trim() === "true";
+			if (running) {
+				const imageStatus = await verifyKrokiContainerImage(shell);
+				if (imageStatus) return imageStatus;
+			}
 			return {
 				ok: true,
 				status: running ? "running" : "stopped",
@@ -115,4 +120,26 @@ export function createKrokiDockerManager(
 	}
 
 	return { start, stop, status };
+}
+
+async function verifyKrokiContainerImage(
+	shell: ShellRunner,
+): Promise<KrokiDockerResult | undefined> {
+	const result = await shell.run("docker", [
+		"inspect",
+		"--format",
+		"{{.Config.Image}}",
+		CONTAINER_NAME,
+	]);
+	if (result.exitCode !== 0) {
+		const detail = result.stderr.trim() || "docker inspect failed";
+		return { ok: false, status: "absent", message: `Failed to inspect image: ${detail}` };
+	}
+	const actualImage = result.stdout.trim();
+	if (actualImage === IMAGE) return undefined;
+	return {
+		ok: false,
+		status: "absent",
+		message: `Container ${CONTAINER_NAME} image mismatch: expected ${IMAGE}, got ${actualImage}.`,
+	};
 }

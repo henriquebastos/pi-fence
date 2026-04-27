@@ -154,6 +154,11 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"],
 			{ stdout: "true\n", stderr: "", exitCode: 0 },
 		);
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"],
+			{ stdout: "yuzutech/kroki\n", stderr: "", exitCode: 0 },
+		);
 		await createPiFenceExtension(asExtensionAPI(api), {
 			http: new FakeHttpClient(),
 			shell,

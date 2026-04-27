@@ -19,11 +19,36 @@ describe("kroki-docker — status()", () => {
 			stderr: "",
 			exitCode: 0,
 		});
+		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
+			stdout: "yuzutech/kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.status();
 		expect(result.status).toBe("running");
 		expect(result.endpoint).toBe("http://localhost:8000");
+	});
+
+	it("reports error when the running container image is not the managed Kroki image", async () => {
+		const shell = makeShell();
+		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+			stdout: "true\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
+			stdout: "attacker/kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("absent");
+		expect(result.message).toBe("Container pi-fence-kroki image mismatch: expected yuzutech/kroki, got attacker/kroki.");
 	});
 
 	it("reports stopped when docker inspect returns false", async () => {
@@ -69,6 +94,11 @@ describe("kroki-docker — start()", () => {
 		const shell = makeShell();
 		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
 			stdout: "true\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
+			stdout: "yuzutech/kroki\n",
 			stderr: "",
 			exitCode: 0,
 		});

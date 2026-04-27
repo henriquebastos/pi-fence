@@ -72,14 +72,14 @@ export function createKrokiDockerSandboxController(
 export interface DockerSandboxComponentOptions {
 	id: string;
 	containerName: string;
-	expectedImage?: string;
+	expectedImage: string;
 }
 
 export interface DockerContainerSandboxOptions {
 	id: string;
 	kind: SandboxKind;
 	containerName: string;
-	expectedImage?: string;
+	expectedImage: string;
 	endpoint?: string;
 }
 
@@ -177,7 +177,7 @@ async function inspectDockerContainer(
 			return inspectFailureStatus(component, result.stderr);
 		}
 		const running = result.stdout.trim() === "true";
-		if (running && component.expectedImage !== undefined) {
+		if (running) {
 			const imageStatus = await inspectContainerImage(shell, component);
 			if (imageStatus) return imageStatus;
 		}

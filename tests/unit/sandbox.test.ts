@@ -8,19 +8,61 @@ import {
 } from "../../extensions/pi-fence/sandbox.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 
+const KROKI_IMAGE = "yuzutech/kroki";
+const MERMAID_IMAGE = "yuzutech/mermaid";
+
+function setRunning(shell: FakeShellRunner, containerName: string, image: string): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
+		stdout: "true\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", containerName], {
+		stdout: `${image}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
+function setStopped(shell: FakeShellRunner, containerName: string): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
+		stdout: "false\n",
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
+function setAbsent(shell: FakeShellRunner, containerName: string): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
+		stdout: "",
+		stderr: "No such object",
+		exitCode: 1,
+	});
+}
+
+function krokiContainerOptions() {
+	return {
+		id: "kroki",
+		kind: "service" as const,
+		containerName: "pi-fence-kroki",
+		expectedImage: KROKI_IMAGE,
+	};
+}
+
+function composeComponents() {
+	return [
+		{ id: "core", containerName: "kroki-core", expectedImage: KROKI_IMAGE },
+		{ id: "mermaid", containerName: "kroki-mermaid", expectedImage: MERMAID_IMAGE },
+	];
+}
+
 describe("sandbox controller contract — Docker container status", () => {
-	it("reports ready when docker inspect says the container is running", async () => {
+	it("reports ready when docker inspect says the expected container is running", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
 
 		const controller = createDockerContainerSandboxController(shell, {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
+			...krokiContainerOptions(),
 			endpoint: "http://localhost:8000",
 		});
 
@@ -36,23 +78,9 @@ describe("sandbox controller contract — Docker container status", () => {
 
 	it("reports error when a running container image does not match the expected sandbox image", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "attacker/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "pi-fence-kroki", "attacker/kroki");
 
-		const controller = createDockerContainerSandboxController(shell, {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
-			expectedImage: "yuzutech/kroki",
-		});
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
 		expect(await controller.status()).toEqual({
 			state: "error",
@@ -62,17 +90,9 @@ describe("sandbox controller contract — Docker container status", () => {
 
 	it("reports stopped when docker inspect says the container exists but is not running", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "false\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setStopped(shell, "pi-fence-kroki");
 
-		const controller = createDockerContainerSandboxController(shell, {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
-		});
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
 		expect(await controller.status()).toEqual({
 			state: "stopped",
@@ -82,17 +102,9 @@ describe("sandbox controller contract — Docker container status", () => {
 
 	it("reports absent when docker inspect cannot find the container", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "",
-			stderr: "No such object",
-			exitCode: 1,
-		});
+		setAbsent(shell, "pi-fence-kroki");
 
-		const controller = createDockerContainerSandboxController(shell, {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
-		});
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
 		expect(await controller.status()).toEqual({
 			state: "absent",
@@ -108,11 +120,7 @@ describe("sandbox controller contract — Docker container status", () => {
 			exitCode: 1,
 		});
 
-		const controller = createDockerContainerSandboxController(shell, {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
-		});
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
 		expect(await controller.status()).toEqual({
 			state: "error",
@@ -122,11 +130,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 	it("reports error when docker inspect cannot run", async () => {
 		const shell = new FakeShellRunner();
-		const controller = createDockerContainerSandboxController(shell, {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
-		});
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
 		expect(await controller.status()).toEqual({
 			state: "error",
@@ -135,11 +139,7 @@ describe("sandbox controller contract — Docker container status", () => {
 	});
 
 	it("reports unsupported lifecycle operations explicitly", async () => {
-		const controller = createDockerContainerSandboxController(new FakeShellRunner(), {
-			id: "kroki",
-			kind: "service",
-			containerName: "pi-fence-kroki",
-		});
+		const controller = createDockerContainerSandboxController(new FakeShellRunner(), krokiContainerOptions());
 
 		expect(await controller.start()).toEqual({
 			state: "error",
@@ -155,11 +155,7 @@ describe("sandbox controller contract — Docker container status", () => {
 describe("sandbox controller contract — Kroki Docker adapter", () => {
 	it("represents the existing Kroki Docker lifecycle behind a sandbox controller", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
 
 		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
 
@@ -190,25 +186,14 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 	it("reports ready with endpoint when all components are ready", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-core"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-mermaid"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "kroki-core", KROKI_IMAGE);
+		setRunning(shell, "kroki-mermaid", MERMAID_IMAGE);
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",
 			kind: "service",
 			endpoint: "http://localhost:8000",
-			components: [
-				{ id: "core", containerName: "kroki-core" },
-				{ id: "mermaid", containerName: "kroki-mermaid" },
-			],
+			components: composeComponents(),
 		});
 
 		expect(await controller.status()).toEqual({
@@ -224,25 +209,14 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 	it("reports partial when only some components are ready", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-core"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-mermaid"], {
-			stdout: "false\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "kroki-core", KROKI_IMAGE);
+		setStopped(shell, "kroki-mermaid");
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",
 			kind: "service",
 			endpoint: "http://localhost:8000",
-			components: [
-				{ id: "core", containerName: "kroki-core" },
-				{ id: "mermaid", containerName: "kroki-mermaid" },
-			],
+			components: composeComponents(),
 		});
 
 		expect(controller.runtime).toBe("docker-compose");
@@ -258,24 +232,13 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 	it("reports absent when all components are absent", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-core"], {
-			stdout: "",
-			stderr: "No such object",
-			exitCode: 1,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-mermaid"], {
-			stdout: "",
-			stderr: "No such object",
-			exitCode: 1,
-		});
+		setAbsent(shell, "kroki-core");
+		setAbsent(shell, "kroki-mermaid");
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",
 			kind: "service",
-			components: [
-				{ id: "core", containerName: "kroki-core" },
-				{ id: "mermaid", containerName: "kroki-mermaid" },
-			],
+			components: composeComponents(),
 		});
 
 		expect(await controller.status()).toEqual({
@@ -290,24 +253,13 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 	it("reports stopped when all components are stopped", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-core"], {
-			stdout: "false\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-mermaid"], {
-			stdout: "false\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setStopped(shell, "kroki-core");
+		setStopped(shell, "kroki-mermaid");
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",
 			kind: "service",
-			components: [
-				{ id: "core", containerName: "kroki-core" },
-				{ id: "mermaid", containerName: "kroki-mermaid" },
-			],
+			components: composeComponents(),
 		});
 
 		expect(await controller.status()).toEqual({
@@ -322,19 +274,12 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 	it("reports error when any component status is an error", async () => {
 		const shell = new FakeShellRunner();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "kroki-core"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "kroki-core", KROKI_IMAGE);
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",
 			kind: "service",
-			components: [
-				{ id: "core", containerName: "kroki-core" },
-				{ id: "mermaid", containerName: "kroki-mermaid" },
-			],
+			components: composeComponents(),
 		});
 
 		expect(await controller.status()).toEqual({
