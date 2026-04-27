@@ -475,6 +475,21 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		);
 	});
 
+	it("processor binding to __proto__ returns no processor instead of falling back", () => {
+		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
+
+		expectResolution(
+			resolveProcessor(
+				[krokiRemote],
+				availability,
+				"graphviz",
+				{ graphviz: { processor: "__proto__" } },
+			),
+			null,
+			[{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" }],
+		);
+	});
+
 	it("processor binding returns no processor when the processor id is unknown", () => {
 		// Typo in the config. Object bindings are constraints, not preferences.
 		const availability = new Map<string, Availability>([

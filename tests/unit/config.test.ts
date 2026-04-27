@@ -283,6 +283,23 @@ describe("config core", () => {
 		]);
 	});
 
+	it("validates bindings: keeps prototype-named processor ids as strings", () => {
+		const result = validatePiFenceConfig(
+			{
+				bindings: {
+					graphviz: { processor: "__proto__" },
+					mermaid: { processor: "constructor" },
+				},
+			},
+			"test",
+		);
+
+		expect(result.bindings).toEqual({
+			graphviz: { processor: "__proto__" },
+			mermaid: { processor: "constructor" },
+		});
+	});
+
 	it("validates bindings: accepts processor selector objects", () => {
 		const result = validatePiFenceConfig(
 			{ bindings: { graphviz: { processor: "kroki-remote" } } },

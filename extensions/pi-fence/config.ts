@@ -60,7 +60,7 @@ export const DEFAULT_CONFIG: PiFenceConfig = {
 
 export const EMPTY_CONFIG_LAYER: PiFenceConfig = { bindings: emptyBindings() };
 
-const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = {
+const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = Object.freeze({
 	color: "color-embedded",
 	"graphviz-local": "graphviz-host",
 	highlight: "highlight-embedded",
@@ -68,7 +68,7 @@ const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = {
 	"mermaid-local": "mermaid-host",
 	qr: "qr-embedded",
 	table: "table-embedded",
-};
+});
 
 /**
  * Shallow merge at the top level; inside `bindings` later configs win on the
@@ -339,8 +339,8 @@ function normalizeLegacyProcessorId(
 	path: string,
 	logger?: Logger,
 ): string {
+	if (!Object.hasOwn(LEGACY_PROCESSOR_ID_ALIASES, id)) return id;
 	const replacement = LEGACY_PROCESSOR_ID_ALIASES[id];
-	if (replacement === undefined) return id;
 	logger?.warn("config", `legacy processor id in ${label} config '${path}'`, {
 		from: id,
 		to: replacement,
