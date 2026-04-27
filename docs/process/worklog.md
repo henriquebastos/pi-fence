@@ -3095,3 +3095,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Trust boundary is declared by processor id/placement.** Endpoint hostnames do not change `kroki-remote` into a sandbox processor.
 
 **Carry-forward.** Clean up the Ready story spec plan/tests wording.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: Ready spec cleanup
+
+**What shipped.** The Ready S4 story plan now lists acceptance-oriented behavior groups instead of TDD micro-steps/commit columns, and its Tests section explicitly says the story uses `FakeShellRunner` and inline fake processors without adding a new fake class.
+
+**Implementation commits.**
+
+1. `ee06db9` — docs: clarify S4 ready spec
+
+**Test count.** Fast suite 723 (unchanged; docs-only cleanup).
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Ready specs stay reusable.** Execution details remain in beans and worklog entries, not in the Ready story plan.
+
+**Carry-forward.** Resolve the live-gate decision, then rerun inspection/completion checks.
