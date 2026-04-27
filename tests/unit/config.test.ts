@@ -46,9 +46,9 @@ async function loadConfig(opts: LoadConfigOptions = {}) {
 describe("config core", () => {
 	it("merges bindings left-to-right with later configs winning", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: { graphviz: { processor: "kroki-remote" }, mermaid: { processor: "one" } }, disabled: [] },
-			{ bindings: { mermaid: { processor: "two" } }, disabled: [] },
-			{ bindings: { plantuml: { processor: "three" } }, disabled: [] },
+			{ bindings: { graphviz: { processor: "kroki-remote" }, mermaid: { processor: "one" } } },
+			{ bindings: { mermaid: { processor: "two" } } },
+			{ bindings: { plantuml: { processor: "three" } } },
 		);
 
 		expect(merged.bindings).toEqual({
@@ -68,32 +68,22 @@ describe("config core", () => {
 		expect(logger.byLevel("warn")[0]?.message).toContain("not an object");
 	});
 
-	it("merges disabled: later layers add to lower-priority disabled ids", () => {
+	it("merges blocked policy: absent blocked key inherits from earlier config", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: {}, disabled: ["kroki-remote"] },
-			{ bindings: {}, disabled: ["graphviz-host"] },
-		);
-		expect(merged.disabled).toEqual(["kroki-remote", "graphviz-host"]);
-	});
-
-	it("merges disabled: absent disabled inherits from earlier config", () => {
-		const merged = mergePiFenceConfigs(
-			{ bindings: {}, disabled: ["kroki-remote"] },
+			{ bindings: {}, blocked: { tags: ["qr"], processors: ["kroki-remote"] } },
 			{ bindings: {} },
 		);
-		expect(merged.disabled).toEqual(["kroki-remote"]);
+
+		expect(merged.blocked).toEqual({ tags: ["qr"], processors: ["kroki-remote"] });
 	});
 
-	it("merges disabled: empty array cannot re-enable lower-priority disabled ids", () => {
+	it("merges blocked policy: explicit empty arrays replace lower-priority policy", () => {
 		const merged = mergePiFenceConfigs(
-			{ bindings: {}, disabled: ["kroki-remote"] },
-			{ bindings: {}, disabled: [] },
+			{ bindings: {}, blocked: { tags: ["qr"], processors: ["kroki-remote"] } },
+			{ bindings: {}, blocked: { tags: [], processors: [] } },
 		);
-		expect(merged.disabled).toEqual(["kroki-remote"]);
-	});
 
-	it("defaults disabled to undefined (absent = inherit)", () => {
-		expect(DEFAULT_CONFIG.disabled).toBeUndefined();
+		expect(merged.blocked).toEqual({ tags: [], processors: [] });
 	});
 
 	it("defaults processorPrecedence to embedded, host, sandbox, remote", () => {
@@ -103,6 +93,44 @@ describe("config core", () => {
 			"sandbox",
 			"remote",
 		]);
+	});
+
+	it("defaults blocked policy to empty tag and processor lists", () => {
+		expect(DEFAULT_CONFIG.blocked).toEqual({ tags: [], processors: [] });
+	});
+
+	it("validates blocked policy: accepts tag and processor string arrays", () => {
+		const result = validatePiFenceConfig(
+			{ blocked: { tags: ["qr", "dot"], processors: ["kroki-remote"] } },
+			"test",
+		);
+
+		expect(result.blocked).toEqual({ tags: ["qr", "dot"], processors: ["kroki-remote"] });
+	});
+
+	it("validates blocked policy: drops non-string entries with warns and fails closed", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ blocked: { tags: ["qr", 42], processors: ["kroki-remote", true] } },
+			"test",
+			logger,
+		);
+
+		expect(result.blocked).toEqual({ tags: ["qr"], processors: ["kroki-remote"] });
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"non-string entry in test blocked.tags",
+			"non-string entry in test blocked.processors",
+		]);
+	});
+
+	it("merges blocked policy: later layers replace lower-priority arrays", () => {
+		const merged = mergePiFenceConfigs(
+			{ bindings: {}, blocked: { tags: ["qr"], processors: ["kroki-remote"] } },
+			{ bindings: {}, blocked: { tags: ["dot"], processors: [] } },
+		);
+
+		expect(merged.blocked).toEqual({ tags: ["dot"], processors: [] });
 	});
 
 	it("merges processorPrecedence: later layers can only restrict lower-priority placements", () => {
@@ -146,15 +174,16 @@ describe("config core", () => {
 
 	it("validates privacy controls: ignores inherited fields", () => {
 		const inheritedKroki = Object.create({ endpoint: "https://evil.example", docker: { autoStart: true } });
+		const inheritedBlocked = Object.create({ tags: ["qr"], processors: ["kroki-remote"] });
 		const parsed = Object.create({
-			disabled: ["kroki-remote"],
+			blocked: inheritedBlocked,
 			processorPrecedence: ["remote"],
 			kroki: inheritedKroki,
 		});
 
 		const result = validatePiFenceConfig(parsed, "test");
 
-		expect(result.disabled).toBeUndefined();
+		expect(result.blocked).toBeUndefined();
 		expect(result.processorPrecedence).toBeUndefined();
 		expect(result.kroki).toBeUndefined();
 	});
@@ -217,60 +246,28 @@ describe("config core", () => {
 		expect(logger.byLevel("warn")).toHaveLength(1);
 	});
 
-	it("validates disabled: accepts array of strings", () => {
+	it("validates disabled: ignores legacy top-level disabled", () => {
+		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
 			{ disabled: ["kroki-remote", "graphviz-host"] },
 			"test",
+			logger,
 		);
-		expect(result.disabled).toEqual(["kroki-remote", "graphviz-host"]);
+
+		expect(result).toEqual({ bindings: {} });
+		expect(logger.byLevel("warn")).toEqual([]);
 	});
 
-	it("validates disabled: normalizes all known legacy processor ids to placement-aware ids", () => {
-		const logger = new FakeLogger();
-		const legacyIds = [
-			"kroki",
-			"graphviz-local",
-			"mermaid-local",
-			"table",
-			"highlight",
-			"qr",
-			"color",
-		];
-		const result = validatePiFenceConfig({ disabled: legacyIds }, "test", logger);
-
-		expect(result.disabled).toEqual([
-			"kroki-remote",
-			"graphviz-host",
-			"mermaid-host",
-			"table-embedded",
-			"highlight-embedded",
-			"qr-embedded",
-			"color-embedded",
-		]);
-		expect(logger.byLevel("warn")).toHaveLength(legacyIds.length);
-	});
-
-	it("validates disabled: drops non-string entries with a warn and fails closed", () => {
+	it("validates blocked policy: keeps processor ids literal without legacy normalization", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
-			{ disabled: ["kroki-remote", 42, true] },
+			{ blocked: { tags: [], processors: ["kroki", "graphviz-local"] } },
 			"test",
 			logger,
 		);
-		expect(result.disabled).toEqual(["kroki-remote"]);
-		expect(result.processorPrecedence).toEqual(["embedded"]);
-		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
-	});
 
-	it("validates disabled: string shorthand becomes a single disabled processor with a warn", () => {
-		const logger = new FakeLogger();
-		const result = validatePiFenceConfig(
-			{ disabled: "kroki" },
-			"test",
-			logger,
-		);
-		expect(result.disabled).toEqual(["kroki-remote"]);
-		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
+		expect(result.blocked).toEqual({ tags: [], processors: ["kroki", "graphviz-local"] });
+		expect(logger.byLevel("warn")).toEqual([]);
 	});
 
 	it("validates bindings: ignores inherited binding entries", () => {
@@ -924,16 +921,16 @@ describe("loadPiFenceConfig — malformed files", () => {
 		expect(result.config.processorPrecedence).toEqual([]);
 	});
 
-	it("does not let project config re-enable globally disabled processors or placements", async () => {
+	it("lets project blocked policy replace global blocked policy while placement stays restrictive", async () => {
 		const globalDir = makeTempDir();
 		const projectDir = makeTempDir();
 		const globalPath = writeConfig(
 			globalDir,
-			JSON.stringify({ disabled: ["kroki-remote"], processorPrecedence: ["host"] }),
+			JSON.stringify({ blocked: { tags: [], processors: ["kroki-remote"] }, processorPrecedence: ["host"] }),
 		);
 		const projectPath = writeConfig(
 			projectDir,
-			JSON.stringify({ disabled: [], processorPrecedence: ["remote"] }),
+			JSON.stringify({ blocked: { tags: [], processors: [] }, processorPrecedence: ["remote"] }),
 		);
 
 		const config = await loadConfig({
@@ -941,7 +938,7 @@ describe("loadPiFenceConfig — malformed files", () => {
 			projectConfigPath: projectPath,
 		});
 
-		expect(config.disabled).toEqual(["kroki-remote"]);
+		expect(config.blocked).toEqual({ tags: [], processors: [] });
 		expect(config.processorPrecedence).toEqual([]);
 	});
 

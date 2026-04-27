@@ -71,7 +71,7 @@ export async function createPiFenceExtension(
 		config.kroki?.endpoint,
 	);
 	const bindings = config.bindings;
-	const disabled: ReadonlySet<string> = new Set(config.disabled ?? []);
+	const disabled: ReadonlySet<string> = new Set(config.blocked?.processors ?? []);
 	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
 	const probedProcessors = filterProcessorsForAvailabilityProbe(
 		processors,

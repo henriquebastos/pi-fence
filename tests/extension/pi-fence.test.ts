@@ -871,19 +871,19 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 });
 
-describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
+describe("pi-fence extension — blocked processors", () => {
 	afterEach(() => {
 		cleanupTempDirs();
 	});
 
 	it(
-		"disabled kroki — mermaid block produces no pi-fence:output",
+		"blocked kroki — mermaid block produces no pi-fence:output",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ disabled: ["kroki-remote"] }),
+				JSON.stringify({ blocked: { tags: [], processors: ["kroki-remote"] } }),
 			);
 
 			const http = new FakeHttpClient();
@@ -894,7 +894,7 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 				{ home, cwd: makeTempDir() },
 			);
 
-			// Kroki is the only processor for mermaid. Disabled → no output.
+			// Kroki is the only processor for mermaid. Blocked → no output.
 			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
 			expect(outputs).toHaveLength(0);
 			// No HTTP — kroki was never called.
@@ -904,13 +904,13 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 	);
 
 	it(
-		"legacy disabled kroki id still suppresses kroki-remote at runtime",
+		"legacy top-level disabled no longer suppresses kroki-remote at runtime",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ disabled: ["kroki"] }),
+				JSON.stringify({ disabled: ["kroki-remote"] }),
 			);
 
 			const http = new FakeHttpClient();
@@ -921,20 +921,20 @@ describe("pi-fence extension — disabled processors (CV1.E1.S1)", () => {
 				{ home, cwd: makeTempDir() },
 			);
 
-			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
-			expect(http.requests).toHaveLength(0);
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(1);
+			expect(http.requests).toHaveLength(1);
 		},
 		20_000,
 	);
 
 	it(
-		"/fence list shows disabled kroki as [disabled]",
+		"/fence list shows blocked kroki as [disabled]",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ disabled: ["kroki-remote"] }),
+				JSON.stringify({ blocked: { tags: [], processors: ["kroki-remote"] } }),
 			);
 
 			const http = new FakeHttpClient();
@@ -993,13 +993,13 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 	);
 
 	it(
-		"reports issues when kroki is disabled",
+		"reports issues when kroki is blocked",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ disabled: ["kroki-remote"] }),
+				JSON.stringify({ blocked: { tags: [], processors: ["kroki-remote"] } }),
 			);
 
 			const http = new FakeHttpClient();

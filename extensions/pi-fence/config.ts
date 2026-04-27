@@ -15,20 +15,19 @@ export type TagBinding =
 	| { processor: string }
 	| { placement: ProcessorPlacement };
 
+export interface BlockPolicy {
+	tags: string[];
+	processors: string[];
+}
+
 export interface PiFenceConfig {
 	/**
 	 * Map from canonical or alias tag name to a selector constraint.
 	 * Bindings narrow eligible processors; they do not bypass placement policy.
 	 */
 	bindings: Record<string, TagBinding>;
-	/**
-	 * Processor ids to disable. A disabled processor is skipped during
-	 * resolution — its tags fall through to the next available processor.
-	 * `undefined` means "not specified in this config layer". An explicit
-	 * `[]` disables nothing in that layer but cannot re-enable ids from
-	 * lower layers; higher-priority layers only add disabled ids.
-	 */
-	disabled?: string[];
+	/** Tags and processor ids that must never render. */
+	blocked?: BlockPolicy;
 	/**
 	 * Placement allowlist and selection order. Omitted in a layer means inherit;
 	 * an explicit list can only reorder or remove lower-priority placements.
@@ -55,6 +54,7 @@ export const DEFAULT_PROCESSOR_PRECEDENCE: readonly ProcessorPlacement[] = [
 
 export const DEFAULT_CONFIG: PiFenceConfig = {
 	bindings: emptyBindings(),
+	blocked: { tags: [], processors: [] },
 	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
 };
 
@@ -79,17 +79,15 @@ export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
 ): PiFenceConfig {
 	const bindings = emptyBindings();
-	const disabled = new Set<string>();
-	let sawDisabled = false;
+	let blocked: BlockPolicy | undefined;
 	let processorPrecedence: ProcessorPlacement[] | undefined;
 	let kroki: PiFenceConfig["kroki"];
 	for (const config of configs) {
 		for (const [tag, binding] of Object.entries(config.bindings)) {
 			bindings[tag] = binding;
 		}
-		if (config.disabled !== undefined) {
-			sawDisabled = true;
-			for (const id of config.disabled) disabled.add(id);
+		if (config.blocked !== undefined) {
+			blocked = copyBlocked(config.blocked);
 		}
 		if (config.processorPrecedence !== undefined) {
 			processorPrecedence = mergeProcessorPrecedence(
@@ -102,7 +100,7 @@ export function mergePiFenceConfigs(
 		}
 	}
 	const out: PiFenceConfig = { bindings };
-	if (sawDisabled) out.disabled = [...disabled];
+	if (blocked !== undefined) out.blocked = blocked;
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
@@ -125,13 +123,10 @@ export function validatePiFenceConfig(
 		return { bindings: emptyBindings(), processorPrecedence: ["embedded"] };
 	}
 
-	const rawDisabled = ownField(parsed, "disabled");
+	const rawBlocked = ownField(parsed, "blocked");
 	const rawPrecedence = ownField(parsed, "processorPrecedence");
 	const rawKroki = ownField(parsed, "kroki");
 	const failClosed = hasInvalidPrivacyControl(parsed);
-	const disabled = rawDisabled === undefined
-		? undefined
-		: validateDisabled(rawDisabled, label, logger);
 	const processorPrecedence = validateProcessorPrecedenceField(
 		rawPrecedence,
 		failClosed,
@@ -141,8 +136,11 @@ export function validatePiFenceConfig(
 	const kroki = rawKroki === undefined
 		? undefined
 		: validateKroki(rawKroki, label, logger);
+	const blocked = rawBlocked === undefined
+		? undefined
+		: validateBlocked(rawBlocked, label, logger);
 	const out: PiFenceConfig = { bindings: validateBindings(ownField(parsed, "bindings"), label, logger) };
-	if (disabled !== undefined) out.disabled = disabled;
+	if (blocked !== undefined) out.blocked = blocked;
 	if (processorPrecedence !== undefined) out.processorPrecedence = processorPrecedence;
 	if (kroki !== undefined) out.kroki = kroki;
 	return out;
@@ -150,6 +148,13 @@ export function validatePiFenceConfig(
 
 function emptyBindings(): Record<string, TagBinding> {
 	return Object.create(null) as Record<string, TagBinding>;
+}
+
+function copyBlocked(blocked: BlockPolicy): BlockPolicy {
+	return {
+		tags: [...blocked.tags],
+		processors: [...blocked.processors],
+	};
 }
 
 function mergeKrokiConfig(
@@ -187,13 +192,20 @@ function validateProcessorPrecedenceField(
 }
 
 function hasInvalidPrivacyControl(parsed: Record<string, unknown>): boolean {
-	return hasInvalidDisabled(ownField(parsed, "disabled")) || hasInvalidKrokiEndpoint(ownField(parsed, "kroki"));
+	return hasInvalidBlocked(ownField(parsed, "blocked")) ||
+		hasInvalidKrokiEndpoint(ownField(parsed, "kroki"));
 }
 
-function hasInvalidDisabled(rawDisabled: unknown): boolean {
-	if (rawDisabled === undefined) return false;
-	if (typeof rawDisabled === "string") return false;
-	return !Array.isArray(rawDisabled) || rawDisabled.some((item) => typeof item !== "string");
+function hasInvalidBlocked(rawBlocked: unknown): boolean {
+	if (rawBlocked === undefined) return false;
+	if (!isRecordLike(rawBlocked)) return true;
+	return hasInvalidStringArray(ownField(rawBlocked, "tags")) ||
+		hasInvalidStringArray(ownField(rawBlocked, "processors"));
+}
+
+function hasInvalidStringArray(rawValue: unknown): boolean {
+	if (rawValue === undefined) return false;
+	return !Array.isArray(rawValue) || rawValue.some((item) => typeof item !== "string");
 }
 
 function hasInvalidKrokiEndpoint(rawKroki: unknown): boolean {
@@ -278,6 +290,49 @@ function warnInvalidBindingSelector(
 	});
 }
 
+function validateBlocked(
+	rawBlocked: unknown,
+	label: string,
+	logger?: Logger,
+): BlockPolicy | undefined {
+	if (!isRecordLike(rawBlocked)) {
+		logger?.warn("config", `${label} config 'blocked' is not an object`, {
+			got: Array.isArray(rawBlocked) ? "array" : typeof rawBlocked,
+		});
+		return undefined;
+	}
+	return {
+		tags: validateStringArray(ownField(rawBlocked, "tags"), label, "blocked.tags", logger),
+		processors: validateStringArray(ownField(rawBlocked, "processors"), label, "blocked.processors", logger),
+	};
+}
+
+function validateStringArray(
+	rawValue: unknown,
+	label: string,
+	path: string,
+	logger?: Logger,
+): string[] {
+	if (rawValue === undefined) return [];
+	if (!Array.isArray(rawValue)) {
+		logger?.warn("config", `${label} config '${path}' is not an array`, {
+			got: typeof rawValue,
+		});
+		return [];
+	}
+	const out: string[] = [];
+	for (const item of rawValue) {
+		if (typeof item === "string") {
+			out.push(item);
+		} else {
+			logger?.warn("config", `non-string entry in ${label} ${path}`, {
+				got: typeof item,
+			});
+		}
+	}
+	return out;
+}
+
 function validateKroki(
 	rawKroki: unknown,
 	label: string,
@@ -342,35 +397,6 @@ function validateKrokiDockerAutoStart(
 		got: typeof rawAutoStart,
 	});
 	return undefined;
-}
-
-function validateDisabled(
-	rawDisabled: unknown,
-	label: string,
-	logger?: Logger,
-): string[] {
-	if (rawDisabled === undefined) {
-		return [];
-	}
-	if (!Array.isArray(rawDisabled)) {
-		logger?.warn("config", `${label} config 'disabled' is not an array`, {
-			got: typeof rawDisabled,
-		});
-		return typeof rawDisabled === "string"
-			? [normalizeLegacyProcessorId(rawDisabled, label, "disabled", logger)]
-			: [];
-	}
-	const out: string[] = [];
-	for (const item of rawDisabled) {
-		if (typeof item === "string") {
-			out.push(normalizeLegacyProcessorId(item, label, "disabled", logger));
-		} else {
-			logger?.warn("config", `non-string entry in ${label} disabled`, {
-				got: typeof item,
-			});
-		}
-	}
-	return out;
 }
 
 function normalizeLegacyProcessorId(
