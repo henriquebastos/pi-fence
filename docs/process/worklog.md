@@ -2344,3 +2344,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Processor eligibility has one classifier.** Runtime selection and binding diagnostics now share the processor-binding issue reason helper for disabled, placement-disabled, unavailable, and non-claiming processors.
 
 **Carry-forward.** Rerun final inspection and `pnpm run inspect`; if clean, close CV9.E1.S2.
+
+---
+
+### 2026-04-27 — CV9.E1.S2 inspection fix: legacy alias hardening
+
+**What shipped.** Legacy processor-id alias normalization now uses own-property lookup so processor ids such as `__proto__` and `constructor` remain ordinary strings, not inherited object/function values. Bindings to those ids stay valid malformed selectors and fail closed as unknown processors instead of disappearing and falling through to placement policy.
+
+**Implementation commits.**
+
+1. `c6445b2` — fix: harden legacy processor aliases
+
+**Test count.** 674 fast-suite (was 672; +2 hardening regressions for prototype-named processor ids and fail-closed `__proto__` bindings).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts -t 'prototype-named'` — passed.
+2. `pnpm vitest run tests/unit/resolve.test.ts -t '__proto__ returns'` — passed.
+3. `pnpm run lint:types` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Legacy aliases are exact own keys.** Backcompat aliases still work, but inherited object keys are never treated as aliases.
+2. **Bad ids remain binding constraints.** Unknown prototype-named ids are preserved through config validation so the resolver can fail closed for the bound tag.
+
+**Carry-forward.** Continue final placement classifier and wording cleanup, then rerun inspection.
