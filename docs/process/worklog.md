@@ -3023,3 +3023,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Endpoint shape does not imply sandbox trust.** A remote processor remains remote even if a future endpoint is localhost.
 
 **Carry-forward.** Run story inspection and completion checks for S4.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: sandbox config fail-closed defaults
+
+**What shipped.** Named sandbox defaults now keep `autoStart` off, sandbox config layers replace lower-priority sandbox maps, and invalid file-backed sandbox config clears active sandbox controllers while narrowing placement to embedded-only.
+
+**Implementation commits.**
+
+1. `d89d376` — fix: fail closed sandbox config
+
+**Test count.** Fast suite 713 → 714 (+1).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Sandbox startup remains opt-in.** Config may name controllers by default, but no controller should auto-start unless the user explicitly asks.
+2. **Sandbox config is fail-closed.** An invalid sandbox layer replaces defaults with an empty sandbox map and embedded-only placement.
+
+**Carry-forward.** Fix sandbox controller status hardening findings next.
