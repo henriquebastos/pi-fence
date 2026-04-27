@@ -7,16 +7,17 @@
  *     `FenceProcessor[]` plus a wire-time availability map into
  *     `ProcessorListing[]`. Status is `"registered"` when availability
  *     is ok and policy allows the processor, `"blocked"` when a processor
- *     id is blocked, `"disabled"` when placement policy disables it, and
- *     `"unavailable"` otherwise. On the unavailable branch the processor's `reason` + optional `installHint`
+ *     id or all advertised tag families are blocked, `"disabled"` when
+ *     placement policy disables it, and `"unavailable"` otherwise. On the
+ *     unavailable branch the processor's `reason` + optional `installHint`
  *     are carried on the listing so the formatter can surface them.
  *
- *   - `formatProcessorLines(listings, bindings?)` turns listings +
- *     optional binding-resolution rows (from `resolveBindings` in
- *     `resolve.ts`) into an array of readable strings. Registered
- *     processors render as one line; unavailable processors render as
- *     two (header + indented reason). After the processor block, two
- *     optional sections render:
+ *   - `formatProcessorLines(listings, bindings?, blockedTags?)` turns
+ *     listings + optional binding-resolution rows (from `resolveBindings`
+ *     in `resolve.ts`) + optional blocked tags into an array of readable
+ *     strings. Registered processors render as one line; unavailable
+ *     processors render as two (header + indented reason). After the
+ *     processor block, optional sections render:
  *
  *         Bindings
  *           <tag> → <processorId>
@@ -31,7 +32,10 @@
  *           <tag> → placement:<placement> (no matching processor in placement)
  *           <tag> → placement:<placement> (ambiguous: <processorId>, ...)
  *
- *     Both sections are hidden when their bucket is empty.
+ *         Blocked tags
+ *           <tag>
+ *
+ *     Each section is hidden when its bucket is empty.
  *
  * No column alignment across processors' status brackets — rows stay
  * per-processor-self-contained, matching S3's formatting decision. If
