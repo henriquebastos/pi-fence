@@ -1085,6 +1085,40 @@ describe("pi-fence extension — blocked tags", () => {
 	);
 
 	it(
+		"/fence list marks fully tag-blocked processors as blocked",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: GRAPHVIZ_LOCAL_CANONICAL_TAGS, processors: [] },
+					processorPrecedence: ["host"],
+				}),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 }),
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find(
+				(m) => m.customType === "pi-fence:list",
+			)?.details as {
+				listings: Array<{ id: string; status: string }>;
+				lines: string[];
+			};
+			const graphvizListing = details.listings.find((l) => l.id === "graphviz-host");
+			expect(graphvizListing?.status).toBe("blocked");
+			expect(details.lines.some((line) => line.startsWith("graphviz-host [blocked]"))).toBe(true);
+			expect(details.lines.some((line) => line.includes("graphviz-host is unavailable"))).toBe(false);
+		},
+		20_000,
+	);
+
+	it(
 		"/fence list surfaces blocked processors, tags, and binding issues",
 		async () => {
 			const home = makeTempDir();
@@ -1147,6 +1181,35 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			expect(
 				details.lines.some((l) => l.includes("graphviz-host is unavailable")),
 			).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"does not report fully tag-blocked processors as unavailable",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: GRAPHVIZ_LOCAL_CANONICAL_TAGS, processors: [] },
+					processorPrecedence: ["host"],
+				}),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence doctor",
+				new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 }),
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find(
+				(m) => m.customType === "pi-fence:list",
+			)?.details as { lines: string[] };
+			expect(details.lines.some((line) => line.startsWith("graphviz-host [blocked]"))).toBe(true);
+			expect(details.lines.some((line) => line.includes("graphviz-host is unavailable"))).toBe(false);
 		},
 		20_000,
 	);

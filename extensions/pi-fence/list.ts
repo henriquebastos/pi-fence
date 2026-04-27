@@ -44,7 +44,7 @@
  */
 
 import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
-import type { BindingResolution } from "./resolve.ts";
+import { isTagFamilyBlocked, type BindingResolution } from "./resolve.ts";
 
 export type ProcessorStatus = "registered" | "unavailable" | "disabled" | "blocked";
 
@@ -75,6 +75,7 @@ export interface ProcessorListing {
  */
 export interface ListProcessorsOptions {
 	blockedProcessors?: ReadonlySet<string>;
+	blockedTags?: ReadonlySet<string>;
 	/** Per-processor endpoint overrides to display in the listing. */
 	endpoints?: Readonly<Record<string, string>>;
 	/** Placement allowlist from config. Omitted placements render as disabled. */
@@ -86,12 +87,15 @@ export function listProcessors(
 	availability: ReadonlyMap<string, Availability>,
 	opts?: ListProcessorsOptions,
 ): ProcessorListing[] {
-	const { blockedProcessors, endpoints, processorPrecedence } = opts ?? {};
+	const { blockedProcessors, blockedTags, endpoints, processorPrecedence } = opts ?? {};
 	const allowedPlacements = processorPrecedence ? new Set(processorPrecedence) : undefined;
 
 	return processors.map((processor) => {
 		const endpoint = endpoints?.[processor.id];
 		if (blockedProcessors?.has(processor.id)) {
+			return buildPolicyListing(processor, "blocked", endpoint);
+		}
+		if (isProcessorFullyTagBlocked(processor, processors, blockedTags)) {
 			return buildPolicyListing(processor, "blocked", endpoint);
 		}
 		if (allowedPlacements !== undefined && !allowedPlacements.has(processor.placement)) {
@@ -141,6 +145,16 @@ export function formatProcessorLines(
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
+
+function isProcessorFullyTagBlocked(
+	processor: FenceProcessor,
+	processors: readonly FenceProcessor[],
+	blockedTags: ReadonlySet<string> | undefined,
+): boolean {
+	return blockedTags !== undefined &&
+		processor.tags.length > 0 &&
+		processor.tags.every((tag) => isTagFamilyBlocked(processors, tag, blockedTags));
+}
 
 function buildPolicyListing(
 	processor: FenceProcessor,

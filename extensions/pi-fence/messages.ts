@@ -44,7 +44,7 @@ export function sendPiFenceListMessage(
 	const listings: ProcessorListing[] = listProcessors(
 		processors,
 		availability,
-		{ blockedProcessors, endpoints, processorPrecedence },
+		{ blockedProcessors, blockedTags, endpoints, processorPrecedence },
 	);
 	const lines = formatProcessorLines(listings, bindingRows, [...(blockedTags ?? [])]);
 	const details: PiFenceListDetails & {
