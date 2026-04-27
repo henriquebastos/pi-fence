@@ -2,6 +2,7 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
+import type { TagBinding } from "./config.ts";
 import type { Logger } from "./io/logger.ts";
 import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
@@ -18,7 +19,7 @@ interface RegisterAgentEndHandlerOptions {
 	logger: Logger;
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
-	bindings: Readonly<Record<string, string>>;
+	bindings: Readonly<Record<string, TagBinding>>;
 	disabled: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	supportedTags: string[] | (() => string[]);
@@ -82,7 +83,7 @@ interface RenderBlockOptions {
 	logger: Logger;
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
-	bindings: Readonly<Record<string, string>>;
+	bindings: Readonly<Record<string, TagBinding>>;
 	disabled: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	metrics?: MetricsCollector;

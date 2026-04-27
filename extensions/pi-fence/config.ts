@@ -11,13 +11,16 @@ import {
 	type ProcessorPlacement,
 } from "./processor.ts";
 
+export type TagBinding =
+	| { processor: string }
+	| { placement: ProcessorPlacement };
+
 export interface PiFenceConfig {
 	/**
-	 * Map from canonical or alias tag name to processor id. Takes
-	 * precedence over placement-policy resolution when the bound processor
-	 * is registered, available, enabled, allowed, and claims the tag.
+	 * Map from canonical or alias tag name to a selector constraint.
+	 * Bindings narrow eligible processors; they do not bypass placement policy.
 	 */
-	bindings: Record<string, string>;
+	bindings: Record<string, TagBinding>;
 	/**
 	 * Processor ids to disable. A disabled processor is skipped during
 	 * resolution — its tags fall through to the next available processor.
@@ -75,7 +78,7 @@ const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = {
 export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
 ): PiFenceConfig {
-	const bindings: Record<string, string> = {};
+	const bindings: Record<string, TagBinding> = {};
 	const disabled = new Set<string>();
 	let sawDisabled = false;
 	let processorPrecedence: ProcessorPlacement[] | undefined;
@@ -194,8 +197,8 @@ function validateBindings(
 	rawBindings: unknown,
 	label: string,
 	logger?: Logger,
-): Record<string, string> {
-	const bindings: Record<string, string> = {};
+): Record<string, TagBinding> {
+	const bindings: Record<string, TagBinding> = {};
 	if (rawBindings === undefined) {
 		return bindings;
 	}
@@ -207,13 +210,24 @@ function validateBindings(
 	}
 
 	for (const [key, value] of Object.entries(rawBindings)) {
-		if (typeof value === "string") {
-			bindings[key] = normalizeLegacyProcessorId(value, label, `bindings.${key}`, logger);
+		if (isRecordLike(value) && typeof value.processor === "string" && value.placement === undefined) {
+			bindings[key] = {
+				processor: normalizeLegacyProcessorId(
+					value.processor,
+					label,
+					`bindings.${key}.processor`,
+					logger,
+				),
+			};
 			continue;
 		}
-		logger?.warn("config", `non-string value in ${label} bindings`, {
+		if (isRecordLike(value) && value.processor === undefined && isProcessorPlacement(value.placement)) {
+			bindings[key] = { placement: value.placement };
+			continue;
+		}
+		logger?.warn("config", `invalid binding selector in ${label} bindings`, {
 			key,
-			got: typeof value,
+			got: Array.isArray(value) ? "array" : typeof value,
 		});
 	}
 	return bindings;

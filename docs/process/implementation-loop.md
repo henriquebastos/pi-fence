@@ -99,6 +99,12 @@ Input: one ready, unclaimed bean under the current epic.
 
 Goal: close the bean with a verified commit.
 
+Before editing:
+
+1. State the current **RED target** in chat or progress notes.
+2. If the next edit would add more than one failing behavior test, stop and split the edit.
+3. If a bean or story-plan row lists multiple behaviors, execute only the first unimplemented behavior, then return to this checklist after green/refactor.
+
 Loop:
 
 1. Pick a ready unclaimed bean.
@@ -108,13 +114,14 @@ Loop:
 5. Run the targeted command and confirm the test fails for the expected reason.
 6. Implement the simplest solution that makes the test pass.
 7. Run the targeted command and confirm green.
-8. Evaluate the result:
+8. Do not add the next behavior test until the current test is green.
+9. Evaluate the result:
    - if the code is not yet clear, clean, easy to understand, or easy to change, refactor while green;
    - otherwise continue with the next behavior needed by this bean.
-9. Repeat red → green → refactor until the bean is done.
-10. Run the bean’s verification command(s).
-11. Commit the completed bean.
-12. Close the bean with the commit hash and verification summary.
+10. Repeat red → green → refactor until the bean is done.
+11. Run the bean’s verification command(s).
+12. Commit the completed bean.
+13. Close the bean with the commit hash and verification summary.
 
 Refactor rule:
 

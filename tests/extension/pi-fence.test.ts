@@ -685,7 +685,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					bindings: { dot: "kroki-remote" },
+					bindings: { dot: { processor: "kroki-remote" } },
 					processorPrecedence: ["host"],
 				}),
 			);
@@ -1134,7 +1134,12 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			// shows both exactly for this reason).
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "kroki-remote", dot: "kroki-remote" } }),
+				JSON.stringify({
+					bindings: {
+						graphviz: { processor: "kroki-remote" },
+						dot: { processor: "kroki-remote" },
+					},
+				}),
 			);
 
 			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
@@ -1187,14 +1192,14 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "kroki-remote" } }),
+				JSON.stringify({ bindings: { graphviz: { processor: "kroki-remote" } } }),
 			);
 
 			const cwd = makeTempDir();
 			mkdirSync(join(cwd, ".pi"), { recursive: true });
 			writeFileSync(
 				join(cwd, ".pi", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "graphviz-host" } }),
+				JSON.stringify({ bindings: { graphviz: { processor: "graphviz-host" } } }),
 			);
 
 			const http = new FakeHttpClient(); // no Kroki response needed; project says local wins
@@ -1241,7 +1246,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { dot: "nonexistent" } }),
+				JSON.stringify({ bindings: { dot: { processor: "nonexistent" } } }),
 			);
 
 			const http = new FakeHttpClient();
@@ -1287,7 +1292,7 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: "graphviz-host" } }),
+				JSON.stringify({ bindings: { graphviz: { processor: "graphviz-host" } } }),
 			);
 
 			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
@@ -1332,8 +1337,8 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
 					bindings: {
-						mermaid: "kroki-remote",
-						graphviz: "nonexistent",
+						mermaid: { processor: "kroki-remote" },
+						graphviz: { processor: "nonexistent" },
 					},
 				}),
 			);

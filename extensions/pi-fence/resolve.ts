@@ -21,7 +21,7 @@
  * allowed placement order, while bindings remain tag-scoped preferences.
  */
 
-import { DEFAULT_PROCESSOR_PRECEDENCE } from "./config.ts";
+import { DEFAULT_PROCESSOR_PRECEDENCE, type TagBinding } from "./config.ts";
 import type {
 	Availability,
 	FenceProcessor,
@@ -105,14 +105,14 @@ export function resolveProcessor(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
-	bindings?: Readonly<Record<string, string>>,
+	bindings?: Readonly<Record<string, TagBinding>>,
 	disabled?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): ResolveProcessorResult {
 	const context: ResolveContext = {
 		availability,
 		allowedPlacements: new Set(processorPrecedence),
-		boundId: bindings?.[tag],
+		boundId: processorBindingId(bindings?.[tag]),
 		disabled,
 		placementRank: buildPlacementRank(processorPrecedence),
 		tag,
@@ -271,6 +271,10 @@ function claimsTag(processor: FenceProcessor, tag: string): boolean {
 	return processor.tags.includes(tag) || processor.aliases[tag] !== undefined;
 }
 
+function processorBindingId(binding: TagBinding | undefined): string | undefined {
+	return binding && "processor" in binding ? binding.processor : undefined;
+}
+
 /**
  * Surface per-binding resolution state for `/fence list`. Returns one
  * row per entry in `bindings`, preserving iteration order. Each row
@@ -298,13 +302,15 @@ export type BindingResolution =
 export function resolveBindings(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
-	bindings: Readonly<Record<string, string>>,
+	bindings: Readonly<Record<string, TagBinding>>,
 	disabled?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): BindingResolution[] {
 	const out: BindingResolution[] = [];
 	const allowedPlacements = new Set(processorPrecedence);
-	for (const [tag, processorId] of Object.entries(bindings)) {
+	for (const [tag, binding] of Object.entries(bindings)) {
+		const processorId = processorBindingId(binding);
+		if (processorId === undefined) continue;
 		const processor = processors.find((p) => p.id === processorId);
 		if (!processor) {
 			out.push({

@@ -70,7 +70,7 @@ export async function createPiFenceExtension(
 		themeState,
 		config.kroki?.endpoint,
 	);
-	const bindings: Readonly<Record<string, string>> = config.bindings;
+	const bindings = config.bindings;
 	const disabled: ReadonlySet<string> = new Set(config.disabled ?? []);
 	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
 	const probedProcessors = filterProcessorsForAvailabilityProbe(

@@ -305,7 +305,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { graphviz: "kroki-remote" };
+		const bindings = { graphviz: { processor: "kroki-remote" } };
 
 		expectResolution(
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
@@ -322,7 +322,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { graphviz: "kroki-remote" };
+		const bindings = { graphviz: { processor: "kroki-remote" } };
 
 		expectResolution(
 			resolveProcessor(
@@ -349,7 +349,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["graphviz-host", { ok: false, reason: "dot not found" }],
 			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { graphviz: "graphviz-host" };
+		const bindings = { graphviz: { processor: "graphviz-host" } };
 
 		expectResolution(
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
@@ -367,7 +367,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { graphviz: "nonexistent-typo" };
+		const bindings = { graphviz: { processor: "nonexistent-typo" } };
 
 		expectResolution(
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
@@ -388,7 +388,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { dot: "kroki-remote" };
+		const bindings = { dot: { processor: "kroki-remote" } };
 
 		expectResolution(resolveProcessor([local, krokiRemote], availability, "dot", bindings), "kroki-remote", [
 			{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
@@ -401,7 +401,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
 		]);
-		const bindings = { unknown: "kroki-remote" };
+		const bindings = { unknown: { processor: "kroki-remote" } };
 
 		expectResolution(
 			resolveProcessor([local, krokiRemote], availability, "unknown", bindings),
@@ -450,7 +450,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			["kroki-remote", { ok: true }],
 		]);
 		const solo = makeFakeProcessor({ id: "kroki-remote", tags: ["mermaid"] });
-		const bindings = { mermaid: "nonexistent" };
+		const bindings = { mermaid: { processor: "nonexistent" } };
 
 		// Bound to unknown → fall through. Capability sees Kroki claims
 		// mermaid and is available → returns Kroki.
@@ -460,7 +460,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 
 		// Now bind mermaid to kroki-remote and ask for graphviz — no claimer.
 		expectResolution(
-			resolveProcessor([solo], availability, "graphviz", { mermaid: "kroki-remote" }),
+			resolveProcessor([solo], availability, "graphviz", { mermaid: { processor: "kroki-remote" } }),
 			null,
 			[{ id: "kroki-remote", outcome: "skipped-no-claim" }],
 		);
@@ -506,7 +506,7 @@ describe("resolveProcessor — disabled set", () => {
 				[local, krokiRemote],
 				bothAvailable,
 				"graphviz",
-				{ graphviz: "graphviz-host" },
+				{ graphviz: { processor: "graphviz-host" } },
 				new Set(["graphviz-host"]),
 			),
 			"kroki-remote",
@@ -570,7 +570,7 @@ describe("resolveBindings", () => {
 		]);
 
 		const rows = resolveBindings([local, krokiRemote], availability, {
-			graphviz: "kroki-remote",
+			graphviz: { processor: "kroki-remote" },
 		});
 
 		expect(rows).toEqual([
@@ -582,7 +582,7 @@ describe("resolveBindings", () => {
 		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
 
 		const rows = resolveBindings([krokiRemote], availability, {
-			graphviz: "nonexistent",
+			graphviz: { processor: "nonexistent" },
 		});
 
 		expect(rows).toEqual([
@@ -604,7 +604,7 @@ describe("resolveBindings", () => {
 		const rows = resolveBindings(
 			[local, krokiRemote],
 			availability,
-			{ graphviz: "graphviz-host" },
+			{ graphviz: { processor: "graphviz-host" } },
 			new Set(["graphviz-host"]),
 		);
 
@@ -625,7 +625,7 @@ describe("resolveBindings", () => {
 		]);
 
 		const rows = resolveBindings([local, krokiRemote], availability, {
-			graphviz: "graphviz-host",
+			graphviz: { processor: "graphviz-host" },
 		});
 
 		expect(rows).toEqual([
@@ -647,7 +647,7 @@ describe("resolveBindings", () => {
 		const rows = resolveBindings(
 			[local, krokiRemote],
 			availability,
-			{ graphviz: "kroki-remote" },
+			{ graphviz: { processor: "kroki-remote" } },
 			undefined,
 			["host"],
 		);
@@ -669,7 +669,7 @@ describe("resolveBindings", () => {
 		]);
 
 		const rows = resolveBindings([local, krokiRemote], availability, {
-			csv: "kroki-remote",
+			csv: { processor: "kroki-remote" },
 		});
 
 		expect(rows).toEqual([
@@ -689,9 +689,9 @@ describe("resolveBindings", () => {
 		]);
 
 		const rows = resolveBindings([local, krokiRemote], availability, {
-			mermaid: "kroki-remote",
-			graphviz: "kroki-remote",
-			dot: "kroki-remote",
+			mermaid: { processor: "kroki-remote" },
+			graphviz: { processor: "kroki-remote" },
+			dot: { processor: "kroki-remote" },
 		});
 
 		expect(rows.map((r) => r.tag)).toEqual(["mermaid", "graphviz", "dot"]);
@@ -708,9 +708,9 @@ describe("resolveBindings", () => {
 		]);
 
 		const rows = resolveBindings([local, krokiRemote], availability, {
-			graphviz: "graphviz-host", // ignored: unavailable
-			mermaid: "kroki-remote", // effective
-			puml: "nonexistent", // ignored: unknown
+			graphviz: { processor: "graphviz-host" }, // ignored: unavailable
+			mermaid: { processor: "kroki-remote" }, // effective
+			puml: { processor: "nonexistent" }, // ignored: unknown
 		});
 
 		expect(rows.map((r) => r.status)).toEqual(["ignored", "effective", "ignored"]);

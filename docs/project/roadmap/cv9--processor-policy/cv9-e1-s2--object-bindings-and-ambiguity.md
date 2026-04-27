@@ -1,6 +1,6 @@
 # CV9.E1.S2 — Object bindings and ambiguity
 
-**Status:** Ready
+**Status:** In progress
 
 **Epic:** [CV9.E1 — Policy-driven Resolution](cv9-e1--policy-driven-resolution.md)
 **Date:** 2026-04-25 (spec)
@@ -65,13 +65,21 @@ No backward compatibility is required for old string bindings.
 
 | Step | TDD phase | Layer | What | Commit |
 |------|-----------|-------|------|--------|
-| 1 | red | Unit | Add config validation tests for valid processor binding, valid placement binding, invalid string binding, both selectors, neither selector, and invalid placement. | `step 1: object binding config` |
-| 2 | green/refactor | Unit | Replace `Record<string, string>` binding shape with `Record<string, TagBinding>` across config and callers. | same |
-| 3 | red | Unit | Add resolver tests for processor binding inside/outside precedence, placement binding, and ambiguity resolved by exact processor. | `step 2: selector binding resolver` |
-| 4 | green/refactor | Unit | Apply binding as a candidate constraint after global placement allowlist and before final selection. | same |
-| 5 | red | Extension | Add extension tests proving `graphviz` can bind to `graphviz-host` or `kroki-remote` only when that processor's placement is allowed. | `step 3: binding diagnostics and extension path` |
-| 6 | green/refactor | Extension/render | Update `/fence list`, `/fence doctor`, logging, and trace formatting for object bindings. | same |
-| 7 | verify | All fast | Run `pnpm run feedback`, then `pnpm run inspect`. | same |
+| 1a | red → green → refactor | Unit | Validate `{ "processor": "kroki-remote" }` and introduce the `TagBinding` type with the smallest caller updates needed for green. | `step 1: object binding config` |
+| 1b | red → green → refactor | Unit | Validate `{ "placement": "host" }`. | same |
+| 1c | red → green → refactor | Unit | Reject old string binding values with a warning. | same |
+| 1d | red → green → refactor | Unit | Reject binding objects with both selectors. | same |
+| 1e | red → green → refactor | Unit | Reject binding objects with neither selector. | same |
+| 1f | red → green → refactor | Unit | Reject invalid placement selector values. | same |
+| 2a | red → green → refactor | Unit | Resolve `{ "processor": "..." }` inside `processorPrecedence`. | `step 2: selector binding resolver` |
+| 2b | red → green → refactor | Unit | Keep `{ "processor": "..." }` from selecting outside `processorPrecedence`. | same |
+| 2c | red → green → refactor | Unit | Resolve `{ "placement": "..." }` as a placement constraint. | same |
+| 2d | red → green → refactor | Unit | Resolve same-placement ambiguity only with an exact processor binding. | same |
+| 2e | red → green → refactor | Unit | Keep same-placement ambiguity under a placement binding. | same |
+| 3a | red → green → refactor | Extension | Prove real config can bind `graphviz` to `graphviz-host` only when `host` is allowed. | `step 3: binding diagnostics and extension path` |
+| 3b | red → green → refactor | Extension | Prove real config can bind `graphviz` to `kroki-remote` only when `remote` is allowed. | same |
+| 3c | red → green → refactor | Unit/Extension | Update `/fence list`, `/fence doctor`, logging, and trace formatting one diagnostic reason at a time. | same |
+| 4 | verify | All fast | Run `pnpm run feedback`, then `pnpm run inspect`. | same |
 
 ## Tests
 
