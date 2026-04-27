@@ -2599,3 +2599,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 3. **Placement omission is still placement-disabled.** Only explicit processor ids moved to blocked terminology; omitted placements keep the existing placement-disabled wording.
 
 **Carry-forward.** Next S3 bean: canonicalize `blocked.tags` so canonical tags and aliases block the same tag family.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 step 3 completed
+
+**What shipped.** Resolver tag blocks now canonicalize tag families through the registered processors' alias maps. Blocking `graphviz` blocks `dot`, blocking `dot` blocks `graphviz`, and a blocked tag family wins over an exact processor binding. Trace steps report `skipped-tag-blocked` for the blocked request.
+
+**Implementation commits.**
+
+1. `41b1a48` — step 3: block tag families in resolution
+
+**Test count.** 686 fast-suite tests (was 683; +3 resolver tests for canonical block, alias block, and binding override).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Tag blocks are family-level.** Alias and canonical names normalize to one family before resolution.
+2. **Tag blocks beat bindings.** A binding cannot route around a blocked family.
+3. **Unknown block names stay inert.** Canonicalization falls back to the raw tag when no processor advertises it, so unknown blocked names do not accidentally broaden policy.
+
+**Carry-forward.** Next S3 bean: thread `blocked.tags` through the extension path and surface blocked policy in `/fence list` and `/fence doctor`.
