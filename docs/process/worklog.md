@@ -2944,3 +2944,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 7. `CV9.E1.S7` Draft — processor factory discovery.
 
 **Carry-forward.** Next story is `CV9.E1.S4 — Sandbox control contract`; start from a clean tree and spec/ready it before implementation.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 step 1: sandbox config
+
+**What shipped.** S4 moved to Ready and config now exposes named sandbox controller policy. Defaults define `bundle` as an `exec` `docker-container` sandbox and `kroki` as a `service` `docker-compose` sandbox; validation accepts complete sandbox entries with `image` and `autoStart`, rejects malformed entries fail-closed, and merges named entries by id.
+
+**Implementation commits.**
+
+1. `2f9aefd` — spec CV9.E1.S4: ready sandbox contract
+2. `ffed7d8` — step 1: add sandbox config
+
+**Test count.** Fast suite 700 → 704 (+4).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Named sandboxes are explicit config.** `bundle` and `kroki` are configured as controller-owned sandboxes, separate from processor ids.
+2. **Invalid sandbox policy fails closed.** Malformed sandbox config narrows placement policy to embedded-only, matching other privacy/control surfaces.
+3. **Runtime is precise.** The domain uses `docker-container` and `docker-compose`, not a generic `docker` value.
+
+**Carry-forward.** Implement the sandbox controller/status contract next.
