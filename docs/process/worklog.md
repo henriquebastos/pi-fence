@@ -3190,3 +3190,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Public Kroki outage is not an S4 regression.** The failed full live suite was unrelated to the sandbox contract changes and is recorded as an environment/network blocker.
 
 **Carry-forward.** Rerun inspection and completion checks for S4.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: lifecycle identity checks
+
+**What shipped.** Docker identity checks now apply to stopped containers as well as running containers. Generic sandbox helpers classify both `No such object` and `No such container` as absent, and the Kroki Docker manager verifies image ownership before `start()` or `stop()` can operate on an existing same-name container.
+
+**Implementation commits.**
+
+1. `7740a24` — fix: verify Docker identity before lifecycle
+
+**Test count.** Fast suite 726 → 730 (+4).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/kroki-docker.test.ts tests/unit/fence-command.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Ownership precedes lifecycle.** Docker lifecycle operations must not remove or replace a same-name container until identity has been verified.
+2. **Absent wording is normalized.** Common Docker not-found strings map to `absent`; other inspect failures stay `error`.
+
+**Carry-forward.** Rerun inspection and completion checks for S4.
