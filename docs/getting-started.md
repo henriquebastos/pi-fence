@@ -140,15 +140,15 @@ Bindings
 
 **Binding lookup is exact**, not alias-aware. If you want both `graphviz` and `dot` blocks to route through the same processor, list both keys — see the example above. This matches how most config formats work (one key per tag) and keeps the semantics predictable.
 
-**Bindings are constraints, not preferences.** If you bind `graphviz → graphviz-host` on a machine where `dot` isn't installed, pi-fence does not fall through to Kroki for that tag. `/fence list` shows the binding in an `Ignored bindings` section with the reason:
+**Bindings are constraints, not preferences.** If you bind `graphviz → graphviz-host` on a machine where `dot` isn't installed, pi-fence does not fall through to Kroki for that tag. `/fence list` shows the binding in a `Binding issues` section with the reason:
 
 ```text
-Ignored bindings
+Binding issues
 
   graphviz → graphviz-host (processor unavailable)
 ```
 
-Same for bindings that point to an unknown processor id — typos are noted in the `Ignored bindings` section and the tag has no selected processor until the config is fixed.
+Same for bindings that point to an unknown processor id — typos are noted in the `Binding issues` section and the tag has no selected processor until the config is fixed.
 
 ## Restricting processor placements
 

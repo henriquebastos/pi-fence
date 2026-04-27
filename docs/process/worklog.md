@@ -2167,3 +2167,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Diagnostics remain the user's repair path.** `/fence list`, `/fence doctor`, and logs explain why the binding selected no processor instead of silently widening policy.
 
 **Carry-forward.** Continue with inspection findings on placement diagnostic wording/log coverage and resolver complexity/stale docs.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: binding issue diagnostics
+
+**What shipped.** Placement-binding diagnostics now use binding-specific trace outcomes for non-selected placements, effective placement binding logs include placement metadata, `/fence doctor` has extension coverage for placement binding issues, and user-facing output groups unsatisfied constraints under `Binding issues` instead of `Ignored bindings`.
+
+**Implementation commits.**
+
+1. `f47acc9` — fix: align binding issue diagnostics
+
+**Test count.** 666 fast-suite (was 665; +1 doctor/logging extension case).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/list.test.ts tests/unit/renderer.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Binding issues are not fallback.** The UI wording now matches constraint semantics: unsatisfied bindings are problems to fix, not preferences that were silently ignored.
+2. **Placement metadata stays visible.** Effective and issue logs include the placement selector whenever the binding came from `{ "placement": "..." }`.
+
+**Carry-forward.** Continue with resolver complexity and stale comments/docs, then rerun inspection.
