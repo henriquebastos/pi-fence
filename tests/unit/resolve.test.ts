@@ -351,7 +351,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
 			"kroki-remote",
 			[
-				{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
+				{ id: "graphviz-host", outcome: "skipped-binding-excluded" },
 				{ id: "kroki-remote", outcome: "selected-by-binding" },
 			],
 		);
@@ -375,7 +375,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			),
 			null,
 			[
-				{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
+				{ id: "graphviz-host", outcome: "skipped-binding-excluded" },
 				{ id: "kroki-remote", outcome: "skipped-placement-disabled" },
 			],
 		);
@@ -400,7 +400,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			"graphviz-host",
 			[
 				{ id: "graphviz-host", outcome: "selected-by-binding" },
-				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});
@@ -424,7 +424,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			null,
 			[
 				{ id: "graphviz-host", outcome: "skipped-unavailable" },
-				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});
@@ -448,9 +448,9 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			),
 			"b-host",
 			[
-				{ id: "a-host", outcome: "skipped-binding-prefers-other" },
+				{ id: "a-host", outcome: "skipped-binding-excluded" },
 				{ id: "b-host", outcome: "selected-by-binding" },
-				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});
@@ -477,7 +477,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		expectResolution(result, null, [
 			{ id: "a-host", outcome: "skipped-ambiguous-same-placement" },
 			{ id: "b-host", outcome: "skipped-ambiguous-same-placement" },
-			{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+			{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 		]);
 		expect(result.ambiguity).toEqual({
 			placement: "host",
@@ -499,7 +499,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			null,
 			[
 				{ id: "graphviz-host", outcome: "skipped-unavailable" },
-				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});
@@ -515,7 +515,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 				{ graphviz: { processor: "__proto__" } },
 			),
 			null,
-			[{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" }],
+			[{ id: "kroki-remote", outcome: "skipped-binding-excluded" }],
 		);
 	});
 
@@ -531,8 +531,8 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 			resolveProcessor([local, krokiRemote], availability, "graphviz", bindings),
 			null,
 			[
-				{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
-				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+				{ id: "graphviz-host", outcome: "skipped-binding-excluded" },
+				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});
@@ -549,7 +549,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		const bindings = { dot: { processor: "kroki-remote" } };
 
 		expectResolution(resolveProcessor([local, krokiRemote], availability, "dot", bindings), "kroki-remote", [
-			{ id: "graphviz-host", outcome: "skipped-binding-prefers-other" },
+			{ id: "graphviz-host", outcome: "skipped-binding-excluded" },
 			{ id: "kroki-remote", outcome: "selected-by-binding" },
 		]);
 	});
@@ -612,7 +612,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 
 		// Bound to unknown → constrained to no processor.
 		expectResolution(resolveProcessor([solo], availability, "mermaid", bindings), null, [
-			{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+			{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 		]);
 
 		// Now bind mermaid to kroki-remote and ask for graphviz — no claimer.
@@ -669,7 +669,7 @@ describe("resolveProcessor — disabled set", () => {
 			null,
 			[
 				{ id: "graphviz-host", outcome: "skipped-disabled" },
-				{ id: "kroki-remote", outcome: "skipped-binding-prefers-other" },
+				{ id: "kroki-remote", outcome: "skipped-binding-excluded" },
 			],
 		);
 	});

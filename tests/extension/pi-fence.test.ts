@@ -1467,6 +1467,11 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				processorId: "nonexistent",
 				reason: "unknown-processor",
 			});
+			expect(
+				logger
+					.bySubsystem("pi-fence")
+					.some((e) => e.level === "warn" && e.message === "no available processor for tag"),
+			).toBe(false);
 		},
 		20_000,
 	);

@@ -322,6 +322,32 @@ describe("config core", () => {
 		});
 	});
 
+	it("validates bindings: normalizes legacy processor ids inside processor selectors", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				bindings: {
+					dot: { processor: "kroki" },
+					graphviz: { processor: "graphviz-local" },
+					csv: { processor: "table" },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.bindings).toEqual({
+			dot: { processor: "kroki-remote" },
+			graphviz: { processor: "graphviz-host" },
+			csv: { processor: "table-embedded" },
+		});
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"legacy processor id in test config 'bindings.dot.processor'",
+			"legacy processor id in test config 'bindings.graphviz.processor'",
+			"legacy processor id in test config 'bindings.csv.processor'",
+		]);
+	});
+
 	it("validates bindings: accepts processor selector objects", () => {
 		const result = validatePiFenceConfig(
 			{ bindings: { graphviz: { processor: "kroki-remote" } } },

@@ -35,7 +35,7 @@ export type StepOutcome =
 	| "selected-by-placement"
 	| "skipped-already-resolved"
 	| "skipped-ambiguous-same-placement"
-	| "skipped-binding-prefers-other"
+	| "skipped-binding-excluded"
 	| "skipped-disabled"
 	| "skipped-lower-precedence"
 	| "skipped-no-claim"
@@ -295,7 +295,7 @@ function traceOutcome(
 		return "skipped-lower-precedence";
 	}
 	if (selection?.mode === "binding") {
-		return blocked ?? "skipped-binding-prefers-other";
+		return blocked ?? "skipped-binding-excluded";
 	}
 	if (selection && index > selection.index) {
 		return "skipped-already-resolved";
@@ -323,7 +323,7 @@ function unresolvedOutcome(
 	context: ResolveContext,
 	fallback: StepOutcome = "skipped-no-claim",
 ): StepOutcome {
-	return context.binding === undefined ? fallback : "skipped-binding-prefers-other";
+	return context.binding === undefined ? fallback : "skipped-binding-excluded";
 }
 
 function isLowerPrecedenceThanSelection(

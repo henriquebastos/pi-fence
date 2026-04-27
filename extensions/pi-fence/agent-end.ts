@@ -105,8 +105,9 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 		...(ambiguity ? { ambiguity } : {}),
 	});
 	if (!processor) {
-		logBindingIssueForBlock(block, options);
-		logUnresolvedBlock(block, options.logger, ambiguity);
+		if (!logBindingIssueForBlock(block, options)) {
+			logUnresolvedBlock(block, options.logger, ambiguity);
+		}
 		return;
 	}
 
@@ -122,7 +123,7 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 	if (!result.ok) sendErrorFollowup(block, processor.id, result.error, options);
 }
 
-function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions): void {
+function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions): boolean {
 	const issue = resolveBindings(
 		options.processors,
 		options.availability,
@@ -132,7 +133,9 @@ function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions
 	).find((row): row is Extract<BindingResolution, { status: "issue" }> =>
 		row.tag === block.tag && row.status === "issue",
 	);
-	if (issue) logBindingIssue(issue, options.logger);
+	if (!issue) return false;
+	logBindingIssue(issue, options.logger);
+	return true;
 }
 
 function logBindingIssue(row: Extract<BindingResolution, { status: "issue" }>, logger: Logger): void {
