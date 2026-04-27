@@ -145,7 +145,7 @@ If two processors in different placements claim the same tag, `processorPreceden
 ```json
 {
   "bindings": {
-    "upper": "my-upper-embedded"
+    "upper": { "processor": "my-upper-embedded" }
   }
 }
 ```

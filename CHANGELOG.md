@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV9.E1.S2 — Object bindings and ambiguity)
+
+- Tag bindings now use object selector values such as `{ "processor": "kroki-remote" }`; old string binding values are invalid and ignored with a config warning.
+- Config validation accepts the CV9 binding selector shape and keeps processor-id normalization inside the explicit `processor` selector.
+
 ### Changed (CV9.E1.S1 — Placement precedence tracer bullet)
 
 - Built-in processor ids now include their trust/control placement: `table-embedded`, `highlight-embedded`, `qr-embedded`, `color-embedded`, `graphviz-host`, `mermaid-host`, and `kroki-remote`.

@@ -2066,3 +2066,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 4. **Ambiguity beats hidden order.** Same-placement multiple-candidate matches now return no selected processor and expose an ambiguity trace instead of quietly choosing whichever processor registered first.
 
 **Carry-forward.** CV9.E1.S2 should replace string-only tag bindings with object-valued selector constraints and carry the ambiguity model into user-facing binding diagnostics. CV9.E1.S3 then handles blocked tags/processors as the stronger policy layer.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 step 1 completed
+
+**What shipped.** Config binding values now validate as object-shaped selectors. `{ "processor": "..." }` and `{ "placement": "..." }` are accepted at the config boundary, old string binding values are ignored with a warning, and existing config/extension fixtures now use explicit processor selector objects. The implementation loop and S2 plan were also tightened so future S2 work proceeds one RED target at a time.
+
+**Implementation commits.**
+
+1. `2610889` — step 1: require object binding config
+
+**Test count.** 654 fast-suite (was 649; +5 config selector validation cases).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm test` — passed: 42 files, 654 tests.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Object-only config boundary.** String bindings are no longer migrated at the binding boundary; legacy id normalization remains only inside `{ "processor": "..." }` and `disabled`.
+2. **One-RED guard in the loop.** The repository workflow now explicitly requires stating one current RED target and splitting any edit that would add multiple failing behavior tests.
+
+**Carry-forward.** Next CV9.E1.S2 step: make resolver selection honor `{ "placement": "..." }` and carry placement-aware binding diagnostics into `/fence list` and `/fence doctor`.

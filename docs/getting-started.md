@@ -114,8 +114,8 @@ The default resolution rule uses placement precedence: `embedded` first, then `h
 ```json
 {
   "bindings": {
-    "graphviz": "kroki-remote",
-    "dot": "kroki-remote"
+    "graphviz": { "processor": "kroki-remote" },
+    "dot": { "processor": "kroki-remote" }
   }
 }
 ```
@@ -126,6 +126,8 @@ pi-fence reads two optional files and merges them:
 2. **Project** — `<cwd>/.pi/pi-fence.config.json`.
 
 Project bindings override global bindings. Safety controls are restrictive: project `disabled` adds to global `disabled`, and project `processorPrecedence` can only remove or reorder placements already allowed globally.
+
+Binding values must be selector objects. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
 
 `/reload` inside pi after editing. `/fence list` then shows a `Bindings` section:
 
