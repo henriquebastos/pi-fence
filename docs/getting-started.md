@@ -125,7 +125,7 @@ pi-fence reads two optional files and merges them:
 1. **Global** — `~/.pi/agent/pi-fence.config.json`.
 2. **Project** — `<cwd>/.pi/pi-fence.config.json`.
 
-Project bindings override global bindings. Safety controls are restrictive: project `disabled` adds to global `disabled`, and project `processorPrecedence` can only remove or reorder placements already allowed globally.
+Project bindings override global bindings. Project `blocked` policy replaces global `blocked` policy; project `processorPrecedence` can only remove or reorder placements already allowed globally.
 
 Binding values must be selector objects. Use `{ "processor": "..." }` to choose one processor, or `{ "placement": "host" }` to limit the tag to eligible processors in that placement. If multiple processors in that placement match, pi-fence reports ambiguity instead of choosing one. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
 
@@ -166,7 +166,7 @@ Omitting a placement disables every processor in that placement for resolution. 
 
 - If neither file exists, the defaults apply (`embedded`, `host`, `sandbox`, `remote`).
 - If a config file is unreadable, malformed JSON, or has the wrong top-level shape, that layer contributes an embedded-only policy until the file is fixed; lower-priority policies can still make the final effective policy stricter.
-- If a nested safety field such as `disabled`, `processorPrecedence`, or `kroki.endpoint` has the wrong shape, pi-fence logs a warning and fails closed for placement resolution. Compatibility exception: `"disabled": "kroki"` is accepted as shorthand for a single disabled processor id.
+- If a nested safety field such as `blocked`, `processorPrecedence`, or `kroki.endpoint` has the wrong shape, pi-fence logs a warning and fails closed for placement resolution.
 - Unknown top-level keys are tolerated silently so future config surface doesn't break existing files.
 
 If you don't see an image, check:
@@ -223,7 +223,7 @@ Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-f
 }
 ```
 
-Auto-start follows processor policy: if `kroki-remote` is disabled or `remote` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the container stays running between sessions — subsequent starts are no-ops.
+Auto-start follows processor policy: if `kroki-remote` is blocked or `remote` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the container stays running between sessions — subsequent starts are no-ops.
 
 ## Diagnosing the setup
 
@@ -246,30 +246,30 @@ Issues
 
 The output shows which config files pi-fence loaded, the status of every processor, effective bindings, and any actionable issues. It's the `/fence list` output plus config-file status and an issues summary.
 
-## Disabling a processor
+## Blocking a processor
 
-To suppress a processor entirely — say, to stop Kroki from sending diagram source over the network — add a `disabled` array:
+To suppress a processor entirely — say, to stop Kroki from sending diagram source over the network — add `blocked.processors`:
 
 ```json
 {
-  "disabled": ["kroki-remote"]
+  "blocked": {
+    "processors": ["kroki-remote"]
+  }
 }
 ```
 
 After `/reload`, every Kroki-only tag (`mermaid`, `plantuml`, …) produces no rendered output. Tags that another processor also claims (like `graphviz`/`dot` via `graphviz-host`) still render through that processor.
 
-`/fence list` shows the disabled processor with a `[disabled]` badge.
+`/fence list` shows the blocked processor with a `[disabled]` badge until the blocked diagnostics wording lands.
 
-**Compatibility note:** older examples used the processor id `kroki`. pi-fence normalizes known legacy ids in `bindings` and `disabled`, but new config should use placement-aware ids such as `kroki-remote`.
-
-Project config cannot re-enable a globally disabled processor. Remove the id from the global config if you want a project to allow it, then use project `processorPrecedence` or bindings to make that project more specific.
+Project config replaces the global `blocked` object. Omit `blocked` in the project config to inherit global blocks, or set explicit empty arrays to clear them for that project.
 
 ## Next
 
 Related controls on this page:
 
 - [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint).
-- [Disabling a processor](#disabling-a-processor).
+- [Blocking a processor](#blocking-a-processor).
 - [`/fence doctor`](#diagnosing-the-setup).
 - [Writing your own processor](guides/write-a-processor.md).
 

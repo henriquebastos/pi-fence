@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV9.E1.S3 — Blocked tags and processors)
+
+- Config now accepts `blocked: { "tags": [], "processors": [] }` as the policy shape for explicit blocks.
+- `blocked.processors` replaces the older top-level `disabled` config key; top-level `disabled` is no longer read or migrated.
+- Project `blocked` policy replaces global `blocked` policy, while `processorPrecedence` remains restrictive across config layers.
+
 ### Changed (CV9.E1.S2 — Object bindings and ambiguity)
 
 - Tag bindings now use object selector values such as `{ "processor": "kroki-remote" }`; old string binding values are invalid and ignored with a config warning.

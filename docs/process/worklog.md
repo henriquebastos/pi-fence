@@ -2545,3 +2545,30 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 **Known deviations.** Commit `2dc2319` included one worklog wording correction alongside code/docs cleanup; later commits restored the feature-then-docs cadence and the close record documents the deviation.
 
 **Carry-forward.** Next story is CV9.E1.S3 — Blocked tags and processors. Keep the one-RED-target guard from this story: add one failing behavior at a time, then green/refactor before widening coverage.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 step 1 completed
+
+**What shipped.** The config boundary now exposes `blocked: { tags, processors }`. `DEFAULT_CONFIG` includes empty block lists, file-backed config validates `blocked.tags` and `blocked.processors`, invalid block entries warn and fail closed to embedded-only precedence, and later config layers replace earlier blocked arrays. The old top-level `disabled` key is ignored instead of migrated; runtime processor blocking now reads `blocked.processors`.
+
+**Implementation commits.**
+
+1. `41acf78` — step 1: add blocked config
+
+**Test count.** 683 fast-suite tests (unchanged; config/extension behavior reshaped around the new key).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm test` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **No disabled migration.** Top-level `disabled` is treated as an unknown key; existing privacy behavior moves to `blocked.processors`.
+2. **Blocked policy replaces by layer.** A project-level `blocked` object replaces the global blocked object, including explicit empty arrays.
+3. **Malformed block policy fails closed.** Invalid nested block fields keep valid string entries but restrict placement resolution to `embedded`.
+
+**Carry-forward.** Next S3 bean: make resolver selection treat `blocked.processors` as a hard ineligibility constraint, including binding diagnostics.

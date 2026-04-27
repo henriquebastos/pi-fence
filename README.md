@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, disable processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
+**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, block processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
 
 ---
 
@@ -43,7 +43,7 @@ On expansion (ctrl+o on the rendered message) pi-fence also shows the original s
 - `mermaid-host` — shells out to `mmdc` when `@mermaid-js/mermaid-cli` is installed.
 - `kroki-remote` — posts to the public [kroki.io](https://kroki.io) endpoint for every other tag (and for `graphviz`/`dot` when you don't have `graphviz` installed). Theme-aware (see above).
 
-Resolution is placement-policy based by default: available `embedded` processors win before `host`, then `sandbox`, then `remote`. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project), and can restrict allowed placements with `processorPrecedence`. Bindings are exact tag-scoped constraints: use `{ "processor": "..." }` for one processor or a concrete placement selector such as `{ "placement": "host" }`. Tag names such as `graphviz` and `dot` bind independently. Project bindings override global bindings; safety controls (`disabled`, `processorPrecedence`) can only further restrict lower-priority layers. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
+Resolution is placement-policy based by default: available `embedded` processors win before `host`, then `sandbox`, then `remote`. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project), and can restrict allowed placements with `processorPrecedence`. Bindings are exact tag-scoped constraints: use `{ "processor": "..." }` for one processor or a concrete placement selector such as `{ "placement": "host" }`. Tag names such as `graphviz` and `dot` bind independently. Project bindings override global bindings; project `blocked` policy replaces global `blocked` policy, while `processorPrecedence` can only further restrict lower-priority layers. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
 
 **Slash commands**:
 
@@ -96,7 +96,7 @@ pi install npm:pi-fence
 
 Then `/reload` inside pi, or restart.
 
-By default, diagram tags without a local/embedded processor render through `kroki-remote`, which makes one HTTP request to `https://kroki.io` per fenced block. Privacy-sensitive users can point `kroki.endpoint` at a self-hosted Kroki instance or disable the remote processor with `"disabled": ["kroki-remote"]`.
+By default, diagram tags without a local/embedded processor render through `kroki-remote`, which makes one HTTP request to `https://kroki.io` per fenced block. Privacy-sensitive users can point `kroki.endpoint` at a self-hosted Kroki instance or block the remote processor with `"blocked": { "processors": ["kroki-remote"] }`.
 
 ## Development
 
