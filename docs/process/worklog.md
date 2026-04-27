@@ -2625,3 +2625,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 3. **Unknown block names stay inert.** Canonicalization falls back to the raw tag when no processor advertises it, so unknown blocked names do not accidentally broaden policy.
 
 **Carry-forward.** Next S3 bean: thread `blocked.tags` through the extension path and surface blocked policy in `/fence list` and `/fence doctor`.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 step 4 completed
+
+**What shipped.** Blocked tag policy now reaches the extension render path and command diagnostics. A blocked tag emits no `pi-fence:output` and makes no processor HTTP request. `/fence list` shows blocked processors with `[blocked]`, includes a `Blocked tags` section, and reports bindings on blocked tags as `tag blocked`. `/fence doctor` includes blocked processors and blocked tags in its Issues summary.
+
+**Implementation commits.**
+
+1. `fea306e` — step 4: surface blocked policy
+
+**Test count.** 692 fast-suite tests (was 686; +6 across extension command/render, list formatting, and doctor issues).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/list.test.ts tests/unit/doctor.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Blocked tag rendering short-circuits before I/O.** The agent-end resolver returns no processor and the render loop sends no output message.
+2. **Processor blocks and placement disables are distinct.** Explicit processor blocks render as `[blocked]`; omitted placements remain `[disabled]`.
+3. **Diagnostics share command lines.** `/fence doctor` reuses the same processor and blocked-tag lines as `/fence list`, then adds Issues entries for blocked policy.
+
+**Carry-forward.** Run story inspection and completion checks for CV9.E1.S3; if clean, close the story docs.

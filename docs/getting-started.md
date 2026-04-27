@@ -246,7 +246,7 @@ Issues
 
 The output shows which config files pi-fence loaded, the status of every processor, effective bindings, and any actionable issues. It's the `/fence list` output plus config-file status and an issues summary.
 
-## Blocking a processor
+## Blocking tags and processors
 
 To suppress a processor entirely — say, to stop Kroki from sending diagram source over the network — add `blocked.processors`:
 
@@ -260,7 +260,19 @@ To suppress a processor entirely — say, to stop Kroki from sending diagram sou
 
 After `/reload`, every Kroki-only tag (`mermaid`, `plantuml`, …) produces no rendered output. Tags that another processor also claims (like `graphviz`/`dot` via `graphviz-host`) still render through that processor.
 
-`/fence list` shows the blocked processor with a `[disabled]` badge until the blocked diagnostics wording lands.
+To suppress a whole tag family, add `blocked.tags`:
+
+```json
+{
+  "blocked": {
+    "tags": ["graphviz"]
+  }
+}
+```
+
+Tag blocks are family-level. Blocking `graphviz` also blocks its `dot` alias, and blocking `dot` also blocks `graphviz`. A tag block wins over bindings; the LLM cannot route around it with fenced metadata or a configured binding.
+
+`/fence list` shows blocked processors with a `[blocked]` badge and blocked tag families in a `Blocked tags` section. `/fence doctor` includes both in its Issues summary.
 
 Project config replaces the global `blocked` object. Omit `blocked` in the project config to inherit global blocks, or set explicit empty arrays to clear them for that project.
 
@@ -269,7 +281,7 @@ Project config replaces the global `blocked` object. Omit `blocked` in the proje
 Related controls on this page:
 
 - [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint).
-- [Blocking a processor](#blocking-a-processor).
+- [Blocking tags and processors](#blocking-tags-and-processors).
 - [`/fence doctor`](#diagnosing-the-setup).
 - [Writing your own processor](guides/write-a-processor.md).
 

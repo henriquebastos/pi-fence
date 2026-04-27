@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, block processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
+**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, block tag families or processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
 
 ---
 
@@ -47,7 +47,7 @@ Resolution is placement-policy based by default: available `embedded` processors
 
 **Slash commands**:
 
-- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; a `Binding issues` section appears for unsatisfied selectors, including unknown, disabled, unavailable, placement-disabled, non-claiming, no-match, or ambiguous bindings.
+- `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings or blocked tags the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; a `Blocked tags` section appears for blocked tag families; a `Binding issues` section appears for unsatisfied selectors, including unknown, blocked, unavailable, placement-disabled, non-claiming, no-match, ambiguous, or tag-blocked bindings.
 
 **Tracing**:
 
