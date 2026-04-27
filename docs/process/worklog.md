@@ -2370,3 +2370,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Bad ids remain binding constraints.** Unknown prototype-named ids are preserved through config validation so the resolver can fail closed for the bound tag.
 
 **Carry-forward.** Continue final placement classifier and wording cleanup, then rerun inspection.
+
+---
+
+### 2026-04-27 — CV9.E1.S2 inspection fix: placement classifier and wording cleanup
+
+**What shipped.** Runtime placement-binding selection and binding diagnostics now share one classifier for disabled, no-match, ambiguous, and effective placement selectors. Final stale wording was cleaned up in README, the S2 story, list formatter helper names, and resolver tests.
+
+**Implementation commits.**
+
+1. `2dc2319` — refactor: share placement binding classification
+
+**Test count.** 674 fast-suite (unchanged; refactor/docs cleanup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/list.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run lint:markdown` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Placement selector cardinality has one source.** Runtime and diagnostics both classify a selected placement through the same helper, reducing future policy drift.
+2. **README shows concrete selector values.** Placement binding examples now use a concrete `{ "placement": "host" }` selector and describe `graphviz`/`dot` as independent tag names.
+
+**Carry-forward.** Rerun final inspection and completion checks; if clean, close CV9.E1.S2.
