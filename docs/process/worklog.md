@@ -2318,3 +2318,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Keep unusual tag keys data-safe.** A `__proto__` binding key is preserved as an own property rather than being special-cased or treated as object metadata.
 
 **Carry-forward.** Continue final docs/resolver cleanup: README placement, import formatting, stale naming, and shared processor-binding eligibility.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: final resolver/docs cleanup
+
+**What shipped.** Final cleanup aligned README placement with shipped binding behavior, expanded `/fence list` Binding-issues wording, fixed a concatenated import, renamed stale resolver decision terminology, changed unsatisfied binding diagnostics from internal/log `ignored` terminology to `issue`, and shared processor-binding eligibility classification between selection and diagnostics.
+
+**Implementation commits.**
+
+1. `d7fe714` — refactor: clarify binding issue diagnostics
+
+**Test count.** 672 fast-suite (unchanged; refactor/docs cleanup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/unit/list.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run lint:markdown` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Issue terminology matches fail-closed semantics.** Unsatisfied bindings no longer claim to be ignored internally or in logs; they are binding issues because they constrain resolution to no processor.
+2. **Processor eligibility has one classifier.** Runtime selection and binding diagnostics now share the processor-binding issue reason helper for disabled, placement-disabled, unavailable, and non-claiming processors.
+
+**Carry-forward.** Rerun final inspection and `pnpm run inspect`; if clean, close CV9.E1.S2.
