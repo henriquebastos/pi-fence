@@ -48,7 +48,7 @@
  */
 
 import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
-import { isTagFamilyBlocked, type BindingResolution } from "./resolve.ts";
+import { isProcessorFullyTagBlocked, type BindingResolution } from "./resolve.ts";
 
 export type ProcessorStatus = "registered" | "unavailable" | "disabled" | "blocked";
 
@@ -149,16 +149,6 @@ export function formatProcessorLines(
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
-
-function isProcessorFullyTagBlocked(
-	processor: FenceProcessor,
-	processors: readonly FenceProcessor[],
-	blockedTags: ReadonlySet<string> | undefined,
-): boolean {
-	return blockedTags !== undefined &&
-		processor.tags.length > 0 &&
-		processor.tags.every((tag) => isTagFamilyBlocked(processors, tag, blockedTags));
-}
 
 function buildPolicyListing(
 	processor: FenceProcessor,

@@ -400,6 +400,16 @@ export function isTagFamilyBlocked(
 	return false;
 }
 
+export function isProcessorFullyTagBlocked(
+	processor: FenceProcessor,
+	processors: readonly FenceProcessor[],
+	blockedTags: ReadonlySet<string> | undefined,
+): boolean {
+	return blockedTags !== undefined &&
+		processor.tags.length > 0 &&
+		processor.tags.every((tag) => isTagFamilyBlocked(processors, tag, blockedTags));
+}
+
 function canonicalTagFamily(processors: readonly FenceProcessor[], tag: string): string {
 	for (const processor of processors) {
 		const aliasTarget = Object.hasOwn(processor.aliases, tag) ? processor.aliases[tag] : undefined;

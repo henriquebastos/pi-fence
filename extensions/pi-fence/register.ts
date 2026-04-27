@@ -14,7 +14,7 @@ import {
 	type FenceProcessor,
 	type ProcessorPlacement,
 } from "./processor.ts";
-import { isTagFamilyBlocked } from "./resolve.ts";
+import { isProcessorFullyTagBlocked } from "./resolve.ts";
 
 // ── Registry type ───────────────────────────────────────────────────
 
@@ -164,14 +164,4 @@ function registrationBlocked(
 		return { ok: false, reason: "processor placement disabled by config" };
 	}
 	return undefined;
-}
-
-function isProcessorFullyTagBlocked(
-	processor: FenceProcessor,
-	processors: readonly FenceProcessor[],
-	blockedTags: ReadonlySet<string> | undefined,
-): boolean {
-	return blockedTags !== undefined &&
-		processor.tags.length > 0 &&
-		processor.tags.every((tag) => isTagFamilyBlocked(processors, tag, blockedTags));
 }
