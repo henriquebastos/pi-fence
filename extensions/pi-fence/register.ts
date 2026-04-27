@@ -14,6 +14,7 @@ import {
 	type FenceProcessor,
 	type ProcessorPlacement,
 } from "./processor.ts";
+import { isTagFamilyBlocked } from "./resolve.ts";
 
 // ── Registry type ───────────────────────────────────────────────────
 
@@ -92,6 +93,7 @@ export type RegistrationResult =
 
 export interface RegisterProcessorOptions {
 	blockedProcessors?: ReadonlySet<string>;
+	blockedTags?: ReadonlySet<string>;
 	processorPrecedence?: readonly ProcessorPlacement[];
 }
 
@@ -113,7 +115,7 @@ export async function registerProcessor(
 		return { ok: false, error: `duplicate processor id: ${processor.id}` };
 	}
 
-	const avail = await probeRegistrationAvailability(processor, options);
+	const avail = await probeRegistrationAvailability(processor, registry.processors, options);
 
 	// Insert before Kroki (the catch-all fallback) if present.
 	const krokiIndex = registry.processors.findIndex((p) => p.id === "kroki-remote");
@@ -130,9 +132,10 @@ export async function registerProcessor(
 
 async function probeRegistrationAvailability(
 	processor: FenceProcessor,
+	registeredProcessors: readonly FenceProcessor[],
 	options: RegisterProcessorOptions,
 ): Promise<Availability> {
-	const blocked = registrationBlocked(processor, options);
+	const blocked = registrationBlocked(processor, registeredProcessors, options);
 	if (blocked) return blocked;
 	try {
 		return await processor.available();
@@ -144,10 +147,15 @@ async function probeRegistrationAvailability(
 
 function registrationBlocked(
 	processor: FenceProcessor,
+	registeredProcessors: readonly FenceProcessor[],
 	options: RegisterProcessorOptions,
 ): Availability | undefined {
 	if (options.blockedProcessors?.has(processor.id)) {
 		return { ok: false, reason: "processor blocked by config" };
+	}
+	const processors = [...registeredProcessors, processor];
+	if (isProcessorFullyTagBlocked(processor, processors, options.blockedTags)) {
+		return { ok: false, reason: "processor tag family blocked by config" };
 	}
 	if (
 		options.processorPrecedence !== undefined &&
@@ -156,4 +164,14 @@ function registrationBlocked(
 		return { ok: false, reason: "processor placement disabled by config" };
 	}
 	return undefined;
+}
+
+function isProcessorFullyTagBlocked(
+	processor: FenceProcessor,
+	processors: readonly FenceProcessor[],
+	blockedTags: ReadonlySet<string> | undefined,
+): boolean {
+	return blockedTags !== undefined &&
+		processor.tags.length > 0 &&
+		processor.tags.every((tag) => isTagFamilyBlocked(processors, tag, blockedTags));
 }

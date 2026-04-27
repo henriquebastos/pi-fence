@@ -134,6 +134,7 @@ export async function createPiFenceExtension(
 			}
 			const result = await registerProcessor(registry, validated.processor, {
 				blockedProcessors,
+				blockedTags,
 				processorPrecedence,
 			});
 			if (!result.ok) {

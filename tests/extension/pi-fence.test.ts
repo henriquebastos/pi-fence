@@ -1330,6 +1330,44 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
+		"does not probe a third-party processor whose tag family is blocked",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ blocked: { tags: ["upper"], processors: [] } }),
+			);
+			let probes = 0;
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "host",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => {
+						probes += 1;
+						return { ok: true };
+					},
+					render: async () => ({ ok: true, text: "" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const { session } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				{ home, cwd: makeTempDir() },
+				[thirdPartyFactory],
+			);
+			session.dispose();
+
+			expect(probes).toBe(0);
+		},
+		20_000,
+	);
+
+	it(
 		"/fence list resolves bindings against processors registered after startup",
 		async () => {
 			const home = makeTempDir();
