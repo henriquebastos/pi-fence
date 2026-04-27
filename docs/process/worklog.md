@@ -2267,3 +2267,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Exact binding tests say fail-closed.** The extension test that previously implied fallback now binds the exact `dot` tag and asserts no processor is selected when the bound processor is unavailable.
 
 **Carry-forward.** Round-2 inspection coverage gaps remain: placement bindings omitted by precedence and non-string processor selector validation.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: binding edge coverage
+
+**What shipped.** Added focused coverage for the remaining binding selector edge cases: exact placement bindings fail closed when the selected placement is omitted from `processorPrecedence`, config validation rejects non-string `processor` selectors, and `/fence list` command output includes placement selector rows plus placement issue reasons.
+
+**Implementation commits.**
+
+1. `21f015c` — test: cover binding selector edge cases
+
+**Test count.** 670 fast-suite (was 667; +3 focused binding selector tests).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Coverage closes behavior contracts, not abstractions.** The added tests exercise extension and command paths where drift was possible, leaving existing resolver/formatter unit coverage intact.
+2. **Validation remains fail-closed.** Non-string processor selectors are dropped with the same invalid-selector warning as other malformed binding objects.
+
+**Carry-forward.** Rerun inspection after all round-2 findings are closed.
