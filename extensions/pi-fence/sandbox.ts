@@ -73,6 +73,7 @@ export interface DockerSandboxComponentOptions {
 	id: string;
 	containerName: string;
 	expectedImage: string;
+	expectedLabels: Readonly<Record<string, string>>;
 }
 
 export interface DockerContainerSandboxOptions {
@@ -80,6 +81,7 @@ export interface DockerContainerSandboxOptions {
 	kind: SandboxKind;
 	containerName: string;
 	expectedImage: string;
+	expectedLabels: Readonly<Record<string, string>>;
 	endpoint?: string;
 }
 
@@ -99,6 +101,7 @@ export function createDockerContainerSandboxController(
 			id: options.id,
 			containerName: options.containerName,
 			expectedImage: options.expectedImage,
+			expectedLabels: options.expectedLabels,
 		});
 		return {
 			state: component.state,
@@ -179,6 +182,8 @@ async function inspectDockerContainer(
 		const running = result.stdout.trim() === "true";
 		const imageStatus = await inspectContainerImage(shell, component);
 		if (imageStatus) return imageStatus;
+		const labelStatus = await inspectContainerLabels(shell, component);
+		if (labelStatus) return labelStatus;
 		return {
 			id: component.id,
 			state: running ? "ready" : "stopped",
@@ -235,6 +240,32 @@ async function inspectContainerImage(
 		state: "error",
 		message: `Container ${component.containerName} image mismatch: expected ${component.expectedImage}, got ${actualImage}.`,
 	};
+}
+
+async function inspectContainerLabels(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	for (const [name, expectedValue] of Object.entries(component.expectedLabels)) {
+		const result = await shell.run("docker", [
+			"inspect",
+			"--format",
+			`{{ index .Config.Labels "${name}" }}`,
+			component.containerName,
+		]);
+		if (result.exitCode !== 0) {
+			return inspectFailureStatus(component, result.stderr);
+		}
+		const actualValue = result.stdout.trim() || "<none>";
+		if (actualValue !== expectedValue) {
+			return {
+				id: component.id,
+				state: "error",
+				message: `Container ${component.containerName} label mismatch: expected ${name}=${expectedValue}, got ${actualValue}.`,
+			};
+		}
+	}
+	return undefined;
 }
 
 function summarizeComponents(

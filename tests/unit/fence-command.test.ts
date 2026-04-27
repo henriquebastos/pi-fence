@@ -159,6 +159,11 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"],
 			{ stdout: "yuzutech/kroki\n", stderr: "", exitCode: 0 },
 		);
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-kroki"],
+			{ stdout: "kroki\n", stderr: "", exitCode: 0 },
+		);
 		await createPiFenceExtension(asExtensionAPI(api), {
 			http: new FakeHttpClient(),
 			shell,
@@ -185,7 +190,13 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 		// docker run → success
 		shell.setResponse(
 			"docker",
-			["run", "-d", "--name", "pi-fence-kroki", "-p", "8000:8000", "yuzutech/kroki"],
+			[
+				"run", "-d",
+				"--name", "pi-fence-kroki",
+				"--label", "pi-fence.sandbox=kroki",
+				"-p", "8000:8000",
+				"yuzutech/kroki",
+			],
 			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
 		);
 		await createPiFenceExtension(asExtensionAPI(api), {
@@ -212,6 +223,11 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 		});
 		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
 			stdout: "yuzutech/kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-kroki"], {
+			stdout: "kroki\n",
 			stderr: "",
 			exitCode: 0,
 		});

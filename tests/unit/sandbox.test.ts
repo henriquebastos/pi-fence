@@ -10,8 +10,15 @@ import { FakeShellRunner } from "../utilities/shell-runner.ts";
 
 const KROKI_IMAGE = "yuzutech/kroki";
 const MERMAID_IMAGE = "yuzutech/mermaid";
+const SANDBOX_LABEL = "pi-fence.sandbox";
+const KROKI_LABELS = { [SANDBOX_LABEL]: "kroki" };
 
-function setRunning(shell: FakeShellRunner, containerName: string, image: string): void {
+function setRunning(
+	shell: FakeShellRunner,
+	containerName: string,
+	image: string,
+	labels = KROKI_LABELS,
+): void {
 	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
 		stdout: "true\n",
 		stderr: "",
@@ -22,9 +29,15 @@ function setRunning(shell: FakeShellRunner, containerName: string, image: string
 		stderr: "",
 		exitCode: 0,
 	});
+	setLabels(shell, containerName, labels);
 }
 
-function setStopped(shell: FakeShellRunner, containerName: string, image = KROKI_IMAGE): void {
+function setStopped(
+	shell: FakeShellRunner,
+	containerName: string,
+	image = KROKI_IMAGE,
+	labels = KROKI_LABELS,
+): void {
 	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
 		stdout: "false\n",
 		stderr: "",
@@ -35,6 +48,21 @@ function setStopped(shell: FakeShellRunner, containerName: string, image = KROKI
 		stderr: "",
 		exitCode: 0,
 	});
+	setLabels(shell, containerName, labels);
+}
+
+function setLabels(
+	shell: FakeShellRunner,
+	containerName: string,
+	labels: Readonly<Record<string, string>>,
+): void {
+	for (const [name, value] of Object.entries(labels)) {
+		shell.setResponse("docker", ["inspect", "--format", `{{ index .Config.Labels "${name}" }}`, containerName], {
+			stdout: `${value}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+	}
 }
 
 function setAbsent(shell: FakeShellRunner, containerName: string): void {
@@ -51,13 +79,14 @@ function krokiContainerOptions() {
 		kind: "service" as const,
 		containerName: "pi-fence-kroki",
 		expectedImage: KROKI_IMAGE,
+		expectedLabels: KROKI_LABELS,
 	};
 }
 
 function composeComponents() {
 	return [
-		{ id: "core", containerName: "kroki-core", expectedImage: KROKI_IMAGE },
-		{ id: "mermaid", containerName: "kroki-mermaid", expectedImage: MERMAID_IMAGE },
+		{ id: "core", containerName: "kroki-core", expectedImage: KROKI_IMAGE, expectedLabels: KROKI_LABELS },
+		{ id: "mermaid", containerName: "kroki-mermaid", expectedImage: MERMAID_IMAGE, expectedLabels: KROKI_LABELS },
 	];
 }
 
@@ -90,6 +119,18 @@ describe("sandbox controller contract — Docker container status", () => {
 		expect(await controller.status()).toEqual({
 			state: "error",
 			message: "Container pi-fence-kroki image mismatch: expected yuzutech/kroki, got attacker/kroki.",
+		});
+	});
+
+	it("reports error when a running container label does not match the expected sandbox owner", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE, { [SANDBOX_LABEL]: "other" });
+
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-kroki label mismatch: expected pi-fence.sandbox=kroki, got other.",
 		});
 	});
 

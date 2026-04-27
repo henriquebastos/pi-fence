@@ -7,23 +7,58 @@ import { describe, expect, it } from "vitest";
 import { createKrokiDockerManager } from "../../extensions/pi-fence/kroki-docker.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 
+const CONTAINER = "pi-fence-kroki";
+const IMAGE = "yuzutech/kroki";
+const LABEL_NAME = "pi-fence.sandbox";
+const LABEL_VALUE = "kroki";
+
 function makeShell() {
 	return new FakeShellRunner();
 }
 
+function setRunning(shell: FakeShellRunner, image = IMAGE, label = LABEL_VALUE): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", CONTAINER], {
+		stdout: "true\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	setIdentity(shell, image, label);
+}
+
+function setStopped(shell: FakeShellRunner, image = IMAGE, label = LABEL_VALUE): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", CONTAINER], {
+		stdout: "false\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	setIdentity(shell, image, label);
+}
+
+function setAbsent(shell: FakeShellRunner, stderr = "No such container"): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", CONTAINER], {
+		stdout: "",
+		stderr,
+		exitCode: 1,
+	});
+}
+
+function setIdentity(shell: FakeShellRunner, image = IMAGE, label = LABEL_VALUE): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", CONTAINER], {
+		stdout: `${image}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", `{{ index .Config.Labels "${LABEL_NAME}" }}`, CONTAINER], {
+		stdout: `${label}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
 describe("kroki-docker — status()", () => {
-	it("reports running when docker inspect returns true", async () => {
+	it("reports running when docker inspect returns true for the managed container", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "yuzutech/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell);
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.status();
@@ -33,16 +68,7 @@ describe("kroki-docker — status()", () => {
 
 	it("reports error when the running container image is not the managed Kroki image", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "attacker/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "attacker/kroki");
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.status();
@@ -51,18 +77,19 @@ describe("kroki-docker — status()", () => {
 		expect(result.message).toBe("Container pi-fence-kroki image mismatch: expected yuzutech/kroki, got attacker/kroki.");
 	});
 
+	it("reports error when the running container ownership label is wrong", async () => {
+		const shell = makeShell();
+		setRunning(shell, IMAGE, "other");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.message).toBe("Container pi-fence-kroki label mismatch: expected pi-fence.sandbox=kroki, got other.");
+	});
+
 	it("reports stopped when docker inspect returns false for the managed image", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "false\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "yuzutech/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setStopped(shell);
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.status();
@@ -70,17 +97,25 @@ describe("kroki-docker — status()", () => {
 		expect(result.endpoint).toBeUndefined();
 	});
 
-	it("reports absent when docker inspect exits non-zero", async () => {
+	it("reports absent when docker inspect exits non-zero with not-found wording", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "",
-			stderr: "No such container",
-			exitCode: 1,
-		});
+		setAbsent(shell);
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.status();
+		expect(result.ok).toBe(true);
 		expect(result.status).toBe("absent");
+	});
+
+	it("reports error when docker inspect exits non-zero for daemon failures", async () => {
+		const shell = makeShell();
+		setAbsent(shell, "permission denied while trying to connect to the Docker daemon socket");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("absent");
+		expect(result.message).toContain("permission denied");
 	});
 
 	it("reports absent when docker is not installed (shell throws)", async () => {
@@ -95,18 +130,9 @@ describe("kroki-docker — status()", () => {
 });
 
 describe("kroki-docker — start()", () => {
-	it("returns already-running when container is up", async () => {
+	it("returns already-running when the managed container is up", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "yuzutech/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell);
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.start();
@@ -118,16 +144,7 @@ describe("kroki-docker — start()", () => {
 
 	it("does not start over a running wrong-image container", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "attacker/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "attacker/kroki");
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.start();
@@ -136,20 +153,26 @@ describe("kroki-docker — start()", () => {
 		expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
 	});
 
-	it("runs docker run and returns endpoint on success", async () => {
+	it("does not remove a stopped wrong-image container", async () => {
 		const shell = makeShell();
-		// inspect → absent
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "",
-			stderr: "No such container",
-			exitCode: 1,
-		});
-		// docker run succeeds
-		shell.setResponse("docker", ["run", "-d", "--name", "pi-fence-kroki", "-p", "8000:8000", "yuzutech/kroki"], {
-			stdout: "abc123\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setStopped(shell, "attacker/kroki");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.start();
+		expect(result.ok).toBe(false);
+		expect(result.message).toContain("image mismatch");
+		expect(shell.calls.some((call) => call.args[0] === "rm")).toBe(false);
+		expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
+	});
+
+	it("runs docker run with ownership labels and returns endpoint on success", async () => {
+		const shell = makeShell();
+		setAbsent(shell);
+		shell.setResponse(
+			"docker",
+			["run", "-d", "--name", CONTAINER, "--label", `${LABEL_NAME}=${LABEL_VALUE}`, "-p", "8000:8000", IMAGE],
+			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+		);
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.start();
@@ -162,23 +185,14 @@ describe("kroki-docker — start()", () => {
 describe("kroki-docker — stop()", () => {
 	it("stops and removes the managed container", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
+		setRunning(shell);
+		shell.setResponse("docker", ["stop", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
 			stderr: "",
 			exitCode: 0,
 		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "yuzutech/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["stop", "pi-fence-kroki"], {
-			stdout: "pi-fence-kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["rm", "pi-fence-kroki"], {
-			stdout: "pi-fence-kroki\n",
+		shell.setResponse("docker", ["rm", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
 			stderr: "",
 			exitCode: 0,
 		});
@@ -192,16 +206,7 @@ describe("kroki-docker — stop()", () => {
 
 	it("does not stop a running wrong-image container", async () => {
 		const shell = makeShell();
-		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
-			stdout: "true\n",
-			stderr: "",
-			exitCode: 0,
-		});
-		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-			stdout: "attacker/kroki\n",
-			stderr: "",
-			exitCode: 0,
-		});
+		setRunning(shell, "attacker/kroki");
 		const mgr = createKrokiDockerManager(shell);
 
 		const result = await mgr.stop();

@@ -14,6 +14,8 @@ import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 const CONTAINER_NAME = "pi-fence-kroki";
 export const KROKI_DOCKER_IMAGE = "yuzutech/kroki";
 const IMAGE = KROKI_DOCKER_IMAGE;
+const LABEL_NAME = "pi-fence.sandbox";
+const LABEL_VALUE = "kroki";
 const HOST_PORT = 8000;
 const CONTAINER_PORT = 8000;
 
@@ -41,11 +43,11 @@ export function createKrokiDockerManager(
 				CONTAINER_NAME,
 			]);
 			if (result.exitCode !== 0) {
-				return { ok: true, status: "absent", message: `Container ${CONTAINER_NAME} not found.` };
+				return inspectFailureResult(result.stderr);
 			}
 			const running = result.stdout.trim() === "true";
-			const imageStatus = await verifyKrokiContainerImage(shell);
-			if (imageStatus) return imageStatus;
+			const identityStatus = await verifyKrokiContainerIdentity(shell);
+			if (identityStatus) return identityStatus;
 			return {
 				ok: true,
 				status: running ? "running" : "stopped",
@@ -83,6 +85,7 @@ export function createKrokiDockerManager(
 			const result = await shell.run("docker", [
 				"run", "-d",
 				"--name", CONTAINER_NAME,
+				"--label", `${LABEL_NAME}=${LABEL_VALUE}`,
 				"-p", `${HOST_PORT}:${CONTAINER_PORT}`,
 				IMAGE,
 			]);
@@ -123,6 +126,22 @@ export function createKrokiDockerManager(
 	return { start, stop, status };
 }
 
+function inspectFailureResult(stderr: string): KrokiDockerResult {
+	if (stderr.includes("No such object") || stderr.includes("No such container")) {
+		return { ok: true, status: "absent", message: `Container ${CONTAINER_NAME} not found.` };
+	}
+	const detail = stderr.trim() || "docker inspect failed";
+	return { ok: false, status: "absent", message: `Docker inspect failed: ${detail}` };
+}
+
+async function verifyKrokiContainerIdentity(
+	shell: ShellRunner,
+): Promise<KrokiDockerResult | undefined> {
+	const imageStatus = await verifyKrokiContainerImage(shell);
+	if (imageStatus) return imageStatus;
+	return verifyKrokiContainerLabel(shell);
+}
+
 async function verifyKrokiContainerImage(
 	shell: ShellRunner,
 ): Promise<KrokiDockerResult | undefined> {
@@ -132,15 +151,31 @@ async function verifyKrokiContainerImage(
 		"{{.Config.Image}}",
 		CONTAINER_NAME,
 	]);
-	if (result.exitCode !== 0) {
-		const detail = result.stderr.trim() || "docker inspect failed";
-		return { ok: false, status: "absent", message: `Failed to inspect image: ${detail}` };
-	}
+	if (result.exitCode !== 0) return inspectFailureResult(result.stderr);
 	const actualImage = result.stdout.trim();
 	if (actualImage === IMAGE) return undefined;
 	return {
 		ok: false,
 		status: "absent",
 		message: `Container ${CONTAINER_NAME} image mismatch: expected ${IMAGE}, got ${actualImage}.`,
+	};
+}
+
+async function verifyKrokiContainerLabel(
+	shell: ShellRunner,
+): Promise<KrokiDockerResult | undefined> {
+	const result = await shell.run("docker", [
+		"inspect",
+		"--format",
+		`{{ index .Config.Labels "${LABEL_NAME}" }}`,
+		CONTAINER_NAME,
+	]);
+	if (result.exitCode !== 0) return inspectFailureResult(result.stderr);
+	const actualLabel = result.stdout.trim() || "<none>";
+	if (actualLabel === LABEL_VALUE) return undefined;
+	return {
+		ok: false,
+		status: "absent",
+		message: `Container ${CONTAINER_NAME} label mismatch: expected ${LABEL_NAME}=${LABEL_VALUE}, got ${actualLabel}.`,
 	};
 }
