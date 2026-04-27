@@ -93,6 +93,25 @@ Vertical slice rule:
 
 > A task should deliver one narrow behavior through the relevant layers, with its own test and verification. Do not create horizontal tasks like “write all tests” or “implement all config.”
 
+Story file boundary:
+
+1. Story files are reusable specs, not implementation transcripts.
+2. Story status values are `Draft`, `Ready`, and `Done`. Do not use `In progress`; active work is represented by claimed/open beans.
+3. Once a story is `Ready`, treat the story file as mostly immutable.
+4. The story `Plan` section contains acceptance-oriented slices: stable behavior groups tied to user value, not exact TDD order, inspection findings, or implementation task lists.
+5. TDD micro-steps, execution order, dependencies, current RED targets, and inspection remediation plans live in beans.
+6. After `Ready`, allowed story-file edits are limited to:
+   - status changes;
+   - correcting a wrong or misleading acceptance criterion;
+   - clarifying scope when implementation proves the story was ambiguous;
+   - final close status.
+7. After `Ready`, do not edit the story file to add TDD micro-steps, track inspection findings, update implementation order, or record discovered cleanup tasks.
+8. If implementation discovers a missing behavior:
+   - update the story only when the acceptance contract or user-visible promise changes;
+   - create or split beans when execution work changes;
+   - record what happened in the worklog after the relevant commit exists.
+9. At close, actual commands, test counts, Sonar status, commit lists, deviations, and carry-forwards live in bean close reasons and the worklog. The story file only moves to `Done`.
+
 ## 3. Phase B — Implementation
 
 Input: one ready, unclaimed bean under the current epic. This includes implementation tasks and inspection finding beans.
