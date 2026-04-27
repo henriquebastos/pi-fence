@@ -2676,3 +2676,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Shared canonicalization.** Startup probing reuses resolver tag-family blocking logic instead of duplicating alias handling.
 
 **Carry-forward.** Fix startup binding diagnostics so initial logs also receive `blockedTags`.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: startup binding diagnostics
+
+**What shipped.** Startup binding logs now receive `blockedTags`, so a binding on a blocked tag is logged as a `tag-blocked` binding issue instead of an effective binding. Command, render-time, and startup diagnostics now agree for blocked tag bindings.
+
+**Implementation commits.**
+
+1. `0449617` — fix: align startup blocked binding diagnostics
+
+**Test count.** 694 fast-suite tests (was 693; +1 extension logger regression).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'startup binding diagnostics'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Diagnostics share policy inputs.** Startup, command, and render paths all pass `blockedTags` into binding resolution.
+2. **Blocked tag bindings are issues.** Even an otherwise eligible processor binding is reported as blocked when the tag family is blocked.
+
+**Carry-forward.** Clean stale disabled terminology and add remaining edge coverage.
