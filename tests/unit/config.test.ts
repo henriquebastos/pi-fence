@@ -258,6 +258,17 @@ describe("config core", () => {
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
 
+	it("validates bindings: keeps __proto__ as a safe own binding key", () => {
+		const parsed = JSON.parse(
+			'{"bindings":{"__proto__":{"processor":"kroki-remote"}}}',
+		) as unknown;
+		const result = validatePiFenceConfig(parsed, "test");
+
+		expect(Object.getPrototypeOf(result.bindings)).toBeNull();
+		expect(Object.hasOwn(result.bindings, "__proto__")).toBe(true);
+		expect(result.bindings.__proto__).toEqual({ processor: "kroki-remote" });
+	});
+
 	it("validates bindings: drops string selector values with a warn", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(

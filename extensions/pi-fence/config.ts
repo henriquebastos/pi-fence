@@ -54,11 +54,11 @@ export const DEFAULT_PROCESSOR_PRECEDENCE: readonly ProcessorPlacement[] = [
 ];
 
 export const DEFAULT_CONFIG: PiFenceConfig = {
-	bindings: {},
+	bindings: emptyBindings(),
 	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
 };
 
-export const EMPTY_CONFIG_LAYER: PiFenceConfig = { bindings: {} };
+export const EMPTY_CONFIG_LAYER: PiFenceConfig = { bindings: emptyBindings() };
 
 const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = {
 	color: "color-embedded",
@@ -78,13 +78,15 @@ const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = {
 export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
 ): PiFenceConfig {
-	const bindings: Record<string, TagBinding> = {};
+	const bindings = emptyBindings();
 	const disabled = new Set<string>();
 	let sawDisabled = false;
 	let processorPrecedence: ProcessorPlacement[] | undefined;
 	let kroki: PiFenceConfig["kroki"];
 	for (const config of configs) {
-		Object.assign(bindings, config.bindings);
+		for (const [tag, binding] of Object.entries(config.bindings)) {
+			bindings[tag] = binding;
+		}
 		if (config.disabled !== undefined) {
 			sawDisabled = true;
 			for (const id of config.disabled) disabled.add(id);
@@ -143,6 +145,10 @@ export function validatePiFenceConfig(
 	return out;
 }
 
+function emptyBindings(): Record<string, TagBinding> {
+	return Object.create(null) as Record<string, TagBinding>;
+}
+
 function mergeKrokiConfig(
 	current: PiFenceConfig["kroki"],
 	next: NonNullable<PiFenceConfig["kroki"]>,
@@ -198,7 +204,7 @@ function validateBindings(
 	label: string,
 	logger?: Logger,
 ): Record<string, TagBinding> {
-	const bindings: Record<string, TagBinding> = {};
+	const bindings = emptyBindings();
 	if (rawBindings === undefined) {
 		return bindings;
 	}

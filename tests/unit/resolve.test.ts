@@ -297,6 +297,17 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		aliases: { dot: "graphviz", puml: "plantuml" },
 	});
 
+	it("ignores inherited binding properties when resolving a tag", () => {
+		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
+		const bindings = Object.create({ processor: "kroki-remote" }) as Record<
+			string,
+			{ processor: string }
+		>;
+
+		expect(() => resolveProcessor([krokiRemote], availability, "processor", bindings)).not.toThrow();
+		expect(resolveProcessor([krokiRemote], availability, "processor", bindings).processor).toBeNull();
+	});
+
 	it("processor binding overrides placement policy when bound processor is available", () => {
 		// Both processors available. Without a binding, placement policy
 		// selects graphviz-host first for the 'graphviz' tag. With a

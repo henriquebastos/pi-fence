@@ -111,11 +111,12 @@ export function resolveProcessor(
 	disabled?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): ResolveProcessorResult {
+	const binding = bindingForTag(bindings, tag);
 	const context: ResolveContext = {
 		availability,
 		allowedPlacements: new Set(processorPrecedence),
-		binding: bindings?.[tag],
-		boundId: processorBindingId(bindings?.[tag]),
+		binding,
+		boundId: processorBindingId(binding),
 		disabled,
 		placementRank: buildPlacementRank(processorPrecedence),
 		tag,
@@ -140,7 +141,7 @@ function selectBinding(
 	context: ResolveContext,
 ): PlacementDecision {
 	if (context.binding === undefined) return {};
-	if ("processor" in context.binding) return selectProcessorBinding(processors, context);
+	if (isProcessorBinding(context.binding)) return selectProcessorBinding(processors, context);
 	return selectPlacementBinding(processors, context, context.binding.placement);
 }
 
@@ -308,7 +309,32 @@ function claimsTag(processor: FenceProcessor, tag: string): boolean {
 }
 
 function processorBindingId(binding: TagBinding | undefined): string | undefined {
-	return binding && "processor" in binding ? binding.processor : undefined;
+	return binding && isProcessorBinding(binding) ? binding.processor : undefined;
+}
+
+function bindingForTag(
+	bindings: Readonly<Record<string, TagBinding>> | undefined,
+	tag: string,
+): TagBinding | undefined {
+	if (bindings === undefined || !Object.hasOwn(bindings, tag)) return undefined;
+	const binding = bindings[tag] as unknown;
+	return isTagBinding(binding) ? binding : undefined;
+}
+
+function isTagBinding(binding: unknown): binding is TagBinding {
+	if (!isPlainBindingObject(binding)) return false;
+	return (
+		(typeof binding.processor === "string" && binding.placement === undefined) ||
+		(binding.processor === undefined && typeof binding.placement === "string")
+	);
+}
+
+function isProcessorBinding(binding: TagBinding): binding is { processor: string } {
+	return "processor" in binding;
+}
+
+function isPlainBindingObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
