@@ -6,9 +6,9 @@
  *   - `listProcessors(processors, availability, opts)` turns a
  *     `FenceProcessor[]` plus a wire-time availability map into
  *     `ProcessorListing[]`. Status is `"registered"` when availability
- *     is ok and policy allows the processor, `"disabled"` when a processor
- *     id or placement is disabled, and `"unavailable"` otherwise. On the
- *     unavailable branch the processor's `reason` + optional `installHint`
+ *     is ok and policy allows the processor, `"blocked"` when a processor
+ *     id is blocked, `"disabled"` when placement policy disables it, and
+ *     `"unavailable"` otherwise. On the unavailable branch the processor's `reason` + optional `installHint`
  *     are carried on the listing so the formatter can surface them.
  *
  *   - `formatProcessorLines(listings, bindings?)` turns listings +
@@ -24,7 +24,7 @@
  *         Binding issues
  *           <tag> → <processorId> (unknown processor)
  *           <tag> → <processorId> (processor unavailable)
- *           <tag> → <processorId> (processor disabled)
+ *           <tag> → <processorId> (processor blocked)
  *           <tag> → <processorId> (processor placement disabled)
  *           <tag> → <processorId> (processor does not claim tag)
  *           <tag> → placement:<placement> (placement disabled)
@@ -75,8 +75,6 @@ export interface ProcessorListing {
  */
 export interface ListProcessorsOptions {
 	blockedProcessors?: ReadonlySet<string>;
-	/** Deprecated internal alias kept while command/agent options are renamed. */
-	disabled?: ReadonlySet<string>;
 	/** Per-processor endpoint overrides to display in the listing. */
 	endpoints?: Readonly<Record<string, string>>;
 	/** Placement allowlist from config. Omitted placements render as disabled. */
@@ -88,8 +86,7 @@ export function listProcessors(
 	availability: ReadonlyMap<string, Availability>,
 	opts?: ListProcessorsOptions,
 ): ProcessorListing[] {
-	const { disabled, endpoints, processorPrecedence } = opts ?? {};
-	const blockedProcessors = opts?.blockedProcessors ?? disabled;
+	const { blockedProcessors, endpoints, processorPrecedence } = opts ?? {};
 	const allowedPlacements = processorPrecedence ? new Set(processorPrecedence) : undefined;
 
 	return processors.map((processor) => {

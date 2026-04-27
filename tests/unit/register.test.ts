@@ -179,7 +179,7 @@ describe("registerProcessor", () => {
 		});
 	});
 
-	it("does not probe a disabled processor", async () => {
+	it("does not probe a blocked processor", async () => {
 		const registry = makeRegistry();
 		let probes = 0;
 		const proc = makeValidProcessor({
@@ -190,14 +190,14 @@ describe("registerProcessor", () => {
 		});
 
 		const result = await registerProcessor(registry, proc, {
-			disabled: new Set(["test-proc"]),
+			blockedProcessors: new Set(["test-proc"]),
 		});
 
 		expect(result.ok).toBe(true);
 		expect(probes).toBe(0);
 		expect(registry.availability.get("test-proc")).toEqual({
 			ok: false,
-			reason: "processor disabled by config",
+			reason: "processor blocked by config",
 		});
 	});
 

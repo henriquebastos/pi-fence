@@ -91,14 +91,14 @@ export type RegistrationResult =
 	| { ok: false; error: string };
 
 export interface RegisterProcessorOptions {
-	disabled?: ReadonlySet<string>;
+	blockedProcessors?: ReadonlySet<string>;
 	processorPrecedence?: readonly ProcessorPlacement[];
 }
 
 /**
  * Add a validated processor to the registry. Probes availability only when
- * policy allows the processor; disabled placements must not run host/remote
- * probes as a registration side effect.
+ * policy allows the processor; blocked processors and disabled placements
+ * must not run host/remote probes as a registration side effect.
  * Inserts before kroki-remote (the catch-all) if kroki-remote is present;
  * otherwise appends.
  *
@@ -146,8 +146,8 @@ function registrationBlocked(
 	processor: FenceProcessor,
 	options: RegisterProcessorOptions,
 ): Availability | undefined {
-	if (options.disabled?.has(processor.id)) {
-		return { ok: false, reason: "processor disabled by config" };
+	if (options.blockedProcessors?.has(processor.id)) {
+		return { ok: false, reason: "processor blocked by config" };
 	}
 	if (
 		options.processorPrecedence !== undefined &&

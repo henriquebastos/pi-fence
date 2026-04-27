@@ -133,7 +133,7 @@ export async function createPiFenceExtension(
 				return;
 			}
 			const result = await registerProcessor(registry, validated.processor, {
-				disabled: blockedProcessors,
+				blockedProcessors,
 				processorPrecedence,
 			});
 			if (!result.ok) {
@@ -158,7 +158,7 @@ export async function createPiFenceExtension(
 		processors,
 		availability,
 		bindings,
-		disabled: blockedProcessors,
+		blockedProcessors,
 		blockedTags,
 		processorPrecedence,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
@@ -177,7 +177,7 @@ export async function createPiFenceExtension(
 		processors,
 		availability,
 		bindings,
-		disabled: blockedProcessors,
+		blockedProcessors,
 		blockedTags,
 		processorPrecedence,
 		supportedTags: () => collectSupportedTags(processors),

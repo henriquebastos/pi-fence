@@ -72,8 +72,8 @@ const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = Object.fre
 
 /**
  * Shallow merge at the top level; inside `bindings` later configs win on the
- * same key and preserve non-conflicting keys. Safety controls are restrictive:
- * `disabled` is a union, and `processorPrecedence` is an ordered intersection.
+ * same key and preserve non-conflicting keys. `blocked` replaces by layer;
+ * `processorPrecedence` is an ordered intersection.
  */
 export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>

@@ -30,7 +30,7 @@ interface RegisterFenceCommandOptions {
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, TagBinding>>;
-	disabled: ReadonlySet<string>;
+	blockedProcessors: ReadonlySet<string>;
 	blockedTags: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	endpoints?: Readonly<Record<string, string>>;
@@ -45,7 +45,7 @@ export function registerFenceCommand({
 	processors,
 	availability,
 	bindings,
-	disabled,
+	blockedProcessors,
 	blockedTags,
 	processorPrecedence,
 	endpoints,
@@ -53,10 +53,10 @@ export function registerFenceCommand({
 	shell,
 	metrics,
 }: RegisterFenceCommandOptions): void {
-	const listOpts: ListProcessorsOptions = { blockedProcessors: disabled, endpoints, processorPrecedence };
+	const listOpts: ListProcessorsOptions = { blockedProcessors, endpoints, processorPrecedence };
 	const dockerMgr = createKrokiDockerManager(shell, logger);
 	const currentBindingRows = () =>
-		resolveBindings(processors, availability, bindings, disabled, processorPrecedence, blockedTags);
+		resolveBindings(processors, availability, bindings, blockedProcessors, processorPrecedence, blockedTags);
 
 	pi.registerCommand("fence", {
 		description: "List or inspect pi-fence processors (usage: /fence list, /fence doctor)",
@@ -70,7 +70,7 @@ export function registerFenceCommand({
 					processors,
 					availability,
 					bindingRows,
-					disabled,
+					blockedProcessors,
 					blockedTags,
 					endpoints,
 					processorPrecedence,
