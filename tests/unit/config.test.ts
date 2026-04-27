@@ -102,8 +102,8 @@ describe("config core", () => {
 	it("defaults named sandbox controllers for bundle and Kroki", () => {
 		expect(DEFAULT_CONFIG).toMatchObject({
 			sandboxes: {
-				bundle: { kind: "exec", runtime: "docker-container", autoStart: true },
-				kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
+				bundle: { kind: "exec", runtime: "docker-container", autoStart: false },
+				kroki: { kind: "service", runtime: "docker-compose", autoStart: false },
 			},
 		});
 	});
@@ -171,7 +171,7 @@ describe("config core", () => {
 		]);
 	});
 
-	it("merges sandboxes: later named entries replace earlier entries", () => {
+	it("merges sandboxes: later layers replace the lower-priority sandbox map", () => {
 		const globalBundle = { kind: "exec" as const, runtime: "docker-container" as const, image: "old" };
 		const merged = mergePiFenceConfigs(
 			{ bindings: {}, sandboxes: { bundle: globalBundle, kroki: { kind: "service", runtime: "docker-compose" } } },
@@ -180,7 +180,6 @@ describe("config core", () => {
 
 		expect(merged.sandboxes).toEqual({
 			bundle: { kind: "exec", runtime: "docker-container", image: "new" },
-			kroki: { kind: "service", runtime: "docker-compose" },
 		});
 		expect(merged.sandboxes?.bundle).not.toBe(globalBundle);
 	});
@@ -929,6 +928,29 @@ describe("loadPiFenceConfig — malformed files", () => {
 			logger
 				.bySubsystem("config")
 				.some((e) => e.message.includes("'bindings' is not an object")),
+		).toBe(true);
+	});
+
+	it("fails closed on invalid file-backed sandboxes and clears sandbox controllers", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(
+			dir,
+			JSON.stringify({ sandboxes: { bundle: { kind: "vm", runtime: "docker" } } }),
+		);
+		const logger = new FakeLogger();
+
+		const config = await loadConfig({
+			globalConfigPath: path,
+			projectConfigPath: join(dir, "no-project.json"),
+			logger,
+		});
+
+		expect(config.processorPrecedence).toEqual(["embedded"]);
+		expect(config.sandboxes).toEqual({});
+		expect(
+			logger
+				.bySubsystem("config")
+				.some((e) => e.message.includes("invalid sandbox config")),
 		).toBe(true);
 	});
 

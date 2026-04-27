@@ -76,8 +76,8 @@ export const DEFAULT_CONFIG: PiFenceConfig = {
 	blocked: { tags: [], processors: [] },
 	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
 	sandboxes: {
-		bundle: { kind: "exec", runtime: "docker-container", autoStart: true },
-		kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
+		bundle: { kind: "exec", runtime: "docker-container", autoStart: false },
+		kroki: { kind: "service", runtime: "docker-compose", autoStart: false },
 	},
 };
 
@@ -94,9 +94,9 @@ const LEGACY_PROCESSOR_ID_ALIASES: Readonly<Record<string, string>> = Object.fre
 });
 
 /**
- * Shallow merge at the top level; inside `bindings` and `sandboxes` later
- * configs win on the same key and preserve non-conflicting keys. `blocked`
- * replaces by layer; `processorPrecedence` is an ordered intersection.
+ * Shallow merge at the top level; inside `bindings` later configs win on the
+ * same key and preserve non-conflicting keys. `blocked` and `sandboxes`
+ * replace by layer; `processorPrecedence` is an ordered intersection.
  */
 export function mergePiFenceConfigs(
 	...configs: ReadonlyArray<PiFenceConfig>
@@ -200,14 +200,10 @@ function copySandboxes(sandboxes: SandboxConfigMap): SandboxConfigMap {
 }
 
 function mergeSandboxes(
-	current: SandboxConfigMap | undefined,
+	_current: SandboxConfigMap | undefined,
 	next: SandboxConfigMap,
 ): SandboxConfigMap {
-	const merged = current === undefined ? emptySandboxes() : copySandboxes(current);
-	for (const [id, config] of Object.entries(next)) {
-		merged[id] = copySandbox(config);
-	}
-	return merged;
+	return copySandboxes(next);
 }
 
 function copyBlocked(blocked: BlockPolicy): BlockPolicy {
