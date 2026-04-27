@@ -220,33 +220,62 @@ function validateBindings(
 	}
 
 	for (const [key, value] of Object.entries(rawBindings)) {
-		if (isRecordLike(value)) {
-			const processor = ownField(value, "processor");
-			const placement = ownField(value, "placement");
-			const hasProcessor = Object.hasOwn(value, "processor");
-			const hasPlacement = Object.hasOwn(value, "placement");
-			if (hasProcessor && !hasPlacement && typeof processor === "string") {
-				bindings[key] = {
-					processor: normalizeLegacyProcessorId(
-						processor,
-						label,
-						`bindings.${key}.processor`,
-						logger,
-					),
-				};
-				continue;
-			}
-			if (!hasProcessor && hasPlacement && isProcessorPlacement(placement)) {
-				bindings[key] = { placement };
-				continue;
-			}
+		const binding = validateBindingEntry(key, value, label, logger);
+		if (binding) {
+			bindings[key] = binding;
+		} else {
+			warnInvalidBindingSelector(key, value, label, logger);
 		}
-		logger?.warn("config", `invalid binding selector in ${label} bindings`, {
-			key,
-			got: Array.isArray(value) ? "array" : typeof value,
-		});
 	}
 	return bindings;
+}
+
+function validateBindingEntry(
+	key: string,
+	value: unknown,
+	label: string,
+	logger?: Logger,
+): TagBinding | undefined {
+	if (!isRecordLike(value)) return undefined;
+	const hasProcessor = Object.hasOwn(value, "processor");
+	const hasPlacement = Object.hasOwn(value, "placement");
+	if (hasProcessor === hasPlacement) return undefined;
+	return hasProcessor
+		? validateProcessorBindingEntry(key, ownField(value, "processor"), label, logger)
+		: validatePlacementBindingEntry(ownField(value, "placement"));
+}
+
+function validateProcessorBindingEntry(
+	key: string,
+	processor: unknown,
+	label: string,
+	logger?: Logger,
+): TagBinding | undefined {
+	if (typeof processor !== "string") return undefined;
+	return {
+		processor: normalizeLegacyProcessorId(
+			processor,
+			label,
+			`bindings.${key}.processor`,
+			logger,
+		),
+	};
+}
+
+function validatePlacementBindingEntry(placement: unknown): TagBinding | undefined {
+	return isProcessorPlacement(placement) ? { placement } : undefined;
+}
+
+function warnInvalidBindingSelector(
+	key: string,
+	value: unknown,
+	label: string,
+	logger?: Logger,
+): void {
+	logger?.warn("config", `invalid binding selector in ${label} bindings`, {
+		key,
+		got: Array.isArray(value) ? "array" : typeof value,
+	});
 }
 
 function validateKroki(
