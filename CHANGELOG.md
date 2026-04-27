@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Config validation accepts the CV9 binding selector shape and keeps processor-id normalization inside the explicit `processor` selector.
 - Resolver binding policy now honors both exact processor selectors and placement selectors; exact processor selectors resolve same-placement ambiguity, while placement selectors preserve ambiguity when multiple processors in that placement match.
 - `/fence list`, `/fence doctor`, and binding logs now report placement selector diagnostics, including disabled placements, no matching processor in the selected placement, and ambiguous placement matches. Unsatisfied bindings are grouped under `Binding issues`, and command diagnostics are computed from the current processor registry so dynamically registered processors are reflected.
+- Binding dictionaries are hardened against prototype-pollution keys such as `__proto__`; resolver lookups only use own, validated binding entries.
 - Unsatisfied object bindings now fail closed for that tag instead of falling through to another processor or placement.
 
 ### Changed (CV9.E1.S1 — Placement precedence tracer bullet)

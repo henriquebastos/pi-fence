@@ -2292,3 +2292,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Validation remains fail-closed.** Non-string processor selectors are dropped with the same invalid-selector warning as other malformed binding objects.
 
 **Carry-forward.** Rerun inspection after all round-2 findings are closed.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: binding dictionary hardening
+
+**What shipped.** Validated and merged binding dictionaries now use null-prototype objects, and resolver tag lookup requires an own, shape-checked binding entry before applying selector constraints. Config keys such as `__proto__` remain safe data keys instead of changing binding-object prototypes or surfacing inherited data during resolution.
+
+**Implementation commits.**
+
+1. `c114026` — fix: harden binding dictionaries
+
+**Test count.** 672 fast-suite (was 670; +2 focused hardening regressions for `__proto__` validation and inherited binding lookup).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts -t '__proto__'` — passed.
+2. `pnpm vitest run tests/unit/resolve.test.ts -t 'inherited binding'` — passed.
+3. `pnpm run lint:types` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Validate at the boundary, guard at the use site.** Config validation builds safe dictionaries, and resolution still rejects inherited or malformed binding values defensively.
+2. **Keep unusual tag keys data-safe.** A `__proto__` binding key is preserved as an own property rather than being special-cased or treated as object metadata.
+
+**Carry-forward.** Continue final docs/resolver cleanup: README placement, import formatting, stale naming, and shared processor-binding eligibility.
