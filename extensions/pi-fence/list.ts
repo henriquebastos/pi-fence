@@ -192,7 +192,7 @@ function formatListingBlock(listing: ProcessorListing): string[] {
 const UNAVAILABLE_DETAIL_INDENT = "    ";
 const BINDING_INDENT = "  ";
 
-function formatIgnoredReason(
+function formatIssueReason(
 	reason: Extract<BindingResolution, { status: "issue" }>["reason"],
 ): string {
 	if (reason === "unknown-processor") return "unknown processor";
@@ -243,7 +243,7 @@ function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effec
 }
 
 function formatIssueBinding(row: Extract<BindingResolution, { status: "issue" }>): string {
-	const reason = formatIgnoredReason(row.reason);
+	const reason = formatIssueReason(row.reason);
 	if (row.selector === "placement") {
 		const detail = "processorIds" in row ? `${reason}: ${row.processorIds.join(", ")}` : reason;
 		return `${BINDING_INDENT}${row.tag} → placement:${row.placement} (${detail})`;

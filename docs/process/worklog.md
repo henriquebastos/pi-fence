@@ -2138,7 +2138,7 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 
 **Design decisions that survived implementation.**
 
-1. **Placement diagnostics are selector-shaped.** Effective rows show `placement:<placement> (<processor>)`; ignored rows keep the selector visible even when no processor id exists.
+1. **Placement diagnostics are selector-shaped.** Effective rows show `placement:<placement> (<processor>)`; issue rows keep the selector visible even when no processor id exists.
 2. **Ambiguity remains explicit.** Placement bindings do not choose among same-placement processors; diagnostics list the candidate ids so the user can switch to `{ "processor": "..." }`.
 
 **Carry-forward.** CV9.E1.S2 implementation beans are closed. Next: run story inspection, then close S2 if inspection produces no new findings.

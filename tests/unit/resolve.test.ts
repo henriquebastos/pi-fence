@@ -525,7 +525,7 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		]);
 	});
 
-	it("binding is ignored when the processor does not claim the tag", () => {
+	it("binding becomes an issue when the processor does not claim the tag", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -732,7 +732,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-unknown-processor", () => {
+	it("categorises issue-unknown-processor", () => {
 		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
 
 		const rows = resolveBindings([krokiRemote], availability, {
@@ -750,7 +750,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-processor-disabled", () => {
+	it("categorises issue-processor-disabled", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -774,7 +774,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-processor-unavailable", () => {
+	it("categorises issue-processor-unavailable", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: false, reason: "dot not found" }],
 			["kroki-remote", { ok: true }],
@@ -795,7 +795,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-processor-placement-disabled", () => {
+	it("categorises issue-processor-placement-disabled", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -820,7 +820,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-placement-disabled", () => {
+	it("categorises issue-placement-disabled", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -845,7 +845,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-placement-no-match", () => {
+	it("categorises issue-placement-no-match", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: false, reason: "dot missing" }],
 			["kroki-remote", { ok: true }],
@@ -870,7 +870,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-placement-ambiguous", () => {
+	it("categorises issue-placement-ambiguous", () => {
 		const otherLocal = makeFakeProcessor({ id: "other-host", tags: ["graphviz"] });
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
@@ -898,7 +898,7 @@ describe("resolveBindings", () => {
 		]);
 	});
 
-	it("categorises ignored-processor-does-not-claim-tag", () => {
+	it("categorises issue-processor-does-not-claim-tag", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
 			["kroki-remote", { ok: true }],
@@ -938,16 +938,16 @@ describe("resolveBindings", () => {
 		expect(resolveBindings([local], new Map(), {})).toEqual([]);
 	});
 
-	it("mixes effective + ignored rows in one call", () => {
+	it("mixes effective + issue rows in one call", () => {
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: false, reason: "nope" }],
 			["kroki-remote", { ok: true }],
 		]);
 
 		const rows = resolveBindings([local, krokiRemote], availability, {
-			graphviz: { processor: "graphviz-host" }, // ignored: unavailable
+			graphviz: { processor: "graphviz-host" }, // issue: unavailable
 			mermaid: { processor: "kroki-remote" }, // effective
-			puml: { processor: "nonexistent" }, // ignored: unknown
+			puml: { processor: "nonexistent" }, // issue: unknown
 		});
 
 		expect(rows.map((r) => r.status)).toEqual(["issue", "effective", "issue"]);

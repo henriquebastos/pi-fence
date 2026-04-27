@@ -85,7 +85,7 @@ No backward compatibility is required for old string bindings.
 
 1. **Layers touched:**
    - **Unit** — config validation/merge, resolver binding constraints, binding diagnostic formatter.
-   - **Extension** — real config file drives processor selection and ignored-binding diagnostics.
+   - **Extension** — real config file drives processor selection and binding issue diagnostics.
    - **Render** — only if `/fence list` or `/fence doctor` message details/lines change enough to need renderer assertions.
 2. **Events / interactions covered:**
    - Exact processor binding narrows candidates.

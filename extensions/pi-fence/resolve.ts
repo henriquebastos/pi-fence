@@ -77,6 +77,11 @@ interface Selection {
 	processor: FenceProcessor;
 }
 
+interface ProcessorCandidate {
+	index: number;
+	processor: FenceProcessor;
+}
+
 interface ResolutionDecision {
 	ambiguity?: ResolveAmbiguity;
 	constrained?: boolean;
@@ -174,8 +179,27 @@ function selectPlacementBinding(
 	context: ResolveContext,
 	placement: ProcessorPlacement,
 ): ResolutionDecision {
-	if (!context.allowedPlacements.has(placement)) return { constrained: true };
-	return { constrained: true, ...selectByPlacement(processors, context, [placement], "binding") };
+	const classification = classifyPlacementBinding(processors, context, placement);
+	if (classification.kind === "effective") {
+		return {
+			constrained: true,
+			selection: {
+				index: classification.candidate.index,
+				mode: "binding",
+				processor: classification.candidate.processor,
+			},
+		};
+	}
+	if (classification.kind === "ambiguous") {
+		return {
+			constrained: true,
+			ambiguity: {
+				placement,
+				processorIds: classification.candidates.map(({ processor }) => processor.id),
+			},
+		};
+	}
+	return { constrained: true };
 }
 
 function selectByPlacement(
@@ -184,9 +208,7 @@ function selectByPlacement(
 	processorPrecedence: readonly ProcessorPlacement[],
 	mode: Selection["mode"] = "placement",
 ): ResolutionDecision {
-	const candidates = processors
-		.map((processor, index) => ({ index, processor }))
-		.filter(({ processor }) => candidateBlocked(processor, context) === undefined);
+	const candidates = eligibleCandidates(processors, context);
 
 	for (const placement of processorPrecedence) {
 		const group = candidates.filter(({ processor }) => processor.placement === placement);
@@ -209,6 +231,35 @@ function selectByPlacement(
 	}
 
 	return {};
+}
+
+type PlacementBindingClassification =
+	| { kind: "disabled" }
+	| { kind: "no-match" }
+	| { kind: "ambiguous"; candidates: ProcessorCandidate[] }
+	| { kind: "effective"; candidate: ProcessorCandidate };
+
+function classifyPlacementBinding(
+	processors: readonly FenceProcessor[],
+	context: CandidateContext,
+	placement: ProcessorPlacement,
+): PlacementBindingClassification {
+	if (!context.allowedPlacements.has(placement)) return { kind: "disabled" };
+	const candidates = eligibleCandidates(processors, context).filter(
+		({ processor }) => processor.placement === placement,
+	);
+	if (candidates.length === 0) return { kind: "no-match" };
+	if (candidates.length > 1) return { kind: "ambiguous", candidates };
+	return { kind: "effective", candidate: candidates[0] };
+}
+
+function eligibleCandidates(
+	processors: readonly FenceProcessor[],
+	context: CandidateContext,
+): ProcessorCandidate[] {
+	return processors
+		.map((processor, index) => ({ index, processor }))
+		.filter(({ processor }) => candidateBlocked(processor, context) === undefined);
 }
 
 function buildTraceSteps(
@@ -416,7 +467,6 @@ export function resolveBindings(
 			tag,
 			binding,
 			disabled,
-			processorPrecedence,
 			allowedPlacements,
 		),
 	);
@@ -428,7 +478,6 @@ function resolveBinding(
 	tag: string,
 	binding: TagBinding,
 	disabled: ReadonlySet<string> | undefined,
-	processorPrecedence: readonly ProcessorPlacement[],
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 ): BindingResolution {
 	if ("placement" in binding) {
@@ -438,7 +487,6 @@ function resolveBinding(
 			tag,
 			binding.placement,
 			disabled,
-			processorPrecedence,
 			allowedPlacements,
 		);
 	}
@@ -486,47 +534,27 @@ function resolvePlacementBinding(
 	tag: string,
 	placement: ProcessorPlacement,
 	disabled: ReadonlySet<string> | undefined,
-	processorPrecedence: readonly ProcessorPlacement[],
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 ): BindingResolution {
-	if (!allowedPlacements.has(placement)) {
-		return {
-			status: "issue",
-			tag,
-			selector: "placement",
-			placement,
-			reason: "placement-disabled",
-		};
-	}
-	const context: ResolveContext = {
-		availability,
-		allowedPlacements,
-		binding: { placement },
-		disabled,
-		placementRank: buildPlacementRank(processorPrecedence),
-		tag,
-	};
-	const candidates = processors.filter(
-		(processor) =>
-			processor.placement === placement && candidateBlocked(processor, context) === undefined,
+	const classification = classifyPlacementBinding(
+		processors,
+		{ availability, allowedPlacements, disabled, tag },
+		placement,
 	);
-	if (candidates.length === 0) {
-		return {
-			status: "issue",
-			tag,
-			selector: "placement",
-			placement,
-			reason: "placement-no-match",
-		};
+	if (classification.kind === "disabled") {
+		return placementBindingIssue(tag, placement, "placement-disabled");
 	}
-	if (candidates.length > 1) {
+	if (classification.kind === "no-match") {
+		return placementBindingIssue(tag, placement, "placement-no-match");
+	}
+	if (classification.kind === "ambiguous") {
 		return {
 			status: "issue",
 			tag,
 			selector: "placement",
 			placement,
 			reason: "placement-ambiguous",
-			processorIds: candidates.map((processor) => processor.id),
+			processorIds: classification.candidates.map(({ processor }) => processor.id),
 		};
 	}
 	return {
@@ -534,8 +562,16 @@ function resolvePlacementBinding(
 		tag,
 		selector: "placement",
 		placement,
-		processorId: candidates[0].id,
+		processorId: classification.candidate.processor.id,
 	};
+}
+
+function placementBindingIssue(
+	tag: string,
+	placement: ProcessorPlacement,
+	reason: "placement-disabled" | "placement-no-match",
+): BindingResolution {
+	return { status: "issue", tag, selector: "placement", placement, reason };
 }
 
 /**
