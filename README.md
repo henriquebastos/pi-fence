@@ -77,7 +77,7 @@ What does **not** work yet:
 
 - Local rendering for diagram languages beyond Graphviz and Mermaid — for example PlantUML via `plantuml.jar`. See the [roadmap](docs/project/roadmap/README.md).
 - Sandbox placement is reserved for policy work; no built-in sandboxed processor ships yet.
-- CV9 object-valued bindings are still in progress; current bindings are simple tag → processor-id preferences.
+- Bindings are exact tag-scoped constraints: use `{ "processor": "..." }` for one processor or `{ "placement": "host|remote|embedded|sandbox" }` for one placement. Aliases such as `dot` and `graphviz` bind independently.
 - Every later CV (see [roadmap](docs/project/roadmap/README.md)).
 
 ## Docs

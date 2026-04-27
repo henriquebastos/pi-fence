@@ -42,7 +42,7 @@ No backward compatibility is required for old string bindings.
 6. Bindings never re-enable a placement omitted from `processorPrecedence`.
 7. Same-placement ambiguity is resolved by `{ "processor": "..." }`.
 8. Same-placement ambiguity remains ambiguous under `{ "placement": "..." }` when multiple processors in that placement match.
-9. `/fence list` and `/fence doctor` describe effective and ignored bindings with placement-aware reasons.
+9. `/fence list` and `/fence doctor` describe effective bindings and binding issues with placement-aware reasons.
 10. `pnpm run feedback` passes.
 
 ## Scope

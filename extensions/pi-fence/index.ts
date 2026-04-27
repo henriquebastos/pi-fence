@@ -243,18 +243,9 @@ function logBindingResolution(
 ): void {
 	for (const row of bindingRows) {
 		if (row.status === "effective") {
-			logger.info("pi-fence", "binding effective", {
-				tag: row.tag,
-				processorId: row.processorId,
-				...("placement" in row ? { placement: row.placement } : {}),
-			});
-		} else if ("placement" in row) {
-			logger.warn("pi-fence", "binding ignored", {
-				tag: row.tag,
-				placement: row.placement,
-				reason: row.reason,
-				...("processorIds" in row ? { processorIds: row.processorIds } : {}),
-			});
+			logger.info("pi-fence", "binding effective", effectiveBindingLog(row));
+		} else if (row.selector === "placement") {
+			logger.warn("pi-fence", "binding ignored", ignoredPlacementBindingLog(row));
 		} else {
 			logger.warn("pi-fence", "binding ignored", {
 				tag: row.tag,
@@ -263,6 +254,20 @@ function logBindingResolution(
 			});
 		}
 	}
+}
+
+function effectiveBindingLog(row: Extract<ReturnType<typeof resolveBindings>[number], { status: "effective" }>) {
+	return row.selector === "placement"
+		? { tag: row.tag, processorId: row.processorId, placement: row.placement }
+		: { tag: row.tag, processorId: row.processorId };
+}
+
+function ignoredPlacementBindingLog(
+	row: Extract<ReturnType<typeof resolveBindings>[number], { status: "ignored"; selector: "placement" }>,
+) {
+	return "processorIds" in row
+		? { tag: row.tag, placement: row.placement, reason: row.reason, processorIds: row.processorIds }
+		: { tag: row.tag, placement: row.placement, reason: row.reason };
 }
 
 function logDisabled(

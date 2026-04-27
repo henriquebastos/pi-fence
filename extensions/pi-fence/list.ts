@@ -236,7 +236,7 @@ function formatBindingSection<T>(
 }
 
 function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effective" }>): string {
-	if ("placement" in row) {
+	if (row.selector === "placement") {
 		return `${BINDING_INDENT}${row.tag} → placement:${row.placement} (${row.processorId})`;
 	}
 	return `${BINDING_INDENT}${row.tag} → ${row.processorId}`;
@@ -244,7 +244,7 @@ function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effec
 
 function formatIgnoredBinding(row: Extract<BindingResolution, { status: "ignored" }>): string {
 	const reason = formatIgnoredReason(row.reason);
-	if ("placement" in row) {
+	if (row.selector === "placement") {
 		const detail = "processorIds" in row ? `${reason}: ${row.processorIds.join(", ")}` : reason;
 		return `${BINDING_INDENT}${row.tag} → placement:${row.placement} (${detail})`;
 	}

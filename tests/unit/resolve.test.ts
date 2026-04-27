@@ -297,9 +297,9 @@ describe("resolveProcessor — bindings branch (CV0.E2.S2)", () => {
 		aliases: { dot: "graphviz", puml: "plantuml" },
 	});
 
-	it("binding wins over capability order when bound processor is available", () => {
-		// Both processors available. Without a binding, registration order
-		// (graphviz-host first) wins for the 'graphviz' tag. With a
+	it("processor binding overrides placement policy when bound processor is available", () => {
+		// Both processors available. Without a binding, placement policy
+		// selects graphviz-host first for the 'graphviz' tag. With a
 		// binding 'graphviz → kroki-remote', Kroki wins instead.
 		const availability = new Map<string, Availability>([
 			["graphviz-host", { ok: true }],
@@ -676,7 +676,12 @@ describe("resolveBindings", () => {
 		});
 
 		expect(rows).toEqual([
-			{ status: "effective", tag: "graphviz", processorId: "kroki-remote" },
+			{
+				status: "effective",
+				tag: "graphviz",
+				selector: "processor",
+				processorId: "kroki-remote",
+			},
 		]);
 	});
 
@@ -712,6 +717,7 @@ describe("resolveBindings", () => {
 			{
 				status: "ignored",
 				tag: "graphviz",
+				selector: "processor",
 				processorId: "nonexistent",
 				reason: "unknown-processor",
 			},
@@ -735,6 +741,7 @@ describe("resolveBindings", () => {
 			{
 				status: "ignored",
 				tag: "graphviz",
+				selector: "processor",
 				processorId: "graphviz-host",
 				reason: "processor-disabled",
 			},
@@ -755,6 +762,7 @@ describe("resolveBindings", () => {
 			{
 				status: "ignored",
 				tag: "graphviz",
+				selector: "processor",
 				processorId: "graphviz-host",
 				reason: "processor-unavailable",
 			},
@@ -779,6 +787,7 @@ describe("resolveBindings", () => {
 			{
 				status: "ignored",
 				tag: "graphviz",
+				selector: "processor",
 				processorId: "kroki-remote",
 				reason: "processor-placement-disabled",
 			},
@@ -877,6 +886,7 @@ describe("resolveBindings", () => {
 			{
 				status: "ignored",
 				tag: "csv",
+				selector: "processor",
 				processorId: "kroki-remote",
 				reason: "processor-does-not-claim-tag",
 			},

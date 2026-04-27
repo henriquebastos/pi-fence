@@ -18,7 +18,9 @@
  * Landed in CV0.E2.S1 when pi-fence stopped assuming a single processor
  * and needed a resolution rule between "parsed a block" and "render it".
  * CV9.E1.S1 made that rule placement-aware: user policy picks the
- * allowed placement order, while bindings remain tag-scoped preferences.
+ * allowed placement order. CV9.E1.S2 made bindings exact tag-scoped
+ * selector constraints that fail closed when the selected processor or
+ * placement cannot produce exactly one eligible processor.
  */
 
 import { DEFAULT_PROCESSOR_PRECEDENCE, type TagBinding } from "./config.ts";
@@ -320,7 +322,7 @@ function processorBindingId(binding: TagBinding | undefined): string | undefined
  * selected processor, trace, and ambiguity state.
  */
 export type BindingResolution =
-	| { status: "effective"; tag: string; processorId: string }
+	| { status: "effective"; tag: string; selector: "processor"; processorId: string }
 	| {
 			status: "effective";
 			tag: string;
@@ -331,6 +333,7 @@ export type BindingResolution =
 	| {
 			status: "ignored";
 			tag: string;
+			selector: "processor";
 			processorId: string;
 			reason:
 				| "unknown-processor"
@@ -433,7 +436,7 @@ function resolveProcessorBinding(
 	if (!claimsTag(processor, tag)) {
 		return processorBindingIssue(tag, processorId, "processor-does-not-claim-tag");
 	}
-	return { status: "effective", tag, processorId };
+	return { status: "effective", tag, selector: "processor", processorId };
 }
 
 function processorBindingIssue(
@@ -441,7 +444,7 @@ function processorBindingIssue(
 	processorId: string,
 	reason: ProcessorBindingIssueReason,
 ): BindingResolution {
-	return { status: "ignored", tag, processorId, reason };
+	return { status: "ignored", tag, selector: "processor", processorId, reason };
 }
 
 function resolvePlacementBinding(

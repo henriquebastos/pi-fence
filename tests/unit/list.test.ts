@@ -394,8 +394,8 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		const lines = formatProcessorLines(
 			[local, krokiRemote],
 			[
-				{ status: "effective", tag: "graphviz", processorId: "kroki-remote" },
-				{ status: "effective", tag: "dot", processorId: "kroki-remote" },
+				{ status: "effective", tag: "graphviz", selector: "processor", processorId: "kroki-remote" },
+				{ status: "effective", tag: "dot", selector: "processor", processorId: "kroki-remote" },
 			],
 		);
 
@@ -433,12 +433,14 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 				{
 					status: "ignored",
 					tag: "graphviz",
+					selector: "processor",
 					processorId: "graphviz-host",
 					reason: "processor-unavailable",
 				},
 				{
 					status: "ignored",
 					tag: "mermaid",
+					selector: "processor",
 					processorId: "nonexistent",
 					reason: "unknown-processor",
 				},
@@ -461,6 +463,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 				{
 					status: "ignored",
 					tag: "graphviz",
+					selector: "processor",
 					processorId: "kroki-remote",
 					reason: "processor-placement-disabled",
 				},
@@ -513,6 +516,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 				{
 					status: "ignored",
 					tag: "csv",
+					selector: "processor",
 					processorId: "kroki-remote",
 					reason: "processor-does-not-claim-tag",
 				},
@@ -526,10 +530,11 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		const lines = formatProcessorLines(
 			[local, krokiRemote],
 			[
-				{ status: "effective", tag: "graphviz", processorId: "kroki-remote" },
+				{ status: "effective", tag: "graphviz", selector: "processor", processorId: "kroki-remote" },
 				{
 					status: "ignored",
 					tag: "mermaid",
+					selector: "processor",
 					processorId: "nonexistent",
 					reason: "unknown-processor",
 				},
@@ -564,7 +569,7 @@ describe("formatProcessorLines — bindings (CV0.E2.S2)", () => {
 		// Shouldn't happen in production but shouldn't crash either.
 		const lines = formatProcessorLines(
 			[],
-			[{ status: "effective", tag: "graphviz", processorId: "kroki-remote" }],
+			[{ status: "effective", tag: "graphviz", selector: "processor", processorId: "kroki-remote" }],
 		);
 
 		expect(lines).toEqual([

@@ -1157,9 +1157,9 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 			await new Promise((r) => setTimeout(r, 50));
 
 			const details = sentCustomMessages.find((m) => m.customType === "pi-fence:list")
-				?.details as { bindings: Array<{ status: string; tag: string; processorId: string }> };
+				?.details as { bindings: Array<{ status: string; tag: string; selector: string; processorId: string }> };
 			expect(details.bindings).toEqual([
-				{ status: "effective", tag: "upper", processorId: "custom-upper" },
+				{ status: "effective", tag: "upper", selector: "processor", processorId: "custom-upper" },
 			]);
 		},
 		20_000,
@@ -1420,17 +1420,16 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 	);
 
 	it(
-		"binding to an unavailable processor falls through to capability — logs ignore-reason",
+		"binding to an unavailable processor selects no processor and logs a warn",
 		async () => {
-			// Default test shell: dot -V fails. graphviz-host is
-			// unavailable. Config binds graphviz to graphviz-host anyway.
-			// Expect the binding to be ignored (bindings are preferences,
-			// not hard requirements) and Kroki to serve via capability.
+			// Default test shell: dot -V fails, so graphviz-host is unavailable.
+			// Exact tag bindings are constraints; a bound `dot` block must not
+			// fall back to another processor when graphviz-host cannot render it.
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
-				JSON.stringify({ bindings: { graphviz: { processor: "graphviz-host" } } }),
+				JSON.stringify({ bindings: { dot: { processor: "graphviz-host" } } }),
 			);
 
 			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
@@ -1443,22 +1442,16 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 			);
 
 			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
-			expect(outputs[0].details).toMatchObject({
-				tag: "dot",
-				processor: "kroki-remote",
-			});
+			expect(outputs).toHaveLength(0);
+			expect(http.requests).toHaveLength(0);
 
-			// Kroki served it via capability fallback.
-			expect(http.requests).toHaveLength(1);
-
-			// Ignored-binding warn recorded.
 			const logger = captured.logger!;
 			const warns = logger
 				.bySubsystem("pi-fence")
 				.filter((e) => e.level === "warn" && e.message === "binding ignored");
 			expect(warns).toHaveLength(1);
 			expect(warns[0].meta).toMatchObject({
-				tag: "graphviz",
+				tag: "dot",
 				processorId: "graphviz-host",
 				reason: "processor-unavailable",
 			});
