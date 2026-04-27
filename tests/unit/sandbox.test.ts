@@ -24,9 +24,14 @@ function setRunning(shell: FakeShellRunner, containerName: string, image: string
 	});
 }
 
-function setStopped(shell: FakeShellRunner, containerName: string): void {
+function setStopped(shell: FakeShellRunner, containerName: string, image = KROKI_IMAGE): void {
 	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
 		stdout: "false\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", containerName], {
+		stdout: `${image}\n`,
 		stderr: "",
 		exitCode: 0,
 	});
@@ -88,7 +93,7 @@ describe("sandbox controller contract — Docker container status", () => {
 		});
 	});
 
-	it("reports stopped when docker inspect says the container exists but is not running", async () => {
+	it("reports stopped when docker inspect says the expected container exists but is not running", async () => {
 		const shell = new FakeShellRunner();
 		setStopped(shell, "pi-fence-kroki");
 
@@ -100,9 +105,37 @@ describe("sandbox controller contract — Docker container status", () => {
 		});
 	});
 
+	it("reports error when a stopped container image does not match", async () => {
+		const shell = new FakeShellRunner();
+		setStopped(shell, "pi-fence-kroki", "attacker/kroki");
+
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-kroki image mismatch: expected yuzutech/kroki, got attacker/kroki.",
+		});
+	});
+
 	it("reports absent when docker inspect cannot find the container", async () => {
 		const shell = new FakeShellRunner();
 		setAbsent(shell, "pi-fence-kroki");
+
+		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "absent",
+			message: "Container pi-fence-kroki not found.",
+		});
+	});
+
+	it("reports absent for Docker's No such container wording", async () => {
+		const shell = new FakeShellRunner();
+		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+			stdout: "",
+			stderr: "No such container",
+			exitCode: 1,
+		});
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
@@ -210,7 +243,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 	it("reports partial when only some components are ready", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "kroki-core", KROKI_IMAGE);
-		setStopped(shell, "kroki-mermaid");
+		setStopped(shell, "kroki-mermaid", MERMAID_IMAGE);
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",
@@ -253,8 +286,8 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 	it("reports stopped when all components are stopped", async () => {
 		const shell = new FakeShellRunner();
-		setStopped(shell, "kroki-core");
-		setStopped(shell, "kroki-mermaid");
+		setStopped(shell, "kroki-core", KROKI_IMAGE);
+		setStopped(shell, "kroki-mermaid", MERMAID_IMAGE);
 
 		const controller = createDockerComposeSandboxController(shell, {
 			id: "kroki",

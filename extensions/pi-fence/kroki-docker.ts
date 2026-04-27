@@ -44,10 +44,8 @@ export function createKrokiDockerManager(
 				return { ok: true, status: "absent", message: `Container ${CONTAINER_NAME} not found.` };
 			}
 			const running = result.stdout.trim() === "true";
-			if (running) {
-				const imageStatus = await verifyKrokiContainerImage(shell);
-				if (imageStatus) return imageStatus;
-			}
+			const imageStatus = await verifyKrokiContainerImage(shell);
+			if (imageStatus) return imageStatus;
 			return {
 				ok: true,
 				status: running ? "running" : "stopped",
@@ -66,6 +64,7 @@ export function createKrokiDockerManager(
 	async function start(): Promise<KrokiDockerResult> {
 		// Check if already running.
 		const current = await status();
+		if (!current.ok) return current;
 		if (current.status === "running") {
 			return {
 				ok: true,
@@ -107,6 +106,8 @@ export function createKrokiDockerManager(
 	}
 
 	async function stop(): Promise<KrokiDockerResult> {
+		const current = await status();
+		if (!current.ok || current.status === "absent") return current;
 		try {
 			await shell.run("docker", ["stop", CONTAINER_NAME]);
 			await shell.run("docker", ["rm", CONTAINER_NAME]);

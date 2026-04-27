@@ -205,6 +205,16 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 		const api = new FakeExtensionAPI();
 		const logger = new FakeLogger();
 		const shell = new FakeShellRunner();
+		shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+			stdout: "true\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
+			stdout: "yuzutech/kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
 		shell.setResponse("docker", ["stop", "pi-fence-kroki"], {
 			stdout: "pi-fence-kroki\n",
 			stderr: "",

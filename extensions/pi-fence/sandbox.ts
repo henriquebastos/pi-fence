@@ -177,10 +177,8 @@ async function inspectDockerContainer(
 			return inspectFailureStatus(component, result.stderr);
 		}
 		const running = result.stdout.trim() === "true";
-		if (running) {
-			const imageStatus = await inspectContainerImage(shell, component);
-			if (imageStatus) return imageStatus;
-		}
+		const imageStatus = await inspectContainerImage(shell, component);
+		if (imageStatus) return imageStatus;
 		return {
 			id: component.id,
 			state: running ? "ready" : "stopped",
@@ -202,7 +200,7 @@ function inspectFailureStatus(
 	component: DockerSandboxComponentOptions,
 	stderr: string,
 ): SandboxComponentStatus {
-	if (stderr.includes("No such object")) {
+	if (stderr.includes("No such object") || stderr.includes("No such container")) {
 		return {
 			id: component.id,
 			state: "absent",
