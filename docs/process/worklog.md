@@ -2192,3 +2192,27 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Placement metadata stays visible.** Effective and issue logs include the placement selector whenever the binding came from `{ "placement": "..." }`.
 
 **Carry-forward.** Continue with resolver complexity and stale comments/docs, then rerun inspection.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: resolver complexity
+
+**What shipped.** Binding diagnostics were split into smaller resolver helpers, stale preference-era comments were updated, and `/fence list` formatter docs now describe `Binding issues` plus placement selector output. SonarQube is back to quality gate `OK` with zero issues.
+
+**Implementation commits.**
+
+1. `75b04f3` — refactor: simplify binding diagnostics
+
+**Test count.** 666 fast-suite (unchanged; refactor only).
+
+**Verification.**
+
+1. `pnpm run feedback` — passed.
+2. `pnpm run inspect` — passed; Sonar quality gate `OK`, issues `0`, coverage `91.5`.
+
+**Design decisions that survived implementation.**
+
+1. **Separate categorization helpers.** Processor selector diagnostics and placement selector diagnostics now have their own helpers, keeping `resolveBindings` as a small dispatcher.
+2. **Trace helpers isolate wording.** `traceOutcome` delegates selected, ambiguous, and unresolved wording to helpers, keeping Sonar below the cognitive-complexity threshold without changing trace semantics.
+
+**Carry-forward.** All inspect5p findings are closed. Rerun inspection or proceed to story-close bookkeeping if no new findings appear.
