@@ -2142,3 +2142,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Ambiguity remains explicit.** Placement bindings do not choose among same-placement processors; diagnostics list the candidate ids so the user can switch to `{ "processor": "..." }`.
 
 **Carry-forward.** CV9.E1.S2 implementation beans are closed. Next: run story inspection, then close S2 if inspection produces no new findings.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 inspection fix: binding constraints fail closed
+
+**What shipped.** Object bindings now behave as constraints during rendering. Unknown, disabled, unavailable, or placement-disabled processor bindings select no processor for that tag instead of falling through to another placement. Unsatisfied placement bindings also select no processor instead of leaking to a broader placement policy.
+
+**Implementation commits.**
+
+1. `c14144a` — fix: keep binding constraints fail-closed
+
+**Test count.** 665 fast-suite (was 664; +1 placement no-match resolver case; existing processor-binding tests were updated from preference fallback to constraint behavior).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts tests/extension/pi-fence.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Constraint means no fallback.** Once a binding is present for the exact tag, failure to satisfy that binding is terminal for that tag's render selection.
+2. **Diagnostics remain the user's repair path.** `/fence list`, `/fence doctor`, and logs explain why the binding selected no processor instead of silently widening policy.
+
+**Carry-forward.** Continue with inspection findings on placement diagnostic wording/log coverage and resolver complexity/stale docs.

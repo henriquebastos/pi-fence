@@ -127,7 +127,7 @@ pi-fence reads two optional files and merges them:
 
 Project bindings override global bindings. Safety controls are restrictive: project `disabled` adds to global `disabled`, and project `processorPrecedence` can only remove or reorder placements already allowed globally.
 
-Binding values must be selector objects. Use `{ "processor": "..." }` to choose one processor, or `{ "placement": "host" }` to choose whichever eligible processor in that placement handles the tag. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
+Binding values must be selector objects. Use `{ "processor": "..." }` to choose one processor, or `{ "placement": "host" }` to limit the tag to eligible processors in that placement. If multiple processors in that placement match, pi-fence reports ambiguity instead of choosing one. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
 
 `/reload` inside pi after editing. `/fence list` then shows a `Bindings` section:
 
@@ -140,7 +140,7 @@ Bindings
 
 **Binding lookup is exact**, not alias-aware. If you want both `graphviz` and `dot` blocks to route through the same processor, list both keys — see the example above. This matches how most config formats work (one key per tag) and keeps the semantics predictable.
 
-**Bindings are preferences, not hard requirements.** If you bind `graphviz → graphviz-host` on a machine where `dot` isn't installed, pi-fence falls back to placement-policy resolution (Kroki serves the block when `remote` is allowed) and logs the fallback at warn level. `/fence list` shows the ignored binding in an `Ignored bindings` section with the reason:
+**Bindings are constraints, not preferences.** If you bind `graphviz → graphviz-host` on a machine where `dot` isn't installed, pi-fence does not fall through to Kroki for that tag. `/fence list` shows the binding in an `Ignored bindings` section with the reason:
 
 ```text
 Ignored bindings
@@ -148,7 +148,7 @@ Ignored bindings
   graphviz → graphviz-host (processor unavailable)
 ```
 
-Same for bindings that point to an unknown processor id — typos are noted in the `Ignored bindings` section rather than silently breaking.
+Same for bindings that point to an unknown processor id — typos are noted in the `Ignored bindings` section and the tag has no selected processor until the config is fixed.
 
 ## Restricting processor placements
 
