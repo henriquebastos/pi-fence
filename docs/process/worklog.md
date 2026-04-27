@@ -2752,3 +2752,28 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Tag blocks apply to placement bindings too.** `{ placement: "host" }` is still an issue when the tag family is blocked.
 
 **Carry-forward.** Rerun final inspection and completion checks for CV9.E1.S3; if clean, close the story.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: dynamic registration tag blocks
+
+**What shipped.** Third-party processors registered through the event bus now receive `blockedTags` during registration. If every advertised tag family for the new processor is blocked, pi-fence records it as unavailable due to tag policy without calling `available()`.
+
+**Implementation commits.**
+
+1. `7253bf0` — fix: honor blocked tags during registration
+
+**Test count.** 697 fast-suite tests (was 696; +1 event-bus registration regression).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'does not probe a third-party'` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Registration matches startup.** Startup and dynamic registration both suppress probes for fully tag-blocked processors.
+2. **Registered-but-policy-unavailable.** The processor is still added to the registry with a policy reason so diagnostics can explain why it is inactive.
+
+**Carry-forward.** Fix Docker auto-start and diagnostics for processors skipped by tag-block probe suppression.

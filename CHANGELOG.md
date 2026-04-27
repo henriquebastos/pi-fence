@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/fence list` shows blocked processors with `[blocked]`, includes a `Blocked tags` section, and reports bindings for blocked tags as `tag blocked` issues. `/fence doctor` includes blocked processors and tags in Issues.
 - Processors whose advertised tag families are fully blocked are not probed at startup, preventing blocked host renderers from running availability shell commands.
 - Startup binding diagnostics now classify bindings for blocked tags as `tag-blocked`, matching render-time and command diagnostics.
+- Third-party processors registered after startup skip availability probes when all their advertised tag families are blocked.
 
 ### Changed (CV9.E1.S2 — Object bindings and ambiguity)
 
