@@ -40,6 +40,7 @@ export function computeDoctorIssues(input: DoctorInput): DoctorIssue[] {
 	return [
 		...computeConfigIssues(input),
 		...computeProcessorIssues(input.listings),
+		...computeBindingIssues(input.bindingRows),
 	];
 }
 
@@ -69,6 +70,18 @@ function configStatusIssue(
 
 function computeProcessorIssues(listings: readonly ProcessorListing[]): DoctorIssue[] {
 	return listings.flatMap((listing) => processorIssue(listing, listings));
+}
+
+function computeBindingIssues(bindingRows: readonly BindingResolution[]): DoctorIssue[] {
+	return bindingRows
+		.filter((row) => row.status === "issue")
+		.map((row) => ({
+			message: `binding for ${row.tag} has issue: ${formatBindingIssueReason(row.reason)}`,
+		}));
+}
+
+function formatBindingIssueReason(reason: Extract<BindingResolution, { status: "issue" }>["reason"]): string {
+	return reason.replaceAll("-", " ");
 }
 
 function processorIssue(

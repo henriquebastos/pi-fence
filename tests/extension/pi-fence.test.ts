@@ -1045,15 +1045,10 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			expect(details.lines).toContain(
 				"  dot → placement:host (no matching processor in placement)",
 			);
-
-			const warn = captured.logger!
-				.bySubsystem("pi-fence")
-				.find((e) => e.level === "warn" && e.message === "binding issue");
-			expect(warn?.meta).toMatchObject({
-				tag: "dot",
-				placement: "host",
-				reason: "placement-no-match",
-			});
+			expect(details.lines).toContain("Issues");
+			expect(details.lines).toContain(
+				"  - binding for dot has issue: placement no match",
+			);
 		},
 		20_000,
 	);
@@ -1195,7 +1190,7 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 				await new Promise((r) => setTimeout(r, 50));
 			};
 
-			const { session, sentCustomMessages } = await buildSessionWithExtension(
+			const { session, sentCustomMessages, logger } = await buildSessionWithExtension(
 				new FakeHttpClient(),
 				undefined,
 				{ home, cwd: makeTempDir() },
@@ -1213,6 +1208,11 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 			expect(details.bindings).toEqual([
 				{ status: "effective", tag: "upper", selector: "processor", processorId: "custom-upper" },
 			]);
+			expect(
+				logger.bySubsystem("pi-fence").filter(
+					(e) => e.level === "warn" && e.message === "binding issue",
+				),
+			).toEqual([]);
 		},
 		20_000,
 	);

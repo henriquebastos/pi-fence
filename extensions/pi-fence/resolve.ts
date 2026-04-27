@@ -408,6 +408,10 @@ function isProcessorBinding(binding: TagBinding): binding is { processor: string
 	return Object.hasOwn(binding, "processor");
 }
 
+function isPlacementBinding(binding: TagBinding): binding is { placement: ProcessorPlacement } {
+	return Object.hasOwn(binding, "placement");
+}
+
 function isPlainBindingObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -462,15 +466,17 @@ export function resolveBindings(
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 ): BindingResolution[] {
 	const allowedPlacements = new Set(processorPrecedence);
-	return Object.entries(bindings).map(([tag, binding]) =>
-		resolveBinding(
-			processors,
-			availability,
-			tag,
-			binding,
-			disabled,
-			allowedPlacements,
-		),
+	return Object.entries(bindings).flatMap(([tag, binding]) =>
+		isTagBinding(binding)
+			? [resolveBinding(
+				processors,
+				availability,
+				tag,
+				binding,
+				disabled,
+				allowedPlacements,
+			)]
+			: [],
 	);
 }
 
@@ -482,7 +488,7 @@ function resolveBinding(
 	disabled: ReadonlySet<string> | undefined,
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 ): BindingResolution {
-	if ("placement" in binding) {
+	if (isPlacementBinding(binding)) {
 		return resolvePlacementBinding(
 			processors,
 			availability,

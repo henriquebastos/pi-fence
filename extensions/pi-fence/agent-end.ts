@@ -8,7 +8,7 @@ import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
-import { resolveProcessor } from "./resolve.ts";
+import { resolveBindings, resolveProcessor, type BindingResolution } from "./resolve.ts";
 
 export interface ThemeState {
 	currentName?: string;
@@ -105,6 +105,7 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 		...(ambiguity ? { ambiguity } : {}),
 	});
 	if (!processor) {
+		logBindingIssueForBlock(block, options);
 		logUnresolvedBlock(block, options.logger, ambiguity);
 		return;
 	}
@@ -119,6 +120,36 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 	options.pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
 	options.metrics?.recordRender(processor.id, block.tag, result.ok);
 	if (!result.ok) sendErrorFollowup(block, processor.id, result.error, options);
+}
+
+function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions): void {
+	const issue = resolveBindings(
+		options.processors,
+		options.availability,
+		options.bindings,
+		options.disabled,
+		options.processorPrecedence,
+	).find((row): row is Extract<BindingResolution, { status: "issue" }> =>
+		row.tag === block.tag && row.status === "issue",
+	);
+	if (issue) logBindingIssue(issue, options.logger);
+}
+
+function logBindingIssue(row: Extract<BindingResolution, { status: "issue" }>, logger: Logger): void {
+	if (row.selector === "placement") {
+		logger.warn("pi-fence", "binding issue", {
+			tag: row.tag,
+			placement: row.placement,
+			reason: row.reason,
+			...("processorIds" in row ? { processorIds: row.processorIds } : {}),
+		});
+		return;
+	}
+	logger.warn("pi-fence", "binding issue", {
+		tag: row.tag,
+		processorId: row.processorId,
+		reason: row.reason,
+	});
 }
 
 function logUnresolvedBlock(

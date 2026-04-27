@@ -245,9 +245,9 @@ function logBindingResolution(
 		if (row.status === "effective") {
 			logger.info("pi-fence", "binding effective", effectiveBindingLog(row));
 		} else if (row.selector === "placement") {
-			logger.warn("pi-fence", "binding issue", issuePlacementBindingLog(row));
+			logger.debug("pi-fence", "binding issue", issuePlacementBindingLog(row));
 		} else {
-			logger.warn("pi-fence", "binding issue", {
+			logger.debug("pi-fence", "binding issue", {
 				tag: row.tag,
 				processorId: row.processorId,
 				reason: row.reason,

@@ -58,6 +58,25 @@ describe("computeDoctorIssues", () => {
 		expect(issues[0].message).toContain("global config has invalid shape");
 	});
 
+	it("reports binding issue rows", () => {
+		const input = makeInput({
+			bindingRows: [
+				{
+					status: "issue",
+					tag: "graphviz",
+					selector: "processor",
+					processorId: "missing",
+					reason: "unknown-processor",
+				},
+			],
+		});
+
+		const issues = computeDoctorIssues(input);
+		expect(issues).toEqual([
+			{ message: "binding for graphviz has issue: unknown processor" },
+		]);
+	});
+
 	it("reports unavailable processor with install hint", () => {
 		const input = makeInput({
 			listings: [

@@ -273,6 +273,13 @@ describe("config core", () => {
 		expect(logger.byLevel("warn").length).toBeGreaterThanOrEqual(1);
 	});
 
+	it("validates bindings: ignores inherited binding entries", () => {
+		const rawBindings = Object.create({ graphviz: { processor: "kroki-remote" } });
+		const result = validatePiFenceConfig({ bindings: rawBindings }, "test");
+
+		expect(result.bindings).toEqual({});
+	});
+
 	it("validates bindings: keeps __proto__ as a safe own binding key", () => {
 		const parsed = JSON.parse(
 			'{"bindings":{"__proto__":{"processor":"kroki-remote"}}}',

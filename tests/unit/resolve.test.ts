@@ -761,6 +761,17 @@ describe("resolveBindings", () => {
 		]);
 	});
 
+	it("ignores inherited selector fields in binding diagnostics", () => {
+		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
+		const binding = Object.create({ processor: "kroki-remote" });
+
+		const rows = resolveBindings([krokiRemote], availability, {
+			graphviz: binding,
+		});
+
+		expect(rows).toEqual([]);
+	});
+
 	it("categorises issue-unknown-processor", () => {
 		const availability = new Map<string, Availability>([["kroki-remote", { ok: true }]]);
 
