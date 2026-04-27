@@ -2115,7 +2115,7 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 **Design decisions that survived implementation.**
 
 1. **Binding selection is still one resolver path.** Processor and placement bindings both feed the existing placement-selection and ambiguity model; there is no parallel binding-only ordering rule.
-2. **Trace vocabulary stayed stable.** Binding-constrained selections use `selected-by-binding`, and non-selected candidates under a binding use the existing `skipped-binding-prefers-other` outcome.
+2. **Trace vocabulary stayed stable.** Binding-constrained selections use `selected-by-binding`, and non-selected candidates under a binding use the existing `skipped-binding-excluded` outcome.
 
 **Carry-forward.** Next CV9.E1.S2 step: expose placement-aware binding diagnostics through extension config, `/fence list`, `/fence doctor`, and logs.
 
