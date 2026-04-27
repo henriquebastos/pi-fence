@@ -1,9 +1,9 @@
 # CV9.E1.S4 — Sandbox control contract
 
-**Status:** Draft
+**Status:** Ready
 
 **Epic:** [CV9.E1 — Policy-driven Resolution](cv9-e1--policy-driven-resolution.md)
-**Date:** 2026-04-25 (spec)
+**Date:** 2026-04-27 (ready)
 
 ## Summary
 
@@ -176,7 +176,7 @@ Sandbox processor ids follow `<family>-sandbox[-variant]`:
 
 ## Plan
 
-This story stays Draft until the sandbox model is accepted. Once accepted, implement with TDD:
+Implement with TDD:
 
 | Step | TDD phase | Layer | What | Commit |
 |------|-----------|-------|------|--------|
@@ -208,8 +208,8 @@ pnpm run feedback
 pnpm run inspect
 ```
 
-## Open questions before marking Ready
+## Ready decisions
 
-1. Should the bundle image name be configurable only by advanced config, or always configurable?
-2. Should `docker-compose` be allowed for `exec` sandboxes, or restricted to `service` until a real exec-compose use case appears?
-3. Should sandbox lifecycle commands be generic (`/fence sandbox start bundle`) or remain processor-specific until another sandbox appears?
+1. Sandbox images are always configurable on the named sandbox config, with defaults supplied by production code when a controller needs them.
+2. S4 accepts the generic `docker-container` and `docker-compose` runtime values in the domain model, but only the first named sandboxes are in scope: `bundle` as `exec` + `docker-container`, and `kroki` as `service` + `docker-compose`.
+3. Sandbox lifecycle commands stay out of S4. User-facing commands can land with the concrete sandbox processors in S5/S6.
