@@ -18,6 +18,7 @@ function makeInput(overrides: Partial<DoctorInput> = {}): DoctorInput {
 		projectStatus: "not-found",
 		listings: [],
 		bindingRows: [],
+		blockedTags: [],
 		allTags: [],
 		...overrides,
 	};
@@ -95,6 +96,27 @@ describe("computeDoctorIssues", () => {
 		expect(issues).toHaveLength(1);
 		expect(issues[0].message).toContain("graphviz-host is unavailable");
 		expect(issues[0].message).toContain("brew install graphviz");
+	});
+
+	it("reports blocked tag entries", () => {
+		const input = makeInput({ blockedTags: ["mermaid"] });
+
+		expect(computeDoctorIssues(input)).toEqual([
+			{ message: "tag mermaid is blocked" },
+		]);
+	});
+
+	it("reports blocked processor when tags lose their only processor", () => {
+		const input = makeInput({
+			listings: [
+				{ id: "kroki-remote", status: "blocked", tags: ["mermaid", "graphviz"], aliases: {} },
+			],
+		});
+
+		const issues = computeDoctorIssues(input);
+		expect(issues).toHaveLength(1);
+		expect(issues[0].message).toContain("kroki-remote is blocked");
+		expect(issues[0].message).toContain("2 tag(s)");
 	});
 
 	it("reports disabled processor when tags lose their only processor", () => {

@@ -31,6 +31,7 @@ interface RegisterFenceCommandOptions {
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, TagBinding>>;
 	disabled: ReadonlySet<string>;
+	blockedTags: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
@@ -45,16 +46,17 @@ export function registerFenceCommand({
 	availability,
 	bindings,
 	disabled,
+	blockedTags,
 	processorPrecedence,
 	endpoints,
 	configStatus,
 	shell,
 	metrics,
 }: RegisterFenceCommandOptions): void {
-	const listOpts: ListProcessorsOptions = { disabled, endpoints, processorPrecedence };
+	const listOpts: ListProcessorsOptions = { blockedProcessors: disabled, endpoints, processorPrecedence };
 	const dockerMgr = createKrokiDockerManager(shell, logger);
 	const currentBindingRows = () =>
-		resolveBindings(processors, availability, bindings, disabled, processorPrecedence);
+		resolveBindings(processors, availability, bindings, disabled, processorPrecedence, blockedTags);
 
 	pi.registerCommand("fence", {
 		description: "List or inspect pi-fence processors (usage: /fence list, /fence doctor)",
@@ -69,6 +71,7 @@ export function registerFenceCommand({
 					availability,
 					bindingRows,
 					disabled,
+					blockedTags,
 					endpoints,
 					processorPrecedence,
 				);
@@ -77,7 +80,7 @@ export function registerFenceCommand({
 			if (subcommand === "doctor") {
 				const bindingRows = currentBindingRows();
 				const listings = listProcessors(processors, availability, listOpts);
-				const processorLines = formatProcessorLines(listings, bindingRows);
+				const processorLines = formatProcessorLines(listings, bindingRows, [...blockedTags]);
 				const input: DoctorInput = {
 					globalPath: configStatus?.globalPath ?? "(unknown)",
 					globalStatus: configStatus?.globalStatus ?? "not-found",
@@ -85,6 +88,7 @@ export function registerFenceCommand({
 					projectStatus: configStatus?.projectStatus ?? "not-found",
 					listings,
 					bindingRows,
+					blockedTags: [...blockedTags],
 					allTags: collectSupportedTags(processors),
 				};
 				const doctorLines = formatDoctorLines(input, processorLines);

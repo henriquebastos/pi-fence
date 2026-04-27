@@ -21,6 +21,7 @@ interface RegisterAgentEndHandlerOptions {
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, TagBinding>>;
 	disabled: ReadonlySet<string>;
+	blockedTags: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	supportedTags: string[] | (() => string[]);
 	themeState: ThemeState;
@@ -35,6 +36,7 @@ export function registerPiFenceAgentEndHandler({
 	availability,
 	bindings,
 	disabled,
+	blockedTags,
 	processorPrecedence,
 	supportedTags,
 	themeState,
@@ -71,6 +73,7 @@ export function registerPiFenceAgentEndHandler({
 				availability,
 				bindings,
 				disabled,
+				blockedTags,
 				processorPrecedence,
 				metrics,
 			});
@@ -85,6 +88,7 @@ interface RenderBlockOptions {
 	availability: ReadonlyMap<string, Availability>;
 	bindings: Readonly<Record<string, TagBinding>>;
 	disabled: ReadonlySet<string>;
+	blockedTags: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
 	metrics?: MetricsCollector;
 }
@@ -97,6 +101,7 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 		options.bindings,
 		options.disabled,
 		options.processorPrecedence,
+		options.blockedTags,
 	);
 	options.logger.debug("pi-fence", "processor resolution", {
 		tag: block.tag,
@@ -130,6 +135,7 @@ function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions
 		options.bindings,
 		options.disabled,
 		options.processorPrecedence,
+		options.blockedTags,
 	).find((row): row is Extract<BindingResolution, { status: "issue" }> =>
 		row.tag === block.tag && row.status === "issue",
 	);

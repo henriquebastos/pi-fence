@@ -928,7 +928,7 @@ describe("pi-fence extension — blocked processors", () => {
 	);
 
 	it(
-		"/fence list shows blocked kroki as [disabled]",
+		"/fence list shows blocked kroki as [blocked]",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
@@ -956,8 +956,75 @@ describe("pi-fence extension — blocked processors", () => {
 			};
 
 			const krokiListing = details.listings.find((l) => l.id === "kroki-remote");
-			expect(krokiListing?.status).toBe("disabled");
-			expect(details.lines.some((l) => l.includes("[disabled]"))).toBe(true);
+			expect(krokiListing?.status).toBe("blocked");
+			expect(details.lines.some((l) => l.includes("[blocked]"))).toBe(true);
+		},
+		20_000,
+	);
+});
+
+describe("pi-fence extension — blocked tags", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"blocked mermaid tag produces no pi-fence:output and no HTTP request",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ blocked: { tags: ["mermaid"], processors: [] } }),
+			);
+
+			const http = new FakeHttpClient();
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
+			expect(http.requests).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"/fence list surfaces blocked processors, tags, and binding issues",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: ["mermaid"], processors: ["kroki-remote"] },
+					bindings: { mermaid: { processor: "kroki-remote" } },
+				}),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find(
+				(m) => m.customType === "pi-fence:list",
+			)?.details as {
+				listings: Array<{ id: string; status: string }>;
+				lines: string[];
+			};
+			const krokiListing = details.listings.find((l) => l.id === "kroki-remote");
+			expect(krokiListing?.status).toBe("blocked");
+			expect(details.lines.some((line) => line.startsWith("kroki-remote [blocked]"))).toBe(true);
+			expect(details.lines).toContain("Binding issues");
+			expect(details.lines).toContain("  mermaid → kroki-remote (tag blocked)");
+			expect(details.lines).toContain("Blocked tags");
+			expect(details.lines).toContain("  mermaid");
 		},
 		20_000,
 	);
@@ -993,6 +1060,35 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 	);
 
 	it(
+		"reports blocked policy in doctor output",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ blocked: { tags: ["mermaid"], processors: ["kroki-remote"] } }),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence doctor",
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find(
+				(m) => m.customType === "pi-fence:list",
+			)?.details as { lines: string[] };
+			expect(details.lines).toContain("Blocked tags");
+			expect(details.lines).toContain("  mermaid");
+			expect(details.lines).toContain("Issues");
+			expect(details.lines.some((line) => line.startsWith("  - kroki-remote is blocked;"))).toBe(true);
+			expect(details.lines).toContain("  - tag mermaid is blocked");
+		},
+		20_000,
+	);
+
+	it(
 		"reports issues when kroki is blocked",
 		async () => {
 			const home = makeTempDir();
@@ -1015,7 +1111,7 @@ describe("pi-fence extension — /fence doctor (CV1.E1.S3)", () => {
 			)?.details as { lines: string[] };
 			expect(details.lines).toContain("Issues");
 			expect(
-				details.lines.some((l) => l.includes("kroki-remote is disabled")),
+				details.lines.some((l) => l.includes("kroki-remote is blocked")),
 			).toBe(true);
 		},
 		20_000,

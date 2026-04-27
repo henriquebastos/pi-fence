@@ -36,23 +36,26 @@ export function sendPiFenceListMessage(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	bindingRows: readonly BindingResolution[],
-	disabled?: ReadonlySet<string>,
+	blockedProcessors?: ReadonlySet<string>,
+	blockedTags?: ReadonlySet<string>,
 	endpoints?: Readonly<Record<string, string>>,
 	processorPrecedence?: readonly ProcessorPlacement[],
 ): void {
 	const listings: ProcessorListing[] = listProcessors(
 		processors,
 		availability,
-		{ disabled, endpoints, processorPrecedence },
+		{ blockedProcessors, endpoints, processorPrecedence },
 	);
-	const lines = formatProcessorLines(listings, bindingRows);
+	const lines = formatProcessorLines(listings, bindingRows, [...(blockedTags ?? [])]);
 	const details: PiFenceListDetails & {
 		listings: ProcessorListing[];
 		bindings: readonly BindingResolution[];
+		blockedTags: readonly string[];
 	} = {
 		lines,
 		listings,
 		bindings: bindingRows,
+		blockedTags: [...(blockedTags ?? [])],
 	};
 	const content: TextContent[] = [{ type: "text", text: lines.join("\n") }];
 	pi.sendMessage<typeof details>({

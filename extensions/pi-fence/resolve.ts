@@ -101,6 +101,7 @@ type ProcessorBindingIssueReason =
 	| "processor-unavailable"
 	| "processor-blocked"
 	| "processor-placement-disabled"
+	| "tag-blocked"
 	| "processor-does-not-claim-tag";
 
 /**
@@ -474,7 +475,7 @@ export type BindingResolution =
 			tag: string;
 			selector: "placement";
 			placement: ProcessorPlacement;
-			reason: "placement-disabled" | "placement-no-match";
+			reason: "placement-disabled" | "placement-no-match" | "tag-blocked";
 		}
 	| {
 			status: "issue";
@@ -491,6 +492,7 @@ export function resolveBindings(
 	bindings: Readonly<Record<string, TagBinding>>,
 	blockedProcessors?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
+	blockedTags?: ReadonlySet<string>,
 ): BindingResolution[] {
 	const allowedPlacements = new Set(processorPrecedence);
 	return Object.entries(bindings).flatMap(([tag, binding]) =>
@@ -502,6 +504,7 @@ export function resolveBindings(
 				binding,
 				blockedProcessors,
 				allowedPlacements,
+				blockedTags,
 			)]
 			: [],
 	);
@@ -514,7 +517,13 @@ function resolveBinding(
 	binding: TagBinding,
 	blockedProcessors: ReadonlySet<string> | undefined,
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
+	blockedTags: ReadonlySet<string> | undefined,
 ): BindingResolution {
+	if (isTagFamilyBlocked(processors, tag, blockedTags)) {
+		return isPlacementBinding(binding)
+			? placementBindingIssue(tag, binding.placement, "tag-blocked")
+			: processorBindingIssue(tag, binding.processor, "tag-blocked");
+	}
 	if (isPlacementBinding(binding)) {
 		return resolvePlacementBinding(
 			processors,
@@ -604,7 +613,7 @@ function resolvePlacementBinding(
 function placementBindingIssue(
 	tag: string,
 	placement: ProcessorPlacement,
-	reason: "placement-disabled" | "placement-no-match",
+	reason: "placement-disabled" | "placement-no-match" | "tag-blocked",
 ): BindingResolution {
 	return { status: "issue", tag, selector: "placement", placement, reason };
 }

@@ -100,18 +100,18 @@ describe("listProcessors", () => {
 		});
 	});
 
-	it("returns status 'disabled' when the processor id is in the disabled set", () => {
+	it("returns status 'blocked' when the processor id is in the blocked set", () => {
 		const krokiRemote = stubProcessor("kroki-remote", ["mermaid"]);
 		const listings = listProcessors(
 			[krokiRemote],
 			allOk(["kroki-remote"]),
-			{ disabled: new Set(["kroki-remote"]) },
+			{ blockedProcessors: new Set(["kroki-remote"]) },
 		);
 
 		expect(listings).toHaveLength(1);
 		expect(listings[0]).toMatchObject({
 			id: "kroki-remote",
-			status: "disabled",
+			status: "blocked",
 		});
 	});
 
@@ -233,6 +233,19 @@ describe("formatProcessorLines", () => {
 
 		// No parenthetical endpoint.
 		expect(lines[0]).not.toContain("(");
+	});
+
+	it("renders a blocked processor with [blocked] badge", () => {
+		const lines = formatProcessorLines([
+			{
+				id: "kroki-remote",
+				status: "blocked",
+				tags: ["mermaid"],
+				aliases: {},
+			},
+		]);
+
+		expect(lines).toEqual(["kroki-remote [blocked] \u2014 mermaid"]);
 	});
 
 	it("renders a disabled processor with [disabled] badge", () => {

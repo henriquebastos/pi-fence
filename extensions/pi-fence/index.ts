@@ -72,6 +72,7 @@ export async function createPiFenceExtension(
 	);
 	const bindings = config.bindings;
 	const blockedProcessors: ReadonlySet<string> = new Set(config.blocked?.processors ?? []);
+	const blockedTags: ReadonlySet<string> = new Set(config.blocked?.tags ?? []);
 	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
 	const probedProcessors = filterProcessorsForAvailabilityProbe(
 		processors,
@@ -156,6 +157,7 @@ export async function createPiFenceExtension(
 		availability,
 		bindings,
 		disabled: blockedProcessors,
+		blockedTags,
 		processorPrecedence,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
 		configStatus: {
@@ -174,6 +176,7 @@ export async function createPiFenceExtension(
 		availability,
 		bindings,
 		disabled: blockedProcessors,
+		blockedTags,
 		processorPrecedence,
 		supportedTags: () => collectSupportedTags(processors),
 		themeState,

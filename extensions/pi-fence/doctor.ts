@@ -17,6 +17,7 @@ export interface DoctorInput {
 	projectStatus: ConfigFileStatus;
 	listings: readonly ProcessorListing[];
 	bindingRows: readonly BindingResolution[];
+	blockedTags: readonly string[];
 	/** All tags any registered processor claims (canonical + aliases). */
 	allTags: readonly string[];
 }
@@ -41,6 +42,7 @@ export function computeDoctorIssues(input: DoctorInput): DoctorIssue[] {
 		...computeConfigIssues(input),
 		...computeProcessorIssues(input.listings),
 		...computeBindingIssues(input.bindingRows),
+		...computeBlockedTagIssues(input.blockedTags),
 	];
 }
 
@@ -80,6 +82,10 @@ function computeBindingIssues(bindingRows: readonly BindingResolution[]): Doctor
 		}));
 }
 
+function computeBlockedTagIssues(blockedTags: readonly string[]): DoctorIssue[] {
+	return blockedTags.map((tag) => ({ message: `tag ${tag} is blocked` }));
+}
+
 function formatBindingIssueReason(reason: Extract<BindingResolution, { status: "issue" }>["reason"]): string {
 	return reason.replaceAll("-", " ");
 }
@@ -92,10 +98,19 @@ function processorIssue(
 		const hint = listing.installHint ? `: ${listing.installHint}` : "";
 		return [{ message: `${listing.id} is unavailable${hint}` }];
 	}
-	if (listing.status !== "disabled") return [];
+	if (listing.status === "blocked") return policyProcessorIssue(listing, listings, "blocked");
+	if (listing.status === "disabled") return policyProcessorIssue(listing, listings, "disabled");
+	return [];
+}
+
+function policyProcessorIssue(
+	listing: ProcessorListing,
+	listings: readonly ProcessorListing[],
+	status: "blocked" | "disabled",
+): DoctorIssue[] {
 	const orphanedCount = countOrphanedTags(listing, listings);
 	return orphanedCount > 0
-		? [{ message: `${listing.id} is disabled; ${orphanedCount} tag(s) have no available processor` }]
+		? [{ message: `${listing.id} is ${status}; ${orphanedCount} tag(s) have no available processor` }]
 		: [];
 }
 

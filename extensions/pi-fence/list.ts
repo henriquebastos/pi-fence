@@ -46,7 +46,7 @@
 import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import type { BindingResolution } from "./resolve.ts";
 
-export type ProcessorStatus = "registered" | "unavailable" | "disabled";
+export type ProcessorStatus = "registered" | "unavailable" | "disabled" | "blocked";
 
 export interface ProcessorListing {
 	id: string;
@@ -74,6 +74,8 @@ export interface ProcessorListing {
  * honest when a test constructs a partial map.
  */
 export interface ListProcessorsOptions {
+	blockedProcessors?: ReadonlySet<string>;
+	/** Deprecated internal alias kept while command/agent options are renamed. */
 	disabled?: ReadonlySet<string>;
 	/** Per-processor endpoint overrides to display in the listing. */
 	endpoints?: Readonly<Record<string, string>>;
@@ -87,21 +89,16 @@ export function listProcessors(
 	opts?: ListProcessorsOptions,
 ): ProcessorListing[] {
 	const { disabled, endpoints, processorPrecedence } = opts ?? {};
+	const blockedProcessors = opts?.blockedProcessors ?? disabled;
 	const allowedPlacements = processorPrecedence ? new Set(processorPrecedence) : undefined;
 
 	return processors.map((processor) => {
 		const endpoint = endpoints?.[processor.id];
-		if (
-			disabled?.has(processor.id) ||
-			(allowedPlacements !== undefined && !allowedPlacements.has(processor.placement))
-		) {
-			return {
-				id: processor.id,
-				status: "disabled" as const,
-				tags: processor.tags,
-				aliases: processor.aliases,
-				...(endpoint ? { endpoint } : {}),
-			};
+		if (blockedProcessors?.has(processor.id)) {
+			return buildPolicyListing(processor, "blocked", endpoint);
+		}
+		if (allowedPlacements !== undefined && !allowedPlacements.has(processor.placement)) {
+			return buildPolicyListing(processor, "disabled", endpoint);
 		}
 		const status = availability.get(processor.id);
 		if (status?.ok) {
@@ -133,18 +130,34 @@ export function listProcessors(
 export function formatProcessorLines(
 	listings: readonly ProcessorListing[],
 	bindings?: readonly BindingResolution[],
+	blockedTags?: readonly string[],
 ): string[] {
 	const bindingLines = formatBindingLines(bindings ?? []);
-	if (listings.length === 0 && bindingLines.length === 0) {
+	const blockedTagLines = formatBlockedTagLines(blockedTags ?? []);
+	if (listings.length === 0 && bindingLines.length === 0 && blockedTagLines.length === 0) {
 		return ["(no processors registered)"];
 	}
 
-	return [...formatListingLines(listings), ...bindingLines];
+	return [...formatListingLines(listings), ...bindingLines, ...blockedTagLines];
 }
 
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
+
+function buildPolicyListing(
+	processor: FenceProcessor,
+	status: Extract<ProcessorStatus, "blocked" | "disabled">,
+	endpoint: string | undefined,
+): ProcessorListing {
+	return {
+		id: processor.id,
+		status,
+		tags: processor.tags,
+		aliases: processor.aliases,
+		...(endpoint ? { endpoint } : {}),
+	};
+}
 
 function buildUnavailableListing(
 	processor: FenceProcessor,
@@ -198,6 +211,7 @@ function formatIssueReason(
 	if (reason === "unknown-processor") return "unknown processor";
 	if (reason === "processor-blocked") return "processor blocked";
 	if (reason === "processor-placement-disabled") return "processor placement disabled";
+	if (reason === "tag-blocked") return "tag blocked";
 	if (reason === "placement-disabled") return "placement disabled";
 	if (reason === "placement-no-match") return "no matching processor in placement";
 	if (reason === "placement-ambiguous") return "ambiguous";
@@ -233,6 +247,11 @@ function formatBindingSection<T>(
 		return [];
 	}
 	return ["", title, ...rows.map(formatRow)];
+}
+
+function formatBlockedTagLines(blockedTags: readonly string[]): string[] {
+	if (blockedTags.length === 0) return [];
+	return ["", "Blocked tags", ...blockedTags.map((tag) => `${BINDING_INDENT}${tag}`)];
 }
 
 function formatEffectiveBinding(row: Extract<BindingResolution, { status: "effective" }>): string {
