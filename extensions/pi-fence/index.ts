@@ -38,7 +38,7 @@ import {
 } from "./messages.ts";
 import type { FenceProcessor } from "./processor.ts";
 import { validateProcessor, registerProcessor, type ProcessorRegistry } from "./register.ts";
-import { collectSupportedTags, probeAvailability, resolveBindings } from "./resolve.ts";
+import { collectSupportedTags, isTagFamilyBlocked, probeAvailability, resolveBindings } from "./resolve.ts";
 import {
 	createPiFenceListRenderer,
 	createPiFenceMessageRenderer,
@@ -77,6 +77,7 @@ export async function createPiFenceExtension(
 	const probedProcessors = filterProcessorsForAvailabilityProbe(
 		processors,
 		blockedProcessors,
+		blockedTags,
 		processorPrecedence,
 	);
 	const availability = await probeAvailability(probedProcessors);
@@ -188,11 +189,22 @@ export async function createPiFenceExtension(
 function filterProcessorsForAvailabilityProbe(
 	processors: readonly FenceProcessor[],
 	blockedProcessors: ReadonlySet<string>,
+	blockedTags: ReadonlySet<string>,
 	processorPrecedence: readonly string[],
 ): FenceProcessor[] {
 	return processors.filter((processor) =>
-		isProcessorAllowed(processor.id, processor.placement, blockedProcessors, processorPrecedence),
+		isProcessorAllowed(processor.id, processor.placement, blockedProcessors, processorPrecedence) &&
+		!isProcessorFullyTagBlocked(processor, processors, blockedTags),
 	);
+}
+
+function isProcessorFullyTagBlocked(
+	processor: FenceProcessor,
+	processors: readonly FenceProcessor[],
+	blockedTags: ReadonlySet<string>,
+): boolean {
+	return processor.tags.length > 0 &&
+		processor.tags.every((tag) => isTagFamilyBlocked(processors, tag, blockedTags));
 }
 
 function isProcessorAllowed(

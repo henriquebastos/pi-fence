@@ -969,6 +969,33 @@ describe("pi-fence extension — blocked tags", () => {
 	});
 
 	it(
+		"blocked host tag families suppress availability and render shell calls",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: ["dot", "mermaid"], processors: [] },
+					processorPrecedence: ["host"],
+				}),
+			);
+			const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				"```dot\ndigraph { a -> b }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"blocked mermaid tag produces no pi-fence:output and no HTTP request",
 		async () => {
 			const home = makeTempDir();

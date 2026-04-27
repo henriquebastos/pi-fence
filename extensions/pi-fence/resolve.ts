@@ -387,7 +387,7 @@ function claimsTag(processor: FenceProcessor, tag: string): boolean {
 	return processor.tags.includes(tag) || Object.hasOwn(processor.aliases, tag);
 }
 
-function isTagFamilyBlocked(
+export function isTagFamilyBlocked(
 	processors: readonly FenceProcessor[],
 	tag: string,
 	blockedTags: ReadonlySet<string> | undefined,
