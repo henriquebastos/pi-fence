@@ -2092,3 +2092,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **One-RED guard in the loop.** The repository workflow now explicitly requires stating one current RED target and splitting any edit that would add multiple failing behavior tests.
 
 **Carry-forward.** Next CV9.E1.S2 step: make resolver selection honor `{ "placement": "..." }` and carry placement-aware binding diagnostics into `/fence list` and `/fence doctor`.
+
+---
+
+### 2026-04-26 — CV9.E1.S2 step 2 completed
+
+**What shipped.** Resolver binding policy now applies object selectors. `{ "processor": "..." }` continues to select only an otherwise eligible processor, `{ "placement": "..." }` constrains resolution to that placement, exact processor selectors resolve same-placement ambiguity, and placement selectors preserve same-placement ambiguity instead of falling through to another placement.
+
+**Implementation commits.**
+
+1. `c161fa4` — step 2: constrain resolution by binding selectors
+
+**Test count.** 657 fast-suite (was 654; +3 resolver selector/ambiguity cases).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm test` — passed: 42 files, 657 tests.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Binding selection is still one resolver path.** Processor and placement bindings both feed the existing placement-selection and ambiguity model; there is no parallel binding-only ordering rule.
+2. **Trace vocabulary stayed stable.** Binding-constrained selections use `selected-by-binding`, and non-selected candidates under a binding use the existing `skipped-binding-prefers-other` outcome.
+
+**Carry-forward.** Next CV9.E1.S2 step: expose placement-aware binding diagnostics through extension config, `/fence list`, `/fence doctor`, and logs.
