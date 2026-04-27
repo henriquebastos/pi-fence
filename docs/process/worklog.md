@@ -2726,3 +2726,29 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **Compatibility shims removed in touched code.** `listProcessors`, command wiring, agent-end wiring, and dynamic registration now name explicit processor policy as blocked.
 
 **Carry-forward.** Add remaining edge coverage for tag-blocked placement bindings and invalid `blocked` config shapes.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: blocked edge coverage
+
+**What shipped.** Edge coverage now locks the non-object `blocked` config warning/fail-closed branch and the placement-binding `tag-blocked` diagnostic branch.
+
+**Implementation commits.**
+
+1. `7e42e01` — test: cover blocked policy edge cases
+
+**Test count.** 696 fast-suite tests (was 694; +2 coverage regressions).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts -t 'blocked policy'` — passed.
+2. `pnpm vitest run tests/unit/resolve.test.ts -t 'issue-placement-tag-blocked'` — passed.
+3. `pnpm run lint:types` — passed.
+4. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Malformed blocked shape fails closed.** Non-object `blocked` warns and contributes embedded-only placement policy.
+2. **Tag blocks apply to placement bindings too.** `{ placement: "host" }` is still an issue when the tag family is blocked.
+
+**Carry-forward.** Rerun final inspection and completion checks for CV9.E1.S3; if clean, close the story.
