@@ -2971,3 +2971,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Runtime is precise.** The domain uses `docker-container` and `docker-compose`, not a generic `docker` value.
 
 **Carry-forward.** Implement the sandbox controller/status contract next.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 step 2: sandbox controller contract
+
+**What shipped.** Added the sandbox controller/status contract, the exec sandbox environment/workspace seam, Docker container and Compose status helpers, and an adapter that represents the existing Kroki Docker lifecycle as a `SandboxController`.
+
+**Implementation commits.**
+
+1. `3139717` — step 2: define sandbox controller contract
+
+**Test count.** Fast suite 704 → 710 (+6).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Controllers own lifecycle status.** The resolver still sees only placement and availability; Docker status is behind `SandboxController` helpers.
+2. **Status vocabulary is shared.** Single-container and multi-component controllers both report `ready`, `partial`, `stopped`, `absent`, or `error`.
+3. **Existing Kroki lifecycle is representable.** The current Docker manager can be adapted without renaming `kroki-remote` or inferring trust from endpoint URLs.
+
+**Carry-forward.** Add resolver coverage for sandbox placement participation and same-placement ambiguity.
