@@ -3214,3 +3214,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Absent wording is normalized.** Common Docker not-found strings map to `absent`; other inspect failures stay `error`.
 
 **Carry-forward.** Rerun inspection and completion checks for S4.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: Docker ownership labels
+
+**What shipped.** Docker sandbox ownership now requires a pi-fence ownership label in addition to the expected image. The Kroki Docker manager labels containers it starts, verifies label ownership before status/lifecycle decisions, and treats daemon/permission inspect failures as errors instead of absent containers.
+
+**Implementation commits.**
+
+1. `46f7e27` — fix: require Docker ownership labels
+
+**Test count.** Fast suite 730 → 734 (+4).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/kroki-docker.test.ts tests/unit/fence-command.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Sandbox ownership is explicit.** Docker-backed sandboxes must match both image and pi-fence ownership label before they are considered controlled.
+2. **Lifecycle commands refuse ambiguous ownership.** `start()` and `stop()` bail out rather than operate on same-name containers missing expected ownership.
+
+**Carry-forward.** Clean up roadmap/worklog metadata, then rerun final inspection and completion checks.
