@@ -283,6 +283,20 @@ describe("config core", () => {
 		});
 	});
 
+	it("validates bindings: drops non-string processor selectors", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ bindings: { graphviz: { processor: 42 } } },
+			"test",
+			logger,
+		);
+
+		expect(result.bindings).toEqual({});
+		expect(logger.byLevel("warn").map((entry) => entry.message)).toEqual([
+			"invalid binding selector in test bindings",
+		]);
+	});
+
 	it("validates bindings: accepts placement selector objects", () => {
 		const result = validatePiFenceConfig(
 			{ bindings: { mermaid: { placement: "host" } } },

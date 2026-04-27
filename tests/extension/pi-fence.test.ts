@@ -772,6 +772,58 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"placement binding to an omitted placement selects no processor",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+			shell.setResponse("dot", ["-Tpng"], {
+				stdout: "",
+				stdoutBuffer: TINY_PNG,
+				stderr: "",
+				exitCode: 0,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					bindings: { dot: { placement: "remote" } },
+					processorPrecedence: ["host"],
+				}),
+			);
+
+			const http = makeKrokiHttp({ "https://kroki.io/graphviz/png?theme=dark": TINY_PNG });
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(0);
+			expect(http.requests).toHaveLength(0);
+			expect(shell.calls.filter((c) => c.args.includes("-Tpng"))).toHaveLength(0);
+
+			const warns = captured.logger!
+				.bySubsystem("pi-fence")
+				.filter((e) => e.level === "warn" && e.message === "binding ignored");
+			expect(warns).toHaveLength(1);
+			expect(warns[0].meta).toMatchObject({
+				tag: "dot",
+				placement: "remote",
+				reason: "placement-disabled",
+			});
+		},
+		20_000,
+	);
+
+	it(
 		"disabled remote placement prevents Docker Kroki auto-start",
 		async () => {
 			const home = makeTempDir();
@@ -1455,6 +1507,47 @@ describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () =>
 				processorId: "graphviz-host",
 				reason: "processor-unavailable",
 			});
+		},
+		20_000,
+	);
+
+	it(
+		"/fence list surfaces placement selector rows and issue reasons",
+		async () => {
+			const shell = new FakeShellRunner();
+			shell.setResponse("dot", ["-V"], {
+				stdout: "",
+				stderr: "dot - graphviz version 2.50.0",
+				exitCode: 0,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					bindings: {
+						dot: { placement: "host" },
+						mermaid: { placement: "host" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const details = captured.sentCustomMessages.find((m) => m.customType === "pi-fence:list")
+				?.details as { lines: string[] };
+			expect(details.lines).toContain("Bindings");
+			expect(details.lines).toContain("Binding issues");
+			expect(details.lines).toContain("  dot → placement:host (graphviz-host)");
+			expect(details.lines).toContain(
+				"  mermaid → placement:host (no matching processor in placement)",
+			);
 		},
 		20_000,
 	);
