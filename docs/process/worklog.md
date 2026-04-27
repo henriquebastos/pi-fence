@@ -2827,3 +2827,27 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 2. **List and doctor share classification.** `listProcessors` owns the tag-blocked listing status so every diagnostic surface agrees.
 
 **Carry-forward.** Clean the stale `list.ts` formatter comment, then rerun final inspection/completion checks.
+
+---
+
+### 2026-04-27 — CV9.E1.S3 inspection fix: list formatter comments
+
+**What shipped.** The `list.ts` module comment now describes `blockedTags`, tag-blocked processor status, and the `Blocked tags` formatter section.
+
+**Implementation commits.**
+
+1. `12f4a3d` — docs: refresh list formatter comments
+
+**Test count.** 700 fast-suite tests (unchanged; comment-only cleanup).
+
+**Verification.**
+
+1. `pnpm run lint:types` — passed.
+2. `pnpm run lint:markdown` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Comment mirrors current API.** The top-of-file contract documents all formatter inputs and sections.
+
+**Carry-forward.** Rerun final inspection/completion checks for CV9.E1.S3; if clean, close the story.
