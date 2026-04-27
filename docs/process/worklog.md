@@ -2997,3 +2997,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Existing Kroki lifecycle is representable.** The current Docker manager can be adapted without renaming `kroki-remote` or inferring trust from endpoint URLs.
 
 **Carry-forward.** Add resolver coverage for sandbox placement participation and same-placement ambiguity.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 step 3: sandbox resolver participation
+
+**What shipped.** Resolver tests now prove sandbox placement behaves like any other placement without concrete sandbox processors: sandbox precedence can select `bundle-sandbox` over `kroki-remote`, `bundle-sandbox` and `kroki-sandbox` are ambiguous when both claim the same tag, and `kroki-remote` remains `remote` by processor declaration rather than endpoint shape.
+
+**Implementation commits.**
+
+1. `79577a4` — step 3: prove sandbox resolution policy
+
+**Test count.** Fast suite 710 → 713 (+3).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/resolve.test.ts` — passed.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Resolver stays generic.** No controller or Docker concept enters resolution; processors declare placement and availability.
+2. **Sandbox conflicts are ordinary ambiguity.** Same-placement sandbox candidates require a binding just like same-placement host candidates.
+3. **Endpoint shape does not imply sandbox trust.** A remote processor remains remote even if a future endpoint is localhost.
+
+**Carry-forward.** Run story inspection and completion checks for S4.
