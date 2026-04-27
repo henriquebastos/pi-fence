@@ -1,6 +1,6 @@
 # CV9.E1.S3 — Blocked tags and processors
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV9.E1 — Policy-driven Resolution](cv9-e1--policy-driven-resolution.md)
 **Date:** 2026-04-25 (spec)

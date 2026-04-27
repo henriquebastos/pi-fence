@@ -2875,3 +2875,72 @@ This starts CV9 (Processor Policy) and CV9.E1 (Policy-driven Resolution), and cl
 1. **One policy helper.** Fully-blocked processor semantics are centralized so future alias/tag-family behavior cannot drift between surfaces.
 
 **Carry-forward.** Rerun final inspection/completion checks for CV9.E1.S3; if clean, close the story.
+
+---
+
+### 2026-04-27 — close CV9.E1.S3 — blocked tags and processors
+
+**Goal.** Add explicit block policy for tag families and processor ids, with blocking stronger than placement precedence, bindings, startup probing, dynamic registration, Docker Kroki auto-start, and render-time processor selection.
+
+**What shipped.**
+
+1. Config now validates and merges `blocked.tags` and `blocked.processors`; malformed blocked policy warns and fails closed to embedded-only placement policy.
+2. Resolver policy now rejects blocked processor ids and blocked tag families before bindings/placement selection, with alias-aware family canonicalization (`graphviz` and `dot` block each other).
+3. Runtime paths thread blocked policy through startup probing, startup binding diagnostics, render-time resolution, dynamic third-party registration, `/fence list`, `/fence doctor`, and agent-end rendering.
+4. Blocked tags produce no `pi-fence:output` and no HTTP/shell/render request; processors whose whole advertised tag set is blocked are not probed.
+5. `/fence list` and `/fence doctor` surface blocked processors, blocked tags, blocked bindings, and processors skipped by tag policy as blocked rather than unavailable.
+6. User-facing docs (`README.md`, `docs/getting-started.md`, `CHANGELOG.md`) describe `blocked` policy and remove the old top-level `disabled` model from documented config.
+
+**Implementation commits.**
+
+1. `41acf78` — step 1: add blocked config
+2. `ca1033e` — step 2: block processors in resolution
+3. `41b1a48` — step 3: block tag families in resolution
+4. `fea306e` — step 4: surface blocked policy
+5. `7311341` — fix: suppress probes for blocked tag families
+6. `0449617` — fix: align startup blocked binding diagnostics
+7. `588253c` — refactor: clarify blocked processor plumbing
+8. `7e42e01` — test: cover blocked policy edge cases
+9. `7253bf0` — fix: honor blocked tags during registration
+10. `30ef2cd` — fix: honor blocked tags for kroki autostart
+11. `1f703c6` — fix: report tag-blocked probes as blocked
+12. `12f4a3d` — docs: refresh list formatter comments
+13. `f58688e` — refactor: centralize tag-blocked policy
+14. `close CV9.E1.S3` (this commit) — status flips across story + epic docs and this close entry.
+
+Adjacent docs catch-up commits were recorded immediately after each feature commit per the repo workflow.
+
+**Test count.** Fast suite 682 → 700 (+18). Final focused CRAP stayed under the extension target; top extension CRAP at close is `renderer.ts` `createPiFenceMessageRenderer` / anonymous wrapper at `19.07`.
+
+**Verification.**
+
+1. Per-step RED/GREEN targeted tests are recorded in the preceding S3 worklog entries.
+2. Final `inspect5p` pass after follow-up fixes — no concrete findings.
+3. `pnpm run inspect` — passed: CRAP report generated, Sonar analysis submitted to local `http://localhost:9000`, 700 non-live tests passed in both coverage lanes.
+4. `pnpm run feedback` — passed before every implementation commit.
+
+**Plan deviations.**
+
+1. The story needed two inspection rounds after the planned four implementation steps. Findings became beans and shipped before close: probe suppression, startup binding diagnostics, terminology cleanup, edge coverage, dynamic registration suppression, Kroki auto-start suppression, tag-blocked diagnostics, stale comment cleanup, and centralized policy helper.
+2. Live tests were not run for S3. The story changed policy gates around existing fake-backed HTTP/shell seams rather than adding a processor implementation or changing seam contracts; extension tests assert no HTTP/shell/`available()` side effects for the new blocked-policy paths.
+
+**Design decisions that survived implementation.**
+
+1. **`blocked` replaces documented top-level `disabled`.** Placement omission remains described as disabled; explicit deny policy is blocked.
+2. **Blocking is fail-closed and stronger than bindings.** Invalid blocked policy narrows placement to embedded-only, and blocked tags/processors override exact processor bindings.
+3. **Tag blocking is family-based, not raw-tag-based.** Blocking an alias or canonical tag blocks the family; raw-tag-only semantics remain out of scope.
+4. **Policy applies before side effects.** Startup probes, dynamic registration probes, Docker auto-start, and render-time I/O all respect full tag-family blocking.
+5. **Diagnostics explain policy, not incidental availability.** Processors skipped because of tag policy are reported as blocked, not unknown/unavailable.
+6. **One helper owns fully tag-blocked semantics.** `resolve.ts` centralizes the rule used by startup, registration, list, and doctor paths.
+
+**CV9.E1 state at close.**
+
+1. `CV9.E1.S1` ✅ Done.
+2. `CV9.E1.S2` ✅ Done.
+3. `CV9.E1.S3` ✅ Done (this close).
+4. `CV9.E1.S4` Draft — sandbox control contract.
+5. `CV9.E1.S5` Draft — bundle sandbox processor.
+6. `CV9.E1.S6` Draft — Kroki sandbox processor.
+7. `CV9.E1.S7` Draft — processor factory discovery.
+
+**Carry-forward.** Next story is `CV9.E1.S4 — Sandbox control contract`; start from a clean tree and spec/ready it before implementation.
