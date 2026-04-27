@@ -45,6 +45,13 @@ describe("createKrokiProcessor — metadata", () => {
 		expect(kroki.id).toBe("kroki-remote");
 		expect(kroki.placement).toBe("remote");
 	});
+
+	it("stays remote when configured with a localhost endpoint", () => {
+		const kroki = createKrokiProcessor(new FakeHttpClient(), "http://localhost:8000");
+
+		expect(kroki.id).toBe("kroki-remote");
+		expect(kroki.placement).toBe("remote");
+	});
 });
 
 describe("createKrokiProcessor — logging", () => {
