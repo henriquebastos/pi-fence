@@ -50,6 +50,9 @@ describe("bundle sandbox image contract", () => {
 		expect(dockerfile).toContain("chromium");
 		expect(dockerfile).toContain("@mermaid-js/mermaid-cli");
 		expect(dockerfile).toContain("COPY manifest.json /opt/pi-fence-bundle/manifest.json");
+		expect(dockerfile).toContain(
+			"COPY puppeteer-config.json /opt/pi-fence-bundle/puppeteer-config.json",
+		);
 		expect(dockerfile).toContain("CMD [\"sleep\", \"infinity\"]");
 	});
 });

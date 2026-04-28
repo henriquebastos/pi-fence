@@ -693,6 +693,40 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"does not register bundle-sandbox when the configured bundle sandbox is not docker exec",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						bundle: { kind: "service", runtime: "docker-container" },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(message) => message.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+			const details = listMessages[0].details as { listings: Array<{ id: string }> };
+			expect(details.listings.map((listing) => listing.id)).not.toContain("bundle-sandbox");
+			expect(shell.calls.some((call) => call.args.includes("pi-fence-bundle"))).toBe(false);
+		},
+		20_000,
+	);
+
+	it(
 		"host-only precedence renders dot through graphviz-host and makes zero Kroki calls",
 		async () => {
 			const shell = new FakeShellRunner();
