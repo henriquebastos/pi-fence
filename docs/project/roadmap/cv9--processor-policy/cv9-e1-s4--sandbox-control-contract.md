@@ -58,7 +58,7 @@ Config shape:
     },
     "kroki": {
       "kind": "service",
-      "runtime": "docker-compose",
+      "runtime": "docker-container",
       "autoStart": true
     }
   },
@@ -205,5 +205,5 @@ pnpm run inspect
 ## Ready decisions
 
 1. Sandbox images are always configurable on the named sandbox config, with defaults supplied by production code when a controller needs them.
-2. S4 accepts the generic `docker-container` and `docker-compose` runtime values in the domain model, but only the first named sandboxes are in scope: `bundle` as `exec` + `docker-container`, and `kroki` as `service` + `docker-compose`.
+2. S4 accepts the generic `docker-container` and `docker-compose` runtime values in the domain model, but only the first named sandboxes are active by default: `bundle` as `exec` + `docker-container`, and `kroki` as `service` + `docker-container`. The `docker-compose` Kroki controller lands with S6.
 3. Sandbox lifecycle commands stay out of S4. User-facing commands can land with the concrete sandbox processors in S5/S6.

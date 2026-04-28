@@ -77,7 +77,7 @@ export const DEFAULT_CONFIG: PiFenceConfig = {
 	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
 	sandboxes: {
 		bundle: { kind: "exec", runtime: "docker-container", autoStart: false },
-		kroki: { kind: "service", runtime: "docker-compose", autoStart: false },
+		kroki: { kind: "service", runtime: "docker-container", autoStart: false },
 	},
 };
 

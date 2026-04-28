@@ -103,7 +103,7 @@ describe("config core", () => {
 		expect(DEFAULT_CONFIG).toMatchObject({
 			sandboxes: {
 				bundle: { kind: "exec", runtime: "docker-container", autoStart: false },
-				kroki: { kind: "service", runtime: "docker-compose", autoStart: false },
+				kroki: { kind: "service", runtime: "docker-container", autoStart: false },
 			},
 		});
 	});

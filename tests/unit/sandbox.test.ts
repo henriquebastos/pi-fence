@@ -242,6 +242,50 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 			message: "Container pi-fence-kroki is running on port 8000.",
 		});
 	});
+
+	it("normalizes start() through the existing Kroki Docker manager", async () => {
+		const shell = new FakeShellRunner();
+		setAbsent(shell, "pi-fence-kroki");
+		shell.setResponse(
+			"docker",
+			[
+				"run", "-d",
+				"--name", "pi-fence-kroki",
+				"--label", "pi-fence.sandbox=kroki",
+				"-p", "8000:8000",
+				KROKI_IMAGE,
+			],
+			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+		);
+		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
+
+		expect(await controller.start()).toEqual({
+			state: "ready",
+			endpoint: "http://localhost:8000",
+			message: "Started pi-fence-kroki on port 8000.",
+		});
+	});
+
+	it("normalizes stop() through the existing Kroki Docker manager", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
+		shell.setResponse("docker", ["stop", "pi-fence-kroki"], {
+			stdout: "pi-fence-kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["rm", "pi-fence-kroki"], {
+			stdout: "pi-fence-kroki\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
+
+		expect(await controller.stop()).toEqual({
+			state: "absent",
+			message: "Stopped and removed pi-fence-kroki.",
+		});
+	});
 });
 
 describe("sandbox controller contract — Docker Compose status", () => {
