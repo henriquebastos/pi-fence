@@ -83,8 +83,9 @@ async function renderMermaid(
 	source: string,
 	signal?: AbortSignal,
 ): Promise<FenceResult> {
-	const workspace = await env.createWorkspace();
+	let workspace;
 	try {
+		workspace = await env.createWorkspace();
 		const inputName = "input.mmd";
 		const outputName = "output.png";
 		await workspace.writeText(inputName, source);
@@ -110,7 +111,7 @@ async function renderMermaid(
 		const message = err instanceof Error ? err.message : String(err);
 		return { ok: false, error: message };
 	} finally {
-		await workspace.dispose().catch(() => {});
+		await workspace?.dispose().catch(() => {});
 	}
 }
 

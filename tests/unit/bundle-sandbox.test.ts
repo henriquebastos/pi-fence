@@ -216,6 +216,19 @@ describe("bundle-sandbox processor", () => {
 		]);
 	});
 
+	it("returns a Mermaid workspace creation error as a render result", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		await expect(processor.render("mermaid", "flowchart LR")).resolves.toEqual({
+			ok: false,
+			error: "workspace not configured",
+		});
+	});
+
 	it("returns a Mermaid CLI error and still disposes the workspace", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work");
