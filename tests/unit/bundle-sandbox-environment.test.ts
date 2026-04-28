@@ -60,6 +60,8 @@ describe("Docker exec sandbox environment", () => {
 		const workspace = await env.createWorkspace();
 		expect(workspace.path("input.mmd")).toBe("/tmp/pi-fence-a1b2c3/input.mmd");
 		expect(() => workspace.path("../escape.mmd")).toThrow("workspace path must be relative");
+		expect(() => workspace.path("")).toThrow("workspace path must be relative");
+		expect(() => workspace.path("/tmp/escape.mmd")).toThrow("workspace path must be relative");
 
 		await workspace.writeText("input.mmd", "flowchart LR\nA --> B");
 		expect(await workspace.readBuffer("output.png")).toEqual(png);
@@ -71,6 +73,15 @@ describe("Docker exec sandbox environment", () => {
 			["exec", CONTAINER, "cat", "/tmp/pi-fence-a1b2c3/output.png"],
 			["exec", CONTAINER, "rm", "-rf", "--", "/tmp/pi-fence-a1b2c3"],
 		]);
+	});
+
+	it("rejects a non-absolute workspace root", () => {
+		expect(() =>
+			createDockerExecSandboxEnvironment(new FakeShellRunner(), {
+				containerName: CONTAINER,
+				workspaceRoot: "tmp",
+			}),
+		).toThrow("workspace root must be an absolute container path");
 	});
 
 	it("fails workspace creation when mktemp returns a normalized path outside the workspace root", async () => {

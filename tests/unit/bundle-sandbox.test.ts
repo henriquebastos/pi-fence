@@ -105,6 +105,19 @@ function controllerWithStatus(status: SandboxStatus): SandboxController {
 	};
 }
 
+function throwingController(message: string): SandboxController {
+	return {
+		id: "bundle",
+		kind: "exec",
+		runtime: "docker-container",
+		status: async () => {
+			throw new Error(message);
+		},
+		start: async () => ({ state: "error", message }),
+		stop: async () => ({ state: "error", message }),
+	};
+}
+
 function fakeSandboxProcessor(id: string): FenceProcessor {
 	return {
 		id,
@@ -416,6 +429,34 @@ describe("bundle-sandbox processor", () => {
 		expect(bound.processor?.id).toBe("bundle-sandbox");
 	});
 
+	it("reports unavailable when the bundle controller status throws", async () => {
+		const processor = createBundleSandboxProcessor(
+			throwingController("docker unavailable"),
+			new FakeExecSandboxEnvironment(),
+		);
+
+		await expect(processor.available()).resolves.toEqual({
+			ok: false,
+			reason: "bundle sandbox availability failed: docker unavailable",
+			installHint: expect.stringContaining("docker/bundle"),
+		});
+	});
+
+	it("reports unavailable when reading the bundle manifest throws", async () => {
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			new FakeExecSandboxEnvironment(),
+		);
+
+		const result = await processor.available();
+
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toContain("bundle sandbox availability failed: No fake exec response for cat");
+			expect(result.installHint).toContain("docker/bundle");
+		}
+	});
+
 	it("reports unavailable without probing tools when the bundle controller is not ready", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		const processor = createBundleSandboxProcessor(
@@ -449,6 +490,59 @@ describe("bundle-sandbox processor", () => {
 		if (!result.ok) {
 			expect(result.reason).toContain("bundle manifest is invalid JSON");
 			expect(result.installHint).toContain("docker/bundle");
+		}
+	});
+
+	it("reports unavailable for malformed bundle manifest schema", async () => {
+		const cases = [
+			{ raw: JSON.stringify([]), reason: "bundle manifest must be an object" },
+			{
+				raw: JSON.stringify({ name: "pi-fence-bundle", version: "0.1.0" }),
+				reason: "bundle manifest is missing name, version, or tools",
+			},
+			{
+				raw: JSON.stringify({
+					name: "pi-fence-bundle",
+					version: "0.1.0",
+					tools: { dot: null },
+				}),
+				reason: "bundle manifest tool dot must be an object",
+			},
+			{
+				raw: JSON.stringify({
+					name: "pi-fence-bundle",
+					version: "0.1.0",
+					tools: { dot: { versionCommand: ["dot", "-V"] } },
+				}),
+				reason: "bundle manifest tool dot is missing command",
+			},
+			{
+				raw: JSON.stringify({
+					name: "pi-fence-bundle",
+					version: "0.1.0",
+					tools: { dot: { command: "dot", versionCommand: [] } },
+				}),
+				reason: "bundle manifest tool dot has invalid versionCommand",
+			},
+		];
+
+		for (const testCase of cases) {
+			const env = new FakeExecSandboxEnvironment();
+			env.setResponse("cat", ["/opt/pi-fence-bundle/manifest.json"], {
+				stdout: testCase.raw,
+				stderr: "",
+				exitCode: 0,
+			});
+			const processor = createBundleSandboxProcessor(
+				controllerWithStatus({ state: "ready", message: "ready" }),
+				env,
+			);
+
+			await expect(processor.available()).resolves.toEqual({
+				ok: false,
+				reason: testCase.reason,
+				installHint: expect.stringContaining("docker/bundle"),
+			});
 		}
 	});
 
