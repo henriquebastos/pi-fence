@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV9 — Processor Policy is in progress. CV9.E1.S1 is done; CV9.E1 (Policy-driven Resolution) continues.
+CV9 — Processor Policy is in progress. CV9.E1.S1–S4 are done; CV9.E1 (Policy-driven Resolution) continues.
 
 ## Next
 
-Next story: CV9.E1.S2 — Object bindings and ambiguity.
+Next story: CV9.E1.S5 — Bundle sandbox processor.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -3526,3 +3526,85 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Manual lifecycle commands follow the same safe image rule as auto-start.**
 
 **Carry-forward.** Rerun completion inspection and final S4 inspection.
+
+---
+
+### 2026-04-28 — close CV9.E1.S4 — sandbox control contract
+
+**Goal.** Make `sandbox` precise before adding concrete sandbox processors: a sandbox processor is backed by an isolated runtime that pi-fence can identify, probe, and optionally control through a controller, not inferred from localhost endpoints.
+
+**What shipped.**
+
+1. Config exposes named sandbox controller policy under `sandboxes`, with default `bundle` and `kroki` entries, explicit `kind`, precise Docker-backed `runtime`, optional `image`, and opt-in `autoStart` metadata.
+2. Sandbox controller/status contracts define `ready`, `partial`, `stopped`, `absent`, and `error`, plus an exec workspace seam for the future bundled command sandbox.
+3. Docker container and Docker Compose status helpers normalize one-container and multi-component sandbox status through `FakeShellRunner` without exposing Docker as the permanent domain model.
+4. The existing Kroki Docker lifecycle is represented behind a `kroki` service sandbox controller for the single-container `docker-container` runtime.
+5. Docker sandbox identity now requires the expected image and pi-fence ownership label before readiness or lifecycle commands can operate on a same-name container.
+6. Kroki auto-start has a safe bridge: `sandboxes.kroki.autoStart` controls the current single-container bridge when `runtime` is `docker-container`, legacy `kroki.docker.autoStart` remains compatible, and project-controlled `image` values are not executed.
+7. Resolver tests prove `sandbox` participates in placement precedence and ambiguity like any other placement; `kroki-remote` remains remote even for `http://localhost:*` endpoints.
+8. User docs describe the current lifecycle behavior, endpoint separation, safe image policy, and future Compose/bundle deferrals.
+
+**Implementation commits.**
+
+1. `2f9aefd` — spec CV9.E1.S4: ready sandbox contract
+2. `ffed7d8` — step 1: add sandbox config
+3. `3139717` — step 2: define sandbox controller contract
+4. `79577a4` — step 3: prove sandbox resolution policy
+5. `d89d376` — fix: fail closed sandbox config
+6. `7b164f5` — fix: harden sandbox status contract
+7. `68e29a0` — test: cover localhost Kroki placement
+8. `ee06db9` — docs: clarify S4 ready spec
+9. `c274c12` — fix: clear malformed sandbox layers
+10. `da3fe8a` — fix: require Docker sandbox identity
+11. `7740a24` — fix: verify Docker identity before lifecycle
+12. `46f7e27` — fix: require Docker ownership labels
+13. `a463951` — fix: report Docker lifecycle failures
+14. `3b23211` — fix: bridge Kroki sandbox autostart
+15. `6654249` — fix: align Kroki sandbox runtime
+16. `f6fe677` — test: harden sandbox config validation
+17. `032f6f6` — docs: explain Kroki sandbox lifecycle
+18. `b298424` — fix: preserve Kroki autostart overrides
+19. `9d4374d` — fix: honor Kroki sandbox image
+20. `7fd6226` — test: cover thrown Kroki stop failures
+21. `d9a4027` — docs: reconcile Kroki lifecycle wording
+22. `fa83ab4` — fix: block project-controlled Kroki images
+23. `508d60a` — test: prove project Kroki images stay inert
+24. `close CV9.E1.S4` (this commit) — story/epic status flips and this close entry.
+
+Adjacent docs catch-up commits were recorded immediately after each feature commit; deviations are listed below.
+
+**Test count.** Fast suite 700 → 754 (+54). Final focused extension CRAP stayed under target; top extension CRAP at close is `renderer.ts` `createPiFenceMessageRenderer` / anonymous wrapper at `19.07`.
+
+**Verification.**
+
+1. Per-bean RED/GREEN targeted tests are recorded in the preceding S4 worklog entries.
+2. Final `inspect5p` pass on the last remediation diff — no findings.
+3. `pnpm run inspect` — passed: CRAP report generated, Sonar analysis submitted to local `http://localhost:9000`, 754 non-live tests passed in both coverage lanes.
+4. `pnpm run feedback` — passed before every implementation commit; final fast suite is 754 tests.
+5. Live gate outcome was recorded earlier: full `pnpm test:live` was blocked by public `https://kroki.io` timeout, and targeted local ShellRunner/Graphviz live tests skipped cleanly because local live dependencies were absent.
+
+**Plan deviations.**
+
+1. The S4 Ready spec commit `2f9aefd` did not get its own immediate worklog catch-up; the first S4 worklog entry batched it with step 1.
+2. Ready story spec clarifications for auto-start semantics and Kroki sandbox runtime were mixed into feature commits `3b23211` and `6654249` instead of dedicated docs commits. Later worklog entries recorded the deviation and the story spec is now consistent.
+3. The round-5 inspection stop produced additional findings after the original user handoff. We continued per user direction, created new beans, and fixed the final security/testing findings before close.
+
+**Design decisions that survived implementation.**
+
+1. **Sandbox is a control boundary.** Localhost endpoints alone do not make a processor sandbox-owned; controller identity does.
+2. **Docker is an implementation detail.** The domain names `docker-container` and `docker-compose` precisely while keeping room for other runtimes later.
+3. **Ownership is explicit.** Docker-backed sandboxes require both expected image and pi-fence ownership label before readiness or lifecycle operations.
+4. **Project config cannot choose executable images.** Current lifecycle code ignores project sandbox `image` for Docker startup; future source-aware trust semantics can revisit custom images.
+5. **Resolver remains generic.** It sees placement/availability, not Docker commands or controller internals.
+
+**CV9.E1 state at close.**
+
+1. `CV9.E1.S1` ✅ Done.
+2. `CV9.E1.S2` ✅ Done.
+3. `CV9.E1.S3` ✅ Done.
+4. `CV9.E1.S4` ✅ Done (this close).
+5. `CV9.E1.S5` Draft — bundle sandbox processor.
+6. `CV9.E1.S6` Draft — Kroki sandbox processor.
+7. `CV9.E1.S7` Draft — processor factory discovery.
+
+**Carry-forward.** Next story is `CV9.E1.S5 — Bundle sandbox processor`; start from a clean tree and move it from Draft to Ready before implementation.
