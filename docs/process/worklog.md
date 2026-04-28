@@ -3383,3 +3383,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Lifecycle ownership is user-visible.** Docs explain that pi-fence only manages the expected image and ownership-labelled container.
 
 **Carry-forward.** Rerun ready/blocked bean checks, completion inspection, and final S4 close checks.
+
+---
+
+### 2026-04-28 — CV9.E1.S4 final inspection fix: Kroki auto-start overrides
+
+**What shipped.** Kroki auto-start now resolves to one effective setting instead of OR-ing independent config surfaces. `sandboxes.kroki.autoStart` takes precedence when the Kroki sandbox is a `service` using `docker-container`; `false` can disable an inherited legacy `kroki.docker.autoStart: true`, while the legacy key still works when the sandbox entry does not set `autoStart`. Compose and non-service Kroki sandbox configs do not start the single-container manager.
+
+**Implementation commits.**
+
+1. `b298424` — fix: preserve Kroki autostart overrides
+
+**Test count.** Fast suite 743 → 748 (+5).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/config.test.ts -t 'autoStart|auto-start|defaults named sandbox'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Compatibility aliases obey precedence.** The new sandbox key can opt out of inherited legacy auto-start.
+2. **Unsupported runtimes stay inert.** Compose auto-start remains out of scope until the Compose controller lands.
+
+**Carry-forward.** Honor the configured Kroki sandbox image.
