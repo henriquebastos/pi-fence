@@ -114,11 +114,13 @@ export function createKrokiDockerManager(
 	async function stop(): Promise<KrokiDockerResult> {
 		const current = await status();
 		if (!current.ok || current.status === "absent") return current;
+		let failureStatus = current.status;
 		try {
 			const stopResult = await shell.run("docker", ["stop", CONTAINER_NAME]);
 			if (stopResult.exitCode !== 0) {
 				return dockerCommandFailure("stop", stopResult, current.status);
 			}
+			failureStatus = "stopped";
 			const rmResult = await shell.run("docker", ["rm", CONTAINER_NAME]);
 			if (rmResult.exitCode !== 0) {
 				return dockerCommandFailure("rm", rmResult, "stopped");
@@ -128,7 +130,7 @@ export function createKrokiDockerManager(
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			logger.warn("kroki-docker", "stop failed", { error: message });
-			return { ok: false, status: current.status, message: `Failed to stop: ${message}` };
+			return { ok: false, status: failureStatus, message: `Failed to stop: ${message}` };
 		}
 	}
 

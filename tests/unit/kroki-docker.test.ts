@@ -259,6 +259,33 @@ describe("kroki-docker — stop()", () => {
 		expect(result.message).toContain("removal denied");
 	});
 
+	it("returns ok:false with current status when docker stop throws", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.stop();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toContain("no programmed response");
+	});
+
+	it("returns ok:false with stopped status when docker rm throws after stop succeeds", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		shell.setResponse("docker", ["stop", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.stop();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("stopped");
+		expect(result.message).toContain("no programmed response");
+	});
+
 	it("does not stop a running wrong-image container", async () => {
 		const shell = makeShell();
 		setRunning(shell, "attacker/kroki");
