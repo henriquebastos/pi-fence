@@ -141,6 +141,28 @@ describe("bundle-sandbox processor", () => {
 		]);
 	});
 
+	it("passes a timeout-backed signal to Graphviz exec", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		env.setResponse("dot", ["-Tpng"], {
+			stdout: "",
+			stdoutBuffer: Buffer.from([0x89]),
+			stderr: "",
+			exitCode: 0,
+		});
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		await expect(processor.render("graphviz", "digraph{}" as string)).resolves.toEqual({
+			ok: true,
+			png: Buffer.from([0x89]),
+		});
+
+		expect(env.calls[0]?.options?.signal).toBeDefined();
+		expect(env.calls[0]?.options?.signal?.aborted).toBe(false);
+	});
+
 	it("renders DOT through the Graphviz bundle handler", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
@@ -162,9 +184,43 @@ describe("bundle-sandbox processor", () => {
 			{
 				command: "dot",
 				args: ["-Tpng"],
-				options: { input: "digraph { A -> B }" },
+				options: expect.objectContaining({ input: "digraph { A -> B }", signal: expect.any(AbortSignal) }),
 			},
 		]);
+	});
+
+	it("merges caller and timeout signals for Mermaid exec", async () => {
+		const caller = new AbortController();
+		const env = new FakeExecSandboxEnvironment();
+		const png = Buffer.from([0x89, 0x50]);
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", { "output.png": png });
+		env.setResponse(
+			"mmdc",
+			[
+				"-i",
+				"/tmp/pi-fence-work/input.mmd",
+				"-o",
+				"/tmp/pi-fence-work/output.png",
+				"-b",
+				"transparent",
+				"-p",
+				"/opt/pi-fence-bundle/puppeteer-config.json",
+			],
+			OK,
+		);
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		await expect(processor.render("mermaid", "flowchart LR", caller.signal)).resolves.toEqual({
+			ok: true,
+			png,
+		});
+
+		expect(env.calls[0]?.options?.signal).toBeDefined();
+		expect(env.calls[0]?.options?.signal).not.toBe(caller.signal);
+		expect(env.calls[0]?.options?.signal?.aborted).toBe(false);
 	});
 
 	it("renders Mermaid through a bundle workspace", async () => {
@@ -206,7 +262,7 @@ describe("bundle-sandbox processor", () => {
 					"-p",
 					"/opt/pi-fence-bundle/puppeteer-config.json",
 				],
-				options: undefined,
+				options: expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			},
 		]);
 		expect(env.workspace.calls).toEqual([

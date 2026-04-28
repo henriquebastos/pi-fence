@@ -1,5 +1,12 @@
-import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
-import type { ExecSandboxEnvironment, SandboxController } from "./sandbox.ts";
+import {
+	DEFAULT_RENDER_TIMEOUT_MS,
+	mergeSignals,
+	withSignalGuard,
+	type Availability,
+	type FenceProcessor,
+	type FenceResult,
+} from "./processor.ts";
+import type { ExecSandboxEnvironment, ExecSandboxWorkspace, SandboxController } from "./sandbox.ts";
 
 export const BUNDLE_SANDBOX_PROCESSOR_ID = "bundle-sandbox";
 export const BUNDLE_SANDBOX_CONTAINER_NAME = "pi-fence-bundle";
@@ -43,7 +50,9 @@ export function createBundleSandboxProcessor(
 		tags: BUNDLE_TAGS,
 		aliases: BUNDLE_ALIASES,
 		available: async () => bundleAvailable(controller, env),
-		render: async (tag, source, signal): Promise<FenceResult> => renderBundle(env, tag, source, signal),
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> =>
+			renderBundle(env, tag, source, signal),
+		),
 	};
 }
 
@@ -67,7 +76,7 @@ async function renderGraphviz(
 	signal?: AbortSignal,
 ): Promise<FenceResult> {
 	try {
-		const result = await env.run("dot", ["-Tpng"], { input: source, signal });
+		const result = await env.run("dot", ["-Tpng"], { input: source, signal: bundleRenderSignal(signal) });
 		if (result.exitCode === 0) {
 			return { ok: true, png: result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8") };
 		}
@@ -83,7 +92,7 @@ async function renderMermaid(
 	source: string,
 	signal?: AbortSignal,
 ): Promise<FenceResult> {
-	let workspace;
+	let workspace: ExecSandboxWorkspace | undefined;
 	try {
 		workspace = await env.createWorkspace();
 		const inputName = "input.mmd";
@@ -101,7 +110,7 @@ async function renderMermaid(
 				"-p",
 				BUNDLE_PUPPETEER_CONFIG_PATH,
 			],
-			signal ? { signal } : undefined,
+			{ signal: bundleRenderSignal(signal) },
 		);
 		if (result.exitCode !== 0) {
 			return { ok: false, error: result.stderr.trim() || `mmdc exited ${result.exitCode}` };
@@ -113,6 +122,10 @@ async function renderMermaid(
 	} finally {
 		await workspace?.dispose().catch(() => {});
 	}
+}
+
+function bundleRenderSignal(signal?: AbortSignal): AbortSignal | undefined {
+	return mergeSignals([signal, AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS)]);
 }
 
 async function bundleAvailable(
