@@ -1,3 +1,5 @@
+import { posix as pathPosix } from "node:path";
+
 import type { ShellRunner, ShellResult, ShellRunOptions } from "./io/shell-runner.ts";
 import type { SandboxKind, SandboxRuntime } from "./config.ts";
 import type { KrokiDockerResult } from "./kroki-docker.ts";
@@ -48,6 +50,42 @@ export interface ExecSandboxWorkspace {
 	writeText(name: string, contents: string): Promise<void>;
 	readBuffer(name: string): Promise<Buffer>;
 	dispose(): Promise<void>;
+}
+
+export interface DockerExecSandboxEnvironmentOptions {
+	containerName: string;
+	workspaceRoot?: string;
+}
+
+export function createDockerExecSandboxEnvironment(
+	shell: ShellRunner,
+	options: DockerExecSandboxEnvironmentOptions,
+): ExecSandboxEnvironment {
+	const workspaceRoot = normalizeWorkspaceRoot(options.workspaceRoot ?? "/tmp");
+	const runInContainer = (
+		command: string,
+		args: readonly string[],
+		runOptions: ExecSandboxRunOptions = {},
+	): Promise<ExecSandboxRunResult> => {
+		const dockerArgs = dockerExecArgs(options.containerName, command, args, runOptions);
+		return shell.run("docker", dockerArgs, {
+			input: runOptions.input,
+			signal: runOptions.signal,
+		});
+	};
+
+	return {
+		run: runInContainer,
+		async createWorkspace(): Promise<ExecSandboxWorkspace> {
+			const result = await runInContainer("mktemp", ["-d", `${workspaceRoot}/pi-fence-XXXXXX`]);
+			assertShellSuccess("mktemp", result);
+			const dir = result.stdout.trim();
+			if (!dir.startsWith(`${workspaceRoot}/`)) {
+				throw new Error(`mktemp returned path outside ${workspaceRoot}: ${dir || "<empty>"}`);
+			}
+			return createDockerExecSandboxWorkspace(runInContainer, dir);
+		},
+	};
 }
 
 export interface KrokiDockerManagerLike {
@@ -147,6 +185,73 @@ async function unsupportedLifecycle(
 	id: string,
 ): Promise<SandboxStatus> {
 	return { state: "error", message: `${operation} is not implemented for sandbox ${id}.` };
+}
+
+function dockerExecArgs(
+	containerName: string,
+	command: string,
+	args: readonly string[],
+	options: ExecSandboxRunOptions,
+): string[] {
+	const dockerArgs = ["exec"];
+	if (options.input !== undefined) dockerArgs.push("-i");
+	if (options.cwd !== undefined) dockerArgs.push("-w", options.cwd);
+	dockerArgs.push(containerName, command, ...args);
+	return dockerArgs;
+}
+
+function createDockerExecSandboxWorkspace(
+	runInContainer: ExecSandboxEnvironment["run"],
+	dir: string,
+): ExecSandboxWorkspace {
+	let disposed = false;
+	const path = (name: string): string => workspacePath(dir, name);
+	return {
+		path,
+		async writeText(name, contents): Promise<void> {
+			const result = await runInContainer(
+				"sh",
+				["-c", "cat > \"$1\"", "sh", path(name)],
+				{ input: contents },
+			);
+			assertShellSuccess(`write ${name}`, result);
+		},
+		async readBuffer(name): Promise<Buffer> {
+			const result = await runInContainer("cat", [path(name)]);
+			assertShellSuccess(`read ${name}`, result);
+			return result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
+		},
+		async dispose(): Promise<void> {
+			if (disposed) return;
+			const result = await runInContainer("rm", ["-rf", "--", dir]);
+			assertShellSuccess(`dispose ${dir}`, result);
+			disposed = true;
+		},
+	};
+}
+
+function workspacePath(dir: string, name: string): string {
+	if (name.length === 0 || pathPosix.isAbsolute(name)) {
+		throw new Error("workspace path must be relative and stay inside workspace");
+	}
+	const normalized = pathPosix.normalize(name);
+	if (normalized === "." || normalized.startsWith("../") || normalized === "..") {
+		throw new Error("workspace path must be relative and stay inside workspace");
+	}
+	return pathPosix.join(dir, normalized);
+}
+
+function normalizeWorkspaceRoot(root: string): string {
+	if (!pathPosix.isAbsolute(root)) {
+		throw new Error("workspace root must be an absolute container path");
+	}
+	return root.replace(/\/+$/, "") || "/";
+}
+
+function assertShellSuccess(operation: string, result: ShellResult): void {
+	if (result.exitCode === 0) return;
+	const detail = result.stderr.trim() || `exit ${result.exitCode}`;
+	throw new Error(`${operation} failed: ${detail}`);
 }
 
 function normalizeKrokiDockerResult(result: KrokiDockerResult): SandboxStatus {
