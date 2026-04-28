@@ -8,7 +8,7 @@
  * Port: 8000 host → 8000 container.
  */
 
-import type { ShellRunner } from "./io/shell-runner.ts";
+import type { ShellResult, ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 
 const CONTAINER_NAME = "pi-fence-kroki";
@@ -112,18 +112,37 @@ export function createKrokiDockerManager(
 		const current = await status();
 		if (!current.ok || current.status === "absent") return current;
 		try {
-			await shell.run("docker", ["stop", CONTAINER_NAME]);
-			await shell.run("docker", ["rm", CONTAINER_NAME]);
+			const stopResult = await shell.run("docker", ["stop", CONTAINER_NAME]);
+			if (stopResult.exitCode !== 0) {
+				return dockerCommandFailure("stop", stopResult, current.status);
+			}
+			const rmResult = await shell.run("docker", ["rm", CONTAINER_NAME]);
+			if (rmResult.exitCode !== 0) {
+				return dockerCommandFailure("rm", rmResult, "stopped");
+			}
 			logger.info("kroki-docker", "stopped", { container: CONTAINER_NAME });
 			return { ok: true, status: "absent", message: `Stopped and removed ${CONTAINER_NAME}.` };
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
 			logger.warn("kroki-docker", "stop failed", { error: message });
-			return { ok: false, status: "absent", message: `Failed to stop: ${message}` };
+			return { ok: false, status: current.status, message: `Failed to stop: ${message}` };
 		}
 	}
 
 	return { start, stop, status };
+}
+
+function dockerCommandFailure(
+	action: "stop" | "rm",
+	result: ShellResult,
+	status: KrokiDockerStatus,
+): KrokiDockerResult {
+	const detail = result.stderr.trim() || result.stdout.trim() || `docker ${action} failed`;
+	return {
+		ok: false,
+		status,
+		message: `docker ${action} exited ${result.exitCode}: ${detail}`,
+	};
 }
 
 function inspectFailureResult(stderr: string): KrokiDockerResult {

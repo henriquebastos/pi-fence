@@ -204,6 +204,51 @@ describe("kroki-docker — stop()", () => {
 		expect(result.message).toContain("Stopped");
 	});
 
+	it("returns ok:false when docker stop exits non-zero", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		shell.setResponse("docker", ["stop", CONTAINER], {
+			stdout: "",
+			stderr: "permission denied",
+			exitCode: 1,
+		});
+		shell.setResponse("docker", ["rm", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.stop();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toContain("docker stop exited 1");
+		expect(result.message).toContain("permission denied");
+		expect(shell.calls.some((call) => call.args[0] === "rm")).toBe(false);
+	});
+
+	it("returns ok:false when docker rm exits non-zero", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		shell.setResponse("docker", ["stop", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["rm", CONTAINER], {
+			stdout: "",
+			stderr: "removal denied",
+			exitCode: 1,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.stop();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("stopped");
+		expect(result.message).toContain("docker rm exited 1");
+		expect(result.message).toContain("removal denied");
+	});
+
 	it("does not stop a running wrong-image container", async () => {
 		const shell = makeShell();
 		setRunning(shell, "attacker/kroki");
