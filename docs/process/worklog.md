@@ -3502,3 +3502,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Legacy fallback honors sandbox replacement.** Removing `sandboxes.kroki` disables inherited legacy auto-start instead of bypassing the sandbox contract.
 
 **Carry-forward.** Rerun completion inspection and final S4 inspection.
+
+---
+
+### 2026-04-28 — CV9.E1.S4 final inspection fix: inert project image coverage
+
+**What shipped.** Extension tests now prove both auto-start and `/fence kroki start` ignore project-local `sandboxes.kroki.image` values and continue to use the trusted default `yuzutech/kroki` image.
+
+**Implementation commits.**
+
+1. `508d60a` — test: prove project Kroki images stay inert
+
+**Test count.** Fast suite 753 → 754 (+1; one existing image test moved from global config to project config).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'project-configured Kroki sandbox image'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **The untrusted-repository path is explicit.** Tests exercise `<cwd>/.pi/pi-fence.config.json`, not just global config.
+2. **Manual lifecycle commands follow the same safe image rule as auto-start.**
+
+**Carry-forward.** Rerun completion inspection and final S4 inspection.
