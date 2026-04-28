@@ -3311,3 +3311,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Compose is not implied.** `docker-compose` auto-start stays contract-only until S6 ships that controller.
 
 **Carry-forward.** Align the Kroki adapter identity/runtime with the config model.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: Kroki sandbox runtime identity
+
+**What shipped.** The default `sandboxes.kroki` runtime now matches the existing Kroki Docker adapter: `service` + `docker-container`. The S4 spec keeps `docker-compose` as an accepted future runtime value but records that the Compose-backed Kroki controller lands in S6. Adapter tests now cover `start()` and `stop()` normalization through the existing Kroki Docker manager.
+
+**Implementation commits.**
+
+1. `6654249` — fix: align Kroki sandbox runtime
+
+**Test count.** Fast suite 737 → 739 (+2).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/config.test.ts -t 'defaults named sandbox|Kroki Docker adapter'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Defaults describe implemented controllers.** `sandboxes.kroki` points at the single-container Docker controller until the Compose controller exists.
+2. **Runtime variants stay in the model.** `docker-compose` remains valid config so S6 can add the service controller without another schema change.
+
+**Carry-forward.** Strengthen focused sandbox config hardening tests.
