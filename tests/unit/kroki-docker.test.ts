@@ -66,6 +66,16 @@ describe("kroki-docker — status()", () => {
 		expect(result.endpoint).toBe("http://localhost:8000");
 	});
 
+	it("checks container identity against the configured image", async () => {
+		const shell = makeShell();
+		setRunning(shell, "registry.example/kroki:test");
+		const mgr = createKrokiDockerManager(shell, undefined, { image: "registry.example/kroki:test" });
+
+		const result = await mgr.status();
+		expect(result.status).toBe("running");
+		expect(result.endpoint).toBe("http://localhost:8000");
+	});
+
 	it("reports error when the running container image is not the managed Kroki image", async () => {
 		const shell = makeShell();
 		setRunning(shell, "attacker/kroki");

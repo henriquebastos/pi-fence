@@ -921,6 +921,55 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"uses configured Kroki sandbox image for auto-start",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					sandboxes: {
+						kroki: {
+							kind: "service",
+							runtime: "docker-container",
+							image: "registry.example/kroki:test",
+							autoStart: true,
+						},
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+			shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+				stdout: "",
+				stderr: "No such container",
+				exitCode: 1,
+			});
+			shell.setResponse(
+				"docker",
+				[
+					"run", "-d",
+					"--name", "pi-fence-kroki",
+					"--label", "pi-fence.sandbox=kroki",
+					"-p", "8000:8000",
+					"registry.example/kroki:test",
+				],
+				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+			);
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls.some((call) => call.args.includes("registry.example/kroki:test"))).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
 		"project sandbox autoStart:false overrides inherited legacy Kroki auto-start",
 		async () => {
 			const home = makeTempDir();
