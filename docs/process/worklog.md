@@ -3431,3 +3431,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Lifecycle commands share the same identity.** `/fence kroki` uses the same configured image as auto-start.
 
 **Carry-forward.** Cover thrown Kroki Docker stop failures.
+
+---
+
+### 2026-04-28 — CV9.E1.S4 final inspection fix: thrown Kroki stop failures
+
+**What shipped.** Kroki Docker stop coverage now exercises shell throws after status succeeds. A thrown `docker stop` preserves the current status, and a thrown `docker rm` after a successful stop reports the container as `stopped` instead of still `running`.
+
+**Implementation commits.**
+
+1. `7fd6226` — test: cover thrown Kroki stop failures
+
+**Test count.** Fast suite 750 → 752 (+2).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Thrown shell failures preserve lifecycle progress.** Once Docker stop succeeds, later removal failures report the stopped state.
+2. **Thrown and non-zero paths agree.** Both classes of Docker failure return `ok:false` with detail rather than success.
+
+**Carry-forward.** Reconcile remaining lifecycle docs consistency findings.
