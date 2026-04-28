@@ -95,6 +95,32 @@ describe("bundle-sandbox processor", () => {
 		]);
 	});
 
+	it("renders DOT through the Graphviz bundle handler", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+		env.setResponse("dot", ["-Tpng"], {
+			stdout: png.toString("binary"),
+			stdoutBuffer: png,
+			stderr: "",
+			exitCode: 0,
+		});
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		const result = await processor.render("dot", "digraph { A -> B }");
+
+		expect(result).toEqual({ ok: true, png });
+		expect(env.calls).toEqual([
+			{
+				command: "dot",
+				args: ["-Tpng"],
+				options: { input: "digraph { A -> B }" },
+			},
+		]);
+	});
+
 	it("reports unavailable without probing tools when the bundle controller is not ready", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		const processor = createBundleSandboxProcessor(

@@ -37,11 +37,38 @@ export function createBundleSandboxProcessor(
 		tags: BUNDLE_TAGS,
 		aliases: BUNDLE_ALIASES,
 		available: async () => bundleAvailable(controller, env),
-		render: async (tag): Promise<FenceResult> => ({
-			ok: false,
-			error: `${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`,
-		}),
+		render: async (tag, source, signal): Promise<FenceResult> => renderBundle(env, tag, source, signal),
 	};
+}
+
+async function renderBundle(
+	env: ExecSandboxEnvironment,
+	tag: string,
+	source: string,
+	signal?: AbortSignal,
+): Promise<FenceResult> {
+	if (tag === "graphviz" || tag === "dot") return renderGraphviz(env, source, signal);
+	return {
+		ok: false,
+		error: `${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`,
+	};
+}
+
+async function renderGraphviz(
+	env: ExecSandboxEnvironment,
+	source: string,
+	signal?: AbortSignal,
+): Promise<FenceResult> {
+	try {
+		const result = await env.run("dot", ["-Tpng"], { input: source, signal });
+		if (result.exitCode === 0) {
+			return { ok: true, png: result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8") };
+		}
+		return { ok: false, error: result.stderr.trim() || `dot exited ${result.exitCode}` };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		return { ok: false, error: message };
+	}
 }
 
 async function bundleAvailable(
