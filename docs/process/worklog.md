@@ -3634,3 +3634,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 4. **One registry processor.** Graphviz and Mermaid remain private bundle handlers behind `bundle-sandbox`, so ambiguity and bindings operate at the processor boundary.
 
 **Carry-forward.** Next ready bean is `task-fcff84f0` — bundle image manifest contract.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 1: bundle image manifest contract
+
+**What shipped.** Added a separate `pi-fence-bundle` product image contract under `docker/bundle/`, with Graphviz, Chromium, Mermaid CLI, a Puppeteer config, and `/opt/pi-fence-bundle/manifest.json`. The existing `pi-fence-live-deps` image remains test infrastructure. Unit coverage now locks the manifest shape and verifies the bundle Dockerfile stays separate from live-deps.
+
+**Implementation commits.**
+
+1. `67b3b6d` — step 1: separate bundle image contract
+
+**Test count.** Fast suite 754 → 757 (+3).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-manifest.test.ts` — failed on missing `docker/bundle` manifest and Dockerfile.
+2. GREEN: `pnpm vitest run tests/unit/package-scripts.test.ts tests/unit/bundle-manifest.test.ts` — passed, 6 tests.
+3. `pnpm run feedback` — passed: 757 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Product and test images stay separate.** The bundle image lives under `docker/bundle/`; `docker/Dockerfile` remains the live-deps test image.
+2. **The image is self-describing.** The manifest names the bundle version and the version probes for `dot` and `mmdc` so processor availability can validate the runtime later.
+3. **Mermaid Chromium is explicit.** The image installs system Chromium and carries a Puppeteer config for Mermaid CLI instead of relying on hidden host dependencies.
+
+**Carry-forward.** Next ready bean is `task-4b72e201` — Docker exec sandbox environment.
