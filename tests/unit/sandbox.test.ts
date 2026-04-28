@@ -325,6 +325,21 @@ describe("sandbox controller contract — Docker container status", () => {
 		});
 	});
 
+	it("reports error when a bundle container disables no-new-privileges", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { securityOpt: '["no-new-privileges=false"]' });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle does not set no-new-privileges.",
+		});
+	});
+
 	it("reports error when a bundle container omits no-new-privileges", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
