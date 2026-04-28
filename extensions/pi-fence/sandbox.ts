@@ -111,8 +111,12 @@ export interface DockerSandboxSecurityOptions {
 	networkMode?: string;
 	noPublishedPorts?: boolean;
 	allowOnlyTmpfsMounts?: boolean;
+	requiredTmpfsMounts?: readonly string[];
 	capDropAll?: boolean;
+	noAddedCapabilities?: boolean;
+	notPrivileged?: boolean;
 	noNewPrivileges?: boolean;
+	forbidUnconfinedSeccomp?: boolean;
 }
 
 export interface DockerSandboxComponentOptions {
@@ -394,40 +398,120 @@ async function inspectContainerSecurity(
 ): Promise<SandboxComponentStatus | undefined> {
 	const security = component.security;
 	if (!security) return undefined;
-	if (security.networkMode !== undefined) {
-		const network = await inspectFormat(shell, component, "{{.HostConfig.NetworkMode}}");
-		if (isInspectStatus(network)) return network;
-		if (network.trim() !== security.networkMode) {
-			return securityError(component, `network mode ${network.trim() || "<none>"}; expected ${security.networkMode}.`);
+	for (const check of [
+		inspectNetworkMode,
+		inspectPublishedPorts,
+		inspectMounts,
+		inspectDroppedCapabilities,
+		inspectAddedCapabilities,
+		inspectPrivilegedMode,
+		inspectSecurityOptions,
+	]) {
+		const status = await check(shell, component, security);
+		if (status) return status;
+	}
+	return undefined;
+}
+
+async function inspectNetworkMode(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (security.networkMode === undefined) return undefined;
+	const network = await inspectFormat(shell, component, "{{.HostConfig.NetworkMode}}");
+	if (isInspectStatus(network)) return network;
+	if (network.trim() === security.networkMode) return undefined;
+	return securityError(component, `network mode ${network.trim() || "<none>"}; expected ${security.networkMode}.`);
+}
+
+async function inspectPublishedPorts(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (!security.noPublishedPorts) return undefined;
+	const ports = await inspectFormat(shell, component, "{{json .NetworkSettings.Ports}}");
+	if (isInspectStatus(ports)) return ports;
+	return isEmptyDockerJsonObject(ports)
+		? undefined
+		: securityError(component, "exposes ports; expected no published or exposed ports.");
+}
+
+async function inspectMounts(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (!security.allowOnlyTmpfsMounts && !security.requiredTmpfsMounts) return undefined;
+	const mounts = await inspectFormat(shell, component, "{{json .Mounts}}");
+	if (isInspectStatus(mounts)) return mounts;
+	const parsedMounts = dockerMounts(mounts);
+	if (hasNonTmpfsMount(parsedMounts)) {
+		return securityError(component, "has non-tmpfs mounts; expected no host mounts.");
+	}
+	for (const destination of security.requiredTmpfsMounts ?? []) {
+		if (!hasTmpfsMountAt(parsedMounts, destination)) {
+			return securityError(component, `missing tmpfs mount at ${destination}.`);
 		}
 	}
-	if (security.noPublishedPorts) {
-		const ports = await inspectFormat(shell, component, "{{json .NetworkSettings.Ports}}");
-		if (isInspectStatus(ports)) return ports;
-		if (!isEmptyDockerJsonObject(ports)) {
-			return securityError(component, "exposes ports; expected no published or exposed ports.");
-		}
+	return undefined;
+}
+
+async function inspectDroppedCapabilities(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (!security.capDropAll) return undefined;
+	const capDrop = await inspectFormat(shell, component, "{{json .HostConfig.CapDrop}}");
+	if (isInspectStatus(capDrop)) return capDrop;
+	return jsonStringArray(capDrop).includes("ALL")
+		? undefined
+		: securityError(component, "does not drop all capabilities.");
+}
+
+async function inspectAddedCapabilities(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (!security.noAddedCapabilities) return undefined;
+	const capAdd = await inspectFormat(shell, component, "{{json .HostConfig.CapAdd}}");
+	if (isInspectStatus(capAdd)) return capAdd;
+	const added = jsonStringArray(capAdd);
+	return added.length === 0
+		? undefined
+		: securityError(component, `adds capabilities ${added.join(", ")}; expected none.`);
+}
+
+async function inspectPrivilegedMode(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (!security.notPrivileged) return undefined;
+	const privileged = await inspectFormat(shell, component, "{{.HostConfig.Privileged}}");
+	if (isInspectStatus(privileged)) return privileged;
+	return privileged.trim() === "true"
+		? securityError(component, "is privileged; expected non-privileged.")
+		: undefined;
+}
+
+async function inspectSecurityOptions(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	if (!security.noNewPrivileges && !security.forbidUnconfinedSeccomp) return undefined;
+	const securityOpt = await inspectFormat(shell, component, "{{json .HostConfig.SecurityOpt}}");
+	if (isInspectStatus(securityOpt)) return securityOpt;
+	const options = jsonStringArray(securityOpt);
+	if (security.noNewPrivileges && !options.some((entry) => entry.startsWith("no-new-privileges"))) {
+		return securityError(component, "does not set no-new-privileges.");
 	}
-	if (security.allowOnlyTmpfsMounts) {
-		const mounts = await inspectFormat(shell, component, "{{json .Mounts}}");
-		if (isInspectStatus(mounts)) return mounts;
-		if (hasNonTmpfsMount(mounts)) {
-			return securityError(component, "has non-tmpfs mounts; expected no host mounts.");
-		}
-	}
-	if (security.capDropAll) {
-		const capDrop = await inspectFormat(shell, component, "{{json .HostConfig.CapDrop}}");
-		if (isInspectStatus(capDrop)) return capDrop;
-		if (!jsonStringArray(capDrop).includes("ALL")) {
-			return securityError(component, "does not drop all capabilities.");
-		}
-	}
-	if (security.noNewPrivileges) {
-		const securityOpt = await inspectFormat(shell, component, "{{json .HostConfig.SecurityOpt}}");
-		if (isInspectStatus(securityOpt)) return securityOpt;
-		if (!jsonStringArray(securityOpt).some((entry) => entry.startsWith("no-new-privileges"))) {
-			return securityError(component, "does not set no-new-privileges.");
-		}
+	if (security.forbidUnconfinedSeccomp && options.some((entry) => entry === "seccomp=unconfined")) {
+		return securityError(component, "uses unconfined seccomp; expected confined seccomp.");
 	}
 	return undefined;
 }
@@ -454,10 +538,19 @@ function isEmptyDockerJsonObject(raw: string): boolean {
 	return trimmed === "" || trimmed === "null" || trimmed === "{}";
 }
 
-function hasNonTmpfsMount(raw: string): boolean {
+function dockerMounts(raw: string): unknown[] {
 	const parsed = parseJson(raw);
-	if (!Array.isArray(parsed)) return true;
-	return parsed.some((entry) => !isRecord(entry) || entry.Type !== "tmpfs");
+	return Array.isArray(parsed) ? parsed : [{}];
+}
+
+function hasNonTmpfsMount(mounts: readonly unknown[]): boolean {
+	return mounts.some((entry) => !isRecord(entry) || entry.Type !== "tmpfs");
+}
+
+function hasTmpfsMountAt(mounts: readonly unknown[], destination: string): boolean {
+	return mounts.some(
+		(entry) => isRecord(entry) && entry.Type === "tmpfs" && entry.Destination === destination,
+	);
 }
 
 function jsonStringArray(raw: string): string[] {

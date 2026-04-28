@@ -32,8 +32,12 @@ describe.skipIf(!containerRunning)("bundle-sandbox — live", () => {
 			networkMode: "none",
 			noPublishedPorts: true,
 			allowOnlyTmpfsMounts: true,
+			requiredTmpfsMounts: ["/tmp"],
 			capDropAll: true,
+			noAddedCapabilities: true,
+			notPrivileged: true,
 			noNewPrivileges: true,
+			forbidUnconfinedSeccomp: true,
 		},
 	});
 	const env = createDockerExecSandboxEnvironment(shell, {

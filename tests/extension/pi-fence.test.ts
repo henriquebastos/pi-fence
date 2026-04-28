@@ -2473,6 +2473,16 @@ function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: B
 		stderr: "",
 		exitCode: 0,
 	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.CapAdd}}", "pi-fence-bundle"], {
+		stdout: "null\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.HostConfig.Privileged}}", "pi-fence-bundle"], {
+		stdout: "false\n",
+		stderr: "",
+		exitCode: 0,
+	});
 	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.SecurityOpt}}", "pi-fence-bundle"], {
 		stdout: '["no-new-privileges"]\n',
 		stderr: "",

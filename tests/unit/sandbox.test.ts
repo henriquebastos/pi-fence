@@ -94,8 +94,12 @@ function bundleContainerOptions() {
 			networkMode: "none",
 			noPublishedPorts: true,
 			allowOnlyTmpfsMounts: true,
+			requiredTmpfsMounts: ["/tmp"],
 			capDropAll: true,
+			noAddedCapabilities: true,
+			notPrivileged: true,
 			noNewPrivileges: true,
+			forbidUnconfinedSeccomp: true,
 		},
 	};
 }
@@ -107,6 +111,8 @@ function setBundleSecurity(
 		ports?: string;
 		mounts?: string;
 		capDrop?: string;
+		capAdd?: string;
+		privileged?: string;
 		securityOpt?: string;
 	} = {},
 ): void {
@@ -128,6 +134,16 @@ function setBundleSecurity(
 	});
 	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.CapDrop}}", containerName], {
 		stdout: `${overrides.capDrop ?? '["ALL"]'}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.CapAdd}}", containerName], {
+		stdout: `${overrides.capAdd ?? "null"}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.HostConfig.Privileged}}", containerName], {
+		stdout: `${overrides.privileged ?? "false"}\n`,
 		stderr: "",
 		exitCode: 0,
 	});
@@ -219,6 +235,21 @@ describe("sandbox controller contract — Docker container status", () => {
 		});
 	});
 
+	it("reports error when a bundle container does not use network none", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { networkMode: "bridge" });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle network mode bridge; expected none.",
+		});
+	});
+
 	it("reports error when a bundle container has a host mount", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
@@ -231,6 +262,96 @@ describe("sandbox controller contract — Docker container status", () => {
 		expect(await controller.status()).toEqual({
 			state: "error",
 			message: "Container pi-fence-bundle has non-tmpfs mounts; expected no host mounts.",
+		});
+	});
+
+	it("reports error when a bundle container does not mount tmpfs at /tmp", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { mounts: "[]" });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle missing tmpfs mount at /tmp.",
+		});
+	});
+
+	it("reports error when a bundle container keeps Linux capabilities", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { capDrop: "[]" });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle does not drop all capabilities.",
+		});
+	});
+
+	it("reports error when a bundle container adds Linux capabilities back", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { capAdd: '["SYS_ADMIN"]' });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle adds capabilities SYS_ADMIN; expected none.",
+		});
+	});
+
+	it("reports error when a bundle container is privileged", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { privileged: "true" });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle is privileged; expected non-privileged.",
+		});
+	});
+
+	it("reports error when a bundle container omits no-new-privileges", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { securityOpt: "[]" });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle does not set no-new-privileges.",
+		});
+	});
+
+	it("reports error when a bundle container disables seccomp", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { securityOpt: '["no-new-privileges","seccomp=unconfined"]' });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle uses unconfined seccomp; expected confined seccomp.",
 		});
 	});
 
