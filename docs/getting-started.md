@@ -162,6 +162,34 @@ Use `processorPrecedence` to control both placement allowlist and order:
 
 Omitting a placement disables every processor in that placement for resolution. With the example above, `kroki-remote` is skipped even when it is available. To intentionally prefer remote rendering for a project, the global config must also allow `remote`; project config cannot widen a global privacy policy.
 
+## Running Graphviz and Mermaid in the bundle sandbox
+
+`bundle-sandbox` renders `graphviz`/`dot` and `mermaid` inside a labelled Docker exec container instead of using host binaries or remote Kroki. It is selected when `sandbox` placement is allowed and wins placement policy for the tag, for example:
+
+```json
+{
+  "processorPrecedence": ["sandbox"]
+}
+```
+
+Start the bundle container manually before `/reload`:
+
+```bash
+docker build -t ghcr.io/henriquebastos/pi-fence-bundle:0.1.0 docker/bundle
+docker run -d \
+  --name pi-fence-bundle \
+  --label pi-fence.sandbox=bundle \
+  --network none \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --tmpfs /tmp \
+  ghcr.io/henriquebastos/pi-fence-bundle:0.1.0
+```
+
+`bundle-sandbox.available()` verifies the container is running, matches the trusted image, has the `pi-fence.sandbox=bundle` label, exposes `/opt/pi-fence-bundle/manifest.json`, and passes `dot -V` plus `mmdc --version` inside the container. The container exposes no ports and uses no host mounts; Mermaid input/output files live in the container's `/tmp` workspace.
+
+S5 does not add `/fence bundle start|stop` or auto-start. Project-configured bundle image values are not executed by the current runtime path.
+
 ### Missing / malformed config files
 
 - If neither file exists, the defaults apply (`embedded`, `host`, `sandbox`, `remote`).
@@ -173,7 +201,8 @@ If you don't see an image, check:
 
 - Your terminal supports inline images.
 - For kroki.io-served tags: you have network access.
-- For `dot` tags: `graphviz` is on your PATH (`dot -V` should print a version).
+- For `dot` tags selected by `graphviz-host`: `graphviz` is on your PATH (`dot -V` should print a version).
+- For `dot` or `mermaid` tags selected by `bundle-sandbox`: the `pi-fence-bundle` Docker container is running, labelled, and built from the trusted bundle image.
 
 ## Configuring the Kroki endpoint
 
@@ -250,6 +279,8 @@ graphviz-host [unavailable] — graphviz (dot)
     dot binary not found on PATH. Install graphviz — brew install graphviz (macOS)
 mermaid-host [unavailable] — mermaid
     mmdc binary not found on PATH. Install @mermaid-js/mermaid-cli — npm i -g @mermaid-js/mermaid-cli
+bundle-sandbox [unavailable] — graphviz (dot), mermaid
+    bundle sandbox is absent: Container pi-fence-bundle not found.
 kroki-remote [registered] — mermaid, graphviz (dot), plantuml (puml), …
 
 Issues
@@ -292,6 +323,7 @@ Project config replaces the global `blocked` object. Omit `blocked` in the proje
 
 Related controls on this page:
 
+- [Running Graphviz and Mermaid in the bundle sandbox](#running-graphviz-and-mermaid-in-the-bundle-sandbox).
 - [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint).
 - [Blocking tags and processors](#blocking-tags-and-processors).
 - [`/fence doctor`](#diagnosing-the-setup).

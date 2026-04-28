@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV9.E1.S5 — Bundle sandbox processor)
+
+- Added `bundle-sandbox`, a sandbox-placement processor for `graphviz`/`dot` and `mermaid` backed by a labelled Docker exec container.
+- Added the `pi-fence-bundle` image contract under `docker/bundle/`, with Graphviz, Mermaid CLI, Chromium runtime dependencies, a Puppeteer config, and `/opt/pi-fence-bundle/manifest.json`.
+- `processorPrecedence: ["sandbox"]` can now render `dot` and `mermaid` through `bundle-sandbox` when the trusted `pi-fence-bundle` container is running, without host `dot`/`mmdc` binaries or Kroki HTTP.
+- Added live tests for the real bundle container; they skip cleanly when Docker or the `pi-fence-bundle` container is unavailable.
+
 ### Changed (CV9.E1.S4 — Sandbox control contract)
 
 - Config now accepts named sandbox controller policy under `sandboxes`, with default `bundle` and `kroki` entries. The default Kroki sandbox is a `service` using the existing single-container `docker-container` runtime; `docker-compose` remains an accepted future runtime value.

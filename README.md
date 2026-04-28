@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, block tag families or processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
+**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, a Docker exec `bundle-sandbox` for Graphviz/Mermaid, embedded table/highlight/QR/color processors, and `kroki-remote` for diagram languages served by [kroki.io](https://kroki.io). Users can bind tags, block tag families or processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
 
 ---
 
@@ -41,6 +41,7 @@ On expansion (ctrl+o on the rendered message) pi-fence also shows the original s
 - `table-embedded`, `highlight-embedded`, `qr-embedded`, `color-embedded` — run inside pi-fence with no external service or host binary.
 - `graphviz-host` — shells out to the local `dot` binary, source on stdin. By default it wins `graphviz`/`dot` blocks when `dot` is on your PATH and `host` placement is allowed; otherwise pi-fence falls through to the next allowed processor, typically Kroki. Zero configuration: install `graphviz` (`apt install graphviz` on Debian/Ubuntu, `brew install graphviz` on macOS, <https://graphviz.org/download/> otherwise) and pi-fence picks it up on the next `/reload`. Diagram sources never leave your machine for this tag when `graphviz-host` is selected.
 - `mermaid-host` — shells out to `mmdc` when `@mermaid-js/mermaid-cli` is installed.
+- `bundle-sandbox` — uses a labelled `pi-fence-bundle` Docker exec container to render `graphviz`/`dot` and `mermaid` without host binaries or remote HTTP when `sandbox` placement is selected and the bundle container is running.
 - `kroki-remote` — posts to the public [kroki.io](https://kroki.io) endpoint for every other tag (and for `graphviz`/`dot` when you don't have `graphviz` installed). Theme-aware (see above).
 
 Resolution is placement-policy based by default: available `embedded` processors win before `host`, then `sandbox`, then `remote`. Users can override per tag via `~/.pi/agent/pi-fence.config.json` (global) or `<cwd>/.pi/pi-fence.config.json` (per-project), and can restrict allowed placements with `processorPrecedence`. Bindings are exact tag-scoped constraints: use `{ "processor": "..." }` for one processor or a concrete placement selector such as `{ "placement": "host" }`. Tag names such as `graphviz` and `dot` bind independently. Project bindings override global bindings; project `blocked` policy replaces global `blocked` policy, while `processorPrecedence` can only further restrict lower-priority layers. See [Binding a tag to a specific processor](docs/getting-started.md#binding-a-tag-to-a-specific-processor) for the shape.
@@ -77,7 +78,7 @@ Resolution diagnostics live in structured debug logs; `/fence trace` is not part
 What does **not** work yet:
 
 - Local rendering for diagram languages beyond Graphviz and Mermaid — for example PlantUML via `plantuml.jar`. See the [roadmap](docs/project/roadmap/README.md).
-- Sandbox placement is reserved for policy work; no built-in sandboxed processor ships yet.
+- Service sandboxes such as managed Kroki stacks are still pending.
 - Every later CV (see [roadmap](docs/project/roadmap/README.md)).
 
 ## Docs
