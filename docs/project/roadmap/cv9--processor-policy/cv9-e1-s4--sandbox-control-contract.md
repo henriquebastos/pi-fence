@@ -150,7 +150,7 @@ Sandbox processor ids follow `<family>-sandbox[-variant]`:
 5. The existing Kroki Docker lifecycle can be represented behind a sandbox controller interface.
 6. The bundle exec workflow can be represented without registering one processor per bundled binary.
 7. `kroki-remote` remains remote even when pointed at `http://localhost:*`.
-8. Auto-start is owned by sandbox controllers, not by the resolver.
+8. Auto-start is owned by sandbox controllers, not by the resolver; during the transition, `sandboxes.kroki.autoStart` with `runtime: "docker-container"` is bridged to the existing single-container Kroki Docker manager, while `kroki.docker.autoStart` remains a legacy alias.
 9. Resolver tests prove `sandbox` participates in precedence like any other placement.
 10. Unit tests cover controller status normalization with `FakeShellRunner` for one-container and multi-component cases.
 11. `pnpm run feedback` and `pnpm run inspect` pass.
@@ -176,7 +176,7 @@ Sandbox processor ids follow `<family>-sandbox[-variant]`:
 
 ## Plan
 
-1. **Config contract.** Add named `sandboxes` config for `bundle` and `kroki`, with explicit `kind`, `runtime`, optional `image`, and opt-in `autoStart`. Invalid sandbox policy fails closed.
+1. **Config contract.** Add named `sandboxes` config for `bundle` and `kroki`, with explicit `kind`, `runtime`, optional `image`, and opt-in `autoStart`. Invalid sandbox policy fails closed. `sandboxes.kroki.autoStart` is wired only for the existing `docker-container` Kroki manager until the S6 `docker-compose` service controller exists.
 2. **Controller contract.** Add sandbox status/lifecycle interfaces, exec workspace interfaces, Docker-backed status normalization for one-container and multi-component runtimes, and an adapter shape for the existing Kroki Docker lifecycle.
 3. **Resolution contract.** Prove fake sandbox processors participate in placement precedence and same-placement ambiguity without introducing concrete sandbox processors.
 4. **Verification.** Run the fast feedback gate, completion inspection, and the live-gate decision required by any new ShellRunner-backed seam.
@@ -187,6 +187,7 @@ Sandbox processor ids follow `<family>-sandbox[-variant]`:
    - **Unit** — config, controller/status normalization, resolver precedence with sandbox processors.
 2. **Events / interactions covered:**
    - `autoStart` is config accepted by controllers, not by the resolver.
+   - `sandboxes.kroki.autoStart` with `runtime: "docker-container"` starts the current single-container Kroki manager; `kroki.docker.autoStart` remains supported for compatibility.
    - `partial` status is unavailable for processor selection in CV9.
    - `bundle-sandbox` and `kroki-sandbox` create same-placement ambiguity when both support a tag.
    - Remote endpoint config alone does not make a processor `sandbox`.

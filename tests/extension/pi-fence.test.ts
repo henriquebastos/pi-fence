@@ -877,6 +877,50 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"sandboxes.kroki.autoStart starts the single-container Kroki sandbox",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container", autoStart: true },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+			shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+				stdout: "",
+				stderr: "No such container",
+				exitCode: 1,
+			});
+			shell.setResponse(
+				"docker",
+				[
+					"run", "-d",
+					"--name", "pi-fence-kroki",
+					"--label", "pi-fence.sandbox=kroki",
+					"-p", "8000:8000",
+					"yuzutech/kroki",
+				],
+				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+			);
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls.some((call) => call.args[0] === "run")).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
 		"malformed global config fails closed before remote rendering",
 		async () => {
 			const home = makeTempDir();

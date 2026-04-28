@@ -11,7 +11,7 @@ import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
-import { DEFAULT_PROCESSOR_PRECEDENCE } from "./config.ts";
+import { DEFAULT_PROCESSOR_PRECEDENCE, type PiFenceConfig } from "./config.ts";
 import { registerFenceCommand } from "./command.ts";
 import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
@@ -95,7 +95,7 @@ export async function createPiFenceExtension(
 	logProcessorPrecedence(processorPrecedence, deps.logger);
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-remote.
-	if (config.kroki?.docker?.autoStart && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
+	if (shouldAutoStartKrokiDocker(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
 		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
 		const dockerStatus = await dockerMgr.status();
 		if (dockerStatus.status === "running") {
@@ -207,6 +207,14 @@ function isProcessorAllowed(
 	processorPrecedence: readonly string[],
 ): boolean {
 	return !blockedProcessors.has(processorId) && processorPrecedence.includes(placement);
+}
+
+function shouldAutoStartKrokiDocker(config: PiFenceConfig): boolean {
+	const krokiSandbox = config.sandboxes?.kroki;
+	return config.kroki?.docker?.autoStart === true ||
+		(krokiSandbox?.kind === "service" &&
+			krokiSandbox.runtime === "docker-container" &&
+			krokiSandbox.autoStart === true);
 }
 
 function isKrokiAutoStartAllowed(
