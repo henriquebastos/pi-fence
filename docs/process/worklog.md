@@ -3455,3 +3455,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Thrown and non-zero paths agree.** Both classes of Docker failure return `ok:false` with detail rather than success.
 
 **Carry-forward.** Reconcile remaining lifecycle docs consistency findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S4 final inspection fix: lifecycle docs consistency
+
+**What shipped.** Lifecycle docs now agree across CHANGELOG, getting-started, and the S4 story: `/fence kroki start|stop` manages the container only and does not rewrite `kroki.endpoint`; `sandboxes` examples include the default `bundle` entry because sandbox maps replace by layer; and the S4 Ready decision now says `bundle` is present in default config but has no runtime behavior until S5.
+
+**Implementation commits.**
+
+1. `d9a4027` — docs: reconcile Kroki lifecycle wording
+
+**Test count.** Fast suite unchanged at 752 (docs-only update).
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+2. `pnpm run feedback` — passed.
+
+**Plan deviations.**
+
+1. The Ready story spec clarifications for auto-start semantics and Kroki sandbox runtime were mixed into feature commits `3b23211` and `6654249` instead of dedicated docs commits. This entry records the deviation; future story-spec corrections should return to separate docs commits unless they are part of a pure docs bean.
+
+**Carry-forward.** Rerun ready/blocked bean checks, completion inspection, and final S4 inspection.
