@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV9 — Processor Policy is in progress. CV9.E1.S1–S4 are done; CV9.E1 (Policy-driven Resolution) continues.
+CV9 — Processor Policy is in progress. CV9.E1.S1–S5 are done; CV9.E1 (Policy-driven Resolution) continues.
 
 ## Next
 
-Next story: CV9.E1.S5 — Bundle sandbox processor.
+Next story: CV9.E1.S6 — Kroki sandbox processor.
 
 Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
 
@@ -4114,3 +4114,56 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Workspace boundary checks are explicit.** Empty, absolute, and parent-relative paths are rejected before `docker exec` file operations.
 
 **Carry-forward.** Rerun completion inspection, then close S5 if clean.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 close: bundle sandbox processor
+
+**What shipped.** `CV9.E1.S5` is done. pi-fence now ships a `bundle-sandbox` processor backed by a strict Docker exec container for Graphviz and Mermaid. The bundle has its own product image contract, manifest probes, Docker exec workspace environment, Graphviz/Mermaid handlers, sandbox-only extension wiring, live tests, and user-facing docs.
+
+**Implementation commits.**
+
+1. `0792eb1` — spec CV9.E1.S5: ready bundle sandbox processor
+2. `67b3b6d` — step 1: separate bundle image contract
+3. `f820c9f` — step 2: isolate bundle command execution
+4. `4076062` — step 3: require bundle probes before selection
+5. `57cb645` — step 4: render graphviz in the bundle
+6. `9c988b7` — step 5: render mermaid in the bundle
+7. `4444063` — step 6: wire bundle into sandbox policy
+8. `4c80cd6` — step 7: document and gate the bundle sandbox
+9. `743d6d6` — fix: verify bundle sandbox isolation
+10. `5460b9a` — fix: pass bundle puppeteer config to mmdc
+11. `23eae12` — fix: contain bundle workspace failures
+12. `ac8e8c9` — fix: timebox bundle renders
+13. `be0d52f` — test: harden bundle output assertions
+14. `762af15` — fix: tighten bundle docker security checks
+15. `e2aceae` — fix: bound bundle workspace operations
+16. `e37eb08` — refactor: centralize bundle tool handlers
+17. `c3f9a1d` — test: cover bundle config and image contract
+18. `735a782` — fix: require enabled no-new-privileges
+19. `ff492d0` — test: cover bundle edge cases
+
+**Test count.** Fast suite 754 → 814 (+60) across S5. The post-inspection hardening phase moved 791 → 814 (+23). Bundle live coverage adds 3 skip-clean tests when `pi-fence-bundle` is absent.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed after each implementation and inspection-fix commit; final run passed with 814 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm run inspect` — passed after final hardening: non-live CRAP generated, Sonar scan/report completed successfully at local `http://localhost:9000/dashboard?id=pi-fence`.
+3. Final reviewer re-check over `1177844..HEAD` — security: no issues; correctness/design: no issues; testing/conventions: close-entry-only info items.
+4. `pnpm vitest run tests/integration/bundle-sandbox.live.test.ts` — passed as a clean skip earlier in S5 because `pi-fence-bundle` was not running: 1 file skipped, 3 tests skipped.
+5. `pnpm test:live -- tests/integration/bundle-sandbox.live.test.ts` — timed out earlier because the package script still invokes broader integration/render-image lanes before the trailing filter narrows the run.
+
+**Design decisions that survived implementation.**
+
+1. **One sandbox processor.** Policy and bindings see `bundle-sandbox`; Graphviz and Mermaid are private handlers owned by one handler table.
+2. **Strict Docker readiness.** The bundle is available only when the labelled trusted-image container is running with `network=none`, no ports, tmpfs-only mounts including `/tmp`, `cap-drop ALL`, no added capabilities, non-privileged mode, enabled `no-new-privileges`, and confined seccomp.
+3. **No host mounts.** Mermaid workspaces live inside the container and are accessed through bounded `docker exec` calls.
+4. **Trusted image only.** S5 keeps the default `ghcr.io/henriquebastos/pi-fence-bundle:0.1.0` identity and does not execute arbitrary project-configured images.
+5. **Manual lifecycle.** S5 documents build/run and live verification; `/fence bundle start|stop` and auto-start remain future work.
+
+**Known deviations.**
+
+1. `4c80cd6` updated `CHANGELOG.md` in the same feature/live-gate commit as README, getting-started, and live tests. This violated the adjacent docs-only CHANGELOG convention. The deviation is recorded instead of rewriting already-documented history.
+2. Full `pnpm test:live -- tests/integration/bundle-sandbox.live.test.ts` could not be used as a narrow lane in this environment because the package script runs broader live suites before Vitest's trailing filter applies.
+
+**Carry-forward.** Continue CV9.E1 with S6 (`kroki-sandbox`). Do not close `epic-63b063e6`; S6 and S7 remain.
