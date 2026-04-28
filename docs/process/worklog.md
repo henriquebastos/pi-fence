@@ -4016,3 +4016,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **All Mermaid workspace Docker execs are bounded.** `mktemp`, source write, render, output read, and cleanup no longer run without an abort signal.
 
 **Carry-forward.** Fix remaining S5 inspection findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection refactor: bundle tool handlers
+
+**What shipped.** `bundle-sandbox` now has a single `BUNDLE_TOOL_HANDLERS` table that owns canonical tags, aliases, required manifest probes, and render dispatch for Graphviz and Mermaid.
+
+**Implementation commits.**
+
+1. `e37eb08` — refactor: centralize bundle tool handlers
+
+**Test count.** Fast suite unchanged at 808.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/contract/bundle-sandbox.contract.test.ts` — passed, 34 tests.
+2. `pnpm run feedback` — passed: 808 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **One table owns each bundle tool.** Future tools now add one handler rather than editing separate tag, alias, probe, and render structures.
+2. **Public processor shape is unchanged.** The handler table preserves `graphviz`/`mermaid` tags, `dot` aliasing, and existing output behavior.
+
+**Carry-forward.** Fix remaining S5 inspection findings.
