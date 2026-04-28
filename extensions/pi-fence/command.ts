@@ -36,7 +36,6 @@ interface RegisterFenceCommandOptions {
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
 	shell: ShellRunner;
-	krokiDockerImage?: string;
 	metrics?: MetricsCollector;
 }
 
@@ -52,11 +51,10 @@ export function registerFenceCommand({
 	endpoints,
 	configStatus,
 	shell,
-	krokiDockerImage,
 	metrics,
 }: RegisterFenceCommandOptions): void {
 	const listOpts: ListProcessorsOptions = { blockedProcessors, blockedTags, endpoints, processorPrecedence };
-	const dockerMgr = createKrokiDockerManager(shell, logger, { image: krokiDockerImage });
+	const dockerMgr = createKrokiDockerManager(shell, logger);
 	const currentBindingRows = () =>
 		resolveBindings(processors, availability, bindings, blockedProcessors, processorPrecedence, blockedTags);
 

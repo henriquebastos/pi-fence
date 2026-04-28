@@ -921,7 +921,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
-		"uses configured Kroki sandbox image for auto-start",
+		"ignores project-configured Kroki sandbox image for auto-start",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
@@ -952,7 +952,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 					"--name", "pi-fence-kroki",
 					"--label", "pi-fence.sandbox=kroki",
 					"-p", "8000:8000",
-					"registry.example/kroki:test",
+					"yuzutech/kroki",
 				],
 				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
 			);
@@ -964,7 +964,44 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				{ home, cwd: makeTempDir() },
 			);
 
-			expect(shell.calls.some((call) => call.args.includes("registry.example/kroki:test"))).toBe(true);
+			expect(shell.calls.some((call) => call.args.includes("registry.example/kroki:test"))).toBe(false);
+			expect(shell.calls.some((call) => call.args.includes("yuzutech/kroki"))).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"project sandbox map without Kroki disables inherited legacy auto-start",
+		async () => {
+			const home = makeTempDir();
+			const cwd = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					kroki: { docker: { autoStart: true } },
+				}),
+			);
+			writeFileSync(
+				join(cwd, ".pi", "pi-fence.config.json"),
+				JSON.stringify({
+					sandboxes: {
+						bundle: { kind: "exec", runtime: "docker-container" },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd },
+			);
+
+			expect(shell.calls).toHaveLength(0);
 		},
 		20_000,
 	);

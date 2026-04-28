@@ -96,9 +96,7 @@ export async function createPiFenceExtension(
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-remote.
 	if (shouldAutoStartKrokiDocker(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
-		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger, {
-			image: krokiDockerImage(config),
-		});
+		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
 		const dockerStatus = await dockerMgr.status();
 		if (dockerStatus.status === "running") {
 			deps.logger.debug("pi-fence", "Docker Kroki already running", {
@@ -172,7 +170,6 @@ export async function createPiFenceExtension(
 			projectStatus: configResult.projectStatus,
 		},
 		shell: deps.shell,
-		krokiDockerImage: krokiDockerImage(config),
 		metrics,
 	});
 	registerPiFenceAgentEndHandler({
@@ -215,18 +212,12 @@ function isProcessorAllowed(
 function shouldAutoStartKrokiDocker(config: PiFenceConfig): boolean {
 	const legacyAutoStart = config.kroki?.docker?.autoStart === true;
 	const krokiSandbox = config.sandboxes?.kroki;
-	if (krokiSandbox === undefined) return legacyAutoStart;
+	if (krokiSandbox === undefined) return false;
 	if (krokiSandbox.kind !== "service") return false;
 	if (krokiSandbox.runtime !== "docker-container") return false;
 	return krokiSandbox.autoStart ?? legacyAutoStart;
 }
 
-function krokiDockerImage(config: PiFenceConfig): string | undefined {
-	const krokiSandbox = config.sandboxes?.kroki;
-	if (krokiSandbox?.kind !== "service") return undefined;
-	if (krokiSandbox.runtime !== "docker-container") return undefined;
-	return krokiSandbox.image;
-}
 
 function isKrokiAutoStartAllowed(
 	processors: readonly FenceProcessor[],

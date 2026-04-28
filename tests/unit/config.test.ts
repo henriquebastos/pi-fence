@@ -100,11 +100,9 @@ describe("config core", () => {
 	});
 
 	it("defaults named sandbox controllers for bundle and Kroki", () => {
-		expect(DEFAULT_CONFIG).toMatchObject({
-			sandboxes: {
-				bundle: { kind: "exec", runtime: "docker-container" },
-				kroki: { kind: "service", runtime: "docker-container" },
-			},
+		expect(DEFAULT_CONFIG.sandboxes).toEqual({
+			bundle: { kind: "exec", runtime: "docker-container" },
+			kroki: { kind: "service", runtime: "docker-container" },
 		});
 	});
 
