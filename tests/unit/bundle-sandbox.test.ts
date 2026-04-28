@@ -180,6 +180,8 @@ describe("bundle-sandbox processor", () => {
 				"/tmp/pi-fence-work/output.png",
 				"-b",
 				"transparent",
+				"-p",
+				"/opt/pi-fence-bundle/puppeteer-config.json",
 			],
 			OK,
 		);
@@ -201,6 +203,8 @@ describe("bundle-sandbox processor", () => {
 					"/tmp/pi-fence-work/output.png",
 					"-b",
 					"transparent",
+					"-p",
+					"/opt/pi-fence-bundle/puppeteer-config.json",
 				],
 				options: undefined,
 			},
@@ -224,6 +228,8 @@ describe("bundle-sandbox processor", () => {
 				"/tmp/pi-fence-work/output.png",
 				"-b",
 				"transparent",
+				"-p",
+				"/opt/pi-fence-bundle/puppeteer-config.json",
 			],
 			{ stdout: "", stderr: "Parse error", exitCode: 1 },
 		);

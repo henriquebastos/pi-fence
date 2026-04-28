@@ -8,6 +8,7 @@ export const BUNDLE_SANDBOX_LABELS: Readonly<Record<string, string>> = {
 	"pi-fence.sandbox": "bundle",
 };
 export const BUNDLE_MANIFEST_PATH = "/opt/pi-fence-bundle/manifest.json";
+export const BUNDLE_PUPPETEER_CONFIG_PATH = "/opt/pi-fence-bundle/puppeteer-config.json";
 
 const BUNDLE_TAGS = ["graphviz", "mermaid"] as const;
 const BUNDLE_ALIASES: Readonly<Record<string, string>> = { dot: "graphviz" };
@@ -96,6 +97,8 @@ async function renderMermaid(
 				workspace.path(outputName),
 				"-b",
 				"transparent",
+				"-p",
+				BUNDLE_PUPPETEER_CONFIG_PATH,
 			],
 			signal ? { signal } : undefined,
 		);

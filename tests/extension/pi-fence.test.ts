@@ -2527,6 +2527,8 @@ function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: B
 				"/tmp/pi-fence-test/output.png",
 				"-b",
 				"transparent",
+				"-p",
+				"/opt/pi-fence-bundle/puppeteer-config.json",
 			],
 			{ stdout: "", stderr: "", exitCode: 0 },
 		);
