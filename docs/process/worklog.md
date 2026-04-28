@@ -3947,3 +3947,19 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Rendered-byte tests now fail closed.** A missing image payload can no longer masquerade as a passed PNG comparison.
 
 **Carry-forward.** Record the S5 CHANGELOG commit deviation, then close story-level inspection if no new findings remain.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 process deviation: CHANGELOG in feature commit
+
+**What happened.** Final S5 inspection found one process deviation: `4c80cd6` updated `CHANGELOG.md` in the same feature commit as the bundle live gate and user docs, instead of splitting the CHANGELOG update into an adjacent docs-only catch-up commit.
+
+**Disposition.** Kept history intact because the S5 worklog already records the shipped commit sequence and later inspection fixes build on top of those SHAs. Future S5 commits returned to the adjacent feature-docs pattern.
+
+**Implementation commits.**
+
+1. `4c80cd6` — step 7: document and gate the bundle sandbox
+
+**Known deviation.** The `CHANGELOG.md` part of `4c80cd6` is a convention miss, not a product behavior issue. No code rewrite was needed.
+
+**Carry-forward.** Mention this deviation again in the S5 close worklog entry.
