@@ -3478,3 +3478,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. The Ready story spec clarifications for auto-start semantics and Kroki sandbox runtime were mixed into feature commits `3b23211` and `6654249` instead of dedicated docs commits. This entry records the deviation; future story-spec corrections should return to separate docs commits unless they are part of a pure docs bean.
 
 **Carry-forward.** Rerun ready/blocked bean checks, completion inspection, and final S4 inspection.
+
+---
+
+### 2026-04-28 — CV9.E1.S4 final inspection fix: project-controlled Docker image block
+
+**What shipped.** Project config can no longer make auto-start or `/fence kroki` run an arbitrary Docker image through `sandboxes.kroki.image`. The current single-container bridge keeps the trusted `yuzutech/kroki` image, while `image` remains accepted as future sandbox-controller metadata. Replacing the sandbox map without a `kroki` entry now disables inherited legacy Kroki auto-start, matching replace-by-layer semantics.
+
+**Implementation commits.**
+
+1. `fa83ab4` — fix: block project-controlled Kroki images
+
+**Test count.** Fast suite 752 → 753 (+1; one previous configured-image expectation was inverted for the security rule).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/config.test.ts tests/unit/fence-command.test.ts -t 'autoStart|auto-start|configured Kroki sandbox image|defaults named sandbox|kroki start'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Project config cannot choose executable images.** Auto-start remains safe under untrusted repository config.
+2. **Legacy fallback honors sandbox replacement.** Removing `sandboxes.kroki` disables inherited legacy auto-start instead of bypassing the sandbox contract.
+
+**Carry-forward.** Rerun completion inspection and final S4 inspection.

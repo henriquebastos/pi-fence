@@ -204,6 +204,6 @@ pnpm run inspect
 
 ## Ready decisions
 
-1. Sandbox images are always configurable on the named sandbox config, with defaults supplied by production code when a controller needs them.
+1. Sandbox images are accepted on the named sandbox config as controller metadata. The current single-container Kroki bridge keeps using the trusted default `yuzutech/kroki` image until source-aware image trust semantics exist.
 2. S4 accepts the generic `docker-container` and `docker-compose` runtime values in the domain model. The default config names `bundle` as `exec` + `docker-container` and `kroki` as `service` + `docker-container`; only the Kroki single-container bridge has runtime behavior in S4. The `bundle-sandbox` processor lands with S5, and the `docker-compose` Kroki controller lands with S6.
 3. Sandbox lifecycle commands stay out of S4. User-facing commands can land with the concrete sandbox processors in S5/S6.
