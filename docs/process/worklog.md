@@ -3738,3 +3738,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Contract coverage starts with Graphviz.** Mermaid contract coverage waits until the workspace handler lands.
 
 **Carry-forward.** Next ready bean is `task-4f706b94` — Mermaid bundle handler.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 5: Mermaid bundle handler
+
+**What shipped.** `bundle-sandbox` now renders `mermaid` through an exec-sandbox workspace: it writes `input.mmd`, runs `mmdc -i <input> -o <output> -b transparent` with container paths, reads `output.png`, and disposes the workspace on success and CLI error. Shared contract coverage now covers both bundle Graphviz and bundle Mermaid.
+
+**Implementation commits.**
+
+1. `9c988b7` — step 5: render mermaid in the bundle
+
+**Test count.** Fast suite 776 → 788 (+12).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts` — failed because Mermaid render still returned the not-implemented error.
+2. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/contract/bundle-sandbox.contract.test.ts` — passed, 28 tests.
+3. `pnpm run feedback` — passed: 788 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Mermaid stays container-local.** Source and PNG files are addressed through `ExecSandboxWorkspace`; no host temp files or mounts are introduced.
+2. **Cleanup is observable.** Unit tests prove workspace disposal happens on both successful render and Mermaid CLI error.
+3. **One processor still owns both handlers.** Contract coverage exercises two tags through `bundle-sandbox`, not separate sandbox processor ids.
+
+**Carry-forward.** Next ready bean is `task-d7156d98` — extension policy integration.
