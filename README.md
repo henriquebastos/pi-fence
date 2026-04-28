@@ -48,6 +48,7 @@ Resolution is placement-policy based by default: available `embedded` processors
 **Slash commands**:
 
 - `/fence list` — prints the registered processors, their availability, the tags each accepts, and any per-tag bindings or blocked tags the user configured. Offline, read-only. On a machine with both `dot` installed and network you see `graphviz-host [registered]`; on a machine without `dot` you see `graphviz-host [unavailable]` with the install hint plus `kroki-remote [registered]`. Embedded processors show as `[registered]` because they have no external dependency. A `Bindings` section appears when the config file has any effective bindings; a `Blocked tags` section appears for blocked tag families; a `Binding issues` section appears for unsatisfied selectors, including unknown, blocked, unavailable, placement-disabled, non-claiming, no-match, ambiguous, or tag-blocked bindings.
+- `/fence kroki start|status|stop` — manages the single-container local Kroki Docker runtime. To render through it, set `kroki.endpoint` to `http://localhost:8000`; auto-start is available via `sandboxes.kroki.autoStart` for the `docker-container` runtime, with `kroki.docker.autoStart` kept as a compatibility alias.
 
 **Tracing**:
 

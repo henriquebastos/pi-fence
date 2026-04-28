@@ -201,6 +201,8 @@ Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. 
 docker run -d -p 8000:8000 yuzutech/kroki
 ```
 
+That manual command is enough when you only want to point `kroki.endpoint` at a local service. pi-fence's lifecycle commands manage their own named, labelled container; use `/fence kroki start` when you want pi-fence to own start/stop/status.
+
 ## Running Kroki locally via Docker
 
 Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-fence manages the Docker container for you:
@@ -213,17 +215,23 @@ Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-f
 
 `/fence kroki start` only manages the container; it does not change the active processor endpoint. To use the local container, set `kroki.endpoint` to `http://localhost:8000` in your config file and `/reload` — see [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint) above.
 
-**Auto-start (opt-in):** to have pi-fence start the Docker container automatically on every session, add to your config:
+**Auto-start (opt-in):** to have pi-fence start the single-container Docker Kroki sandbox automatically on every session, add to your config:
 
 ```json
 {
-  "kroki": {
-    "docker": { "autoStart": true }
+  "sandboxes": {
+    "kroki": {
+      "kind": "service",
+      "runtime": "docker-container",
+      "autoStart": true
+    }
   }
 }
 ```
 
-Auto-start follows processor policy: if `kroki-remote` is blocked or `remote` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the container stays running between sessions — subsequent starts are no-ops.
+Existing configs that use `kroki.docker.autoStart: true` still work as a compatibility alias. `sandboxes.kroki.runtime: "docker-compose"` is accepted by the config model for the future full Kroki stack, but it does not auto-start until the Compose-backed service controller ships.
+
+Auto-start follows processor policy: if `kroki-remote` is blocked or `remote` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the container stays running between sessions — subsequent starts are no-ops. Lifecycle commands only operate on the expected `yuzutech/kroki` image with the pi-fence ownership label; `stop` reports non-zero `docker stop` or `docker rm` exits with Docker's stderr instead of hiding them behind a success message.
 
 ## Diagnosing the setup
 
