@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Config now accepts named sandbox controller policy under `sandboxes`, with default `bundle` and `kroki` entries. The default Kroki sandbox is a `service` using the existing single-container `docker-container` runtime; `docker-compose` remains an accepted future runtime value.
 - `sandboxes.kroki.autoStart: true` with `runtime: "docker-container"` starts the existing Docker Kroki manager. Existing `kroki.docker.autoStart: true` configs remain supported as a compatibility alias.
-- Docker Kroki lifecycle checks now require the expected `yuzutech/kroki` image and pi-fence ownership label before reporting readiness or running lifecycle commands.
+- Docker Kroki lifecycle checks now require the configured Kroki image (default `yuzutech/kroki`) and pi-fence ownership label before reporting readiness or running lifecycle commands.
 - `/fence kroki stop` now reports non-zero `docker stop` / `docker rm` exits as errors with Docker's stderr and exit code instead of reporting success.
 - `http://localhost:*` Kroki endpoints still resolve through `kroki-remote`; localhost alone does not make a processor sandbox-owned.
 

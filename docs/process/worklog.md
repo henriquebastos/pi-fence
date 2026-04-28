@@ -3407,3 +3407,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Unsupported runtimes stay inert.** Compose auto-start remains out of scope until the Compose controller lands.
 
 **Carry-forward.** Honor the configured Kroki sandbox image.
+
+---
+
+### 2026-04-28 — CV9.E1.S4 final inspection fix: Kroki sandbox image
+
+**What shipped.** The Kroki Docker manager now accepts a configured image, uses it for `docker run`, and verifies container identity against it. The extension passes `sandboxes.kroki.image` to both auto-start and `/fence kroki` lifecycle commands when the Kroki sandbox uses the `docker-container` runtime. User-facing docs now describe the configured-image behavior.
+
+**Implementation commits.**
+
+1. `9d4374d` — fix: honor Kroki sandbox image
+
+**Test count.** Fast suite 748 → 750 (+2).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/extension/pi-fence.test.ts -t 'configured image|configured Kroki sandbox image'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Image config is executable, not decorative.** A configured Kroki sandbox image controls both startup and identity checks.
+2. **Lifecycle commands share the same identity.** `/fence kroki` uses the same configured image as auto-start.
+
+**Carry-forward.** Cover thrown Kroki Docker stop failures.
