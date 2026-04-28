@@ -3608,3 +3608,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 7. `CV9.E1.S7` Draft — processor factory discovery.
 
 **Carry-forward.** Next story is `CV9.E1.S5 — Bundle sandbox processor`; start from a clean tree and move it from Draft to Ready before implementation.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 spec readiness
+
+**What shipped.** `CV9.E1.S5 — Bundle sandbox processor` moved from Draft to Ready. The spec now follows the S4 shape: acceptance-oriented plan, explicit Tests section, bundle image contract, processor shape, and Ready decisions. The epic story table now marks S5 Ready, and the S5 bean ledger has one story bean plus seven ordered implementation slice beans.
+
+**Implementation commits.**
+
+1. `0792eb1` — spec CV9.E1.S5: ready bundle sandbox processor
+
+**Test count.** Fast suite unchanged at 754 (docs/spec-only update).
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+2. `pnpm run feedback` — passed: 754 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived spec readiness.**
+
+1. **Separate runtime image.** `pi-fence-live-deps` remains test infrastructure; `pi-fence-bundle` is the product sandbox image.
+2. **No bundle auto-start in S5.** S5 uses and verifies a running bundle container; user-facing lifecycle commands and automatic start semantics wait for explicit image-trust rules.
+3. **No arbitrary project image execution.** Project-configured bundle images stay out of S5 until source-aware image trust semantics exist.
+4. **One registry processor.** Graphviz and Mermaid remain private bundle handlers behind `bundle-sandbox`, so ambiguity and bindings operate at the processor boundary.
+
+**Carry-forward.** Next ready bean is `task-fcff84f0` — bundle image manifest contract.
