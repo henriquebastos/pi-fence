@@ -3764,3 +3764,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **One processor still owns both handlers.** Contract coverage exercises two tags through `bundle-sandbox`, not separate sandbox processor ids.
 
 **Carry-forward.** Next ready bean is `task-d7156d98` — extension policy integration.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 6: extension policy integration
+
+**What shipped.** The default extension composition now registers `bundle-sandbox` when the configured `bundle` sandbox is `exec` + `docker-container`. Sandbox-only placement can render both `dot` and `mermaid` through the bundle with zero host `dot`/`mmdc` calls and zero Kroki HTTP. `/fence list` now includes the bundle processor, and unit coverage proves a real `bundle-sandbox` remains ambiguous with another sandbox processor until an exact binding selects it.
+
+**Implementation commits.**
+
+1. `4444063` — step 6: wire bundle into sandbox policy
+
+**Test count.** Fast suite 788 → 791 (+3).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/extension/pi-fence.test.ts -t 'sandbox-only precedence renders dot'` — failed with no `pi-fence:output` because the bundle was not wired into the default processor set.
+2. GREEN: `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/resolve.test.ts tests/unit/bundle-sandbox.test.ts -t 'bundle-sandbox|sandbox'` — passed, 21 tests.
+3. `pnpm run feedback` — passed: 791 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Config gates registration.** The bundle processor is built only for `sandboxes.bundle.kind: "exec"` and `runtime: "docker-container"`.
+2. **Trusted image remains fixed.** S5 wiring uses the trusted `ghcr.io/henriquebastos/pi-fence-bundle:0.1.0` identity and does not execute arbitrary project image values.
+3. **Resolver remains generic.** Sandbox-only success and same-placement ambiguity use existing placement policy; no resolver branch knows about Docker.
+
+**Carry-forward.** Next ready bean is `task-82688948` — bundle live gate and docs.
