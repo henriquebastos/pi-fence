@@ -210,11 +210,12 @@ function isProcessorAllowed(
 }
 
 function shouldAutoStartKrokiDocker(config: PiFenceConfig): boolean {
+	const legacyAutoStart = config.kroki?.docker?.autoStart === true;
 	const krokiSandbox = config.sandboxes?.kroki;
-	return config.kroki?.docker?.autoStart === true ||
-		(krokiSandbox?.kind === "service" &&
-			krokiSandbox.runtime === "docker-container" &&
-			krokiSandbox.autoStart === true);
+	if (krokiSandbox === undefined) return legacyAutoStart;
+	if (krokiSandbox.kind !== "service") return false;
+	if (krokiSandbox.runtime !== "docker-container") return false;
+	return krokiSandbox.autoStart ?? legacyAutoStart;
 }
 
 function isKrokiAutoStartAllowed(

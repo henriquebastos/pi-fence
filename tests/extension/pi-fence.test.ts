@@ -921,6 +921,169 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"project sandbox autoStart:false overrides inherited legacy Kroki auto-start",
+		async () => {
+			const home = makeTempDir();
+			const cwd = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					kroki: { docker: { autoStart: true } },
+				}),
+			);
+			writeFileSync(
+				join(cwd, ".pi", "pi-fence.config.json"),
+				JSON.stringify({
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container", autoStart: false },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd },
+			);
+
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"legacy Kroki autoStart remains a compatibility alias",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					kroki: { docker: { autoStart: true } },
+				}),
+			);
+			const shell = new FakeShellRunner();
+			shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+				stdout: "",
+				stderr: "No such container",
+				exitCode: 1,
+			});
+			shell.setResponse(
+				"docker",
+				[
+					"run", "-d",
+					"--name", "pi-fence-kroki",
+					"--label", "pi-fence.sandbox=kroki",
+					"-p", "8000:8000",
+					"yuzutech/kroki",
+				],
+				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+			);
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls.some((call) => call.args[0] === "run")).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"docker-compose Kroki sandbox config does not start the single-container manager",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"non-service Kroki sandbox config does not start the single-container manager",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					sandboxes: {
+						kroki: { kind: "exec", runtime: "docker-container", autoStart: true },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"blocked Kroki tag families prevent sandbox Kroki auto-start",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					blocked: { tags: KROKI_CANONICAL_TAGS, processors: [] },
+					processorPrecedence: ["remote"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container", autoStart: true },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(shell.calls).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"malformed global config fails closed before remote rendering",
 		async () => {
 			const home = makeTempDir();

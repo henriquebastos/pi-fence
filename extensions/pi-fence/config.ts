@@ -76,8 +76,8 @@ export const DEFAULT_CONFIG: PiFenceConfig = {
 	blocked: { tags: [], processors: [] },
 	processorPrecedence: [...DEFAULT_PROCESSOR_PRECEDENCE],
 	sandboxes: {
-		bundle: { kind: "exec", runtime: "docker-container", autoStart: false },
-		kroki: { kind: "service", runtime: "docker-container", autoStart: false },
+		bundle: { kind: "exec", runtime: "docker-container" },
+		kroki: { kind: "service", runtime: "docker-container" },
 	},
 };
 
