@@ -3686,3 +3686,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Path containment is explicit.** Workspace paths reject absolute and parent-traversal names before any Docker command is built.
 
 **Carry-forward.** Next ready bean is `task-d1d8f70e` — bundle availability and probes.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 3: bundle availability and probes
+
+**What shipped.** Added the initial `bundle-sandbox` processor module with sandbox placement metadata, manifest parsing, controller-status gating, and required `dot`/`mmdc` version probes through the exec sandbox environment. The processor reports unavailable for non-ready bundle status, malformed manifests, missing tools, and failed tool probes before it can be selected for rendering.
+
+**Implementation commits.**
+
+1. `4076062` — step 3: require bundle probes before selection
+
+**Test count.** Fast suite 760 → 765 (+5).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/unit/sandbox.test.ts` — failed because the `bundle-sandbox` module was missing.
+2. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/unit/sandbox.test.ts` — passed, 24 tests.
+3. `pnpm run feedback` — passed: 765 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Availability is controller-gated.** Tool probes run only after the bundle controller reports `ready`.
+2. **The manifest is executable contract.** Required tool entries drive version probes instead of hard-coded probe commands outside the manifest path.
+3. **Sandbox remains one processor.** Graphviz and Mermaid are exposed as `bundle-sandbox` tags/aliases while render handlers remain private follow-up work.
+
+**Carry-forward.** Next ready bean is `task-1a133c5c` — Graphviz bundle handler.
