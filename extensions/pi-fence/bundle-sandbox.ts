@@ -17,13 +17,29 @@ export const BUNDLE_SANDBOX_LABELS: Readonly<Record<string, string>> = {
 export const BUNDLE_MANIFEST_PATH = "/opt/pi-fence-bundle/manifest.json";
 export const BUNDLE_PUPPETEER_CONFIG_PATH = "/opt/pi-fence-bundle/puppeteer-config.json";
 
-const BUNDLE_TAGS = ["graphviz", "mermaid"] as const;
-const BUNDLE_ALIASES: Readonly<Record<string, string>> = { dot: "graphviz" };
-const REQUIRED_TOOLS = ["dot", "mmdc"] as const;
 const INSTALL_HINT =
 	"Build and start the pi-fence bundle container from docker/bundle before enabling sandbox placement.";
 
-type BundleToolId = typeof REQUIRED_TOOLS[number];
+type BundleToolId = "dot" | "mmdc";
+
+interface BundleToolHandler {
+	id: BundleToolId;
+	canonicalTag: string;
+	aliases: readonly string[];
+	render(env: ExecSandboxEnvironment, source: string, signal?: AbortSignal): Promise<FenceResult>;
+}
+
+const BUNDLE_TOOL_HANDLERS: readonly BundleToolHandler[] = [
+	{ id: "dot", canonicalTag: "graphviz", aliases: ["dot"], render: renderGraphviz },
+	{ id: "mmdc", canonicalTag: "mermaid", aliases: [], render: renderMermaid },
+];
+
+const BUNDLE_TAGS = BUNDLE_TOOL_HANDLERS.map((handler) => handler.canonicalTag);
+const BUNDLE_ALIASES: Readonly<Record<string, string>> = Object.fromEntries(
+	BUNDLE_TOOL_HANDLERS.flatMap((handler) =>
+		handler.aliases.map((alias) => [alias, handler.canonicalTag]),
+	),
+);
 
 interface BundleToolManifest {
 	command: string;
@@ -62,12 +78,20 @@ async function renderBundle(
 	source: string,
 	signal?: AbortSignal,
 ): Promise<FenceResult> {
-	if (tag === "graphviz" || tag === "dot") return renderGraphviz(env, source, signal);
-	if (tag === "mermaid") return renderMermaid(env, source, signal);
-	return {
-		ok: false,
-		error: `${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`,
-	};
+	const handler = bundleHandlerForTag(tag);
+	if (!handler) {
+		return {
+			ok: false,
+			error: `${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`,
+		};
+	}
+	return handler.render(env, source, signal);
+}
+
+function bundleHandlerForTag(tag: string): BundleToolHandler | undefined {
+	return BUNDLE_TOOL_HANDLERS.find(
+		(handler) => handler.canonicalTag === tag || handler.aliases.includes(tag),
+	);
 }
 
 async function renderGraphviz(
@@ -148,8 +172,8 @@ async function bundleAvailable(
 			return { ok: false, reason: manifestResult.reason, installHint: INSTALL_HINT };
 		}
 
-		for (const toolId of REQUIRED_TOOLS) {
-			const probe = await probeTool(env, manifestResult.manifest, toolId);
+		for (const handler of BUNDLE_TOOL_HANDLERS) {
+			const probe = await probeTool(env, manifestResult.manifest, handler.id);
 			if (!probe.ok) return probe;
 		}
 		return { ok: true };
