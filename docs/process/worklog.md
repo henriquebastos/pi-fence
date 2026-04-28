@@ -3712,3 +3712,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Sandbox remains one processor.** Graphviz and Mermaid are exposed as `bundle-sandbox` tags/aliases while render handlers remain private follow-up work.
 
 **Carry-forward.** Next ready bean is `task-1a133c5c` — Graphviz bundle handler.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 4: Graphviz bundle handler
+
+**What shipped.** `bundle-sandbox` now dispatches `graphviz`/`dot` renders to `dot -Tpng` through the exec sandbox environment, passes DOT source on stdin, returns PNG bytes from binary stdout, and surfaces non-zero/throwing exec failures as `{ ok:false }`. Shared `FenceProcessor` contract coverage now exercises the bundle Graphviz path.
+
+**Implementation commits.**
+
+1. `57cb645` — step 4: render graphviz in the bundle
+
+**Test count.** Fast suite 765 → 776 (+11).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts` — failed because Graphviz render still returned the not-implemented error.
+2. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/contract/bundle-sandbox.contract.test.ts` — passed, 16 tests.
+3. `pnpm run feedback` — passed: 776 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Graphviz remains private handler logic.** No `graphviz-sandbox` processor was registered; policy still sees only `bundle-sandbox`.
+2. **The host binary is not used.** Tests assert calls go through `ExecSandboxEnvironment.run("dot", ["-Tpng"], { input })`.
+3. **Contract coverage starts with Graphviz.** Mermaid contract coverage waits until the workspace handler lands.
+
+**Carry-forward.** Next ready bean is `task-4f706b94` — Mermaid bundle handler.
