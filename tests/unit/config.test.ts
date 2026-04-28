@@ -171,6 +171,63 @@ describe("config core", () => {
 		]);
 	});
 
+	it("validates sandboxes: invalid runtime fails closed with otherwise valid fields", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "exec", runtime: "podman", image: "ghcr.io/example/bundle", autoStart: false },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
+			"kind/runtime are invalid",
+		]);
+	});
+
+	it("validates sandboxes: invalid image fails closed with otherwise valid fields", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "exec", runtime: "docker-container", image: 42, autoStart: false },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
+			"optional fields are invalid",
+		]);
+	});
+
+	it("validates sandboxes: invalid autoStart fails closed with otherwise valid fields", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "exec", runtime: "docker-container", image: "ghcr.io/example/bundle", autoStart: "yes" },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
+			"optional fields are invalid",
+		]);
+	});
+
 	it("validates sandboxes: any invalid entry clears otherwise valid entries", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
@@ -297,6 +354,19 @@ describe("config core", () => {
 		expect(result.blocked).toBeUndefined();
 		expect(result.processorPrecedence).toBeUndefined();
 		expect(result.kroki).toBeUndefined();
+	});
+
+	it("validates sandboxes: ignores an inherited top-level sandboxes field", () => {
+		const parsed = Object.create({
+			sandboxes: {
+				bundle: { kind: "exec", runtime: "docker-container", autoStart: true },
+			},
+		});
+
+		const result = validatePiFenceConfig(parsed, "test");
+
+		expect(result.sandboxes).toBeUndefined();
+		expect(result.processorPrecedence).toBeUndefined();
 	});
 
 	it("validates processorPrecedence: accepts placement strings in user order", () => {
