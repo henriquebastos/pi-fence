@@ -3895,3 +3895,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Cleanup behavior is unchanged.** Workspaces are still disposed when they are successfully created.
 
 **Carry-forward.** Fix remaining S5 inspection findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: bundle render timeouts
+
+**What shipped.** Bundle Graphviz and Mermaid renders now merge caller cancellation with `DEFAULT_RENDER_TIMEOUT_MS` before invoking `docker exec`, and bundle render uses `withSignalGuard` for pre-aborted signals.
+
+**Implementation commits.**
+
+1. `ac8e8c9` — fix: timebox bundle renders
+
+**Test count.** Fast suite 795 → 797 (+2).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'timeout-backed|merges caller'` — failed because Graphviz passed no signal and Mermaid passed only the caller signal.
+2. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts` — passed, 12 tests.
+3. `pnpm vitest run tests/contract/bundle-sandbox.contract.test.ts tests/extension/pi-fence.test.ts -t 'bundle|sandbox-only precedence renders mermaid|sandbox-only precedence renders graphviz'` — passed, 22 tests.
+4. `pnpm run feedback` — passed: 797 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Bundle renders share the existing timeout constant.** The exec sandbox gets the same 15s render budget as host processors.
+2. **Caller cancellation is preserved.** External abort signals are combined with timeout signals instead of replaced.
+
+**Carry-forward.** Fix remaining S5 inspection findings.
