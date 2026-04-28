@@ -3335,3 +3335,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Runtime variants stay in the model.** `docker-compose` remains valid config so S6 can add the service controller without another schema change.
 
 **Carry-forward.** Strengthen focused sandbox config hardening tests.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: sandbox config hardening coverage
+
+**What shipped.** Sandbox config validation now has focused coverage for inherited top-level `sandboxes`, invalid `runtime`, invalid `image`, and invalid `autoStart` with otherwise valid entries. The inspection finding was coverage-only: each new assertion already passed against the existing fail-closed validator.
+
+**Implementation commits.**
+
+1. `f6fe677` — test: harden sandbox config validation
+
+**Test count.** Fast suite 739 → 743 (+4).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Sandbox policy stays fail-closed.** Any malformed sandbox field clears the sandbox map and narrows placement to embedded-only.
+2. **Inherited config is ignored.** Sandbox policy follows the same own-field rule as other privacy controls.
+
+**Carry-forward.** Update user-facing lifecycle docs.
