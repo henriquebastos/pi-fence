@@ -1,0 +1,14 @@
+{
+  "name": "pi-fence-bundle",
+  "version": "0.1.0",
+  "tools": {
+    "dot": {
+      "command": "dot",
+      "versionCommand": ["dot", "-V"]
+    },
+    "mmdc": {
+      "command": "mmdc",
+      "versionCommand": ["mmdc", "--version"]
+    }
+  }
+}
