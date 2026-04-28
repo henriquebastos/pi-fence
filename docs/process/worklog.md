@@ -3844,3 +3844,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **No host mounts remains testable without live Docker.** Unit tests cover published port and bind mount regressions with `FakeShellRunner`.
 
 **Carry-forward.** Fix remaining S5 inspection findings, starting with Mermaid Puppeteer config.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: Mermaid Puppeteer config
+
+**What shipped.** Bundle Mermaid renders now pass the shipped Puppeteer config to `mmdc` with `-p /opt/pi-fence-bundle/puppeteer-config.json`, so the Chromium flags copied into the image are used by the render command.
+
+**Implementation commits.**
+
+1. `5460b9a` — fix: pass bundle puppeteer config to mmdc
+
+**Test count.** Fast suite unchanged at 794.
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'Mermaid'` — failed because `mmdc` was called without `-p`.
+2. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'Mermaid'` — passed, 2 tests.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'sandbox-only precedence renders mermaid'` — passed, 1 test.
+4. `pnpm run feedback` — passed: 794 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **The image config is used.** `puppeteer-config.json` is no longer inert documentation inside the bundle image.
+2. **Mermaid remains workspace-based.** The only render command change is adding the config-file argument; source/output still stay inside the container workspace.
+
+**Carry-forward.** Fix remaining S5 inspection findings.
