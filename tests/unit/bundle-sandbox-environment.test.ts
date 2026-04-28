@@ -73,6 +73,20 @@ describe("Docker exec sandbox environment", () => {
 		]);
 	});
 
+	it("fails workspace creation when mktemp returns a normalized path outside the workspace root", async () => {
+		const shell = new FakeShellRunner();
+		shell.setResponse("docker", ["exec", CONTAINER, "mktemp", "-d", "/tmp/pi-fence-XXXXXX"], {
+			stdout: "/tmp/../opt/pi-fence-a1b2c3\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		const env = createDockerExecSandboxEnvironment(shell, { containerName: CONTAINER });
+
+		await expect(env.createWorkspace()).rejects.toThrow(
+			"mktemp returned path outside /tmp: /tmp/../opt/pi-fence-a1b2c3",
+		);
+	});
+
 	it("fails workspace creation when mktemp does not return a usable path", async () => {
 		const shell = new FakeShellRunner();
 		shell.setResponse("docker", ["exec", CONTAINER, "mktemp", "-d", "/tmp/pi-fence-XXXXXX"], {

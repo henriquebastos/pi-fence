@@ -30,9 +30,9 @@ type RecordedExecCall = {
 };
 
 type RecordedWorkspaceCall =
-	| { operation: "writeText"; name: string; contents: string }
-	| { operation: "readBuffer"; name: string }
-	| { operation: "dispose" };
+	| { operation: "writeText"; name: string; contents: string; options?: ExecSandboxRunOptions }
+	| { operation: "readBuffer"; name: string; options?: ExecSandboxRunOptions }
+	| { operation: "dispose"; options?: ExecSandboxRunOptions };
 
 class FakeExecSandboxWorkspace implements ExecSandboxWorkspace {
 	readonly calls: RecordedWorkspaceCall[] = [];
@@ -46,23 +46,24 @@ class FakeExecSandboxWorkspace implements ExecSandboxWorkspace {
 		return `${this.root}/${name}`;
 	}
 
-	async writeText(name: string, contents: string): Promise<void> {
-		this.calls.push({ operation: "writeText", name, contents });
+	async writeText(name: string, contents: string, options?: ExecSandboxRunOptions): Promise<void> {
+		this.calls.push({ operation: "writeText", name, contents, ...(options ? { options } : {}) });
 	}
 
-	async readBuffer(name: string): Promise<Buffer> {
-		this.calls.push({ operation: "readBuffer", name });
+	async readBuffer(name: string, options?: ExecSandboxRunOptions): Promise<Buffer> {
+		this.calls.push({ operation: "readBuffer", name, ...(options ? { options } : {}) });
 		return this.files[name] ?? Buffer.alloc(0);
 	}
 
-	async dispose(): Promise<void> {
-		this.calls.push({ operation: "dispose" });
+	async dispose(options?: ExecSandboxRunOptions): Promise<void> {
+		this.calls.push({ operation: "dispose", ...(options ? { options } : {}) });
 	}
 }
 
 class FakeExecSandboxEnvironment implements ExecSandboxEnvironment {
 	readonly calls: RecordedExecCall[] = [];
 	workspace?: FakeExecSandboxWorkspace;
+	createWorkspaceOptions?: ExecSandboxRunOptions;
 	private readonly responses = new Map<string, ExecSandboxRunResult>();
 
 	setResponse(command: string, args: readonly string[], result: ExecSandboxRunResult): void {
@@ -82,7 +83,8 @@ class FakeExecSandboxEnvironment implements ExecSandboxEnvironment {
 		return response;
 	}
 
-	async createWorkspace(): Promise<ExecSandboxWorkspace> {
+	async createWorkspace(options?: ExecSandboxRunOptions): Promise<ExecSandboxWorkspace> {
+		this.createWorkspaceOptions = options;
 		if (!this.workspace) throw new Error("workspace not configured");
 		return this.workspace;
 	}
@@ -189,6 +191,51 @@ describe("bundle-sandbox processor", () => {
 		]);
 	});
 
+	it("passes timeout-backed signals to Mermaid workspace operations", async () => {
+		const caller = new AbortController();
+		const env = new FakeExecSandboxEnvironment();
+		const png = Buffer.from([0x89, 0x50]);
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", { "output.png": png });
+		env.setResponse(
+			"mmdc",
+			[
+				"-i",
+				"/tmp/pi-fence-work/input.mmd",
+				"-o",
+				"/tmp/pi-fence-work/output.png",
+				"-b",
+				"transparent",
+				"-p",
+				"/opt/pi-fence-bundle/puppeteer-config.json",
+			],
+			OK,
+		);
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		await expect(processor.render("mermaid", "flowchart LR", caller.signal)).resolves.toEqual({
+			ok: true,
+			png,
+		});
+
+		expect(env.createWorkspaceOptions?.signal).toBeDefined();
+		expect(env.createWorkspaceOptions?.signal).not.toBe(caller.signal);
+		expect(env.workspace.calls[0]).toMatchObject({
+			operation: "writeText",
+			options: { signal: env.createWorkspaceOptions?.signal },
+		});
+		expect(env.workspace.calls[1]).toMatchObject({
+			operation: "readBuffer",
+			options: { signal: env.createWorkspaceOptions?.signal },
+		});
+		expect(env.workspace.calls[2]).toMatchObject({
+			operation: "dispose",
+			options: { signal: expect.any(AbortSignal) },
+		});
+	});
+
 	it("merges caller and timeout signals for Mermaid exec", async () => {
 		const caller = new AbortController();
 		const env = new FakeExecSandboxEnvironment();
@@ -266,9 +313,18 @@ describe("bundle-sandbox processor", () => {
 			},
 		]);
 		expect(env.workspace.calls).toEqual([
-			{ operation: "writeText", name: "input.mmd", contents: "flowchart LR\nA --> B" },
-			{ operation: "readBuffer", name: "output.png" },
-			{ operation: "dispose" },
+			expect.objectContaining({
+				operation: "writeText",
+				name: "input.mmd",
+				contents: "flowchart LR\nA --> B",
+				options: { signal: expect.any(AbortSignal) },
+			}),
+			expect.objectContaining({
+				operation: "readBuffer",
+				name: "output.png",
+				options: { signal: expect.any(AbortSignal) },
+			}),
+			expect.objectContaining({ operation: "dispose", options: { signal: expect.any(AbortSignal) } }),
 		]);
 	});
 
@@ -312,8 +368,13 @@ describe("bundle-sandbox processor", () => {
 			error: "Parse error",
 		});
 		expect(env.workspace.calls).toEqual([
-			{ operation: "writeText", name: "input.mmd", contents: "flowchart LR" },
-			{ operation: "dispose" },
+			expect.objectContaining({
+				operation: "writeText",
+				name: "input.mmd",
+				contents: "flowchart LR",
+				options: { signal: expect.any(AbortSignal) },
+			}),
+			expect.objectContaining({ operation: "dispose", options: { signal: expect.any(AbortSignal) } }),
 		]);
 	});
 

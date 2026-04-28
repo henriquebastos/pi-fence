@@ -42,14 +42,14 @@ export interface ExecSandboxEnvironment {
 		args: readonly string[],
 		options?: ExecSandboxRunOptions,
 	): Promise<ExecSandboxRunResult>;
-	createWorkspace(): Promise<ExecSandboxWorkspace>;
+	createWorkspace(options?: ExecSandboxRunOptions): Promise<ExecSandboxWorkspace>;
 }
 
 export interface ExecSandboxWorkspace {
 	path(name: string): string;
-	writeText(name: string, contents: string): Promise<void>;
-	readBuffer(name: string): Promise<Buffer>;
-	dispose(): Promise<void>;
+	writeText(name: string, contents: string, options?: ExecSandboxRunOptions): Promise<void>;
+	readBuffer(name: string, options?: ExecSandboxRunOptions): Promise<Buffer>;
+	dispose(options?: ExecSandboxRunOptions): Promise<void>;
 }
 
 export interface DockerExecSandboxEnvironmentOptions {
@@ -76,14 +76,14 @@ export function createDockerExecSandboxEnvironment(
 
 	return {
 		run: runInContainer,
-		async createWorkspace(): Promise<ExecSandboxWorkspace> {
-			const result = await runInContainer("mktemp", ["-d", `${workspaceRoot}/pi-fence-XXXXXX`]);
+		async createWorkspace(runOptions?: ExecSandboxRunOptions): Promise<ExecSandboxWorkspace> {
+			const result = await runInContainer("mktemp", ["-d", `${workspaceRoot}/pi-fence-XXXXXX`], runOptions);
 			assertShellSuccess("mktemp", result);
 			const dir = result.stdout.trim();
-			if (!dir.startsWith(`${workspaceRoot}/`)) {
+			if (!isWorkspaceChildPath(workspaceRoot, dir)) {
 				throw new Error(`mktemp returned path outside ${workspaceRoot}: ${dir || "<empty>"}`);
 			}
-			return createDockerExecSandboxWorkspace(runInContainer, dir);
+			return createDockerExecSandboxWorkspace(runInContainer, pathPosix.normalize(dir));
 		},
 	};
 }
@@ -223,22 +223,22 @@ function createDockerExecSandboxWorkspace(
 	const path = (name: string): string => workspacePath(dir, name);
 	return {
 		path,
-		async writeText(name, contents): Promise<void> {
+		async writeText(name, contents, options): Promise<void> {
 			const result = await runInContainer(
 				"sh",
 				["-c", "cat > \"$1\"", "sh", path(name)],
-				{ input: contents },
+				{ input: contents, signal: options?.signal },
 			);
 			assertShellSuccess(`write ${name}`, result);
 		},
-		async readBuffer(name): Promise<Buffer> {
-			const result = await runInContainer("cat", [path(name)]);
+		async readBuffer(name, options): Promise<Buffer> {
+			const result = await runInContainer("cat", [path(name)], options);
 			assertShellSuccess(`read ${name}`, result);
 			return result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
 		},
-		async dispose(): Promise<void> {
+		async dispose(options): Promise<void> {
 			if (disposed) return;
-			const result = await runInContainer("rm", ["-rf", "--", dir]);
+			const result = await runInContainer("rm", ["-rf", "--", dir], options);
 			assertShellSuccess(`dispose ${dir}`, result);
 			disposed = true;
 		},
@@ -261,6 +261,13 @@ function normalizeWorkspaceRoot(root: string): string {
 		throw new Error("workspace root must be an absolute container path");
 	}
 	return root.replace(/\/+$/, "") || "/";
+}
+
+function isWorkspaceChildPath(root: string, rawPath: string): boolean {
+	if (!pathPosix.isAbsolute(rawPath)) return false;
+	const normalized = pathPosix.normalize(rawPath);
+	const relative = pathPosix.relative(root, normalized);
+	return relative.length > 0 && !relative.startsWith("..") && !pathPosix.isAbsolute(relative);
 }
 
 function assertShellSuccess(operation: string, result: ShellResult): void {

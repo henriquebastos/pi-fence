@@ -93,11 +93,12 @@ async function renderMermaid(
 	signal?: AbortSignal,
 ): Promise<FenceResult> {
 	let workspace: ExecSandboxWorkspace | undefined;
+	const renderSignal = bundleRenderSignal(signal);
 	try {
-		workspace = await env.createWorkspace();
+		workspace = await env.createWorkspace({ signal: renderSignal });
 		const inputName = "input.mmd";
 		const outputName = "output.png";
-		await workspace.writeText(inputName, source);
+		await workspace.writeText(inputName, source, { signal: renderSignal });
 		const result = await env.run(
 			"mmdc",
 			[
@@ -110,17 +111,17 @@ async function renderMermaid(
 				"-p",
 				BUNDLE_PUPPETEER_CONFIG_PATH,
 			],
-			{ signal: bundleRenderSignal(signal) },
+			{ signal: renderSignal },
 		);
 		if (result.exitCode !== 0) {
 			return { ok: false, error: result.stderr.trim() || `mmdc exited ${result.exitCode}` };
 		}
-		return { ok: true, png: await workspace.readBuffer(outputName) };
+		return { ok: true, png: await workspace.readBuffer(outputName, { signal: renderSignal }) };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		return { ok: false, error: message };
 	} finally {
-		await workspace?.dispose().catch(() => {});
+		await workspace?.dispose({ signal: AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS) }).catch(() => {});
 	}
 }
 
