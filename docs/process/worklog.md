@@ -4040,3 +4040,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Public processor shape is unchanged.** The handler table preserves `graphviz`/`mermaid` tags, `dot` aliasing, and existing output behavior.
 
 **Carry-forward.** Fix remaining S5 inspection findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection test hardening: config and image contract
+
+**What shipped.** Fast coverage now asserts `puppeteer-config.json` is copied into the bundle image, and extension coverage proves `bundle-sandbox` is not registered when the configured `sandboxes.bundle` entry is not a Docker exec sandbox.
+
+**Implementation commits.**
+
+1. `c3f9a1d` — test: cover bundle config and image contract
+
+**Test count.** Fast suite 808 → 809 (+1).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-manifest.test.ts tests/extension/pi-fence.test.ts -t 'does not register bundle-sandbox|installs the first'` — passed, 2 tests.
+2. `pnpm run feedback` — passed: 809 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Mermaid config is an image contract.** The Puppeteer config copy is now protected by fast tests, not just live render behavior.
+2. **Unsupported sandbox config is fail-closed.** `bundle-sandbox` does not register unless `sandboxes.bundle` is explicitly the supported Docker exec shape.
+
+**Carry-forward.** Rerun completion inspection and close S5 if clean.
