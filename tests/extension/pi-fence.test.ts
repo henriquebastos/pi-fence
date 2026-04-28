@@ -924,9 +924,10 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 		"ignores project-configured Kroki sandbox image for auto-start",
 		async () => {
 			const home = makeTempDir();
-			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			const cwd = makeTempDir();
+			mkdirSync(join(cwd, ".pi"), { recursive: true });
 			writeFileSync(
-				join(home, ".pi", "agent", "pi-fence.config.json"),
+				join(cwd, ".pi", "pi-fence.config.json"),
 				JSON.stringify({
 					processorPrecedence: ["remote"],
 					sandboxes: {
@@ -961,7 +962,58 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				new FakeHttpClient(),
 				"/fence list",
 				shell,
-				{ home, cwd: makeTempDir() },
+				{ home, cwd },
+			);
+
+			expect(shell.calls.some((call) => call.args.includes("registry.example/kroki:test"))).toBe(false);
+			expect(shell.calls.some((call) => call.args.includes("yuzutech/kroki"))).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"ignores project-configured Kroki sandbox image for /fence kroki start",
+		async () => {
+			const home = makeTempDir();
+			const cwd = makeTempDir();
+			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			writeFileSync(
+				join(cwd, ".pi", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["remote"],
+					sandboxes: {
+						kroki: {
+							kind: "service",
+							runtime: "docker-container",
+							image: "registry.example/kroki:test",
+							autoStart: false,
+						},
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+			shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+				stdout: "",
+				stderr: "No such container",
+				exitCode: 1,
+			});
+			shell.setResponse(
+				"docker",
+				[
+					"run", "-d",
+					"--name", "pi-fence-kroki",
+					"--label", "pi-fence.sandbox=kroki",
+					"-p", "8000:8000",
+					"yuzutech/kroki",
+				],
+				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+			);
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence kroki start",
+				shell,
+				{ home, cwd },
 			);
 
 			expect(shell.calls.some((call) => call.args.includes("registry.example/kroki:test"))).toBe(false);
