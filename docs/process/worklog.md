@@ -3921,3 +3921,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Caller cancellation is preserved.** External abort signals are combined with timeout signals instead of replaced.
 
 **Carry-forward.** Fix remaining S5 inspection findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: bundle test hardening
+
+**What shipped.** Bundle tests now cover an unreadable manifest path, and extension output byte assertions now require an image `data` field before comparing PNG bytes.
+
+**Implementation commits.**
+
+1. `be0d52f` — test: harden bundle output assertions
+
+**Test count.** Fast suite 797 → 799 (+2).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/extension/pi-fence.test.ts -t 'requires image data'` — failed because a missing image payload was accepted.
+2. GREEN: `pnpm vitest run tests/extension/pi-fence.test.ts -t 'requires image data'` — passed, 1 test.
+3. `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'manifest cannot be read'` — passed, 1 test.
+4. `pnpm run feedback` — passed: 799 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Availability handles manifest I/O failures explicitly.** Non-zero manifest reads stay user-visible with the existing install hint.
+2. **Rendered-byte tests now fail closed.** A missing image payload can no longer masquerade as a passed PNG comparison.
+
+**Carry-forward.** Record the S5 CHANGELOG commit deviation, then close story-level inspection if no new findings remain.
