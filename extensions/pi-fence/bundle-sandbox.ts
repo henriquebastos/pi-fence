@@ -48,6 +48,7 @@ async function renderBundle(
 	signal?: AbortSignal,
 ): Promise<FenceResult> {
 	if (tag === "graphviz" || tag === "dot") return renderGraphviz(env, source, signal);
+	if (tag === "mermaid") return renderMermaid(env, source, signal);
 	return {
 		ok: false,
 		error: `${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`,
@@ -68,6 +69,40 @@ async function renderGraphviz(
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		return { ok: false, error: message };
+	}
+}
+
+async function renderMermaid(
+	env: ExecSandboxEnvironment,
+	source: string,
+	signal?: AbortSignal,
+): Promise<FenceResult> {
+	const workspace = await env.createWorkspace();
+	try {
+		const inputName = "input.mmd";
+		const outputName = "output.png";
+		await workspace.writeText(inputName, source);
+		const result = await env.run(
+			"mmdc",
+			[
+				"-i",
+				workspace.path(inputName),
+				"-o",
+				workspace.path(outputName),
+				"-b",
+				"transparent",
+			],
+			signal ? { signal } : undefined,
+		);
+		if (result.exitCode !== 0) {
+			return { ok: false, error: result.stderr.trim() || `mmdc exited ${result.exitCode}` };
+		}
+		return { ok: true, png: await workspace.readBuffer(outputName) };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		return { ok: false, error: message };
+	} finally {
+		await workspace.dispose().catch(() => {});
 	}
 }
 

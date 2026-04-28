@@ -11,6 +11,8 @@ import type {
 
 const GOOD_DOT = "digraph { A -> B }";
 const BAD_DOT = "digraph { A ->";
+const GOOD_MERMAID = "flowchart LR\nA --> B";
+const BAD_MERMAID = "flowchart LR\nA -->";
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 const MANIFEST = JSON.stringify({
@@ -22,7 +24,27 @@ const MANIFEST = JSON.stringify({
 	},
 });
 
+class ContractWorkspace implements ExecSandboxWorkspace {
+	source = "";
+
+	path(name: string): string {
+		return `/tmp/pi-fence-contract/${name}`;
+	}
+
+	async writeText(_name: string, contents: string): Promise<void> {
+		this.source = contents;
+	}
+
+	async readBuffer(): Promise<Buffer> {
+		return PNG;
+	}
+
+	async dispose(): Promise<void> {}
+}
+
 class ContractExecSandboxEnvironment implements ExecSandboxEnvironment {
+	private workspace?: ContractWorkspace;
+
 	async run(
 		command: string,
 		args: readonly string[],
@@ -44,11 +66,18 @@ class ContractExecSandboxEnvironment implements ExecSandboxEnvironment {
 		if (command === "dot" && args.join(" ") === "-Tpng") {
 			return { stdout: "", stderr: "syntax error", exitCode: 1 };
 		}
+		if (command === "mmdc" && this.workspace?.source === GOOD_MERMAID) {
+			return { stdout: "", stderr: "", exitCode: 0 };
+		}
+		if (command === "mmdc") {
+			return { stdout: "", stderr: "Parse error", exitCode: 1 };
+		}
 		throw new Error(`Unexpected exec call ${command} ${args.join(" ")}`);
 	}
 
 	async createWorkspace(): Promise<ExecSandboxWorkspace> {
-		throw new Error("workspace not used by graphviz contract");
+		this.workspace = new ContractWorkspace();
+		return this.workspace;
 	}
 }
 
@@ -68,5 +97,15 @@ runFenceProcessorContract(
 		tag: "graphviz",
 		goodSource: GOOD_DOT,
 		badSource: BAD_DOT,
+	},
+);
+
+runFenceProcessorContract(
+	"bundle-sandbox mermaid",
+	() => createBundleSandboxProcessor(readyController, new ContractExecSandboxEnvironment()),
+	{
+		tag: "mermaid",
+		goodSource: GOOD_MERMAID,
+		badSource: BAD_MERMAID,
 	},
 );

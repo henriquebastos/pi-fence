@@ -27,8 +27,40 @@ type RecordedExecCall = {
 	options?: ExecSandboxRunOptions;
 };
 
+type RecordedWorkspaceCall =
+	| { operation: "writeText"; name: string; contents: string }
+	| { operation: "readBuffer"; name: string }
+	| { operation: "dispose" };
+
+class FakeExecSandboxWorkspace implements ExecSandboxWorkspace {
+	readonly calls: RecordedWorkspaceCall[] = [];
+
+	constructor(
+		private readonly root: string,
+		private readonly files: Readonly<Record<string, Buffer>> = {},
+	) {}
+
+	path(name: string): string {
+		return `${this.root}/${name}`;
+	}
+
+	async writeText(name: string, contents: string): Promise<void> {
+		this.calls.push({ operation: "writeText", name, contents });
+	}
+
+	async readBuffer(name: string): Promise<Buffer> {
+		this.calls.push({ operation: "readBuffer", name });
+		return this.files[name] ?? Buffer.alloc(0);
+	}
+
+	async dispose(): Promise<void> {
+		this.calls.push({ operation: "dispose" });
+	}
+}
+
 class FakeExecSandboxEnvironment implements ExecSandboxEnvironment {
 	readonly calls: RecordedExecCall[] = [];
+	workspace?: FakeExecSandboxWorkspace;
 	private readonly responses = new Map<string, ExecSandboxRunResult>();
 
 	setResponse(command: string, args: readonly string[], result: ExecSandboxRunResult): void {
@@ -49,7 +81,8 @@ class FakeExecSandboxEnvironment implements ExecSandboxEnvironment {
 	}
 
 	async createWorkspace(): Promise<ExecSandboxWorkspace> {
-		throw new Error("workspace not used by availability tests");
+		if (!this.workspace) throw new Error("workspace not configured");
+		return this.workspace;
 	}
 
 	private key(command: string, args: readonly string[]): string {
@@ -118,6 +151,81 @@ describe("bundle-sandbox processor", () => {
 				args: ["-Tpng"],
 				options: { input: "digraph { A -> B }" },
 			},
+		]);
+	});
+
+	it("renders Mermaid through a bundle workspace", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", { "output.png": png });
+		env.setResponse(
+			"mmdc",
+			[
+				"-i",
+				"/tmp/pi-fence-work/input.mmd",
+				"-o",
+				"/tmp/pi-fence-work/output.png",
+				"-b",
+				"transparent",
+			],
+			OK,
+		);
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		const result = await processor.render("mermaid", "flowchart LR\nA --> B");
+
+		expect(result).toEqual({ ok: true, png });
+		expect(env.calls).toEqual([
+			{
+				command: "mmdc",
+				args: [
+					"-i",
+					"/tmp/pi-fence-work/input.mmd",
+					"-o",
+					"/tmp/pi-fence-work/output.png",
+					"-b",
+					"transparent",
+				],
+				options: undefined,
+			},
+		]);
+		expect(env.workspace.calls).toEqual([
+			{ operation: "writeText", name: "input.mmd", contents: "flowchart LR\nA --> B" },
+			{ operation: "readBuffer", name: "output.png" },
+			{ operation: "dispose" },
+		]);
+	});
+
+	it("returns a Mermaid CLI error and still disposes the workspace", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work");
+		env.setResponse(
+			"mmdc",
+			[
+				"-i",
+				"/tmp/pi-fence-work/input.mmd",
+				"-o",
+				"/tmp/pi-fence-work/output.png",
+				"-b",
+				"transparent",
+			],
+			{ stdout: "", stderr: "Parse error", exitCode: 1 },
+		);
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		await expect(processor.render("mermaid", "flowchart LR")).resolves.toEqual({
+			ok: false,
+			error: "Parse error",
+		});
+		expect(env.workspace.calls).toEqual([
+			{ operation: "writeText", name: "input.mmd", contents: "flowchart LR" },
+			{ operation: "dispose" },
 		]);
 	});
 
