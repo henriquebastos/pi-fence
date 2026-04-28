@@ -4089,3 +4089,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Docker's short enabled form remains accepted.** The documented `--security-opt no-new-privileges` still passes readiness.
 
 **Carry-forward.** Add final low-risk bundle edge coverage, rerun completion inspection, then close S5 if clean.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection test hardening: bundle edge cases
+
+**What shipped.** Bundle fast tests now cover availability exception mapping, malformed manifest schema cases, and Docker exec workspace boundary checks for empty names, absolute names, and non-absolute workspace roots.
+
+**Implementation commits.**
+
+1. `ff492d0` — test: cover bundle edge cases
+
+**Test count.** Fast suite 810 → 814 (+4).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts` — passed, 22 tests.
+2. `pnpm run feedback` — passed: 814 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Availability remains non-throwing.** Unexpected controller or manifest-read exceptions map to the same unavailable result shape as expected probe failures.
+2. **Manifest validation is pinned.** Schema guard messages are now part of fast-unit behavior.
+3. **Workspace boundary checks are explicit.** Empty, absolute, and parent-relative paths are rejected before `docker exec` file operations.
+
+**Carry-forward.** Rerun completion inspection, then close S5 if clean.
