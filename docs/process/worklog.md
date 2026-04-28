@@ -3990,3 +3990,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **CRAP drove structure.** The broader security contract was split into small inspection helpers to keep focused CRAP below target.
 
 **Carry-forward.** Fix remaining S5 inspection findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: bounded bundle workspaces
+
+**What shipped.** Docker exec workspaces now reject normalized paths outside the configured workspace root, and Mermaid bundle renders pass bounded signals through workspace create/write/read operations. Workspace disposal now uses its own timeout so cleanup is bounded without depending on the render signal still being live.
+
+**Implementation commits.**
+
+1. `e2aceae` — fix: bound bundle workspace operations
+
+**Test count.** Fast suite 806 → 808 (+2).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox-environment.test.ts -t 'normalized path outside'` — failed because `/tmp/../opt/...` was accepted.
+2. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'workspace operations'` — failed because workspace calls had no timeout-backed signal.
+3. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts tests/contract/bundle-sandbox.contract.test.ts` — passed, 38 tests.
+4. `pnpm run feedback` — passed: 808 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Path checks normalize before trusting.** The Docker environment validates the normalized path relative to the workspace root before creating workspace helpers.
+2. **All Mermaid workspace Docker execs are bounded.** `mktemp`, source write, render, output read, and cleanup no longer run without an abort signal.
+
+**Carry-forward.** Fix remaining S5 inspection findings.
