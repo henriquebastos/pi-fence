@@ -3262,3 +3262,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. The S4 Ready spec commit `2f9aefd` did not get its own immediate worklog catch-up commit. The next worklog entry batched it with step 1 (`ffed7d8`). Subsequent S4 feature commits returned to adjacent docs catch-up commits.
 
 **Carry-forward.** Rerun final inspection and completion checks for S4.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: Docker lifecycle exit codes
+
+**What shipped.** `/fence kroki stop` now checks both `docker stop` and `docker rm` exit codes. Non-zero exits return `ok:false` with the Docker stderr and exit detail instead of reporting a successful stop/removal.
+
+**Implementation commits.**
+
+1. `a463951` — fix: report Docker lifecycle failures
+
+**Test count.** Fast suite 734 → 736 (+2).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/fence-command.test.ts` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **Lifecycle failures stay visible.** The command should not hide Docker's non-zero exit behind a success message.
+2. **Removal follows stop success.** `docker rm` is not attempted after a failed `docker stop`.
+
+**Carry-forward.** Continue the remaining S4 inspection findings.
