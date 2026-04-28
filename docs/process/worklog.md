@@ -3660,3 +3660,29 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Mermaid Chromium is explicit.** The image installs system Chromium and carries a Puppeteer config for Mermaid CLI instead of relying on hidden host dependencies.
 
 **Carry-forward.** Next ready bean is `task-4b72e201` — Docker exec sandbox environment.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 2: Docker exec sandbox environment
+
+**What shipped.** Added a production `createDockerExecSandboxEnvironment` behind the S4 exec seam. It wraps commands in `docker exec`, preserves stdin/cwd/signal, creates temporary workspaces inside the bundle container, writes text through controlled stdin, reads binary output, disposes workspaces, and rejects workspace path escapes. The implementation stays in `sandbox.ts`; resolver code still sees only processor placement and availability.
+
+**Implementation commits.**
+
+1. `f820c9f` — step 2: isolate bundle command execution
+
+**Test count.** Fast suite 757 → 760 (+3).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts` — failed because `createDockerExecSandboxEnvironment` was missing.
+2. GREEN: `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts` — passed, 22 tests.
+3. `pnpm run feedback` — passed: 760 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **No host mounts.** Workspaces are created with `mktemp` inside the container and accessed through `docker exec`.
+2. **User source stays on stdin.** Workspace writes pass content as stdin to a fixed shell snippet; source text is not interpolated into command strings.
+3. **Path containment is explicit.** Workspace paths reject absolute and parent-traversal names before any Docker command is built.
+
+**Carry-forward.** Next ready bean is `task-d1d8f70e` — bundle availability and probes.
