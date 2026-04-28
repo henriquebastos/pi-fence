@@ -4064,3 +4064,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Unsupported sandbox config is fail-closed.** `bundle-sandbox` does not register unless `sandboxes.bundle` is explicitly the supported Docker exec shape.
 
 **Carry-forward.** Rerun completion inspection and close S5 if clean.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: enabled no-new-privileges
+
+**What shipped.** Bundle Docker readiness now treats `no-new-privileges` as present only when Docker reports `no-new-privileges` or `no-new-privileges=true`; disabled false forms no longer satisfy the sandbox contract.
+
+**Implementation commits.**
+
+1. `735a782` — fix: require enabled no-new-privileges
+
+**Test count.** Fast suite 809 → 810 (+1).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/sandbox.test.ts -t 'no-new-privileges'` — failed because `no-new-privileges=false` was accepted as ready.
+2. GREEN: `pnpm vitest run tests/unit/sandbox.test.ts -t 'no-new-privileges'` — passed, 2 tests.
+3. `pnpm run feedback` — passed: 810 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Security options fail closed.** Prefix matches are not enough for boolean-like Docker security options.
+2. **Docker's short enabled form remains accepted.** The documented `--security-opt no-new-privileges` still passes readiness.
+
+**Carry-forward.** Add final low-risk bundle edge coverage, rerun completion inspection, then close S5 if clean.
