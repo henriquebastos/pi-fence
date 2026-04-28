@@ -107,11 +107,20 @@ export function createKrokiDockerSandboxController(
 	};
 }
 
+export interface DockerSandboxSecurityOptions {
+	networkMode?: string;
+	noPublishedPorts?: boolean;
+	allowOnlyTmpfsMounts?: boolean;
+	capDropAll?: boolean;
+	noNewPrivileges?: boolean;
+}
+
 export interface DockerSandboxComponentOptions {
 	id: string;
 	containerName: string;
 	expectedImage: string;
 	expectedLabels: Readonly<Record<string, string>>;
+	security?: DockerSandboxSecurityOptions;
 }
 
 export interface DockerContainerSandboxOptions {
@@ -120,6 +129,7 @@ export interface DockerContainerSandboxOptions {
 	containerName: string;
 	expectedImage: string;
 	expectedLabels: Readonly<Record<string, string>>;
+	security?: DockerSandboxSecurityOptions;
 	endpoint?: string;
 }
 
@@ -140,6 +150,7 @@ export function createDockerContainerSandboxController(
 			containerName: options.containerName,
 			expectedImage: options.expectedImage,
 			expectedLabels: options.expectedLabels,
+			security: options.security,
 		});
 		return {
 			state: component.state,
@@ -289,6 +300,10 @@ async function inspectDockerContainer(
 		if (imageStatus) return imageStatus;
 		const labelStatus = await inspectContainerLabels(shell, component);
 		if (labelStatus) return labelStatus;
+		if (running && component.security) {
+			const securityStatus = await inspectContainerSecurity(shell, component);
+			if (securityStatus) return securityStatus;
+		}
 		return {
 			id: component.id,
 			state: running ? "ready" : "stopped",
@@ -371,6 +386,95 @@ async function inspectContainerLabels(
 		}
 	}
 	return undefined;
+}
+
+async function inspectContainerSecurity(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	const security = component.security;
+	if (!security) return undefined;
+	if (security.networkMode !== undefined) {
+		const network = await inspectFormat(shell, component, "{{.HostConfig.NetworkMode}}");
+		if (isInspectStatus(network)) return network;
+		if (network.trim() !== security.networkMode) {
+			return securityError(component, `network mode ${network.trim() || "<none>"}; expected ${security.networkMode}.`);
+		}
+	}
+	if (security.noPublishedPorts) {
+		const ports = await inspectFormat(shell, component, "{{json .NetworkSettings.Ports}}");
+		if (isInspectStatus(ports)) return ports;
+		if (!isEmptyDockerJsonObject(ports)) {
+			return securityError(component, "exposes ports; expected no published or exposed ports.");
+		}
+	}
+	if (security.allowOnlyTmpfsMounts) {
+		const mounts = await inspectFormat(shell, component, "{{json .Mounts}}");
+		if (isInspectStatus(mounts)) return mounts;
+		if (hasNonTmpfsMount(mounts)) {
+			return securityError(component, "has non-tmpfs mounts; expected no host mounts.");
+		}
+	}
+	if (security.capDropAll) {
+		const capDrop = await inspectFormat(shell, component, "{{json .HostConfig.CapDrop}}");
+		if (isInspectStatus(capDrop)) return capDrop;
+		if (!jsonStringArray(capDrop).includes("ALL")) {
+			return securityError(component, "does not drop all capabilities.");
+		}
+	}
+	if (security.noNewPrivileges) {
+		const securityOpt = await inspectFormat(shell, component, "{{json .HostConfig.SecurityOpt}}");
+		if (isInspectStatus(securityOpt)) return securityOpt;
+		if (!jsonStringArray(securityOpt).some((entry) => entry.startsWith("no-new-privileges"))) {
+			return securityError(component, "does not set no-new-privileges.");
+		}
+	}
+	return undefined;
+}
+
+async function inspectFormat(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+	format: string,
+): Promise<string | SandboxComponentStatus> {
+	const result = await shell.run("docker", ["inspect", "--format", format, component.containerName]);
+	return result.exitCode === 0 ? result.stdout.trim() : inspectFailureStatus(component, result.stderr);
+}
+
+function isInspectStatus(value: string | SandboxComponentStatus): value is SandboxComponentStatus {
+	return typeof value !== "string";
+}
+
+function securityError(component: DockerSandboxComponentOptions, detail: string): SandboxComponentStatus {
+	return { id: component.id, state: "error", message: `Container ${component.containerName} ${detail}` };
+}
+
+function isEmptyDockerJsonObject(raw: string): boolean {
+	const trimmed = raw.trim();
+	return trimmed === "" || trimmed === "null" || trimmed === "{}";
+}
+
+function hasNonTmpfsMount(raw: string): boolean {
+	const parsed = parseJson(raw);
+	if (!Array.isArray(parsed)) return true;
+	return parsed.some((entry) => !isRecord(entry) || entry.Type !== "tmpfs");
+}
+
+function jsonStringArray(raw: string): string[] {
+	const parsed = parseJson(raw);
+	return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === "string") : [];
+}
+
+function parseJson(raw: string): unknown {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function summarizeComponents(

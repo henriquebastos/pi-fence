@@ -2449,6 +2449,31 @@ function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: B
 		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-bundle"],
 		{ stdout: "bundle\n", stderr: "", exitCode: 0 },
 	);
+	shell.setResponse("docker", ["inspect", "--format", "{{.HostConfig.NetworkMode}}", "pi-fence-bundle"], {
+		stdout: "none\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .NetworkSettings.Ports}}", "pi-fence-bundle"], {
+		stdout: "null\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .Mounts}}", "pi-fence-bundle"], {
+		stdout: '[{"Type":"tmpfs","Destination":"/tmp"}]\n',
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.CapDrop}}", "pi-fence-bundle"], {
+		stdout: '["ALL"]\n',
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.SecurityOpt}}", "pi-fence-bundle"], {
+		stdout: '["no-new-privileges"]\n',
+		stderr: "",
+		exitCode: 0,
+	});
 	shell.setResponse("docker", ["exec", "pi-fence-bundle", "cat", BUNDLE_MANIFEST_PATH], {
 		stdout: JSON.stringify({
 			name: "pi-fence-bundle",

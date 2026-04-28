@@ -83,6 +83,61 @@ function krokiContainerOptions() {
 	};
 }
 
+function bundleContainerOptions() {
+	return {
+		id: "bundle",
+		kind: "exec" as const,
+		containerName: "pi-fence-bundle",
+		expectedImage: "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0",
+		expectedLabels: { [SANDBOX_LABEL]: "bundle" },
+		security: {
+			networkMode: "none",
+			noPublishedPorts: true,
+			allowOnlyTmpfsMounts: true,
+			capDropAll: true,
+			noNewPrivileges: true,
+		},
+	};
+}
+
+function setBundleSecurity(
+	shell: FakeShellRunner,
+	overrides: {
+		networkMode?: string;
+		ports?: string;
+		mounts?: string;
+		capDrop?: string;
+		securityOpt?: string;
+	} = {},
+): void {
+	const containerName = "pi-fence-bundle";
+	shell.setResponse("docker", ["inspect", "--format", "{{.HostConfig.NetworkMode}}", containerName], {
+		stdout: `${overrides.networkMode ?? "none"}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .NetworkSettings.Ports}}", containerName], {
+		stdout: `${overrides.ports ?? "null"}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .Mounts}}", containerName], {
+		stdout: `${overrides.mounts ?? '[{"Type":"tmpfs","Destination":"/tmp"}]'}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.CapDrop}}", containerName], {
+		stdout: `${overrides.capDrop ?? '["ALL"]'}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{json .HostConfig.SecurityOpt}}", containerName], {
+		stdout: `${overrides.securityOpt ?? '["no-new-privileges"]'}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
 function composeComponents() {
 	return [
 		{ id: "core", containerName: "kroki-core", expectedImage: KROKI_IMAGE, expectedLabels: KROKI_LABELS },
@@ -131,6 +186,51 @@ describe("sandbox controller contract — Docker container status", () => {
 		expect(await controller.status()).toEqual({
 			state: "error",
 			message: "Container pi-fence-kroki label mismatch: expected pi-fence.sandbox=kroki, got other.",
+		});
+	});
+
+	it("reports ready for a bundle container that satisfies the exec sandbox contract", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell);
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "ready",
+			message: "Container pi-fence-bundle is running.",
+		});
+	});
+
+	it("reports error when a bundle container publishes ports", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { ports: '{"8000/tcp":[{"HostPort":"8000"}]}' });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle exposes ports; expected no published or exposed ports.",
+		});
+	});
+
+	it("reports error when a bundle container has a host mount", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-bundle", "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0", {
+			[SANDBOX_LABEL]: "bundle",
+		});
+		setBundleSecurity(shell, { mounts: '[{"Type":"bind","Source":"/Users/me","Destination":"/host"}]' });
+
+		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-bundle has non-tmpfs mounts; expected no host mounts.",
 		});
 	});
 

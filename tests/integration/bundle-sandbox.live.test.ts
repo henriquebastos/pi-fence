@@ -28,6 +28,13 @@ describe.skipIf(!containerRunning)("bundle-sandbox — live", () => {
 		containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
 		expectedImage: BUNDLE_SANDBOX_IMAGE,
 		expectedLabels: BUNDLE_SANDBOX_LABELS,
+		security: {
+			networkMode: "none",
+			noPublishedPorts: true,
+			allowOnlyTmpfsMounts: true,
+			capDropAll: true,
+			noNewPrivileges: true,
+		},
 	});
 	const env = createDockerExecSandboxEnvironment(shell, {
 		containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
