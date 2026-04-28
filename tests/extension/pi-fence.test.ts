@@ -59,6 +59,10 @@ describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 		cleanupTempDirs();
 	});
 
+	it("requires image data when comparing rendered bytes", () => {
+		expect(() => expectImageBytes([{ type: "image", mimeType: "image/png" }], TINY_PNG)).toThrow();
+	});
+
 	it(
 		"emits a pi-fence:output custom message for a mermaid block",
 		async () => {
@@ -2555,10 +2559,9 @@ function expectImageBytes(content: unknown, expectedBytes: Buffer): void {
 	const imageItem = items.find((c) => c.type === "image");
 	expect(imageItem).toBeDefined();
 	expect(imageItem?.mimeType).toBe("image/png");
-	if (imageItem?.data) {
-		const decoded = Buffer.from(imageItem.data, "base64");
-		expect(Buffer.compare(decoded, expectedBytes)).toBe(0);
-	}
+	expect(imageItem?.data).toBeDefined();
+	const decoded = Buffer.from(imageItem?.data ?? "", "base64");
+	expect(Buffer.compare(decoded, expectedBytes)).toBe(0);
 }
 
 /**

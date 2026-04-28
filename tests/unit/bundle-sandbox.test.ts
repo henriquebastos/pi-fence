@@ -419,6 +419,26 @@ describe("bundle-sandbox processor", () => {
 		]);
 	});
 
+	it("reports unavailable when the bundle manifest cannot be read", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		env.setResponse("cat", ["/opt/pi-fence-bundle/manifest.json"], {
+			stdout: "",
+			stderr: "permission denied",
+			exitCode: 126,
+		});
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		await expect(processor.available()).resolves.toEqual({
+			ok: false,
+			reason: "bundle manifest unavailable: permission denied",
+			installHint:
+				"Build and start the pi-fence bundle container from docker/bundle before enabling sandbox placement.",
+		});
+	});
+
 	it("reports unavailable when a required tool probe fails", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		env.setResponse("cat", ["/opt/pi-fence-bundle/manifest.json"], {
