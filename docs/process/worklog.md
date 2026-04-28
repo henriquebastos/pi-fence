@@ -3286,3 +3286,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Removal follows stop success.** `docker rm` is not attempted after a failed `docker stop`.
 
 **Carry-forward.** Continue the remaining S4 inspection findings.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: Kroki sandbox auto-start bridge
+
+**What shipped.** `sandboxes.kroki.autoStart` now has migration semantics instead of being a dead lifecycle knob: when the named Kroki sandbox is a `service` with `runtime: "docker-container"`, it starts the existing single-container Kroki Docker manager. The legacy `kroki.docker.autoStart` key remains supported as a compatibility alias, and the S4 story spec records that Compose auto-start waits for the S6 service controller.
+
+**Implementation commits.**
+
+1. `3b23211` — fix: bridge Kroki sandbox autostart
+
+**Test count.** Fast suite 736 → 737 (+1).
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/extension/pi-fence.test.ts -t 'autoStart|auto-start'` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **The sandbox key is canonical for future controllers.** `sandboxes.kroki.autoStart` can drive the current single-container controller when its runtime matches.
+2. **The legacy key remains compatible.** Existing `kroki.docker.autoStart` users keep the same behavior.
+3. **Compose is not implied.** `docker-compose` auto-start stays contract-only until S6 ships that controller.
+
+**Carry-forward.** Align the Kroki adapter identity/runtime with the config model.
