@@ -3817,3 +3817,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **User docs match policy.** `bundle-sandbox` is selected by placement policy and remains unavailable until the trusted labelled container is ready.
 
 **Carry-forward.** Run completion inspection, final story inspection, and close S5 if no findings remain.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: bundle sandbox isolation
+
+**What shipped.** Bundle sandbox readiness now verifies the documented Docker isolation contract before reporting `ready`: `network=none`, no published/exposed ports, tmpfs-only mounts, `cap-drop ALL`, and `no-new-privileges`. The extension and live test wiring pass this bundle-specific security policy into the Docker container controller.
+
+**Implementation commits.**
+
+1. `743d6d6` — fix: verify bundle sandbox isolation
+
+**Test count.** Fast suite 791 → 794 (+3).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/sandbox.test.ts -t 'bundle container'` — failed because published ports and host mounts were still accepted as ready.
+2. GREEN: `pnpm vitest run tests/unit/sandbox.test.ts -t 'bundle container'` — passed, 3 tests.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'sandbox-only precedence renders'` — passed, 2 tests.
+4. `pnpm run feedback` — passed: 794 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Isolation is part of readiness.** A correctly named/image/labelled container is not enough for `bundle-sandbox`; runtime flags must match the sandbox contract too.
+2. **Security checks are opt-in.** Existing Kroki status helpers are not forced to satisfy the bundle exec policy.
+3. **No host mounts remains testable without live Docker.** Unit tests cover published port and bind mount regressions with `FakeShellRunner`.
+
+**Carry-forward.** Fix remaining S5 inspection findings, starting with Mermaid Puppeteer config.
