@@ -3790,3 +3790,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Resolver remains generic.** Sandbox-only success and same-placement ambiguity use existing placement policy; no resolver branch knows about Docker.
 
 **Carry-forward.** Next ready bean is `task-82688948` — bundle live gate and docs.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 step 7: bundle live gate and docs
+
+**What shipped.** Added live integration coverage for the real `pi-fence-bundle` container and documented the bundle sandbox in README, getting-started, and CHANGELOG. The live tests cover bundle availability plus Graphviz and Mermaid PNG renders, and skip cleanly when Docker or the `pi-fence-bundle` container is unavailable. User docs now describe the manual build/run contract, trusted image, no-port/no-mount posture, and current lack of `/fence bundle` lifecycle commands.
+
+**Implementation commits.**
+
+1. `4c80cd6` — step 7: document and gate the bundle sandbox
+
+**Test count.** Fast suite unchanged at 791. Live suite adds 3 bundle cases that skipped in this environment because the bundle container was absent.
+
+**Verification.**
+
+1. `pnpm vitest run tests/integration/bundle-sandbox.live.test.ts` — passed as clean skip: 1 file skipped, 3 tests skipped.
+2. `pnpm test:live -- tests/integration/bundle-sandbox.live.test.ts` — timed out because the package script still invokes the broader `tests/integration tests/render-image` live suite before Vitest's trailing filter can narrow it.
+3. `pnpm run lint:markdown` — passed.
+4. `pnpm run feedback` — passed: 791 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Live tests are honest about preconditions.** The bundle live suite uses `describe.skipIf(...)` when the named container is absent instead of reaching for Docker/network during fast tests.
+2. **Manual lifecycle only.** Docs show `docker build` + strict `docker run`; S5 still does not add `/fence bundle start|stop` or auto-start.
+3. **User docs match policy.** `bundle-sandbox` is selected by placement policy and remains unavailable until the trusted labelled container is ready.
+
+**Carry-forward.** Run completion inspection, final story inspection, and close S5 if no findings remain.
