@@ -11,6 +11,12 @@ import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
+import {
+	BUNDLE_SANDBOX_CONTAINER_NAME,
+	BUNDLE_SANDBOX_IMAGE,
+	BUNDLE_SANDBOX_LABELS,
+	createBundleSandboxProcessor,
+} from "./bundle-sandbox.ts";
 import { DEFAULT_PROCESSOR_PRECEDENCE, type PiFenceConfig } from "./config.ts";
 import { registerFenceCommand } from "./command.ts";
 import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
@@ -43,6 +49,10 @@ import {
 	createPiFenceListRenderer,
 	createPiFenceMessageRenderer,
 } from "./renderer.ts";
+import {
+	createDockerContainerSandboxController,
+	createDockerExecSandboxEnvironment,
+} from "./sandbox.ts";
 
 const MAX_BLOCKS_PER_TURN = 5;
 
@@ -68,7 +78,7 @@ export async function createPiFenceExtension(
 	const processors = deps.processors ?? createDefaultProcessors(
 		deps,
 		themeState,
-		config.kroki?.endpoint,
+		config,
 	);
 	const bindings = config.bindings;
 	const blockedProcessors: ReadonlySet<string> = new Set(config.blocked?.processors ?? []);
@@ -234,7 +244,7 @@ function isKrokiAutoStartAllowed(
 function createDefaultProcessors(
 	deps: PiFenceRuntimeDeps,
 	themeState: ThemeState,
-	krokiEndpoint?: string,
+	config: PiFenceConfig,
 ): FenceProcessor[] {
 	return [
 		createGraphvizLocalProcessor(deps.shell, deps.logger),
@@ -243,10 +253,30 @@ function createDefaultProcessors(
 		createHighlightProcessor(),
 		createQrProcessor(),
 		createColorProcessor(),
-		createKrokiProcessor(deps.http, krokiEndpoint, deps.logger, () =>
+		...createBundleSandboxProcessors(deps, config),
+		createKrokiProcessor(deps.http, config.kroki?.endpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),
 	];
+}
+
+function createBundleSandboxProcessors(
+	deps: PiFenceRuntimeDeps,
+	config: PiFenceConfig,
+): FenceProcessor[] {
+	const bundle = config.sandboxes?.bundle;
+	if (bundle?.kind !== "exec" || bundle.runtime !== "docker-container") return [];
+	const controller = createDockerContainerSandboxController(deps.shell, {
+		id: "bundle",
+		kind: "exec",
+		containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
+		expectedImage: BUNDLE_SANDBOX_IMAGE,
+		expectedLabels: BUNDLE_SANDBOX_LABELS,
+	});
+	const env = createDockerExecSandboxEnvironment(deps.shell, {
+		containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
+	});
+	return [createBundleSandboxProcessor(controller, env)];
 }
 
 function logAvailability(

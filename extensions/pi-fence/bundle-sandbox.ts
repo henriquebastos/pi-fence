@@ -2,6 +2,11 @@ import type { Availability, FenceProcessor, FenceResult } from "./processor.ts";
 import type { ExecSandboxEnvironment, SandboxController } from "./sandbox.ts";
 
 export const BUNDLE_SANDBOX_PROCESSOR_ID = "bundle-sandbox";
+export const BUNDLE_SANDBOX_CONTAINER_NAME = "pi-fence-bundle";
+export const BUNDLE_SANDBOX_IMAGE = "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0";
+export const BUNDLE_SANDBOX_LABELS: Readonly<Record<string, string>> = {
+	"pi-fence.sandbox": "bundle",
+};
 export const BUNDLE_MANIFEST_PATH = "/opt/pi-fence-bundle/manifest.json";
 
 const BUNDLE_TAGS = ["graphviz", "mermaid"] as const;

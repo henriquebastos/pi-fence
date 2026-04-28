@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { createBundleSandboxProcessor } from "../../extensions/pi-fence/bundle-sandbox.ts";
+import type { Availability, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
+import { resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
 import type {
 	ExecSandboxEnvironment,
 	ExecSandboxRunOptions,
@@ -98,6 +100,17 @@ function controllerWithStatus(status: SandboxStatus): SandboxController {
 		status: async () => status,
 		start: async () => status,
 		stop: async () => status,
+	};
+}
+
+function fakeSandboxProcessor(id: string): FenceProcessor {
+	return {
+		id,
+		placement: "sandbox",
+		tags: ["graphviz"],
+		aliases: {},
+		available: async () => ({ ok: true }),
+		render: async () => ({ ok: false, error: "not used" }),
 	};
 }
 
@@ -227,6 +240,44 @@ describe("bundle-sandbox processor", () => {
 			{ operation: "writeText", name: "input.mmd", contents: "flowchart LR" },
 			{ operation: "dispose" },
 		]);
+	});
+
+	it("stays ambiguous with another sandbox processor until a binding selects bundle-sandbox", () => {
+		const bundle = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			new FakeExecSandboxEnvironment(),
+		);
+		const krokiSandbox = fakeSandboxProcessor("kroki-sandbox");
+		const availability = new Map<string, Availability>([
+			["bundle-sandbox", { ok: true }],
+			["kroki-sandbox", { ok: true }],
+		]);
+
+		const ambiguous = resolveProcessor(
+			[bundle, krokiSandbox],
+			availability,
+			"graphviz",
+			undefined,
+			undefined,
+			["sandbox"],
+		);
+
+		expect(ambiguous.processor).toBeNull();
+		expect(ambiguous.ambiguity).toEqual({
+			placement: "sandbox",
+			processorIds: ["bundle-sandbox", "kroki-sandbox"],
+		});
+
+		const bound = resolveProcessor(
+			[bundle, krokiSandbox],
+			availability,
+			"graphviz",
+			{ graphviz: { processor: "bundle-sandbox" } },
+			undefined,
+			["sandbox"],
+		);
+
+		expect(bound.processor?.id).toBe("bundle-sandbox");
 	});
 
 	it("reports unavailable without probing tools when the bundle controller is not ready", async () => {

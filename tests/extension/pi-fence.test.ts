@@ -29,6 +29,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import type { Component } from "@mariozechner/pi-tui";
 
 import type { LoadConfigOptions } from "../../extensions/pi-fence/io/config-loader.ts";
+import { BUNDLE_MANIFEST_PATH } from "../../extensions/pi-fence/bundle-sandbox.ts";
 import {
 	GRAPHVIZ_LOCAL_ALIASES,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
@@ -337,7 +338,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(7);
+			expect(details.listings).toHaveLength(8);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-host",
 				status: "unavailable",
@@ -371,6 +372,13 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				tags: ["color", "palette"],
 			});
 			expect(details.listings[6]).toMatchObject({
+				id: "bundle-sandbox",
+				status: "unavailable",
+				tags: ["graphviz", "mermaid"],
+				aliases: { dot: "graphviz" },
+			});
+			expect(details.listings[6].unavailableReason).toContain("bundle sandbox is error");
+			expect(details.listings[7]).toMatchObject({
 				id: "kroki-remote",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
@@ -606,6 +614,76 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				]),
 			);
 			expect(shell.calls.filter((c) => c.cmd === "dot")).toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
+		"sandbox-only precedence renders dot through bundle-sandbox without host binaries or Kroki", async () => {
+			const shell = new FakeShellRunner();
+			programReadyBundleSandbox(shell, { dotPng: TINY_PNG });
+			const http = new FakeHttpClient();
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ processorPrecedence: ["sandbox"] }),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "bundle-sandbox",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+			expect(http.requests).toHaveLength(0);
+			expect(shell.calls.some((call) => call.cmd === "dot" || call.cmd === "mmdc")).toBe(false);
+			expect(shell.calls.some((call) => call.cmd === "docker" && call.args.includes("-Tpng"))).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"sandbox-only precedence renders mermaid through bundle-sandbox without host binaries or Kroki", async () => {
+			const shell = new FakeShellRunner();
+			programReadyBundleSandbox(shell, { mermaidPng: TINY_PNG });
+			const http = new FakeHttpClient();
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ processorPrecedence: ["sandbox"] }),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```mermaid\nflowchart LR\nA --> B\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "mermaid",
+				processor: "bundle-sandbox",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+			expect(http.requests).toHaveLength(0);
+			expect(shell.calls.some((call) => call.cmd === "dot" || call.cmd === "mmdc")).toBe(false);
+			expect(shell.calls.some((call) => call.cmd === "docker" && call.args.includes("mmdc"))).toBe(true);
 		},
 		20_000,
 	);
@@ -2352,6 +2430,93 @@ function makeKrokiHttp(urlToPng: Record<string, Buffer>): FakeHttpClient {
 		http.setResponse("POST", url, pngResponse(bytes));
 	}
 	return http;
+}
+
+function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: Buffer; mermaidPng?: Buffer } = {}): void {
+	const image = "ghcr.io/henriquebastos/pi-fence-bundle:0.1.0";
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-bundle"], {
+		stdout: "true\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-bundle"], {
+		stdout: `${image}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse(
+		"docker",
+		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-bundle"],
+		{ stdout: "bundle\n", stderr: "", exitCode: 0 },
+	);
+	shell.setResponse("docker", ["exec", "pi-fence-bundle", "cat", BUNDLE_MANIFEST_PATH], {
+		stdout: JSON.stringify({
+			name: "pi-fence-bundle",
+			version: "0.1.0",
+			tools: {
+				dot: { command: "dot", versionCommand: ["dot", "-V"] },
+				mmdc: { command: "mmdc", versionCommand: ["mmdc", "--version"] },
+			},
+		}),
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["exec", "pi-fence-bundle", "dot", "-V"], {
+		stdout: "",
+		stderr: "dot - graphviz version 10.0.0",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["exec", "pi-fence-bundle", "mmdc", "--version"], {
+		stdout: "11.0.0\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	if (options.dotPng) {
+		shell.setResponse("docker", ["exec", "-i", "pi-fence-bundle", "dot", "-Tpng"], {
+			stdout: options.dotPng.toString("binary"),
+			stdoutBuffer: options.dotPng,
+			stderr: "",
+			exitCode: 0,
+		});
+	}
+	if (options.mermaidPng) {
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "mktemp", "-d", "/tmp/pi-fence-XXXXXX"], {
+			stdout: "/tmp/pi-fence-test\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse(
+			"docker",
+			["exec", "-i", "pi-fence-bundle", "sh", "-c", "cat > \"$1\"", "sh", "/tmp/pi-fence-test/input.mmd"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse(
+			"docker",
+			[
+				"exec",
+				"pi-fence-bundle",
+				"mmdc",
+				"-i",
+				"/tmp/pi-fence-test/input.mmd",
+				"-o",
+				"/tmp/pi-fence-test/output.png",
+				"-b",
+				"transparent",
+			],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "cat", "/tmp/pi-fence-test/output.png"], {
+			stdout: options.mermaidPng.toString("binary"),
+			stdoutBuffer: options.mermaidPng,
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "rm", "-rf", "--", "/tmp/pi-fence-test"], {
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		});
+	}
 }
 
 function filterPiFenceOutputs(messages: CapturedCustomMessage[]): CapturedCustomMessage[] {
