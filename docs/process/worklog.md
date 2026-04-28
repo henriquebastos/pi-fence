@@ -3963,3 +3963,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviation.** The `CHANGELOG.md` part of `4c80cd6` is a convention miss, not a product behavior issue. No code rewrite was needed.
 
 **Carry-forward.** Mention this deviation again in the S5 close worklog entry.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: tightened bundle Docker security
+
+**What shipped.** Bundle sandbox readiness now enforces the full documented Docker runtime contract: `network=none`, no ports, tmpfs-only mounts with `/tmp` present, `cap-drop ALL`, no added capabilities, non-privileged mode, `no-new-privileges`, and no `seccomp=unconfined`.
+
+**Implementation commits.**
+
+1. `762af15` — fix: tighten bundle docker security checks
+
+**Test count.** Fast suite 799 → 806 (+7).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/sandbox.test.ts -t 'bundle container'` — failed for missing `/tmp` tmpfs, `CapAdd`, privileged mode, and unconfined seccomp.
+2. GREEN: `pnpm vitest run tests/unit/sandbox.test.ts -t 'bundle container'` — passed, 10 tests.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'sandbox-only precedence renders'` — passed, 2 tests.
+4. `pnpm run feedback` — passed: 806 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Runtime isolation is explicit readiness.** A labelled trusted-image container is still unavailable unless its live Docker host config matches the bundle contract.
+2. **Security checks stay opt-in.** Kroki and compose checks are not forced into bundle-only isolation rules.
+3. **CRAP drove structure.** The broader security contract was split into small inspection helpers to keep focused CRAP below target.
+
+**Carry-forward.** Fix remaining S5 inspection findings.
