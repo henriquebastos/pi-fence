@@ -3870,3 +3870,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Mermaid remains workspace-based.** The only render command change is adding the config-file argument; source/output still stay inside the container workspace.
 
 **Carry-forward.** Fix remaining S5 inspection findings.
+
+---
+
+### 2026-04-28 — CV9.E1.S5 inspection fix: Mermaid workspace failures
+
+**What shipped.** `bundle-sandbox.render("mermaid", ...)` now catches workspace creation failures and returns `{ ok:false, error }` instead of rejecting, preserving the `FenceProcessor` render contract even when Docker workspace setup fails.
+
+**Implementation commits.**
+
+1. `23eae12` — fix: contain bundle workspace failures
+
+**Test count.** Fast suite 794 → 795 (+1).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'workspace creation'` — failed because render rejected with `workspace not configured`.
+2. GREEN: `pnpm vitest run tests/unit/bundle-sandbox.test.ts -t 'workspace creation|Mermaid'` — passed, 3 tests.
+3. `pnpm run feedback` — passed: 795 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Render failures stay in-band.** Workspace setup errors now behave like processor render errors, not thrown extension failures.
+2. **Cleanup behavior is unchanged.** Workspaces are still disposed when they are successfully created.
+
+**Carry-forward.** Fix remaining S5 inspection findings.
