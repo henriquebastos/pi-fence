@@ -3359,3 +3359,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Inherited config is ignored.** Sandbox policy follows the same own-field rule as other privacy controls.
 
 **Carry-forward.** Update user-facing lifecycle docs.
+
+---
+
+### 2026-04-27 — CV9.E1.S4 inspection fix: user-facing Kroki lifecycle docs
+
+**What shipped.** README, getting-started, and CHANGELOG now describe the current single-container Kroki Docker lifecycle: `/fence kroki start|status|stop`, the need to set `kroki.endpoint` to render through local Kroki, `sandboxes.kroki.autoStart` for the `docker-container` runtime, legacy `kroki.docker.autoStart` compatibility, ownership-label checks, and non-zero `docker stop` / `docker rm` error reporting.
+
+**Implementation commits.**
+
+1. `032f6f6` — docs: explain Kroki sandbox lifecycle
+
+**Test count.** Fast suite unchanged at 743 (docs-only update).
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+2. `pnpm run feedback` — passed.
+
+**Design decisions that survived implementation.**
+
+1. **User docs name the bridge.** The sandbox config key is documented as the current path, while the older Kroki Docker key remains a compatibility alias.
+2. **Lifecycle ownership is user-visible.** Docs explain that pi-fence only manages the expected image and ownership-labelled container.
+
+**Carry-forward.** Rerun ready/blocked bean checks, completion inspection, and final S4 close checks.
