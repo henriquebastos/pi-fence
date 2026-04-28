@@ -110,8 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added (CV2.E2.S1 — Docker Kroki lifecycle commands)
 
-- **`/fence kroki start`** pulls and starts a local `yuzutech/kroki` Docker container on port 8000. Sets the Kroki endpoint to `http://localhost:8000` for the current session.
-- **`/fence kroki stop`** stops and removes the container, reverting the endpoint.
+- **`/fence kroki start`** pulls and starts a local `yuzutech/kroki` Docker container on port 8000. It manages the container only; set `kroki.endpoint` to `http://localhost:8000` to render through it.
+- **`/fence kroki stop`** stops and removes the container. It does not rewrite `kroki.endpoint`.
 - **`/fence kroki status`** reports running / stopped / absent.
 - All three commands shell out to `docker` via the DI seam — no Docker SDK dependency.
 

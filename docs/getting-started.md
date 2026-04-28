@@ -220,6 +220,10 @@ Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-f
 ```json
 {
   "sandboxes": {
+    "bundle": {
+      "kind": "exec",
+      "runtime": "docker-container"
+    },
     "kroki": {
       "kind": "service",
       "runtime": "docker-container",
@@ -230,7 +234,7 @@ Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-f
 }
 ```
 
-Existing configs that use `kroki.docker.autoStart: true` still work as a compatibility alias. `sandboxes.kroki.runtime: "docker-compose"` is accepted by the config model for the future full Kroki stack, but it does not auto-start until the Compose-backed service controller ships.
+`sandboxes` maps replace by layer, so include any default sandbox entries you still want active when overriding this section. Existing configs that use `kroki.docker.autoStart: true` still work as a compatibility alias. `sandboxes.kroki.runtime: "docker-compose"` is accepted by the config model for the future full Kroki stack, but it does not auto-start until the Compose-backed service controller ships.
 
 Auto-start follows processor policy: if `kroki-remote` is blocked or `remote` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the container stays running between sessions — subsequent starts are no-ops. Lifecycle commands only operate on the configured Kroki image (default `yuzutech/kroki`) with the pi-fence ownership label; `stop` reports non-zero `docker stop` or `docker rm` exits with Docker's stderr instead of hiding them behind a success message.
 
