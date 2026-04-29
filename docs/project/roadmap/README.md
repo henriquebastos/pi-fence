@@ -21,3 +21,4 @@ A CV is **done** only when every Story in its Epics is done.
 | [CV7 — Companion Backends](cv7--companion-backends/README.md) | `legibility` | Not started | Languages behind Kroki companion containers render via a shipped Compose stack. |
 | [CV8 — Internal Quality](cv8--internal-quality/README.md) | `simplification` | Done | Simplify internals that accumulated duplication or unnecessary indirection during feature delivery. |
 | [CV9 — Processor Policy](cv9--processor-policy/README.md) | `control` | Done | Processor selection is governed by explicit user policy, not import order or implicit trust assumptions. |
+| [CV10 — VM Sandboxes](cv10--vm-sandboxes/README.md) | `control` | Not started | CLI renderers can run inside a VM-backed sandbox when container isolation is not enough. |
