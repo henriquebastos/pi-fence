@@ -11,17 +11,9 @@ import { Box, Image, Spacer, Text, truncateToWidth } from "@mariozechner/pi-tui"
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
-import {
-	BUNDLE_SANDBOX_CONTAINER_NAME,
-	BUNDLE_SANDBOX_IMAGE,
-	BUNDLE_SANDBOX_LABELS,
-	createBundleSandboxProcessor,
-} from "./bundle-sandbox.ts";
+import { createBuiltInProcessors } from "./built-in-processors.ts";
 import { DEFAULT_PROCESSOR_PRECEDENCE, type PiFenceConfig } from "./config.ts";
 import { registerFenceCommand } from "./command.ts";
-import { createGraphvizLocalProcessor } from "./graphviz-local.ts";
-import { createKrokiDockerManager } from "./kroki-docker.ts";
-import { createMermaidLocalProcessor } from "./mermaid-local.ts";
 import {
 	loadPiFenceConfig,
 	type LoadConfigOptions,
@@ -32,12 +24,7 @@ import type { Logger } from "./io/logger.ts";
 import { NodeLogger } from "./io/node-logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NodeShellRunner } from "./io/shell-runner.ts";
-import { createColorProcessor } from "./color.ts";
 import { MetricsCollector } from "./metrics.ts";
-import { createHighlightProcessor } from "./highlight.ts";
-import { createKrokiProcessor, createKrokiSandboxProcessor, isDarkThemeName } from "./kroki.ts";
-import { createQrProcessor } from "./qr.ts";
-import { createTableProcessor } from "./table.ts";
 import {
 	PI_FENCE_LIST_MESSAGE_TYPE,
 	PI_FENCE_OUTPUT_MESSAGE_TYPE,
@@ -49,12 +36,8 @@ import {
 	createPiFenceListRenderer,
 	createPiFenceMessageRenderer,
 } from "./renderer.ts";
-import {
-	createDockerContainerSandboxController,
-	createDockerExecSandboxEnvironment,
-	createKrokiDockerComposeSandboxController,
-	createKrokiDockerSandboxController,
-} from "./sandbox.ts";
+import type { SandboxController } from "./sandbox.ts";
+import { createSandboxControllers } from "./sandbox-context.ts";
 
 const MAX_BLOCKS_PER_TURN = 5;
 
@@ -77,10 +60,12 @@ export async function createPiFenceExtension(
 	const config = configResult.config;
 
 	const themeState: ThemeState = {};
-	const processors = deps.processors ?? createDefaultProcessors(
+	const sandboxes = createSandboxControllers(deps, config);
+	const processors = deps.processors ?? await createDefaultProcessors(
 		deps,
 		themeState,
 		config,
+		sandboxes,
 	);
 	const bindings = config.bindings;
 	const blockedProcessors: ReadonlySet<string> = new Set(config.blocked?.processors ?? []);
@@ -88,7 +73,7 @@ export async function createPiFenceExtension(
 	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-sandbox.
-	const krokiController = createKrokiServiceController(deps, config);
+	const krokiController = sandboxes.get("kroki");
 	if (krokiController && shouldAutoStartKrokiSandbox(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
 		const controller = krokiController;
 		const status = await controller.status();
@@ -246,82 +231,24 @@ function isKrokiAutoStartAllowed(
 		!isProcessorFullyTagBlocked(krokiSandbox, processors, blockedTags);
 }
 
-function createDefaultProcessors(
+async function createDefaultProcessors(
 	deps: PiFenceRuntimeDeps,
 	themeState: ThemeState,
 	config: PiFenceConfig,
-): FenceProcessor[] {
-	return [
-		createGraphvizLocalProcessor(deps.shell, deps.logger),
-		createMermaidLocalProcessor(deps.shell, deps.logger),
-		createTableProcessor(),
-		createHighlightProcessor(),
-		createQrProcessor(),
-		createColorProcessor(),
-		...createBundleSandboxProcessors(deps, config),
-		...createKrokiSandboxProcessors(deps, themeState, config),
-		createKrokiProcessor(deps.http, config.kroki?.endpoint, deps.logger, () =>
-			isDarkThemeName(themeState.currentName) ? "dark" : "light",
-		),
-	];
-}
-
-function createKrokiSandboxProcessors(
-	deps: PiFenceRuntimeDeps,
-	themeState: ThemeState,
-	config: PiFenceConfig,
-): FenceProcessor[] {
-	const controller = createKrokiServiceController(deps, config);
-	if (!controller) return [];
-	return [
-		createKrokiSandboxProcessor(deps.http, controller, deps.logger, () =>
-			isDarkThemeName(themeState.currentName) ? "dark" : "light",
-		),
-	];
-}
-
-function createKrokiServiceController(deps: PiFenceRuntimeDeps, config: PiFenceConfig) {
-	const kroki = config.sandboxes?.kroki;
-	if (kroki?.kind !== "service") return undefined;
-	if (kroki.runtime === "docker-container") {
-		return createKrokiDockerSandboxController(
-			createKrokiDockerManager(deps.shell, deps.logger),
-		);
-	}
-	if (kroki.runtime === "docker-compose") {
-		return createKrokiDockerComposeSandboxController(deps.shell);
-	}
-	return undefined;
-}
-
-function createBundleSandboxProcessors(
-	deps: PiFenceRuntimeDeps,
-	config: PiFenceConfig,
-): FenceProcessor[] {
-	const bundle = config.sandboxes?.bundle;
-	if (bundle?.kind !== "exec" || bundle.runtime !== "docker-container") return [];
-	const controller = createDockerContainerSandboxController(deps.shell, {
-		id: "bundle",
-		kind: "exec",
-		containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
-		expectedImage: BUNDLE_SANDBOX_IMAGE,
-		expectedLabels: BUNDLE_SANDBOX_LABELS,
-		security: {
-			networkMode: "none",
-			noPublishedPorts: true,
-			allowOnlyTmpfsMounts: true,
-			requiredTmpfsMounts: ["/tmp"],
-			capDropAll: true,
-			noAddedCapabilities: true,
-			notPrivileged: true,
-			noNewPrivileges: true,
-			forbidUnconfinedSeccomp: true,
-		},
+	sandboxes: ReadonlyMap<string, SandboxController>,
+): Promise<FenceProcessor[]> {
+	const result = await createBuiltInProcessors({
+		http: deps.http,
+		shell: deps.shell,
+		logger: deps.logger,
+		themeState,
+		config,
+		sandboxes,
 	});
-	const env = createDockerExecSandboxEnvironment(deps.shell, {
-		containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
-	});
-	return [createBundleSandboxProcessor(controller, env)];
+	for (const diagnostic of result.diagnostics) {
+		deps.logger.warn("pi-fence", "processor factory diagnostic", { ...diagnostic });
+	}
+	return result.processors;
 }
 
 function logAvailability(
