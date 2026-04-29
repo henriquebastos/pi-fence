@@ -111,6 +111,25 @@ describe("createKrokiSandboxProcessor", () => {
 		expect(logger.bySubsystem("kroki-sandbox").length).toBeGreaterThan(0);
 	});
 
+	it("includes component details when the service controller is partial", async () => {
+		const kroki = createKrokiSandboxProcessor(
+			new FakeHttpClient(),
+			serviceController({
+				state: "partial",
+				message: "Sandbox kroki has 1 of 2 component(s) ready.",
+				components: [
+					{ id: "core", state: "ready", message: "Container pi-fence-kroki-core is running." },
+					{ id: "mermaid", state: "stopped", message: "Container pi-fence-kroki-mermaid exists but is stopped." },
+				],
+			}),
+		);
+
+		expect(await kroki.available()).toEqual({
+			ok: false,
+			reason: "Kroki sandbox is partial: Sandbox kroki has 1 of 2 component(s) ready. Components: core=ready (Container pi-fence-kroki-core is running.); mermaid=stopped (Container pi-fence-kroki-mermaid exists but is stopped.)",
+		});
+	});
+
 	it("is unavailable and does not render when the service controller is not ready", async () => {
 		const http = new FakeHttpClient();
 		const kroki = createKrokiSandboxProcessor(

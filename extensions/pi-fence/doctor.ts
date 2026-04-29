@@ -95,8 +95,9 @@ function processorIssue(
 	listings: readonly ProcessorListing[],
 ): DoctorIssue[] {
 	if (listing.status === "unavailable") {
-		const hint = listing.installHint ? `: ${listing.installHint}` : "";
-		return [{ message: `${listing.id} is unavailable${hint}` }];
+		const reason = listing.unavailableReason ? `: ${listing.unavailableReason}` : "";
+		const hint = listing.installHint ? `${reason ? ". " : ": "}${listing.installHint}` : "";
+		return [{ message: `${listing.id} is unavailable${reason}${hint}` }];
 	}
 	if (listing.status === "blocked") return policyProcessorIssue(listing, listings, "blocked");
 	if (listing.status === "disabled") return policyProcessorIssue(listing, listings, "disabled");

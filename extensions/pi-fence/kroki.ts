@@ -419,10 +419,24 @@ function sandboxEndpointFromStatus(
 	status: SandboxStatus,
 ): { ok: true; endpoint: string } | { ok: false; reason: string } {
 	if (status.state !== "ready") {
-		return { ok: false, reason: `Kroki sandbox is ${status.state}: ${status.message}` };
+		return {
+			ok: false,
+			reason: `Kroki sandbox is ${status.state}: ${status.message}${formatSandboxComponents(status)}`,
+		};
 	}
 	if (!status.endpoint) {
 		return { ok: false, reason: "Kroki sandbox is ready but did not report an endpoint." };
 	}
 	return { ok: true, endpoint: status.endpoint.replace(/\/+$/, "") };
+}
+
+function formatSandboxComponents(status: SandboxStatus): string {
+	if (!status.components || status.components.length === 0) return "";
+	const components = status.components
+		.map((component) => {
+			const detail = component.message ? ` (${component.message})` : "";
+			return `${component.id}=${component.state}${detail}`;
+		})
+		.join("; ");
+	return ` Components: ${components}`;
 }

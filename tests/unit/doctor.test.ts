@@ -78,6 +78,25 @@ describe("computeDoctorIssues", () => {
 		]);
 	});
 
+	it("reports unavailable processor reasons", () => {
+		const input = makeInput({
+			listings: [
+				{
+					id: "kroki-sandbox",
+					status: "unavailable",
+					tags: ["mermaid"],
+					aliases: {},
+					unavailableReason: "Kroki sandbox is partial: core ready; mermaid stopped",
+				},
+			],
+		});
+
+		const issues = computeDoctorIssues(input);
+		expect(issues).toEqual([
+			{ message: "kroki-sandbox is unavailable: Kroki sandbox is partial: core ready; mermaid stopped" },
+		]);
+	});
+
 	it("reports unavailable processor with install hint", () => {
 		const input = makeInput({
 			listings: [

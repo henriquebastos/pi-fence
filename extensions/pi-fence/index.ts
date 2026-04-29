@@ -52,6 +52,7 @@ import {
 import {
 	createDockerContainerSandboxController,
 	createDockerExecSandboxEnvironment,
+	createKrokiDockerComposeSandboxController,
 	createKrokiDockerSandboxController,
 } from "./sandbox.ts";
 
@@ -87,8 +88,9 @@ export async function createPiFenceExtension(
 	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-sandbox.
-	if (shouldAutoStartKrokiDocker(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
-		const controller = createKrokiDockerServiceController(deps);
+	const krokiController = createKrokiServiceController(deps, config);
+	if (krokiController && shouldAutoStartKrokiSandbox(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
+		const controller = krokiController;
 		const status = await controller.status();
 		if (status.state === "ready") {
 			deps.logger.debug("pi-fence", "Docker Kroki already running", {
@@ -221,13 +223,14 @@ function isProcessorAllowed(
 	return !blockedProcessors.has(processorId) && processorPrecedence.includes(placement);
 }
 
-function shouldAutoStartKrokiDocker(config: PiFenceConfig): boolean {
+function shouldAutoStartKrokiSandbox(config: PiFenceConfig): boolean {
 	const legacyAutoStart = config.kroki?.docker?.autoStart === true;
 	const krokiSandbox = config.sandboxes?.kroki;
 	if (krokiSandbox === undefined) return false;
 	if (krokiSandbox.kind !== "service") return false;
-	if (krokiSandbox.runtime !== "docker-container") return false;
-	return krokiSandbox.autoStart ?? legacyAutoStart;
+	if (krokiSandbox.runtime === "docker-container") return krokiSandbox.autoStart ?? legacyAutoStart;
+	if (krokiSandbox.runtime === "docker-compose") return krokiSandbox.autoStart === true;
+	return false;
 }
 
 
@@ -268,9 +271,8 @@ function createKrokiSandboxProcessors(
 	themeState: ThemeState,
 	config: PiFenceConfig,
 ): FenceProcessor[] {
-	const kroki = config.sandboxes?.kroki;
-	if (kroki?.kind !== "service" || kroki.runtime !== "docker-container") return [];
-	const controller = createKrokiDockerServiceController(deps);
+	const controller = createKrokiServiceController(deps, config);
+	if (!controller) return [];
 	return [
 		createKrokiSandboxProcessor(deps.http, controller, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
@@ -278,10 +280,18 @@ function createKrokiSandboxProcessors(
 	];
 }
 
-function createKrokiDockerServiceController(deps: PiFenceRuntimeDeps) {
-	return createKrokiDockerSandboxController(
-		createKrokiDockerManager(deps.shell, deps.logger),
-	);
+function createKrokiServiceController(deps: PiFenceRuntimeDeps, config: PiFenceConfig) {
+	const kroki = config.sandboxes?.kroki;
+	if (kroki?.kind !== "service") return undefined;
+	if (kroki.runtime === "docker-container") {
+		return createKrokiDockerSandboxController(
+			createKrokiDockerManager(deps.shell, deps.logger),
+		);
+	}
+	if (kroki.runtime === "docker-compose") {
+		return createKrokiDockerComposeSandboxController(deps.shell);
+	}
+	return undefined;
 }
 
 function createBundleSandboxProcessors(

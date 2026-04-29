@@ -744,6 +744,84 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"sandbox precedence renders dot through kroki-sandbox when the Compose service is ready",
+		async () => {
+			const shell = new FakeShellRunner();
+			programReadyKrokiComposeSandbox(shell);
+			const http = makeKrokiHttp({
+				"http://localhost:8000/graphviz/png?theme=dark": TINY_PNG,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-compose" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki-sandbox",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+			expect(http.requests[0].url).toBe("http://localhost:8000/graphviz/png?theme=dark");
+			expect(shell.calls.some((call) => call.args.includes("pi-fence-kroki-core"))).toBe(true);
+			expect(shell.calls.some((call) => call.args.includes("pi-fence-kroki-mermaid"))).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
+		"doctor explains partial Compose Kroki sandbox components",
+		async () => {
+			const shell = new FakeShellRunner();
+			programPartialKrokiComposeSandbox(shell);
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-compose" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence doctor",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const listMessages = captured.sentCustomMessages.filter(
+				(message) => message.customType === "pi-fence:list",
+			);
+			expect(listMessages).toHaveLength(1);
+			const details = listMessages[0].details as { lines: string[] };
+			expect(details.lines.some((line) => line.includes("kroki-sandbox [unavailable]"))).toBe(true);
+			expect(details.lines.some((line) => line.includes("mermaid=stopped"))).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
 		"does not register bundle-sandbox when the configured bundle sandbox is not docker exec",
 		async () => {
 			const home = makeTempDir();
@@ -1359,7 +1437,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
-		"docker-compose Kroki sandbox config does not start the single-container manager",
+		"docker-compose Kroki autoStart uses the Compose lifecycle",
 		async () => {
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
@@ -1373,6 +1451,11 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				}),
 			);
 			const shell = new FakeShellRunner();
+			shell.setResponse(
+				"docker",
+				["compose", "-f", "docker/kroki/compose.yaml", "-p", "pi-fence-kroki", "up", "-d"],
+				{ stdout: "", stderr: "", exitCode: 0 },
+			);
 
 			await runExtensionWithCommand(
 				new FakeHttpClient(),
@@ -1381,7 +1464,8 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				{ home, cwd: makeTempDir() },
 			);
 
-			expect(shell.calls).toHaveLength(0);
+			expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
+			expect(shell.calls.some((call) => call.args.join(" ") === "compose -f docker/kroki/compose.yaml -p pi-fence-kroki up -d")).toBe(true);
 		},
 		20_000,
 	);
@@ -2577,19 +2661,51 @@ function makeKrokiHttp(urlToPng: Record<string, Buffer>): FakeHttpClient {
 }
 
 function programReadyKrokiSandbox(shell: FakeShellRunner): void {
-	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+	programReadyKrokiContainer(shell, "pi-fence-kroki", "yuzutech/kroki");
+}
+
+function programReadyKrokiComposeSandbox(shell: FakeShellRunner): void {
+	programReadyKrokiContainer(shell, "pi-fence-kroki-core", "yuzutech/kroki");
+	programReadyKrokiContainer(shell, "pi-fence-kroki-mermaid", "yuzutech/mermaid");
+}
+
+function programPartialKrokiComposeSandbox(shell: FakeShellRunner): void {
+	programReadyKrokiContainer(shell, "pi-fence-kroki-core", "yuzutech/kroki");
+	programStoppedKrokiContainer(shell, "pi-fence-kroki-mermaid", "yuzutech/mermaid");
+}
+
+function programReadyKrokiContainer(shell: FakeShellRunner, containerName: string, image: string): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
 		stdout: "true\n",
 		stderr: "",
 		exitCode: 0,
 	});
-	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
-		stdout: "yuzutech/kroki\n",
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", containerName], {
+		stdout: `${image}\n`,
 		stderr: "",
 		exitCode: 0,
 	});
 	shell.setResponse(
 		"docker",
-		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-kroki"],
+		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, containerName],
+		{ stdout: "kroki\n", stderr: "", exitCode: 0 },
+	);
+}
+
+function programStoppedKrokiContainer(shell: FakeShellRunner, containerName: string, image: string): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
+		stdout: "false\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", containerName], {
+		stdout: `${image}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse(
+		"docker",
+		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, containerName],
 		{ stdout: "kroki\n", stderr: "", exitCode: 0 },
 	);
 }
