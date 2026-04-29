@@ -5,7 +5,12 @@ import {
 	createBuiltInProcessors,
 } from "../../extensions/pi-fence/built-in-processors.ts";
 import { DEFAULT_CONFIG, type PiFenceConfig } from "../../extensions/pi-fence/config.ts";
-import { collectProcessorFactories, type ProcessorFactoryContext } from "../../extensions/pi-fence/processor-factory.ts";
+import {
+	collectProcessorFactories,
+	createProcessorsFromFactories,
+	type ProcessorFactoryContext,
+} from "../../extensions/pi-fence/processor-factory.ts";
+import { resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
 import { createSandboxControllers } from "../../extensions/pi-fence/sandbox-context.ts";
 import { FakeHttpClient } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
@@ -22,6 +27,18 @@ function makeContext(config: PiFenceConfig = DEFAULT_CONFIG): ProcessorFactoryCo
 		config,
 		sandboxes: createSandboxControllers({ shell, logger }, config),
 	};
+}
+
+async function createProcessorsFromReversedFactories() {
+	const collection = collectProcessorFactories([...BUILT_IN_PROCESSOR_MODULES].reverse());
+	expect(collection.diagnostics).toEqual([]);
+	const creation = await createProcessorsFromFactories(collection.factories, makeContext());
+	expect(creation.diagnostics).toEqual([]);
+	return creation.processors;
+}
+
+function allAvailable(processors: Awaited<ReturnType<typeof createProcessorsFromReversedFactories>>) {
+	return new Map(processors.map((processor) => [processor.id, { ok: true } as const]));
 }
 
 describe("built-in processor factory manifest", () => {
@@ -72,6 +89,42 @@ describe("built-in processor factory manifest", () => {
 			"qr-embedded",
 			"table-embedded",
 		]);
+	});
+
+	it("keeps cross-placement selection independent from factory collection order", async () => {
+		const processors = await createProcessorsFromReversedFactories();
+		const availability = allAvailable(processors);
+
+		const resolved = resolveProcessor(
+			processors,
+			availability,
+			"dot",
+			undefined,
+			undefined,
+			["embedded", "host", "sandbox", "remote"],
+		);
+
+		expect(resolved.processor?.id).toBe("graphviz-host");
+	});
+
+	it("keeps same-placement factory conflicts ambiguous until bound", async () => {
+		const processors = await createProcessorsFromReversedFactories();
+		const availability = allAvailable(processors);
+
+		const resolved = resolveProcessor(
+			processors,
+			availability,
+			"dot",
+			undefined,
+			undefined,
+			["sandbox", "remote"],
+		);
+
+		expect(resolved.processor).toBeNull();
+		expect(resolved.ambiguity).toEqual({
+			placement: "sandbox",
+			processorIds: ["kroki-sandbox", "bundle-sandbox"],
+		});
 	});
 });
 
