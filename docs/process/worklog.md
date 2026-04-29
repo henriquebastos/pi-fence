@@ -4747,3 +4747,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Defaults unchanged.** The bundle sandbox still defaults to Docker until a later step wires a Gondolin controller/environment.
 
 **Carry-forward.** Implement the Gondolin lifecycle seam and controller under `task-6146bc0a`.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 step 2: Gondolin VM lifecycle seam
+
+**What shipped.** Added `@earendil-works/gondolin@0.8.0` as a production dependency and introduced a small VM lifecycle seam. The new bundle controller reports `stopped` before creating a VM, starts a VM with the configured image selector, reports `ready`, stops back to `stopped`, and converts VM start failures into a `SandboxStatus` error. The production VM options disable auto-start, host VFS mounts, ambient env, and generic networking before a VM is created.
+
+**Implementation commit.**
+
+1. `43f9a3e` — step 2: introduce Gondolin VM lifecycle seam
+
+**Beans.**
+
+1. Closed `task-6146bc0a` — CV10.E1.S1 step 2 Gondolin lifecycle seam.
+2. Next ready bean: `task-708918bf` — Gondolin exec environment parity.
+
+**Test count.** Fast suite increased from 859 to 864 with five Gondolin controller/options tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern Gondolin` — passed: 5 tests, 32 skipped by name filter.
+2. `pnpm run feedback` — passed: 864 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Tiny seam over direct package coupling.** Production code exposes `GondolinVMFactory` / `GondolinVMHandle`; tests use fakes and do not import or mock Gondolin internals.
+2. **Lazy package load.** The real package is dynamically imported only when the VM factory creates a VM.
+3. **No host mount baseline.** `createGondolinVMOptions` pins `vfs: null`, `env: {}`, `autoStart: false`, and `sandbox.netEnabled: false`.
+
+**Carry-forward.** Implement `GondolinExecSandboxEnvironment` under `task-708918bf`, preserving Docker exec/workspace semantics behind the existing seam.
