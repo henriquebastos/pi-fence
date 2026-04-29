@@ -452,15 +452,33 @@ Expect all green on a clean clone.
 
 Run when adding or changing a processor, touching an I/O seam, or refreshing fixtures. The live suite exercises real dependencies — Kroki HTTP, local binaries via Docker, and headless Chromium for render-image pixel-diff. Skipped cleanly when dependencies aren’t available.
 
+By default, `pnpm test:live` sets `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, so Kroki coverage prefers the managed local sandbox instead of public `kroki.io`. Start the single-container Kroki sandbox when you want those cases to pass instead of skip:
+
+```bash
+docker run -d \
+  --name pi-fence-kroki \
+  --label pi-fence.sandbox=kroki \
+  -p 8000:8000 \
+  yuzutech/kroki
+```
+
+Then run the live suite:
+
 ```bash
 pnpm live:build    # build the pi-fence-live-deps image locally
 pnpm live:up       # start the container (named pi-fence-live-deps)
 pnpm live:status   # should print 'running'
-pnpm test:live     # run the live suite
-pnpm live:down     # stop and remove the container
+pnpm test:live     # run the live suite with the default Kroki sandbox config
+pnpm live:down     # stop and remove the pi-fence-live-deps container
 ```
 
-Without Docker, `pnpm test:live` reports the live suite as **skipped** and exits 0. The fast gate is unaffected.
+To test another config, set `PI_FENCE_CONFIG` explicitly; the package script preserves your value:
+
+```bash
+PI_FENCE_CONFIG=/path/to/pi-fence.config.json pnpm test:live
+```
+
+Without Docker, `pnpm test:live` reports Docker-dependent live cases as **skipped** and exits 0. The fast gate is unaffected.
 
 ### Run everything
 

@@ -4678,3 +4678,19 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviations.** The local single-container Kroki sandbox fixture blocks companion-backed tags (`mermaid`, `plantuml`, `c4plantuml`, `vega`, `vegalite`) for acceptance. Fixing the Kroki Mermaid companion image / full companion stack remains future work, not CV9.E1 scope.
 
 **Carry-forward.** CV9 is closed. Next roadmap CV is CV6 unless project priorities change.
+
+---
+
+### 2026-04-29 — Live suite defaults to Kroki sandbox config
+
+**What shipped.** `pnpm test:live` now defaults `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, while preserving any caller-provided `PI_FENCE_CONFIG`. This makes the ordinary live command exercise the managed local `kroki-sandbox` path by default instead of depending on public `kroki.io`.
+
+**Implementation commits.**
+
+1. `af718b5` — fix live tests to default Kroki sandbox config
+
+**Verification.**
+
+1. `pnpm test:live` — passed with the default sandbox config: 30 tests passed, 25 skipped.
+
+**Carry-forward.** Commit this follow-up, then keep the local `pi-fence-kroki` container running only if continued live work needs it.
