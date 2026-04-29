@@ -117,6 +117,16 @@ describe("kroki-docker — status()", () => {
 		expect(result.status).toBe("absent");
 	});
 
+	it("reports absent when Docker uses lowercase no-such-object wording", async () => {
+		const shell = makeShell();
+		setAbsent(shell, "error: no such object: pi-fence-kroki");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("absent");
+	});
+
 	it("reports error when docker inspect exits non-zero for daemon failures", async () => {
 		const shell = makeShell();
 		setAbsent(shell, "permission denied while trying to connect to the Docker daemon socket");

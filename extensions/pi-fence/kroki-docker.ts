@@ -151,7 +151,8 @@ function dockerCommandFailure(
 }
 
 function inspectFailureResult(stderr: string): KrokiDockerResult {
-	if (stderr.includes("No such object") || stderr.includes("No such container")) {
+	const normalized = stderr.toLowerCase();
+	if (normalized.includes("no such object") || normalized.includes("no such container")) {
 		return { ok: true, status: "absent", message: `Container ${CONTAINER_NAME} not found.` };
 	}
 	const detail = stderr.trim() || "docker inspect failed";
