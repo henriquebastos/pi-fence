@@ -20,7 +20,8 @@ import { describe, expect, it } from "vitest";
 
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
-import { createKrokiProcessor, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
+import { createKrokiProcessor, createKrokiSandboxProcessor, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
+import type { SandboxController, SandboxStatus } from "../../extensions/pi-fence/sandbox.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
 	return {
@@ -38,6 +39,17 @@ function pngResponse(bytes: Buffer): HttpResponse {
 	};
 }
 
+function serviceController(status: SandboxStatus): SandboxController {
+	return {
+		id: "kroki",
+		kind: "service",
+		runtime: "docker-container",
+		status: async () => status,
+		start: async () => status,
+		stop: async () => status,
+	};
+}
+
 describe("createKrokiProcessor — metadata", () => {
 	it("declares the remote processor id and placement", () => {
 		const kroki = createKrokiProcessor(new FakeHttpClient());
@@ -51,6 +63,75 @@ describe("createKrokiProcessor — metadata", () => {
 
 		expect(kroki.id).toBe("kroki-remote");
 		expect(kroki.placement).toBe("remote");
+	});
+
+	it("declares the sandbox processor id and placement when the service controller is ready", async () => {
+		const kroki = createKrokiSandboxProcessor(
+			new FakeHttpClient(),
+			serviceController({
+				state: "ready",
+				endpoint: "http://localhost:8000",
+				message: "Kroki sandbox is ready.",
+			}),
+		);
+
+		expect(kroki.id).toBe("kroki-sandbox");
+		expect(kroki.placement).toBe("sandbox");
+		expect(kroki.tags).toContain("mermaid");
+		expect(kroki.aliases.dot).toBe("graphviz");
+		expect(await kroki.available()).toEqual({ ok: true });
+	});
+});
+
+describe("createKrokiSandboxProcessor", () => {
+	it("renders through the ready service controller endpoint", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse(
+			"POST",
+			"http://localhost:8000/mermaid/png",
+			pngResponse(Buffer.from([0x89, 0x50])),
+		);
+		const logger = new FakeLogger();
+		const kroki = createKrokiSandboxProcessor(
+			http,
+			serviceController({
+				state: "ready",
+				endpoint: "http://localhost:8000",
+				message: "Kroki sandbox is ready.",
+			}),
+			logger,
+		);
+
+		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
+
+		expect(result.ok).toBe(true);
+		expect(http.requests).toHaveLength(1);
+		expect(http.requests[0].url).toBe("http://localhost:8000/mermaid/png");
+		expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
+		expect(logger.bySubsystem("kroki-sandbox").length).toBeGreaterThan(0);
+	});
+
+	it("is unavailable and does not render when the service controller is not ready", async () => {
+		const http = new FakeHttpClient();
+		const kroki = createKrokiSandboxProcessor(
+			http,
+			serviceController({
+				state: "partial",
+				message: "Sandbox kroki has 1 of 2 component(s) ready.",
+			}),
+		);
+
+		expect(await kroki.available()).toEqual({
+			ok: false,
+			reason: "Kroki sandbox is partial: Sandbox kroki has 1 of 2 component(s) ready.",
+		});
+		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
+
+		expect(result).toEqual({
+			ok: false,
+			error: "Kroki sandbox is partial: Sandbox kroki has 1 of 2 component(s) ready.",
+		});
+		expect(http.requests).toHaveLength(0);
 	});
 });
 

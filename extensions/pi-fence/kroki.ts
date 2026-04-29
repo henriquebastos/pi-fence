@@ -26,10 +26,12 @@
 
 import type { HttpClient, HttpResponse } from "./io/http-client.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
+import type { SandboxController, SandboxStatus } from "./sandbox.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
 	mergeSignals,
 	withSignalGuard,
+	type Availability,
 	type FenceProcessor,
 	type FenceResult,
 } from "./processor.ts";
@@ -211,10 +213,11 @@ function createKrokiRequestContext(
 
 function logKrokiRequest(
 	logger: Logger,
+	processorId: string,
 	context: KrokiRequestContext,
 	source: string,
 ): void {
-	logger.debug("kroki-remote", "request", {
+	logger.debug(processorId, "request", {
 		tag: context.tag,
 		krokiTag: context.krokiTag,
 		url: context.url,
@@ -226,6 +229,7 @@ function logKrokiRequest(
 async function requestKroki(
 	http: HttpClient,
 	logger: Logger,
+	processorId: string,
 	context: KrokiRequestContext,
 	source: string,
 	signal: AbortSignal | undefined,
@@ -241,7 +245,7 @@ async function requestKroki(
 		return { ok: true, response };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		logger.error("kroki-remote", message, { url: context.url, tag: context.tag });
+		logger.error(processorId, message, { url: context.url, tag: context.tag });
 		return { ok: false, result: { ok: false, error: message } };
 	}
 }
@@ -250,21 +254,23 @@ async function renderKrokiResponse(
 	response: HttpResponse,
 	context: KrokiRequestContext,
 	logger: Logger,
+	processorId: string,
 ): Promise<FenceResult> {
 	return response.status >= 200 && response.status < 300
-		? renderSuccessfulKrokiResponse(response, context, logger)
-		: renderFailedKrokiResponse(response, context, logger);
+		? renderSuccessfulKrokiResponse(response, context, logger, processorId)
+		: renderFailedKrokiResponse(response, context, logger, processorId);
 }
 
 async function renderSuccessfulKrokiResponse(
 	response: HttpResponse,
 	context: KrokiRequestContext,
 	logger: Logger,
+	processorId: string,
 ): Promise<FenceResult> {
-	const rendered = await responseBodyToPng(response.body, context, logger);
+	const rendered = await responseBodyToPng(response.body, context, logger, processorId);
 	if (!rendered.ok) return rendered;
 
-	logger.debug("kroki-remote", "response ok", {
+	logger.debug(processorId, "response ok", {
 		status: response.status,
 		tag: context.tag,
 		bytes: rendered.png.length,
@@ -276,12 +282,13 @@ async function responseBodyToPng(
 	body: Buffer,
 	context: KrokiRequestContext,
 	logger: Logger,
+	processorId: string,
 ): Promise<{ ok: true; png: Buffer } | { ok: false; error: string }> {
 	if (!context.isSvgOnly) return { ok: true, png: body };
 
 	try {
 		const png = await svgToPng(body);
-		logger.debug("kroki-remote", "svg→png rasterized", {
+		logger.debug(processorId, "svg→png rasterized", {
 			tag: context.tag,
 			svgBytes: body.length,
 			pngBytes: png.length,
@@ -289,7 +296,7 @@ async function responseBodyToPng(
 		return { ok: true, png };
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		logger.error("kroki-remote", `svg→png failed: ${message}`, { tag: context.tag });
+		logger.error(processorId, `svg→png failed: ${message}`, { tag: context.tag });
 		return { ok: false, error: `SVG rasterization failed: ${message}` };
 	}
 }
@@ -298,12 +305,13 @@ function renderFailedKrokiResponse(
 	response: HttpResponse,
 	context: KrokiRequestContext,
 	logger: Logger,
+	processorId: string,
 ): FenceResult {
 	const text = response.body.toString("utf8");
 	const truncated = text.length > ERROR_BODY_MAX_CHARS
 		? text.slice(0, ERROR_BODY_MAX_CHARS)
 		: text;
-	logger.warn("kroki-remote", "response error", {
+	logger.warn(processorId, "response error", {
 		status: response.status,
 		tag: context.tag,
 		bodyBytes: response.body.length,
@@ -337,18 +345,84 @@ export function createKrokiProcessor(
 			return { ok: true };
 		},
 
-		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
-			const combinedSignal = mergeSignals([
-				signal,
-				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
-			]);
-			const context = createKrokiRequestContext(base, tag, appearance);
+		render: renderKrokiWithEndpoint(http, logger, "kroki-remote", () => base, appearance),
+	};
+}
 
-			logKrokiRequest(logger, context, source);
-			const requested = await requestKroki(http, logger, context, source, combinedSignal);
-			return requested.ok
-				? renderKrokiResponse(requested.response, context, logger)
-				: requested.result;
+export function createKrokiSandboxProcessor(
+	http: HttpClient,
+	controller: SandboxController,
+	logger: Logger = NULL_LOGGER,
+	appearance?: KrokiAppearanceResolver,
+): FenceProcessor {
+	return {
+		id: "kroki-sandbox",
+		placement: "sandbox",
+		tags: KROKI_CANONICAL_TAGS,
+		aliases: KROKI_ALIASES,
+		available: async () => sandboxEndpointAvailability(controller),
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+			const endpoint = await readySandboxEndpoint(controller);
+			if (!endpoint.ok) return { ok: false, error: endpoint.reason };
+			return renderKrokiWithEndpoint(
+				http,
+				logger,
+				"kroki-sandbox",
+				() => endpoint.endpoint,
+				appearance,
+			)(tag, source, signal);
 		}),
 	};
+}
+
+function renderKrokiWithEndpoint(
+	http: HttpClient,
+	logger: Logger,
+	processorId: string,
+	endpoint: () => string,
+	appearance?: KrokiAppearanceResolver,
+): FenceProcessor["render"] {
+	return withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+		const combinedSignal = mergeSignals([
+			signal,
+			AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
+		]);
+		const context = createKrokiRequestContext(endpoint(), tag, appearance);
+
+		logKrokiRequest(logger, processorId, context, source);
+		const requested = await requestKroki(http, logger, processorId, context, source, combinedSignal);
+		return requested.ok
+			? renderKrokiResponse(requested.response, context, logger, processorId)
+			: requested.result;
+	});
+}
+
+async function sandboxEndpointAvailability(
+	controller: SandboxController,
+): Promise<Availability> {
+	const endpoint = await readySandboxEndpoint(controller);
+	return endpoint.ok ? { ok: true } : { ok: false, reason: endpoint.reason };
+}
+
+async function readySandboxEndpoint(
+	controller: SandboxController,
+): Promise<{ ok: true; endpoint: string } | { ok: false; reason: string }> {
+	try {
+		return sandboxEndpointFromStatus(await controller.status());
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		return { ok: false, reason: `Kroki sandbox status failed: ${message}` };
+	}
+}
+
+function sandboxEndpointFromStatus(
+	status: SandboxStatus,
+): { ok: true; endpoint: string } | { ok: false; reason: string } {
+	if (status.state !== "ready") {
+		return { ok: false, reason: `Kroki sandbox is ${status.state}: ${status.message}` };
+	}
+	if (!status.endpoint) {
+		return { ok: false, reason: "Kroki sandbox is ready but did not report an endpoint." };
+	}
+	return { ok: true, endpoint: status.endpoint.replace(/\/+$/, "") };
 }
