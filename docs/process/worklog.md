@@ -4983,3 +4983,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Start/stop is the readiness check.** The preflight uses the same controller lifecycle as production instead of shelling out to infer QEMU/Gondolin state separately.
 
 **Carry-forward.** Add fast extension render proof for Gondolin-backed `bundle-sandbox`.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 inspection fix: Gondolin extension render proof
+
+**What shipped.** Added an extension-level tracer bullet proving `sandboxes.bundle.runtime: "gondolin-vm"` renders a `dot` fenced block through fake VM-backed `bundle-sandbox`, emits `processor: "bundle-sandbox"`, and does not fall back to Docker shell calls or Kroki HTTP.
+
+**Implementation commit.**
+
+1. `2187da3` — test CV10: prove Gondolin-backed bundle rendering
+
+**Beans.**
+
+1. Closed `task-1f96edc3` — CV10.E1.S1 inspection: prove Gondolin extension rendering.
+
+**Test count.** Fast suite increased from 878 to 879 with one extension tracer-bullet test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern "Gondolin-backed"` — passed: 1 test, 69 skipped by name filter.
+2. `pnpm run feedback` — passed: 879 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Full extension proof, fake VM only.** The fast proof covers config loading, processor registration, resolution, rendering, and custom message output without QEMU or Docker.
+2. **Fallbacks are asserted absent.** The test verifies no Docker command and no HTTP request occur, so a later regression cannot silently pass through another processor.
+
+**Carry-forward.** Re-run completion/live gates and close CV10.E1.S1 from a clean tree.
