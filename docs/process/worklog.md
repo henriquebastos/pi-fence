@@ -4807,3 +4807,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Shared path safety.** Docker and Gondolin workspaces use the same relative-path and workspace-root guards.
 
 **Carry-forward.** Wire `sandboxes.bundle.runtime: "gondolin-vm"` into sandbox controller creation and bundle processor factory selection under `task-ef6abdb9`.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 step 4: bundle sandbox runtime selection
+
+**What shipped.** `createSandboxControllers` now creates a `bundle` controller for `sandboxes.bundle.runtime: "gondolin-vm"`, carrying the configured image selector into the Gondolin VM factory. Gondolin bundle controllers expose their shared `execEnvironment`, and the `bundle-sandbox` processor factory prefers a controller-provided environment before falling back to the existing Docker exec environment. Processor id, tags, aliases, and policy behavior remain unchanged.
+
+**Implementation commit.**
+
+1. `bb99c71` — step 4: route bundle sandbox by runtime
+
+**Beans.**
+
+1. Closed `task-ef6abdb9` — CV10.E1.S1 step 4 bundle factory runtime selection.
+2. Next ready bean: `task-d0c94dea` — Gondolin bundle image contract and live gates.
+
+**Test count.** Fast suite increased from 867 to 869 with controller-selection and processor-factory tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/built-in-processors.test.ts tests/unit/sandbox.test.ts --testNamePattern Gondolin` — passed: 7 tests, 39 skipped by name filter.
+2. `pnpm run feedback` — passed: 869 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Controller owns VM environment.** Gondolin controllers expose the exec environment that shares their VM lifecycle state; the bundle processor still consumes only `ExecSandboxEnvironment`.
+2. **Docker behavior preserved.** Docker-backed `bundle-sandbox` still constructs the existing Docker exec environment when no controller-provided environment exists.
+3. **Policy unchanged.** Runtime selection happens under the named `bundle` sandbox; resolver placement and processor identity are unchanged.
+
+**Carry-forward.** Add Gondolin bundle image/live-gate scaffolding under `task-d0c94dea`, then run completion inspection for the story.
