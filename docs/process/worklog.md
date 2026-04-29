@@ -4520,3 +4520,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Factory diagnostics are visible.** Bad built-in factory records are logged through the extension logger instead of failing silently.
 
 **Carry-forward.** Add explicit order-independence, same-placement ambiguity, third-party registration, and architecture checks; then run completion inspection.
+
+---
+
+### 2026-04-28 — CV9.E1.S7 step 4: factory order policy proof and inspection
+
+**What shipped.** Added explicit resolver tests for factory-created built-ins with reversed collection order. The tests prove host placement still wins over remote for `dot` through policy, and sandbox same-placement conflicts between `kroki-sandbox` and `bundle-sandbox` remain ambiguous until bound. Completion inspection reported no Sonar issues.
+
+**Implementation commits.**
+
+1. `36c5afb` — step 4: prove factory order is policy-neutral
+
+**Test count.** Fast suite increased from 853 to 855 with two factory-order resolver tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/built-in-processors.test.ts` — passed: 7 tests.
+2. `pnpm run feedback` — passed: 855 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+3. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
+4. `rg -n "create(Graphviz|Mermaid|Table|Highlight|Qr|Color|Kroki|Bundle).*Processor|from \"\\./(graphviz-local|mermaid-local|table|highlight|qr|color|kroki|bundle-sandbox)\\.ts\"" extensions/pi-fence/index.ts extensions/pi-fence/processors extensions/pi-fence/built-in-processors.ts` — confirmed concrete processor constructors are only imported by processor wrapper modules, not `index.ts`.
+
+**Design decisions that survived implementation.**
+
+1. **Order proof uses real built-ins.** The resolver tests create actual built-in processors from reversed factory registrations instead of synthetic-only stubs.
+2. **Same-placement ambiguity is preserved.** Factory discovery does not introduce tie-breakers for `sandbox` processors.
+3. **Third-party registration remains unchanged.** The event-bus path still uses `validateProcessor` and `registerProcessor`; existing extension coverage remains green under the factory-created built-in set.
+
+**Carry-forward.** Close S7 from a clean tree, then run the CV9.E1 epic acceptance gate before closing `epic-63b063e6`.
