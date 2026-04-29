@@ -62,6 +62,11 @@ const PER_LANGUAGE_TIMEOUT_MS = 30_000;
 const runtime = await createConfiguredKrokiRuntime();
 
 describe("kroki renderer — live", () => {
+	it("builds a configured Kroki runtime", () => {
+		expect(runtime.canRender).toBeTypeOf("function");
+		expect(runtime.render).toBeTypeOf("function");
+	});
+
 	describe("happy-path PNG round-trip per language", () => {
 		for (const spec of KROKI_TEXT_LANGUAGES) {
 			it.skipIf(!runtime.canRender(spec.tag))(
