@@ -4867,3 +4867,35 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Kroki behavior preserved.** Existing Kroki auto-start tests remain green through the generalized processor auto-start guard.
 
 **Carry-forward.** Add skip-clean Gondolin live tests and setup docs under `task-d0c94dea`, then run story completion inspection.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 step 5: Gondolin bundle live gate
+
+**What shipped.** Added opt-in Gondolin bundle live tests for `bundle-sandbox`. The tests run Graphviz, Mermaid, and availability through a real Gondolin VM when `PI_FENCE_GONDOLIN_BUNDLE_IMAGE` points at a local image selector or guest asset path; otherwise they skip cleanly. User docs now describe `sandboxes.bundle.runtime: "gondolin-vm"`, the image contract, the no-host-mount/no-network baseline, and the live-test opt-in variable.
+
+**Implementation commit.**
+
+1. `5e14288` — step 5: gate Gondolin bundle live tests
+
+**Beans.**
+
+1. Closed `task-d0c94dea` — CV10.E1.S1 step 5 Gondolin bundle image contract and live gates.
+
+**Test count.** Fast suite increased from 871 to 872 with one live-dependency helper test. Live suite now has three additional Gondolin bundle tests that skip unless `PI_FENCE_GONDOLIN_BUNDLE_IMAGE` is set.
+
+**Verification.**
+
+1. `pnpm vitest run tests/utilities/live-deps.test.ts --testNamePattern gondolinBundleImageFromEnv` — passed: 1 test, 5 skipped by name filter.
+2. `pnpm vitest run tests/integration/bundle-sandbox.live.test.ts --testNamePattern Gondolin` — skipped cleanly without `PI_FENCE_GONDOLIN_BUNDLE_IMAGE`: 6 skipped by name filter / skip gate.
+3. `pnpm run feedback` — passed: 872 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+4. `pnpm test:live` — passed on rerun: 30 live tests passed, 28 skipped; managed `pi-fence-kroki` started and stopped cleanly. A first run hit a transient Kroki startup race in `kroki-sandbox.live.test.ts`; immediate rerun passed without code changes.
+5. `pnpm run inspect` — passed completion inspection: non-live coverage/CRAP and Sonar scan completed successfully.
+
+**Design decisions that survived implementation.**
+
+1. **Opt-in real VM gate.** The live suite never downloads/starts a Gondolin image implicitly; the developer must provide `PI_FENCE_GONDOLIN_BUNDLE_IMAGE`.
+2. **Same bundle contract.** Gondolin live tests use the existing `bundle-sandbox` processor and manifest/tool probes rather than VM-specific processor logic.
+3. **Docs follow behavior.** Public docs describe the VM runtime only after config, lifecycle, exec environment, auto-start, and skip-clean live tests exist.
+
+**Carry-forward.** Run the story inspection loop. If inspection produces no required findings, close CV10.E1.S1 and then CV10/CV10.E1 roadmap status from a clean tree.

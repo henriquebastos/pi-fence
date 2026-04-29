@@ -172,7 +172,7 @@ Omitting a placement disables every processor in that placement for resolution. 
 
 ## Running Graphviz and Mermaid in the bundle sandbox
 
-`bundle-sandbox` renders `graphviz`/`dot` and `mermaid` inside a labelled Docker exec container instead of using host binaries or remote Kroki. It is selected when `sandbox` placement is allowed and wins placement policy for the tag, for example:
+`bundle-sandbox` renders `graphviz`/`dot` and `mermaid` inside an isolated exec runtime instead of using host binaries or remote Kroki. The default runtime is the labelled Docker exec container. CV10 also supports an opt-in Gondolin VM runtime for a stronger isolation boundary. `bundle-sandbox` is selected when `sandbox` placement is allowed and wins placement policy for the tag, for example:
 
 ```json
 {
@@ -180,7 +180,7 @@ Omitting a placement disables every processor in that placement for resolution. 
 }
 ```
 
-Start the bundle container manually before `/reload`:
+For the Docker runtime, start the bundle container manually before `/reload`:
 
 ```bash
 docker build -t ghcr.io/henriquebastos/pi-fence-bundle:0.1.0 docker/bundle
@@ -194,9 +194,29 @@ docker run -d \
   ghcr.io/henriquebastos/pi-fence-bundle:0.1.0
 ```
 
-`bundle-sandbox.available()` verifies the container is running, matches the trusted image, has the `pi-fence.sandbox=bundle` label, exposes `/opt/pi-fence-bundle/manifest.json`, and passes `dot -V` plus `mmdc --version` inside the container. The container exposes no ports and uses no host mounts; Mermaid input/output files live in the container's `/tmp` workspace.
+`bundle-sandbox.available()` verifies the runtime is ready, exposes `/opt/pi-fence-bundle/manifest.json`, and passes `dot -V` plus `mmdc --version` inside the sandbox. The Docker controller also verifies the container is running, matches the trusted image, has the `pi-fence.sandbox=bundle` label, exposes no ports, and uses no host mounts. Mermaid input/output files live in the sandbox's `/tmp` workspace.
 
-S5 does not add `/fence bundle start|stop` or auto-start. Project-configured bundle image values are not executed by the current runtime path.
+For the Gondolin VM runtime, configure the bundle sandbox explicitly:
+
+```json
+{
+  "processorPrecedence": ["sandbox"],
+  "sandboxes": {
+    "bundle": {
+      "kind": "exec",
+      "runtime": "gondolin-vm",
+      "image": "pi-fence-bundle:0.1.0",
+      "autoStart": true
+    }
+  }
+}
+```
+
+`image` is a Gondolin image selector or local guest asset path that contains the same bundle contract as the Docker image: Graphviz `dot`, Mermaid CLI `mmdc`, Chromium runtime dependencies, `/opt/pi-fence-bundle/manifest.json`, and the Puppeteer config path used by the Mermaid handler. The VM options disable host VFS mounts, ambient env vars, and generic networking. If `autoStart` is false or omitted, the VM remains stopped and `bundle-sandbox` is unavailable until a future lifecycle command starts it.
+
+The live gate for this runtime is opt-in: set `PI_FENCE_GONDOLIN_BUNDLE_IMAGE=<image-selector-or-asset-path>` before `pnpm test:live`. Without that variable, the Gondolin live tests skip cleanly.
+
+S5 did not add `/fence bundle start|stop`; CV10 adds auto-start only for `gondolin-vm`.
 
 ### Missing / malformed config files
 
@@ -210,7 +230,8 @@ If you don't see an image, check:
 - Your terminal supports inline images.
 - For `kroki-remote` tags served by kroki.io: you have network access.
 - For `dot` tags selected by `graphviz-host`: `graphviz` is on your PATH (`dot -V` should print a version).
-- For `dot` or `mermaid` tags selected by `bundle-sandbox`: the `pi-fence-bundle` Docker container is running, labelled, and built from the trusted bundle image.
+- For `dot` or `mermaid` tags selected by Docker-backed `bundle-sandbox`: the `pi-fence-bundle` Docker container is running, labelled, and built from the trusted bundle image.
+- For `dot` or `mermaid` tags selected by Gondolin-backed `bundle-sandbox`: `sandboxes.bundle.runtime` is `gondolin-vm`, the configured image selector or asset path is available to Gondolin, and `autoStart` has started the VM.
 - For tags selected by `kroki-sandbox`: the configured `sandboxes.kroki` service runtime is ready and reports `http://localhost:8000`.
 
 ## Configuring the Kroki endpoint
@@ -453,6 +474,8 @@ Expect all green on a clean clone.
 Run when adding or changing a processor, touching an I/O seam, or refreshing fixtures. The live suite exercises real dependencies — Kroki HTTP, local binaries via Docker, and headless Chromium for render-image pixel-diff. Skipped cleanly when dependencies aren’t available.
 
 By default, `pnpm test:live` sets `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, so Kroki coverage prefers the managed local sandbox instead of public `kroki.io`. The test runner starts `pi-fence-kroki` when the configured single-container sandbox is absent, and stops/removes it at the end only if that run started it. If `pi-fence-kroki` was already running, the test runner leaves it running.
+
+Gondolin bundle live tests are opt-in because they require QEMU/Gondolin guest assets and a bundle VM image. Set `PI_FENCE_GONDOLIN_BUNDLE_IMAGE=<image-selector-or-asset-path>` to enable them; otherwise they skip cleanly.
 
 Run the live suite:
 

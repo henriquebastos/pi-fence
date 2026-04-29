@@ -2,7 +2,7 @@
 
 > A [pi coding agent](https://pi.dev/) extension that processes fenced code blocks — so a ```` ```mermaid ```` block becomes a rendered diagram, a ```` ```csv ```` block becomes a formatted table, and so on. Pluggable processor registry: start with what's built in, plug in anything else you need.
 
-**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, a Docker exec `bundle-sandbox` for Graphviz/Mermaid, managed `kroki-sandbox` service runtimes, embedded table/highlight/QR/color processors, and `kroki-remote` for unmanaged Kroki endpoints such as [kroki.io](https://kroki.io). Users can bind tags, block tag families or processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
+**Status:** local/embedded processors + broad Kroki coverage + placement policy. Built-ins include local Graphviz, local Mermaid via `mmdc`, a Docker or Gondolin VM `bundle-sandbox` for Graphviz/Mermaid, managed `kroki-sandbox` service runtimes, embedded table/highlight/QR/color processors, and `kroki-remote` for unmanaged Kroki endpoints such as [kroki.io](https://kroki.io). Users can bind tags, block tag families or processors, configure Kroki endpoints, and restrict placement precedence in `~/.pi/agent/pi-fence.config.json` or project-local `.pi/pi-fence.config.json`; see [docs/getting-started.md](docs/getting-started.md#binding-a-tag-to-a-specific-processor). See [docs/product/kroki-support.md](docs/product/kroki-support.md) for the full per-language reference.
 
 ---
 
@@ -41,7 +41,7 @@ On expansion (ctrl+o on the rendered message) pi-fence also shows the original s
 - `table-embedded`, `highlight-embedded`, `qr-embedded`, `color-embedded` — run inside pi-fence with no external service or host binary.
 - `graphviz-host` — shells out to the local `dot` binary, source on stdin. By default it wins `graphviz`/`dot` blocks when `dot` is on your PATH and `host` placement is allowed; otherwise pi-fence falls through to the next allowed processor, typically Kroki. Zero configuration: install `graphviz` (`apt install graphviz` on Debian/Ubuntu, `brew install graphviz` on macOS, <https://graphviz.org/download/> otherwise) and pi-fence picks it up on the next `/reload`. Diagram sources never leave your machine for this tag when `graphviz-host` is selected.
 - `mermaid-host` — shells out to `mmdc` when `@mermaid-js/mermaid-cli` is installed.
-- `bundle-sandbox` — uses a labelled `pi-fence-bundle` Docker exec container to render `graphviz`/`dot` and `mermaid` without host binaries or remote HTTP when `sandbox` placement is selected and the bundle container is running.
+- `bundle-sandbox` — uses a labelled `pi-fence-bundle` Docker exec container or an opt-in Gondolin VM runtime to render `graphviz`/`dot` and `mermaid` without host binaries or remote HTTP when `sandbox` placement is selected and the bundle runtime is ready.
 - `kroki-sandbox` — uses a pi-fence-managed local Kroki service with `placement: "sandbox"`; the runtime can be the existing single `yuzutech/kroki` container or the fixed `docker/kroki/compose.yaml` stack.
 - `kroki-remote` — posts to the public [kroki.io](https://kroki.io) endpoint for every other tag (and for `graphviz`/`dot` when you don't have `graphviz` installed). Theme-aware (see above).
 
@@ -79,7 +79,7 @@ Resolution diagnostics live in structured debug logs; `/fence trace` is not part
 What does **not** work yet:
 
 - Host-binary renderers for diagram languages beyond Graphviz and Mermaid — for example PlantUML via `plantuml.jar`. See the [roadmap](docs/project/roadmap/README.md).
-- Non-Docker service sandboxes and Kroki companion-only tags such as `bpmn`, `excalidraw`, and `diagramsnet`.
+- VM-backed service sandboxes and Kroki companion-only tags such as `bpmn`, `excalidraw`, and `diagramsnet`.
 - Every later CV (see [roadmap](docs/project/roadmap/README.md)).
 
 ## Docs
@@ -111,7 +111,7 @@ pnpm install
 pnpm test:watch          # red/green while editing
 pnpm run feedback        # TDD loop — every commit (tests + CRAP + lint)
 pnpm run inspect         # completion — when TDD session feels done (broader CRAP + Sonar)
-pnpm test:live           # live I/O — starts/stops local Kroki sandbox when needed
+pnpm test:live           # live I/O — starts/stops local Kroki sandbox when needed; Gondolin bundle tests need PI_FENCE_GONDOLIN_BUNDLE_IMAGE
 pnpm run render:verify   # acceptance — before closing an epic (headless UI screenshots)
 ```
 
