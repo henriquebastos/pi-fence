@@ -4301,3 +4301,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Doctor reuses listing reasons.** `/fence doctor` now includes unavailable reasons, so component details have one source of truth from processor availability.
 
 **Carry-forward.** Prove policy interactions between `kroki-sandbox`, `kroki-remote`, and `bundle-sandbox`.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 step 5: Kroki sandbox policy interactions
+
+**What shipped.** Extension coverage now proves the policy edges around `kroki-sandbox`: remote fallback when the sandbox is unavailable, same-placement ambiguity when `bundle-sandbox` and `kroki-sandbox` are both ready for `dot`, and exact binding to `kroki-sandbox` when both sandbox processors are available.
+
+**Implementation commits.**
+
+1. `a3259dc` — step 5: prove Kroki sandbox policy interactions
+
+**Test count.** Fast suite 836 → 839 (+3).
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts -t 'falls back to kroki-remote|same-placement bundle|binding selects kroki-sandbox'` — passed, 3 selected tests. These were policy-hardening coverage; the behaviors were already green after S6 steps 1–4.
+2. `pnpm run feedback` — passed: 839 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Fallback stays policy-driven.** Unavailable `kroki-sandbox` falls through to `kroki-remote` only because `remote` remains allowed by `processorPrecedence`.
+2. **No same-placement tie-breaker.** `bundle-sandbox` and `kroki-sandbox` ambiguity remains unresolved until a binding selects one processor.
+3. **Bindings keep exact semantics.** A `{ "processor": "kroki-sandbox" }` binding selects the managed service without weakening blocked/placement policy.
+
+**Carry-forward.** Add Kroki sandbox live gates and user-facing docs, then run completion inspection for S6.
