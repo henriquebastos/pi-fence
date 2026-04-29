@@ -155,14 +155,14 @@ describe("config core", () => {
 		const result = validatePiFenceConfig(
 			{
 				sandboxes: {
-					bundle: { kind: "exec", runtime: "gondolin-vm", autoStart: true },
+					bundle: { kind: "exec", runtime: "gondolin-vm", image: "pi-fence-bundle:0.1.0", autoStart: true },
 				},
 			},
 			"test",
 		);
 
 		expect(result.sandboxes).toEqual({
-			bundle: { kind: "exec", runtime: "gondolin-vm", autoStart: true },
+			bundle: { kind: "exec", runtime: "gondolin-vm", image: "pi-fence-bundle:0.1.0", autoStart: true },
 		});
 	});
 
@@ -182,6 +182,49 @@ describe("config core", () => {
 		expect(result.processorPrecedence).toEqual(["embedded"]);
 		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
 			"runtime is not compatible with sandbox kind",
+		]);
+	});
+
+	it("validates sandboxes: rejects Gondolin VM auto-start without an explicit image", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "exec", runtime: "gondolin-vm", autoStart: true },
+				},
+			},
+			"global",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
+			"gondolin autoStart requires an explicit image",
+		]);
+	});
+
+	it("validates sandboxes: rejects project-local Gondolin VM auto-start", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: {
+						kind: "exec",
+						runtime: "gondolin-vm",
+						image: "pi-fence-bundle:0.1.0",
+						autoStart: true,
+					},
+				},
+			},
+			"project",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
+			"project config cannot auto-start Gondolin images",
 		]);
 	});
 

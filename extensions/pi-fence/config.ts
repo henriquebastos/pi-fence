@@ -155,7 +155,7 @@ export function validatePiFenceConfig(
 	const rawPrecedence = ownField(parsed, "processorPrecedence");
 	const rawSandboxes = ownField(parsed, "sandboxes");
 	const rawKroki = ownField(parsed, "kroki");
-	const failClosed = hasInvalidPrivacyControl(parsed);
+	const failClosed = hasInvalidPrivacyControl(parsed, label);
 	const processorPrecedence = validateProcessorPrecedenceField(
 		rawPrecedence,
 		failClosed,
@@ -247,9 +247,9 @@ function validateProcessorPrecedenceField(
 	return validateProcessorPrecedence(rawPrecedence, label, logger);
 }
 
-function hasInvalidPrivacyControl(parsed: Record<string, unknown>): boolean {
+function hasInvalidPrivacyControl(parsed: Record<string, unknown>, label: string): boolean {
 	return hasInvalidBlocked(ownField(parsed, "blocked")) ||
-		hasInvalidSandboxes(ownField(parsed, "sandboxes")) ||
+		hasInvalidSandboxes(ownField(parsed, "sandboxes"), label) ||
 		hasInvalidKrokiEndpoint(ownField(parsed, "kroki"));
 }
 
@@ -260,21 +260,23 @@ function hasInvalidBlocked(rawBlocked: unknown): boolean {
 		hasInvalidStringArray(ownField(rawBlocked, "processors"));
 }
 
-function hasInvalidSandboxes(rawSandboxes: unknown): boolean {
+function hasInvalidSandboxes(rawSandboxes: unknown, label: string): boolean {
 	if (rawSandboxes === undefined) return false;
 	if (!isRecordLike(rawSandboxes)) return true;
-	return Object.values(rawSandboxes).some(hasInvalidSandboxEntry);
+	return Object.values(rawSandboxes).some((entry) => hasInvalidSandboxEntry(entry, label));
 }
 
-function hasInvalidSandboxEntry(rawSandbox: unknown): boolean {
+function hasInvalidSandboxEntry(rawSandbox: unknown, label: string): boolean {
 	if (!isRecordLike(rawSandbox)) return true;
 	const kind = ownField(rawSandbox, "kind");
 	const runtime = ownField(rawSandbox, "runtime");
+	const image = ownField(rawSandbox, "image");
+	const autoStart = ownField(rawSandbox, "autoStart");
 	return !isSandboxKind(kind) ||
 		!isSandboxRuntime(runtime) ||
-		!isCompatibleSandboxRuntime(kind, runtime) ||
-		hasInvalidOptionalString(ownField(rawSandbox, "image")) ||
-		hasInvalidOptionalBoolean(ownField(rawSandbox, "autoStart"));
+		sandboxConfigIssue(label, kind, runtime, image, autoStart) !== undefined ||
+		hasInvalidOptionalString(image) ||
+		hasInvalidOptionalBoolean(autoStart);
 }
 
 function hasInvalidOptionalString(rawValue: unknown): boolean {
@@ -431,8 +433,9 @@ function validateSandboxEntry(
 		warnInvalidSandbox(id, label, "kind/runtime are invalid", logger);
 		return undefined;
 	}
-	if (!isCompatibleSandboxRuntime(kind, runtime)) {
-		warnInvalidSandbox(id, label, "runtime is not compatible with sandbox kind", logger);
+	const configIssue = sandboxConfigIssue(label, kind, runtime, image, autoStart);
+	if (configIssue !== undefined) {
+		warnInvalidSandbox(id, label, configIssue, logger);
 		return undefined;
 	}
 	if (hasInvalidOptionalString(image) || hasInvalidOptionalBoolean(autoStart)) {
@@ -600,8 +603,19 @@ function isSandboxRuntime(value: unknown): value is SandboxRuntime {
 	return typeof value === "string" && SANDBOX_RUNTIMES.includes(value as SandboxRuntime);
 }
 
-function isCompatibleSandboxRuntime(kind: SandboxKind, runtime: SandboxRuntime): boolean {
-	return runtime !== "gondolin-vm" || kind === "exec";
+function sandboxConfigIssue(
+	label: string,
+	kind: SandboxKind,
+	runtime: SandboxRuntime,
+	image: unknown,
+	autoStart: unknown,
+): string | undefined {
+	if (runtime !== "gondolin-vm") return undefined;
+	if (kind !== "exec") return "runtime is not compatible with sandbox kind";
+	if (autoStart !== true) return undefined;
+	if (typeof image !== "string") return "gondolin autoStart requires an explicit image";
+	if (label === "project") return "project config cannot auto-start Gondolin images";
+	return undefined;
 }
 
 function isRecordLike(value: unknown): value is Record<string, unknown> {
