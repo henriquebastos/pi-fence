@@ -4167,3 +4167,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. Full `pnpm test:live -- tests/integration/bundle-sandbox.live.test.ts` could not be used as a narrow lane in this environment because the package script runs broader live suites before Vitest's trailing filter applies.
 
 **Carry-forward.** Continue CV9.E1 with S6 (`kroki-sandbox`). Do not close `epic-63b063e6`; S6 and S7 remain.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 spec ready: Kroki sandbox processor
+
+**What shipped.** `CV9.E1.S6` moved from Draft to Ready. The story now defines `kroki-sandbox` as a managed service-sandbox processor distinct from unmanaged `kroki-remote`, covers both `docker-container` and fixed `docker-compose` service runtimes, records all-or-nothing CV9 availability, and seeds the S6 bean ledger.
+
+**Implementation commits.**
+
+1. `5aac6fd` — spec CV9.E1.S6: ready Kroki sandbox processor
+
+**Test count.** Fast suite unchanged at 814.
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed: link check over 112 files and markdown body lint over 111 files.
+2. `pnpm run feedback` — passed: 814 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived readiness.**
+
+1. **Controller ownership defines sandbox.** `kroki.endpoint` remains unmanaged `kroki-remote` configuration even when it points at localhost; `kroki-sandbox` uses only controller-owned endpoints.
+2. **Trusted service definitions only.** S6 keeps the existing trusted single-container image and a repo-owned Compose stack; project-supplied service images/files remain out of scope.
+3. **Partial is unavailable in CV9.** Compose component details are diagnostics, not tag-specific selection rules yet.
+
+**Carry-forward.** Start S6 implementation with the `kroki-sandbox` processor contract bean. Do not close `epic-63b063e6`; S6 and S7 remain.
