@@ -115,9 +115,11 @@ class FakeGondolinVM implements GondolinVMHandle {
 class FakeGondolinVMFactory implements GondolinVMFactory {
 	readonly creates: Array<{ image?: string }> = [];
 	readonly vm = new FakeGondolinVM();
+	createWaiter?: Promise<void>;
 
 	async create(options: { image?: string }): Promise<GondolinVMHandle> {
 		this.creates.push(options);
+		await this.createWaiter;
 		return this.vm;
 	}
 }
@@ -259,6 +261,45 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 			state: "error",
 			message: "Gondolin VM for sandbox bundle failed to start: qemu missing",
 		});
+	});
+
+	it("clears a failed start error when stopped", async () => {
+		const factory = new FakeGondolinVMFactory();
+		factory.vm.startError = new Error("qemu missing");
+		const controller = createGondolinBundleSandboxController(factory);
+
+		await controller.start();
+
+		expect(await controller.stop()).toEqual({
+			state: "stopped",
+			message: "Gondolin VM for sandbox bundle is stopped.",
+		});
+		expect(await controller.status()).toEqual({
+			state: "stopped",
+			message: "Gondolin VM for sandbox bundle is stopped.",
+		});
+	});
+
+	it("single-flights concurrent starts", async () => {
+		const factory = new FakeGondolinVMFactory();
+		let releaseCreate!: () => void;
+		factory.createWaiter = new Promise<void>((resolve) => {
+			releaseCreate = resolve;
+		});
+		const controller = createGondolinBundleSandboxController(factory, { image: "pi-fence-bundle:0.1.0" });
+
+		const first = controller.start();
+		const second = controller.start();
+		await Promise.resolve();
+
+		expect(factory.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
+
+		releaseCreate();
+		await expect(Promise.all([first, second])).resolves.toEqual([
+			{ state: "ready", message: "Gondolin VM for sandbox bundle is ready." },
+			{ state: "ready", message: "Gondolin VM for sandbox bundle is ready." },
+		]);
+		expect(factory.vm.startCalls).toBe(1);
 	});
 
 	it("builds VM options without host mounts or generic networking", () => {

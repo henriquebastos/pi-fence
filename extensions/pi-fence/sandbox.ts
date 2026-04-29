@@ -192,6 +192,7 @@ export function createGondolinBundleSandboxController(
 	let vm: GondolinVMHandle | undefined;
 	let ready = false;
 	let error: string | undefined;
+	let startPromise: Promise<SandboxStatus> | undefined;
 	const activeVm = (): GondolinVMHandle => {
 		if (!vm || !ready) throw new Error("Gondolin VM for sandbox bundle is not ready.");
 		return vm;
@@ -207,10 +208,17 @@ export function createGondolinBundleSandboxController(
 		return gondolinBundleStatus(ready ? "ready" : "stopped");
 	};
 
-	async function start(): Promise<SandboxStatus> {
+	function start(): Promise<SandboxStatus> {
+		startPromise ??= startInternal().finally(() => {
+			startPromise = undefined;
+		});
+		return startPromise;
+	}
+
+	async function startInternal(): Promise<SandboxStatus> {
 		try {
 			vm ??= await factory.create({ image: options.image });
-			await vm.start();
+			if (!ready) await vm.start();
 			ready = true;
 			error = undefined;
 			return gondolinBundleStatus("ready");
@@ -222,8 +230,11 @@ export function createGondolinBundleSandboxController(
 	}
 
 	async function stop(): Promise<SandboxStatus> {
+		await startPromise?.catch(() => undefined);
 		await vm?.close();
+		vm = undefined;
 		ready = false;
+		error = undefined;
 		return gondolinBundleStatus("stopped");
 	}
 
