@@ -20,7 +20,7 @@ Variants appear only when multiple processors in the same family and placement c
 
 The user's config owns precedence, bindings, and block policy. Omitting a placement from `processorPrecedence` disables that whole placement. Blocking tags or processors is stronger than bindings and cannot be bypassed by LLM-authored metadata.
 
-This CV should land before order-independent processor folder discovery becomes the default, and before CV7's companion backend work exposes managed Kroki stacks as `sandbox` processors.
+This CV should land before order-independent processor folder discovery becomes the default. S6 supplies the managed Kroki `sandbox` processor base that CV7 can extend to companion-only tags.
 
 This CV is done when every Story in its Epics is done.
 

@@ -4375,3 +4375,50 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Sonar false-positive was addressed locally.** The bundle contract file now contains one explicit assertion in addition to the shared contract registrations.
 
 **Carry-forward.** Close S6 from a clean tree; do not close `epic-63b063e6` because S7 remains.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 closed: Kroki sandbox processor
+
+**What shipped.** CV9.E1.S6 is done. pi-fence now has distinct `kroki-sandbox` and `kroki-remote` processors: sandbox resolution requires a ready managed service controller, while `kroki.endpoint` remains unmanaged remote configuration. The sandbox path supports both the trusted single-container Kroki runtime and a fixed Compose stack (`docker/kroki/compose.yaml`) with Kroki core plus Mermaid companion service. Extension wiring prefers the sandbox when policy allows it, falls back to remote when allowed and sandbox is unavailable, reports partial Compose diagnostics in `/fence doctor`, and keeps same-placement ambiguity explicit when `bundle-sandbox` and `kroki-sandbox` both match a tag.
+
+**Story commits.**
+
+1. `5aac6fd` — spec CV9.E1.S6: ready Kroki sandbox processor
+2. `5eec0a6` — step 1: split Kroki sandbox contract
+3. `24f3c05` — step 2: wire Kroki into sandbox policy
+4. `23c36a3` — step 3: control Kroki compose stacks
+5. `9219308` — step 4: wire Kroki compose diagnostics
+6. `a3259dc` — step 5: prove Kroki sandbox policy interactions
+7. `7f122fa` — step 6: gate Kroki sandbox live paths
+8. `a580102` — step 7: clear S6 inspection findings
+
+**Adjacent docs commits.**
+
+1. `d48a986` — docs: record CV9.E1.S6 spec readiness
+2. `0f286dd` — docs: record CV9.E1.S6 Kroki sandbox contract
+3. `debadb8` — docs: record CV9.E1.S6 single-container wiring
+4. `f796a8e` — docs: record CV9.E1.S6 compose controller
+5. `3df7c6c` — docs: record CV9.E1.S6 compose diagnostics
+6. `df6203e` — docs: record CV9.E1.S6 policy interactions
+7. `68fe1eb` — docs: record CV9.E1.S6 live docs
+8. `d1a4d03` — docs: record CV9.E1.S6 inspection cleanup
+
+**Test count.** Fast suite moved from 827 after S5 to 840 after S6. S6 added Kroki sandbox contract, extension, resolver, doctor, Compose controller, and clean-skip live coverage.
+
+**Verification.**
+
+1. `pnpm vitest run tests/integration/kroki-sandbox.live.test.ts` — skipped cleanly in this environment: 1 file skipped, 4 tests skipped because managed Kroki containers were absent.
+2. `pnpm run feedback` — passed at close: 840 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+3. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
+
+**Design decisions that survived implementation.**
+
+1. **Sandbox ownership is controller-based.** `http://localhost:*` does not imply sandbox placement; only `sandboxes.kroki` with a ready controller selects `kroki-sandbox`.
+2. **Kroki render semantics are shared.** Remote and sandbox processors use the same tag map, alias behavior, SVG rasterization, theme handling, timeouts, and structured errors.
+3. **Compose partial status fails closed.** CV9 treats partial stacks as unavailable for every tag but reports component details for diagnosis.
+4. **Policy remains explicit.** `processorPrecedence: ["sandbox", "remote"]` expresses sandbox preference plus remote fallback; exact bindings are required for same-placement ambiguity.
+
+**Known deviations.** Live Kroki sandbox tests skipped because the managed Docker services were absent. No epic acceptance gate ran because S7 remains and `epic-63b063e6` stays open.
+
+**Carry-forward.** Start CV9.E1.S7 from a clean tree; do not close `epic-63b063e6` until S7 is done and the epic acceptance gate passes.
