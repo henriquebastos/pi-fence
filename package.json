@@ -51,7 +51,7 @@
     "lint:markdown:fix": "markdownlint-cli2 --fix",
     "test": "vitest run --exclude 'tests/integration/**' --exclude 'tests/render-image/**' --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text-summary --coverage.include='extensions/**/*.ts' --coverage.thresholds.statements=90 --coverage.thresholds.lines=90 --coverage.thresholds.functions=90 --coverage.thresholds.branches=75",
     "test:watch": "vitest --exclude 'tests/integration/**' --exclude 'tests/render-image/**'",
-    "test:live": "vitest run tests/integration tests/render-image",
+    "test:live": "PI_FENCE_CONFIG=${PI_FENCE_CONFIG:-tests/fixtures/live-config/kroki-sandbox.json} vitest run tests/integration tests/render-image",
     "test:all": "vitest run",
     "inspect": "tsx scripts/inspect.ts",
     "inspect:coverage:nonlive": "vitest run --exclude 'tests/integration/**' --exclude 'tests/render-image/**' --coverage --coverage.provider=istanbul --coverage.reporter=json --coverage.reporter=text-summary --coverage.reportsDirectory=coverage/nonlive --coverage.include='extensions/**/*.ts' --coverage.include='scripts/**/*.ts' --coverage.include='tests/unit/**/*.ts' --coverage.include='tests/contract/**/*.ts' --coverage.include='tests/extension/**/*.ts' --coverage.include='tests/utilities/**/*.ts'",
