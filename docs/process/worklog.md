@@ -4219,3 +4219,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Unavailable means non-rendering.** Non-ready service status returns unavailable and render error results without making HTTP requests.
 
 **Carry-forward.** Continue S6 with single-container Kroki service wiring and lifecycle ownership.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 step 2: single-container Kroki service wiring
+
+**What shipped.** The default extension path now registers `kroki-sandbox` for `sandboxes.kroki` service sandboxes using the existing trusted single-container Docker controller. Sandbox placement can render `dot` through the controller-owned `http://localhost:8000` endpoint, `/fence list` reports the sandbox Kroki processor, and Docker Kroki auto-start is gated by `kroki-sandbox` policy before availability probing.
+
+**Implementation commits.**
+
+1. `24f3c05` — step 2: wire Kroki into sandbox policy
+
+**Test count.** Fast suite 827 → 829 (+2).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/extension/pi-fence.test.ts -t 'sandbox precedence renders dot through kroki-sandbox'` — failed because no `kroki-sandbox` output was emitted.
+2. RED: `pnpm vitest run tests/extension/pi-fence.test.ts -t 'sandbox-only placement allows single-container Kroki auto-start'` — failed because auto-start was still gated by remote placement.
+3. GREEN: `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/sandbox.test.ts tests/unit/fence-command.test.ts -t 'kroki|Kroki|sandbox|autoStart|auto-start'` — passed, 62 selected tests.
+4. `pnpm run feedback` — passed: 829 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Sandbox policy owns auto-start.** `processorPrecedence` must allow `sandbox`; `remote` alone no longer starts the managed Kroki container.
+2. **Auto-start happens before availability probing.** The extension starts the selected single-container service before probing processors, so a newly started service can become selectable in the same session.
+3. **Image trust remains fixed.** Project-configured Kroki sandbox images stay inert; the single-container path still uses the trusted `yuzutech/kroki` manager.
+
+**Carry-forward.** Continue S6 with the Compose Kroki service controller.
