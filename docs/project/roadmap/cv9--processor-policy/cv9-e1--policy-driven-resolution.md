@@ -1,7 +1,7 @@
 # CV9.E1 — Policy-driven Resolution
 
 **CV:** [CV9 — Processor Policy](README.md)
-**Last updated:** 2026-04-28 — S6 done
+**Last updated:** 2026-04-28 — S7 ready
 
 ## Summary
 
@@ -67,7 +67,7 @@ A variant suffix is used only when multiple processors in the same family and pl
 | [S4](cv9-e1-s4--sandbox-control-contract.md) | **Sandbox control contract** | Done |
 | [S5](cv9-e1-s5--bundle-sandbox-processor.md) | **Bundle sandbox processor** | Done |
 | [S6](cv9-e1-s6--kroki-sandbox-processor.md) | **Kroki sandbox processor** | Done |
-| [S7](cv9-e1-s7--processor-factory-discovery.md) | **Processor factory discovery** | Draft |
+| [S7](cv9-e1-s7--processor-factory-discovery.md) | **Processor factory discovery** | Ready |
 
 ## Tracer-bullet rule
 
