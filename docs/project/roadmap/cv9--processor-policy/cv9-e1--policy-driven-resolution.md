@@ -1,7 +1,7 @@
 # CV9.E1 — Policy-driven Resolution
 
 **CV:** [CV9 — Processor Policy](README.md)
-**Last updated:** 2026-04-28 — S7 ready
+**Last updated:** 2026-04-29 — S7 done; epic acceptance blocked by live Kroki timeout
 
 ## Summary
 
@@ -67,10 +67,14 @@ A variant suffix is used only when multiple processors in the same family and pl
 | [S4](cv9-e1-s4--sandbox-control-contract.md) | **Sandbox control contract** | Done |
 | [S5](cv9-e1-s5--bundle-sandbox-processor.md) | **Bundle sandbox processor** | Done |
 | [S6](cv9-e1-s6--kroki-sandbox-processor.md) | **Kroki sandbox processor** | Done |
-| [S7](cv9-e1-s7--processor-factory-discovery.md) | **Processor factory discovery** | Ready |
+| [S7](cv9-e1-s7--processor-factory-discovery.md) | **Processor factory discovery** | Done |
 
 ## Tracer-bullet rule
 
 S1 is deliberately a vertical slice. It must carry one policy setting from config file parsing through resolver selection and extension rendering before broader binding/blocking/factory work starts. Later stories may refactor the shape, but not skip the red → green proof that the policy affects a real rendered block.
 
 S5 and S6 are sandbox tracer bullets. S5 proves an exec sandbox through one multi-tag `bundle-sandbox` processor; S6 proves service sandboxes through `kroki-sandbox` with both single-container and Compose-backed runtimes.
+
+## Acceptance status
+
+Story implementation is complete, but the epic remains open until the acceptance gate can pass. On 2026-04-29, `pnpm test:live` was blocked by public Kroki request timeouts in `tests/integration/kroki.live.test.ts`; `pnpm run render:verify` passed. Rerun the live gate when Kroki/network is reachable before closing the epic.

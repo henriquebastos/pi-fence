@@ -4547,3 +4547,46 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Third-party registration remains unchanged.** The event-bus path still uses `validateProcessor` and `registerProcessor`; existing extension coverage remains green under the factory-created built-in set.
 
 **Carry-forward.** Close S7 from a clean tree, then run the CV9.E1 epic acceptance gate before closing `epic-63b063e6`.
+
+---
+
+### 2026-04-29 — CV9.E1.S7 closed: processor factory discovery
+
+**What shipped.** CV9.E1.S7 is done. Built-in processors now sit behind standard `processorFactory` registrations collected by a static manifest. `index.ts` builds sandbox controllers once, creates the default processor set through the built-in loader, logs factory diagnostics, and no longer imports concrete processor constructors. Resolver behavior remains policy-driven: reversing factory collection order still selects cross-placement winners by `processorPrecedence`, and same-placement sandbox conflicts remain ambiguous until bound.
+
+**Story commits.**
+
+1. `29d6033` — spec CV9.E1.S7: ready processor factory discovery
+2. `2521f23` — step 1: validate processor factories
+3. `1a967f8` — step 2: wrap built-in processor factories
+4. `b0d8306` — step 3: load default processors from factories
+5. `36c5afb` — step 4: prove factory order is policy-neutral
+
+**Adjacent docs commits.**
+
+1. `9fdaf89` — docs: record CV9.E1.S7 spec readiness
+2. `b2fac2b` — docs: record CV9.E1.S7 factory loader
+3. `8d631ce` — docs: record CV9.E1.S7 built-in wrappers
+4. `e3aa26e` — docs: record CV9.E1.S7 composition loader
+5. `8f8c5ab` — docs: record CV9.E1.S7 policy proof
+
+**Test count.** Fast suite moved from 840 at S7 start to 855 at close.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed at close: 855 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
+3. `pnpm test:live` — blocked for epic acceptance: 29 Kroki live cases timed out through the public `https://kroki.io` endpoint; repo-local bundle/Kroki sandbox live tests skipped cleanly when their managed containers were absent.
+4. `node -e "fetch('https://kroki.io/mermaid/png',{method:'POST',headers:{'content-type':'text/plain'},body:'flowchart LR\\nA-->B',signal:AbortSignal.timeout(10000)})..."` — timed out, confirming the live failure is an external Kroki/network availability blocker.
+5. `pnpm run render:verify` — passed: 5 render scenarios wrote screenshots/gallery under `scripts/out/render-verify/`.
+
+**Design decisions that survived implementation.**
+
+1. **Static manifest over runtime scanning.** The manifest removes constructor wiring from `index.ts` without taking on installed-extension filesystem discovery.
+2. **Factories do not carry policy.** Factory registrations have ids and create functions only; order, priority, and processor-precedence metadata are rejected.
+3. **Thin wrappers protect behavior tests.** Existing processor implementation modules remain stable and keep their direct unit, contract, fixture, and live test surfaces.
+4. **Activation is resilient.** Bad factory records and create failures produce diagnostics and skip failed processors.
+
+**Known deviations.** CV9.E1 epic closure is blocked by public Kroki live timeouts, tracked in `task-333cb0de`; `epic-63b063e6` remains open. No user-facing docs or CHANGELOG entry were needed for S7 because the change is composition/internal architecture with preserved behavior.
+
+**Carry-forward.** Rerun `pnpm test:live` when public Kroki/network is reachable, then close `task-333cb0de` and the CV9.E1 epic if the full acceptance gate passes.
