@@ -4445,3 +4445,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 4. **Factory failures are diagnostic, not fatal.** Bad factory records or create failures should be logged/skipped instead of taking down activation.
 
 **Carry-forward.** Implement S7 one bean at a time: factory contract/loader first, then built-in wrappers, then `index.ts` composition simplification and inspection.
+
+---
+
+### 2026-04-28 — CV9.E1.S7 step 1: processor factory contract loader
+
+**What shipped.** Added the standard processor factory contract and pure loader. The loader validates module-like records, rejects missing or malformed `processorFactory` exports, rejects duplicate factory ids, rejects precedence-like metadata (`order`, `priority`, `processorPrecedence`), validates created processors with the existing `FenceProcessor` boundary, and reports create failures as diagnostics instead of throwing.
+
+**Implementation commits.**
+
+1. `2521f23` — step 1: validate processor factories
+
+**Test count.** Fast suite increased from 840 to 848 with eight unit tests for factory collection and creation diagnostics.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/processor-factory.test.ts` — passed: 8 tests.
+2. `pnpm run feedback` — passed: 848 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Factory validation is pure.** Tests can exercise module records without runtime imports or filesystem access.
+2. **Created processors reuse the existing boundary.** `validateProcessor` remains the single shape validator for built-ins and third-party processors.
+3. **Bad factories degrade to diagnostics.** Collection and creation keep valid processors and report bad records without activation-time throws.
+
+**Carry-forward.** Add built-in factory wrappers and a static manifest next, then route `index.ts` through the loader.
