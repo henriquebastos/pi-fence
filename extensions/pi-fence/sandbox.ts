@@ -1,5 +1,7 @@
 import { posix as pathPosix } from "node:path";
 
+import type { VMOptions } from "@earendil-works/gondolin";
+
 import type { ShellRunner, ShellResult, ShellRunOptions } from "./io/shell-runner.ts";
 import type { SandboxKind, SandboxRuntime } from "./config.ts";
 import { KROKI_DOCKER_IMAGE, type KrokiDockerResult } from "./kroki-docker.ts";
@@ -50,6 +52,104 @@ export interface ExecSandboxWorkspace {
 	writeText(name: string, contents: string, options?: ExecSandboxRunOptions): Promise<void>;
 	readBuffer(name: string, options?: ExecSandboxRunOptions): Promise<Buffer>;
 	dispose(options?: ExecSandboxRunOptions): Promise<void>;
+}
+
+export interface GondolinVMHandle {
+	start(): Promise<void>;
+	close(): Promise<void>;
+}
+
+export interface GondolinVMCreateOptions {
+	image?: string;
+}
+
+export interface GondolinVMFactory {
+	create(options: GondolinVMCreateOptions): Promise<GondolinVMHandle>;
+}
+
+export interface GondolinBundleSandboxControllerOptions {
+	image?: string;
+}
+
+export function createGondolinVMOptions(options: GondolinVMCreateOptions): VMOptions {
+	const sandbox = options.image
+		? { imagePath: options.image, netEnabled: false }
+		: { netEnabled: false };
+	return {
+		autoStart: false,
+		env: {},
+		vfs: null,
+		sandbox,
+	};
+}
+
+export function createGondolinVMFactory(): GondolinVMFactory {
+	return {
+		async create(options): Promise<GondolinVMHandle> {
+			const { VM } = await import("@earendil-works/gondolin");
+			return VM.create(createGondolinVMOptions(options));
+		},
+	};
+}
+
+export function createGondolinBundleSandboxController(
+	factory: GondolinVMFactory,
+	options: GondolinBundleSandboxControllerOptions = {},
+): SandboxController {
+	let vm: GondolinVMHandle | undefined;
+	let ready = false;
+	let error: string | undefined;
+	const status = async (): Promise<SandboxStatus> => {
+		if (error) return gondolinBundleError(error);
+		return gondolinBundleStatus(ready ? "ready" : "stopped");
+	};
+
+	async function start(): Promise<SandboxStatus> {
+		try {
+			vm ??= await factory.create({ image: options.image });
+			await vm.start();
+			ready = true;
+			error = undefined;
+			return gondolinBundleStatus("ready");
+		} catch (err) {
+			ready = false;
+			error = errorText(err);
+			return gondolinBundleError(error);
+		}
+	}
+
+	async function stop(): Promise<SandboxStatus> {
+		await vm?.close();
+		ready = false;
+		return gondolinBundleStatus("stopped");
+	}
+
+	return {
+		id: "bundle",
+		kind: "exec",
+		runtime: "gondolin-vm",
+		status,
+		start,
+		stop,
+	};
+}
+
+function gondolinBundleStatus(state: "ready" | "stopped"): SandboxStatus {
+	return {
+		state,
+		message: `Gondolin VM for sandbox bundle is ${state}.`,
+	};
+}
+
+function gondolinBundleError(message: string): SandboxStatus {
+	return {
+		state: "error",
+		message: `Gondolin VM for sandbox bundle failed to start: ${message}`,
+	};
+}
+
+function errorText(err: unknown): string {
+	return err instanceof Error ? err.message : String(err);
 }
 
 export interface DockerExecSandboxEnvironmentOptions {

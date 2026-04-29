@@ -4,8 +4,12 @@ import { createKrokiDockerManager } from "../../extensions/pi-fence/kroki-docker
 import {
 	createDockerComposeSandboxController,
 	createDockerContainerSandboxController,
+	createGondolinBundleSandboxController,
+	createGondolinVMOptions,
 	createKrokiDockerComposeSandboxController,
 	createKrokiDockerSandboxController,
+	type GondolinVMFactory,
+	type GondolinVMHandle,
 } from "../../extensions/pi-fence/sandbox.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
 
@@ -82,6 +86,31 @@ function krokiContainerOptions() {
 		expectedImage: KROKI_IMAGE,
 		expectedLabels: KROKI_LABELS,
 	};
+}
+
+class FakeGondolinVM implements GondolinVMHandle {
+	startCalls = 0;
+	closeCalls = 0;
+	startError?: Error;
+
+	async start(): Promise<void> {
+		this.startCalls += 1;
+		if (this.startError) throw this.startError;
+	}
+
+	async close(): Promise<void> {
+		this.closeCalls += 1;
+	}
+}
+
+class FakeGondolinVMFactory implements GondolinVMFactory {
+	readonly creates: Array<{ image?: string }> = [];
+	readonly vm = new FakeGondolinVM();
+
+	async create(options: { image?: string }): Promise<GondolinVMHandle> {
+		this.creates.push(options);
+		return this.vm;
+	}
 }
 
 function bundleContainerOptions() {
@@ -161,6 +190,80 @@ function composeComponents() {
 		{ id: "mermaid", containerName: "kroki-mermaid", expectedImage: MERMAID_IMAGE, expectedLabels: KROKI_LABELS },
 	];
 }
+
+describe("sandbox controller contract — Gondolin bundle VM status", () => {
+	it("reports stopped before creating a VM", async () => {
+		const factory = new FakeGondolinVMFactory();
+		const controller = createGondolinBundleSandboxController(factory, { image: "pi-fence-bundle:0.1.0" });
+
+		expect(controller).toMatchObject({ id: "bundle", kind: "exec", runtime: "gondolin-vm" });
+		expect(await controller.status()).toEqual({
+			state: "stopped",
+			message: "Gondolin VM for sandbox bundle is stopped.",
+		});
+		expect(factory.creates).toEqual([]);
+	});
+
+	it("starts a VM with the configured image", async () => {
+		const factory = new FakeGondolinVMFactory();
+		const controller = createGondolinBundleSandboxController(factory, { image: "pi-fence-bundle:0.1.0" });
+
+		expect(await controller.start()).toEqual({
+			state: "ready",
+			message: "Gondolin VM for sandbox bundle is ready.",
+		});
+		expect(factory.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
+		expect(factory.vm.startCalls).toBe(1);
+		expect(await controller.status()).toEqual({
+			state: "ready",
+			message: "Gondolin VM for sandbox bundle is ready.",
+		});
+	});
+
+	it("stops a started VM", async () => {
+		const factory = new FakeGondolinVMFactory();
+		const controller = createGondolinBundleSandboxController(factory);
+
+		await controller.start();
+
+		expect(await controller.stop()).toEqual({
+			state: "stopped",
+			message: "Gondolin VM for sandbox bundle is stopped.",
+		});
+		expect(factory.vm.closeCalls).toBe(1);
+		expect(await controller.status()).toEqual({
+			state: "stopped",
+			message: "Gondolin VM for sandbox bundle is stopped.",
+		});
+	});
+
+	it("reports VM start failures as controller errors", async () => {
+		const factory = new FakeGondolinVMFactory();
+		factory.vm.startError = new Error("qemu missing");
+		const controller = createGondolinBundleSandboxController(factory);
+
+		expect(await controller.start()).toEqual({
+			state: "error",
+			message: "Gondolin VM for sandbox bundle failed to start: qemu missing",
+		});
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Gondolin VM for sandbox bundle failed to start: qemu missing",
+		});
+	});
+
+	it("builds VM options without host mounts or generic networking", () => {
+		expect(createGondolinVMOptions({ image: "pi-fence-bundle:0.1.0" })).toEqual({
+			autoStart: false,
+			env: {},
+			vfs: null,
+			sandbox: {
+				imagePath: "pi-fence-bundle:0.1.0",
+				netEnabled: false,
+			},
+		});
+	});
+});
 
 describe("sandbox controller contract — Docker container status", () => {
 	it("reports ready when docker inspect says the expected container is running", async () => {
