@@ -4777,3 +4777,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **No host mount baseline.** `createGondolinVMOptions` pins `vfs: null`, `env: {}`, `autoStart: false`, and `sandbox.netEnabled: false`.
 
 **Carry-forward.** Implement `GondolinExecSandboxEnvironment` under `task-708918bf`, preserving Docker exec/workspace semantics behind the existing seam.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 step 3: Gondolin exec environment parity
+
+**What shipped.** Added `createGondolinExecSandboxEnvironment` behind the existing `ExecSandboxEnvironment` seam. Commands run through the VM with `/usr/bin/env` so bundle tool names keep PATH lookup without shell interpolation; stdin, cwd, abort signals, and binary stdout are preserved. VM workspaces now use guest `mktemp`, `vm.fs.writeFile`, `vm.fs.readFile`, and `vm.fs.deleteFile`, with the same path traversal guard as the Docker exec workspace.
+
+**Implementation commit.**
+
+1. `7ac9926` — step 3: preserve exec semantics for Gondolin VM
+
+**Beans.**
+
+1. Closed `task-708918bf` — CV10.E1.S1 step 3 Gondolin exec environment parity.
+2. Next ready bean: `task-ef6abdb9` — bundle factory runtime selection.
+
+**Test count.** Fast suite increased from 864 to 867 with three Gondolin exec/workspace tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-sandbox-environment.test.ts --testNamePattern Gondolin` — passed: 3 tests, 5 skipped by name filter.
+2. `pnpm run feedback` — passed: 867 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **No shell interpolation.** Gondolin command execution uses array-form exec via `/usr/bin/env`, preserving PATH lookup while keeping arguments structured.
+2. **Guest filesystem only.** Mermaid workspace files move through `vm.fs` APIs; no host project or repo mount is introduced.
+3. **Shared path safety.** Docker and Gondolin workspaces use the same relative-path and workspace-root guards.
+
+**Carry-forward.** Wire `sandboxes.bundle.runtime: "gondolin-vm"` into sandbox controller creation and bundle processor factory selection under `task-ef6abdb9`.
