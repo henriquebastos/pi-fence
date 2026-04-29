@@ -4718,3 +4718,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 4. **Trusted image boundary.** The first runtime uses a pi-fence-owned default image or explicit local asset, not arbitrary project-configured trusted defaults.
 
 **Carry-forward.** Create CV10.E1 beans, split the ready story into vertical implementation slices, then start with config/runtime compatibility through TDD.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 step 1: Gondolin runtime config gate
+
+**What shipped.** `SandboxRuntime` now includes `gondolin-vm`, and config validation accepts it only for exec sandboxes. A service sandbox configured with `runtime: "gondolin-vm"` fails closed, clears sandbox controllers, and restricts processor precedence to `embedded` like other sandbox privacy-control validation failures.
+
+**Implementation commit.**
+
+1. `414f9f1` — step 1: gate Gondolin runtime to exec sandboxes
+
+**Beans.**
+
+1. Closed `task-15577a85` — CV10.E1.S1 step 1 config runtime compatibility.
+2. Active epic/story: `epic-a8aabf28` / `task-24015cb5`.
+
+**Test count.** Fast suite increased from 857 to 859 with two config tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern "gondolin|sandboxes"` — passed: 12 tests, 75 skipped by name filter.
+2. `pnpm run feedback` — passed: 859 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Narrow compatibility rule.** The first gate only restricts `gondolin-vm` to `kind: "exec"`; it does not retrofit stricter validation for existing Docker runtime/kind combinations.
+2. **Defaults unchanged.** The bundle sandbox still defaults to Docker until a later step wires a Gondolin controller/environment.
+
+**Carry-forward.** Implement the Gondolin lifecycle seam and controller under `task-6146bc0a`.
