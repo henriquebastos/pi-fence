@@ -24,7 +24,7 @@ export const SANDBOX_KINDS = ["exec", "service"] as const;
 
 export type SandboxKind = typeof SANDBOX_KINDS[number];
 
-export const SANDBOX_RUNTIMES = ["docker-container", "docker-compose"] as const;
+export const SANDBOX_RUNTIMES = ["docker-container", "docker-compose", "gondolin-vm"] as const;
 
 export type SandboxRuntime = typeof SANDBOX_RUNTIMES[number];
 
@@ -268,8 +268,11 @@ function hasInvalidSandboxes(rawSandboxes: unknown): boolean {
 
 function hasInvalidSandboxEntry(rawSandbox: unknown): boolean {
 	if (!isRecordLike(rawSandbox)) return true;
-	return !isSandboxKind(ownField(rawSandbox, "kind")) ||
-		!isSandboxRuntime(ownField(rawSandbox, "runtime")) ||
+	const kind = ownField(rawSandbox, "kind");
+	const runtime = ownField(rawSandbox, "runtime");
+	return !isSandboxKind(kind) ||
+		!isSandboxRuntime(runtime) ||
+		!isCompatibleSandboxRuntime(kind, runtime) ||
 		hasInvalidOptionalString(ownField(rawSandbox, "image")) ||
 		hasInvalidOptionalBoolean(ownField(rawSandbox, "autoStart"));
 }
@@ -426,6 +429,10 @@ function validateSandboxEntry(
 	const autoStart = ownField(rawSandbox, "autoStart");
 	if (!isSandboxKind(kind) || !isSandboxRuntime(runtime)) {
 		warnInvalidSandbox(id, label, "kind/runtime are invalid", logger);
+		return undefined;
+	}
+	if (!isCompatibleSandboxRuntime(kind, runtime)) {
+		warnInvalidSandbox(id, label, "runtime is not compatible with sandbox kind", logger);
 		return undefined;
 	}
 	if (hasInvalidOptionalString(image) || hasInvalidOptionalBoolean(autoStart)) {
@@ -591,6 +598,10 @@ function isSandboxKind(value: unknown): value is SandboxKind {
 
 function isSandboxRuntime(value: unknown): value is SandboxRuntime {
 	return typeof value === "string" && SANDBOX_RUNTIMES.includes(value as SandboxRuntime);
+}
+
+function isCompatibleSandboxRuntime(kind: SandboxKind, runtime: SandboxRuntime): boolean {
+	return runtime !== "gondolin-vm" || kind === "exec";
 }
 
 function isRecordLike(value: unknown): value is Record<string, unknown> {

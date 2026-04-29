@@ -151,6 +151,40 @@ describe("config core", () => {
 		});
 	});
 
+	it("validates sandboxes: accepts Gondolin VM for the bundle exec sandbox", () => {
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					bundle: { kind: "exec", runtime: "gondolin-vm", autoStart: true },
+				},
+			},
+			"test",
+		);
+
+		expect(result.sandboxes).toEqual({
+			bundle: { kind: "exec", runtime: "gondolin-vm", autoStart: true },
+		});
+	});
+
+	it("validates sandboxes: rejects Gondolin VM for service sandboxes", () => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{
+				sandboxes: {
+					kroki: { kind: "service", runtime: "gondolin-vm" },
+				},
+			},
+			"test",
+			logger,
+		);
+
+		expect(result.sandboxes).toEqual({});
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").map((entry) => entry.meta?.reason)).toEqual([
+			"runtime is not compatible with sandbox kind",
+		]);
+	});
+
 	it("validates sandboxes: invalid entry fields warn and fail closed", () => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
