@@ -32,16 +32,16 @@ This is valuable because fenced sources are untrusted input passed to large rend
 ## Done criterion
 
 1. `SandboxRuntime` includes `"gondolin-vm"`.
-2. Config validation accepts `{ "kind": "exec", "runtime": "gondolin-vm" }` for `sandboxes.bundle`.
-3. Config validation rejects `"gondolin-vm"` for `kind: "service"` with fail-closed behavior.
+2. Config validation accepts `{ "kind": "exec", "runtime": "gondolin-vm" }` for `sandboxes.bundle`, and accepts `autoStart: true` only with an explicit image from a non-project config layer.
+3. Config validation rejects `"gondolin-vm"` for `kind: "service"`, missing auto-start images, and project-local Gondolin auto-start with fail-closed behavior.
 4. `@earendil-works/gondolin` is added as a production dependency.
 5. A Gondolin bundle image contract exists with `dot`, `mmdc`, Chromium/runtime dependencies, and `/opt/pi-fence-bundle/manifest.json`.
-6. The Gondolin bundle image can be selected by config image id/path or by a trusted pi-fence default.
+6. The Gondolin bundle image can be selected by explicit config image id/path; a trusted pi-fence default is deferred until a published image exists.
 7. A `GondolinExecSandboxEnvironment` implements `ExecSandboxEnvironment`.
 8. `run(command, args, options)` executes inside the VM, supports stdin, cwd, abort signals, stdout/stderr capture, exit codes, and binary stdout.
 9. `createWorkspace()` creates an isolated guest temp directory, supports `writeText`, `readBuffer`, `path`, and `dispose`, and rejects path traversal like the Docker workspace.
 10. A Gondolin-backed sandbox controller reports `absent`/`stopped`/`ready`/`error` states clearly enough for `bundle-sandbox.available()`.
-11. `autoStart: true` starts the Gondolin VM during extension startup; `autoStart: false` leaves it stopped and unavailable.
+11. `autoStart: true` starts the Gondolin VM during extension startup only when the config supplies an explicit trusted image outside project-local config; `autoStart: false` leaves it stopped and unavailable.
 12. Renderer execution uses no host directory mount and no generic network egress.
 13. `bundle-sandbox.available()` works unchanged against the Gondolin environment: status check, manifest read, and required tool probes.
 14. `processorPrecedence: ["sandbox"]` renders `dot` and `mermaid` through `bundle-sandbox` when `sandboxes.bundle.runtime` is `"gondolin-vm"`.
@@ -120,7 +120,7 @@ Required guest tools:
 4. Chromium and runtime dependencies required by `mmdc`.
 5. `/opt/pi-fence-bundle/puppeteer-config.json` or an equivalent config path compatible with the existing Mermaid handler.
 
-The first implementation may use a local Gondolin image build. If a published image is introduced, the trusted default must be pinned in code and documented as the pi-fence-owned bundle image, not accepted from arbitrary project config by default.
+The first implementation uses an explicit local Gondolin image selector or guest asset path. If a published image is introduced later, the trusted default must be pinned in code and documented as the pi-fence-owned bundle image, not accepted from arbitrary project config by default.
 
 ## Isolation contract
 
@@ -185,4 +185,4 @@ pnpm vitest run tests/integration/bundle-sandbox.live.test.ts --testNamePattern 
 2. **Exec-only first.** Gondolin applies to the bundle exec sandbox in this story. Kroki remains Docker/Compose-backed.
 3. **No host mounts.** Renderer inputs and outputs move through VM exec/fs channels, not mounted project directories.
 4. **No network by default.** The bundle runtime should render offline. Any network exception needs a later story with a concrete renderer requirement.
-5. **Image trust stays narrow.** A pi-fence-owned default image or explicit local image path is acceptable; arbitrary project-configured images are not treated as trusted defaults.
+5. **Image trust stays narrow.** This story requires an explicit non-project image selector/path for Gondolin auto-start. A pi-fence-owned default image can be added later once a published image exists; arbitrary project-configured images are not treated as trusted defaults.

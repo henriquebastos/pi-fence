@@ -14,6 +14,7 @@ The user-visible model stays the same:
     "bundle": {
       "kind": "exec",
       "runtime": "gondolin-vm",
+      "image": "pi-fence-bundle:0.1.0",
       "autoStart": true
     }
   }

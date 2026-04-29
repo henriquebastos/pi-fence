@@ -4899,3 +4899,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Docs follow behavior.** Public docs describe the VM runtime only after config, lifecycle, exec environment, auto-start, and skip-clean live tests exist.
 
 **Carry-forward.** Run the story inspection loop. If inspection produces no required findings, close CV10.E1.S1 and then CV10/CV10.E1 roadmap status from a clean tree.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 inspection fix: trusted Gondolin auto-start images
+
+**What shipped.** Hardened Gondolin auto-start image trust after inspection. Config validation now fails closed when `gondolin-vm` auto-start has no explicit image, and project-local config cannot auto-start a Gondolin image even when it supplies one. The story and epic docs were clarified: the first implementation requires an explicit non-project image selector/path; a pi-fence-owned default is deferred until a published image exists.
+
+**Implementation commit.**
+
+1. `9288827` — fix CV10: trust-gate Gondolin auto-start images
+
+**Beans.**
+
+1. Closed `bug-34c5f627` — CV10.E1.S1 inspection: trust Gondolin auto-start images.
+
+**Test count.** Fast suite increased from 872 to 874 with two config hardening tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/extension/pi-fence.test.ts --testNamePattern "Gondolin|sandboxes"` — passed: 17 tests, 141 skipped by name filter.
+2. `pnpm run feedback` — passed: 874 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **No dependency default image.** pi-fence no longer lets missing image values fall through to Gondolin's default image resolution when auto-starting.
+2. **Project config cannot run VM images.** A repository-local config may not auto-start a Gondolin VM, preserving the trusted-image boundary for untrusted checkouts.
+
+**Carry-forward.** Continue inspection remediation with lifecycle state/race hardening, live skip preflight, and Gondolin extension render proof.
