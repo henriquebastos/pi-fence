@@ -4246,3 +4246,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Image trust remains fixed.** Project-configured Kroki sandbox images stay inert; the single-container path still uses the trusted `yuzutech/kroki` manager.
 
 **Carry-forward.** Continue S6 with the Compose Kroki service controller.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 step 3: Compose Kroki service controller
+
+**What shipped.** The sandbox controller layer now supports Docker Compose lifecycle operations. S6 also adds a fixed Kroki Compose service controller and a repo-owned `docker/kroki/compose.yaml` stack with Kroki core plus Mermaid companion components.
+
+**Implementation commits.**
+
+1. `23c36a3` — step 3: control Kroki compose stacks
+
+**Test count.** Fast suite 829 → 832 (+3).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/sandbox.test.ts -t 'starts and stops a configured Compose stack'` — failed because Compose lifecycle was unsupported.
+2. RED: `pnpm vitest run tests/unit/sandbox.test.ts -t 'fixed Kroki Compose service controller'` — failed because `createKrokiDockerComposeSandboxController` was missing.
+3. GREEN: `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/kroki-compose.test.ts -t 'Compose|compose'` — passed, 9 selected tests.
+4. `pnpm run feedback` — passed: 832 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Generic lifecycle, fixed Kroki definition.** `createDockerComposeSandboxController` owns `docker compose up -d`/`down`; `createKrokiDockerComposeSandboxController` owns Kroki-specific images, labels, containers, project name, and endpoint.
+2. **Compose status still uses component inspection.** Start returns normalized component status after `up -d`; partial/stopped/absent behavior stays in the existing status summarizer.
+3. **First Compose stack is minimal.** S6 includes Kroki core plus Mermaid companion only; CV7 companion-only tags remain out of scope.
+
+**Carry-forward.** Wire the Compose runtime into extension selection, auto-start, and diagnostics.
