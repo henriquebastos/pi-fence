@@ -4273,3 +4273,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **First Compose stack is minimal.** S6 includes Kroki core plus Mermaid companion only; CV7 companion-only tags remain out of scope.
 
 **Carry-forward.** Wire the Compose runtime into extension selection, auto-start, and diagnostics.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 step 4: Compose extension path and diagnostics
+
+**What shipped.** `sandboxes.kroki.runtime: "docker-compose"` now registers `kroki-sandbox`, renders through the fixed Compose service controller when all components are ready, can auto-start through `docker compose up -d`, and reports partial component details through `/fence list` and `/fence doctor`.
+
+**Implementation commits.**
+
+1. `9219308` — step 4: wire Kroki compose diagnostics
+
+**Test count.** Fast suite 832 → 836 (+4).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/extension/pi-fence.test.ts -t 'Compose service is ready'` — failed because the Compose runtime was not wired into extension selection.
+2. RED: `pnpm vitest run tests/unit/doctor.test.ts -t 'unavailable processor reasons'` — failed because doctor issues omitted unavailable reasons.
+3. RED: `pnpm vitest run tests/unit/kroki.test.ts -t 'component details'` — failed because partial sandbox availability omitted component details.
+4. GREEN: `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/doctor.test.ts tests/unit/kroki.test.ts -t 'kroki-sandbox|compose|Compose|partial|sandbox|unavailable processor|component details'` — passed, 20 selected tests.
+5. `pnpm run feedback` — passed: 836 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **One processor, two service runtimes.** `kroki-sandbox` is still the registry id; config selects the controller runtime behind it.
+2. **Partial remains unavailable.** Compose component details explain why the sandbox is unavailable; they do not yet route tag-specific availability.
+3. **Doctor reuses listing reasons.** `/fence doctor` now includes unavailable reasons, so component details have one source of truth from processor availability.
+
+**Carry-forward.** Prove policy interactions between `kroki-sandbox`, `kroki-remote`, and `bundle-sandbox`.
