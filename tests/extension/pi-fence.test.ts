@@ -787,6 +787,122 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"falls back to kroki-remote when kroki-sandbox is unavailable",
+		async () => {
+			const shell = new FakeShellRunner();
+			const http = makeKrokiHttp({
+				"https://kroki.io/graphviz/png?theme=dark": TINY_PNG,
+			});
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox", "remote"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki-remote",
+				kind: "ok",
+			});
+			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png?theme=dark");
+		},
+		20_000,
+	);
+
+	it(
+		"same-placement bundle and Kroki sandbox processors are ambiguous until bound",
+		async () => {
+			const shell = new FakeShellRunner();
+			programReadyBundleSandbox(shell, { dotPng: TINY_PNG });
+			programReadyKrokiSandbox(shell);
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox", "remote"],
+					sandboxes: {
+						bundle: { kind: "exec", runtime: "docker-container" },
+						kroki: { kind: "service", runtime: "docker-container" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
+			const ambiguityLog = captured.logger!.bySubsystem("pi-fence").find((entry) =>
+				entry.level === "warn" && entry.message === "ambiguous processor resolution",
+			);
+			expect(ambiguityLog?.meta).toMatchObject({
+				tag: "dot",
+				placement: "sandbox",
+				processorIds: ["bundle-sandbox", "kroki-sandbox"],
+			});
+		},
+		20_000,
+	);
+
+	it(
+		"binding selects kroki-sandbox when bundle-sandbox is also ready",
+		async () => {
+			const shell = new FakeShellRunner();
+			programReadyBundleSandbox(shell, { dotPng: Buffer.from([0x89, 0x50, 0x00]) });
+			programReadyKrokiSandbox(shell);
+			const http = makeKrokiHttp({
+				"http://localhost:8000/graphviz/png?theme=dark": TINY_PNG,
+			});
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox", "remote"],
+					bindings: { dot: { processor: "kroki-sandbox" } },
+					sandboxes: {
+						bundle: { kind: "exec", runtime: "docker-container" },
+						kroki: { kind: "service", runtime: "docker-container" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({ processor: "kroki-sandbox", kind: "ok" });
+			expectImageBytes(outputs[0].content, TINY_PNG);
+			expect(http.requests[0].url).toBe("http://localhost:8000/graphviz/png?theme=dark");
+		},
+		20_000,
+	);
+
+	it(
 		"doctor explains partial Compose Kroki sandbox components",
 		async () => {
 			const shell = new FakeShellRunner();
