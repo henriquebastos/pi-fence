@@ -127,6 +127,14 @@ pi-fence reads two optional files and merges them:
 
 Project bindings override global bindings. Project `blocked` policy replaces global `blocked` policy; project `processorPrecedence` can only remove or reorder placements already allowed globally.
 
+For one process, set `PI_FENCE_CONFIG` to load one explicit config file instead of the global/project pair:
+
+```bash
+PI_FENCE_CONFIG=/path/to/pi-fence.config.json pi
+```
+
+The explicit file is merged with defaults and uses the same fail-closed validation rules as normal config files. Because it replaces discovery for that process, it is useful for reproducible diagnostics, demos, and live verification runs such as selecting a local sandbox without editing your personal config.
+
 Binding values must be selector objects. Use `{ "processor": "..." }` to choose one processor, or `{ "placement": "host" }` to limit the tag to eligible processors in that placement. If multiple processors in that placement match, pi-fence reports ambiguity instead of choosing one. Old string values such as `"graphviz": "kroki-remote"` are ignored with a config warning.
 
 `/reload` inside pi after editing. `/fence list` then shows a `Bindings` section:

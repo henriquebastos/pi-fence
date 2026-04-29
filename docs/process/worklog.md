@@ -4590,3 +4590,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviations.** CV9.E1 epic closure is blocked by public Kroki live timeouts, tracked in `task-333cb0de`; `epic-63b063e6` remains open. No user-facing docs or CHANGELOG entry were needed for S7 because the change is composition/internal architecture with preserved behavior.
 
 **Carry-forward.** Rerun `pnpm test:live` when public Kroki/network is reachable, then close `task-333cb0de` and the CV9.E1 epic if the full acceptance gate passes.
+
+---
+
+### 2026-04-29 — CV9.E1 acceptance follow-up: env-configured Kroki live composition
+
+**What shipped.** Added supported `PI_FENCE_CONFIG=/path/to/pi-fence.config.json` process-local config override. The override loads one explicit config file instead of the global/project pair, preserving default merging and fail-closed validation. Kroki live tests now compose through config loading, sandbox controllers, built-in factories, availability probing, and resolver policy, so live verification can select `kroki-sandbox` through ordinary pi-fence config instead of a hardcoded URL.
+
+**Implementation commits.**
+
+1. `a4d832f` — fix live Kroki composition with explicit config
+
+**Test count.** Fast suite increased from 855 to 856 with config-loader coverage for `PI_FENCE_CONFIG`.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern 'PI_FENCE_CONFIG'` — passed: 1 test.
+2. `PI_FENCE_CONFIG=tests/fixtures/live-config/kroki-sandbox.json pnpm vitest run tests/integration/kroki.live.test.ts tests/integration/kroki-sandbox.live.test.ts` — passed: 24 tests, 11 skipped.
+3. `PI_FENCE_CONFIG=tests/fixtures/live-config/kroki-sandbox.json pnpm test:live` — passed: 29 tests, 25 skipped.
+4. `pnpm run feedback` — passed: 856 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **General capability, not live-specific plumbing.** `PI_FENCE_CONFIG` is a supported config loader feature; live tests simply benefit from it.
+2. **Tests use production composition.** Kroki live selection goes through the same config/factory/resolver path as the extension.
+3. **Unsupported local companion tags stay config-blocked.** The sandbox fixture blocks Mermaid, PlantUML, C4 PlantUML, Vega, and Vega-Lite for the single-container local runtime; solving the companion Mermaid image remains out of scope.
+
+**Carry-forward.** Run `pnpm run inspect` after the docs catch-up. If clean, close `task-333cb0de`; then the CV9.E1 epic can proceed to final acceptance/close bookkeeping.

@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Kroki Docker auto-start is now gated by `kroki-sandbox` policy (`sandbox` placement and sandbox blocks), not by `kroki-remote` policy.
 - `kroki.endpoint` remains unmanaged `kroki-remote` configuration even when it points at localhost; sandbox ownership now requires a ready `sandboxes.kroki` controller.
 
+### Added (CV9.E1 acceptance follow-up)
+
+- Added `PI_FENCE_CONFIG=/path/to/pi-fence.config.json` as a process-local config override that loads one explicit file instead of the normal global/project config pair.
+
+### Changed (CV9.E1 acceptance follow-up)
+
+- Kroki live tests now compose processors through config, built-in factories, availability, and resolver policy, so `PI_FENCE_CONFIG=tests/fixtures/live-config/kroki-sandbox.json pnpm test:live` can verify the managed local `kroki-sandbox` path without relying on public `kroki.io`.
+
 ### Added (CV9.E1.S5 — Bundle sandbox processor)
 
 - Added `bundle-sandbox`, a sandbox-placement processor for `graphviz`/`dot` and `mermaid` backed by a labelled Docker exec container.
