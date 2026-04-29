@@ -10,7 +10,7 @@ export const processorFactory: ProcessorFactoryRegistration = {
 	create: ({ sandboxes, shell }) => {
 		const controller = sandboxes.get("bundle");
 		if (!controller) throw new Error("bundle sandbox controller is not configured");
-		const env = createDockerExecSandboxEnvironment(shell, {
+		const env = controller.execEnvironment ?? createDockerExecSandboxEnvironment(shell, {
 			containerName: BUNDLE_SANDBOX_CONTAINER_NAME,
 		});
 		return createBundleSandboxProcessor(controller, env);

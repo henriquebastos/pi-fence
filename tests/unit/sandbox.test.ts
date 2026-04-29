@@ -89,9 +89,18 @@ function krokiContainerOptions() {
 }
 
 class FakeGondolinVM implements GondolinVMHandle {
+	readonly fs = {
+		writeFile: async (): Promise<void> => {},
+		readFile: async (): Promise<Buffer> => Buffer.alloc(0),
+		deleteFile: async (): Promise<void> => {},
+	};
 	startCalls = 0;
 	closeCalls = 0;
 	startError?: Error;
+
+	async exec(): Promise<{ stdout: string; stdoutBuffer: Buffer; stderr: string; exitCode: number }> {
+		return { stdout: "", stdoutBuffer: Buffer.alloc(0), stderr: "", exitCode: 0 };
+	}
 
 	async start(): Promise<void> {
 		this.startCalls += 1;

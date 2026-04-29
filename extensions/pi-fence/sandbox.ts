@@ -32,6 +32,7 @@ export interface SandboxController {
 	status(): Promise<SandboxStatus>;
 	start(): Promise<SandboxStartResult>;
 	stop(): Promise<SandboxStopResult>;
+	readonly execEnvironment?: ExecSandboxEnvironment;
 }
 
 export type ExecSandboxRunOptions = ShellRunOptions;
@@ -146,7 +147,7 @@ function signalOption(options: ExecSandboxRunOptions | undefined): { signal?: Ab
 	return options?.signal ? { signal: options.signal } : undefined;
 }
 
-export interface GondolinVMHandle {
+export interface GondolinVMHandle extends GondolinExecVM {
 	start(): Promise<void>;
 	close(): Promise<void>;
 }
@@ -191,6 +192,16 @@ export function createGondolinBundleSandboxController(
 	let vm: GondolinVMHandle | undefined;
 	let ready = false;
 	let error: string | undefined;
+	const activeVm = (): GondolinVMHandle => {
+		if (!vm || !ready) throw new Error("Gondolin VM for sandbox bundle is not ready.");
+		return vm;
+	};
+	const execEnvironment = createGondolinExecSandboxEnvironment({
+		exec: (command, execOptions) => activeVm().exec(command, execOptions),
+		get fs() {
+			return activeVm().fs;
+		},
+	});
 	const status = async (): Promise<SandboxStatus> => {
 		if (error) return gondolinBundleError(error);
 		return gondolinBundleStatus(ready ? "ready" : "stopped");
@@ -223,6 +234,7 @@ export function createGondolinBundleSandboxController(
 		status,
 		start,
 		stop,
+		execEnvironment,
 	};
 }
 

@@ -9,6 +9,8 @@ import type { ShellRunner } from "./io/shell-runner.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
 import {
 	createDockerContainerSandboxController,
+	createGondolinBundleSandboxController,
+	createGondolinVMFactory,
 	createKrokiDockerComposeSandboxController,
 	createKrokiDockerSandboxController,
 	type SandboxController,
@@ -36,7 +38,11 @@ function createBundleSandboxController(
 	config: PiFenceConfig,
 ): SandboxController | undefined {
 	const bundle = config.sandboxes?.bundle;
-	if (bundle?.kind !== "exec" || bundle.runtime !== "docker-container") return undefined;
+	if (bundle?.kind !== "exec") return undefined;
+	if (bundle.runtime === "gondolin-vm") {
+		return createGondolinBundleSandboxController(createGondolinVMFactory(), { image: bundle.image });
+	}
+	if (bundle.runtime !== "docker-container") return undefined;
 	return createDockerContainerSandboxController(deps.shell, {
 		id: "bundle",
 		kind: "exec",
