@@ -4617,3 +4617,20 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Unsupported local companion tags stay config-blocked.** The sandbox fixture blocks Mermaid, PlantUML, C4 PlantUML, Vega, and Vega-Lite for the single-container local runtime; solving the companion Mermaid image remains out of scope.
 
 **Carry-forward.** Run `pnpm run inspect` after the docs catch-up. If clean, close `task-333cb0de`; then the CV9.E1 epic can proceed to final acceptance/close bookkeeping.
+
+---
+
+### 2026-04-29 — CV9.E1 acceptance follow-up: Kroki live Sonar marker
+
+**What shipped.** Added one local non-dynamic assertion to `tests/integration/kroki.live.test.ts` so Sonar recognizes the file as a test file after the dynamic `it.skipIf(...)` refactor.
+
+**Implementation commits.**
+
+1. `2cc7fc5` — fix Kroki live Sonar marker
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 856 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
+
+**Carry-forward.** Close `task-333cb0de`, then update and close the CV9.E1 epic if final acceptance bookkeeping is clean.
