@@ -6,13 +6,13 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV9 — Processor Policy is in progress. CV9.E1.S1–S5 are done; CV9.E1 (Policy-driven Resolution) continues.
+CV10 — VM Sandboxes is in progress. CV10.E1.S1 is ready.
 
 ## Next
 
-Next story: CV9.E1.S6 — Kroki sandbox processor.
+Next story: CV10.E1.S1 — Gondolin VM runtime for bundle-sandbox.
 
-Follow each story's plan step by step. Each step is its own commit. Tests pass on every commit.
+Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
 ---
 
@@ -4695,3 +4695,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. `pnpm test:live` with no pre-existing `pi-fence-kroki` — started the sandbox, passed with 30 tests and 25 skipped, then stopped/removed the sandbox.
 
 **Carry-forward.** Commit this follow-up; no live Kroki container should be left running after the managed test run.
+
+---
+
+### 2026-04-29 — spec CV10.E1.S1: Gondolin VM bundle runtime
+
+**What shipped.** Added CV10 — VM Sandboxes to the roadmap, with CV10.E1 — Gondolin Bundle Runtime and the ready story CV10.E1.S1. The story keeps `bundle-sandbox` as the processor id and adds `gondolin-vm` as a new exec sandbox runtime behind the existing `ExecSandboxEnvironment` seam.
+
+**Spec commit.**
+
+1. `ccf5672` — spec CV10.E1.S1: ready Gondolin bundle runtime
+
+**Verification.**
+
+1. `pnpm run feedback` — passed before the spec commit: 857 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions captured.**
+
+1. **Runtime, not processor.** Config chooses `sandboxes.bundle.runtime: "gondolin-vm"`; policy still chooses `bundle-sandbox`.
+2. **Exec-only first.** Gondolin backs the bundle exec sandbox; Kroki/service sandboxes stay Docker/Compose-backed.
+3. **Strict isolation baseline.** No host project mounts, no ambient host env, no generic network egress.
+4. **Trusted image boundary.** The first runtime uses a pi-fence-owned default image or explicit local asset, not arbitrary project-configured trusted defaults.
+
+**Carry-forward.** Create CV10.E1 beans, split the ready story into vertical implementation slices, then start with config/runtime compatibility through TDD.
