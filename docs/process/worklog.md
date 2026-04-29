@@ -4351,3 +4351,27 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Docs keep remote and sandbox separate.** `kroki.endpoint` remains remote configuration; `sandboxes.kroki` is the managed sandbox path.
 
 **Carry-forward.** Run S6 completion inspection, create beans for any findings, then close S6 from a clean tree if inspection is clean.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 inspection cleanup
+
+**What shipped.** S6 completion inspection findings were cleaned up without changing render behavior. `/fence list` message construction now uses an options object instead of an eight-argument helper, doctor diagnostics avoid nested ternaries, sandbox security-option checks use direct `includes()` membership tests, and the bundle contract file has a local assertion so Sonar recognizes it as a test file.
+
+**Implementation commits.**
+
+1. `a580102` — step 7: clear S6 inspection findings
+
+**Test count.** Fast suite increased from 839 to 840 by adding one bundle contract fixture assertion.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 840 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
+
+**Design decisions that survived implementation.**
+
+1. **Cleanup stayed behavior-preserving.** Runtime changes only reshaped existing branches and call signatures.
+2. **Sonar false-positive was addressed locally.** The bundle contract file now contains one explicit assertion in addition to the shared contract registrations.
+
+**Carry-forward.** Close S6 from a clean tree; do not close `epic-63b063e6` because S7 remains.
