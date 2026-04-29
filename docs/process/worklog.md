@@ -4422,3 +4422,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviations.** Live Kroki sandbox tests skipped because the managed Docker services were absent. No epic acceptance gate ran because S7 remains and `epic-63b063e6` stays open.
 
 **Carry-forward.** Start CV9.E1.S7 from a clean tree; do not close `epic-63b063e6` until S7 is done and the epic acceptance gate passes.
+
+---
+
+### 2026-04-28 — CV9.E1.S7 spec ready: processor factory discovery
+
+**What shipped.** CV9.E1.S7 moved from Draft to Ready. The story now commits to a static built-in manifest of standard `processorFactory` exports under `extensions/pi-fence/processors/`, with factory order explicitly separated from resolver policy. Runtime filesystem scanning, generated manifests, and external package discovery stay out of scope.
+
+**Implementation commits.**
+
+1. `29d6033` — spec CV9.E1.S7: ready processor factory discovery
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 840 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived specification.**
+
+1. **Static manifest first.** S7 removes concrete factory calls from `index.ts` without taking on installed-extension directory scanning risk.
+2. **Discovery is not policy.** The manifest can collect factories in any order; resolver tests must prove placement precedence and same-placement ambiguity still own selection.
+3. **Thin wrappers preserve behavior tests.** Existing processor implementation modules remain the behavior owners and keep their current unit, contract, and live test surfaces.
+4. **Factory failures are diagnostic, not fatal.** Bad factory records or create failures should be logged/skipped instead of taking down activation.
+
+**Carry-forward.** Implement S7 one bean at a time: factory contract/loader first, then built-in wrappers, then `index.ts` composition simplification and inspection.
