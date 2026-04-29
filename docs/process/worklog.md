@@ -4192,3 +4192,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Partial is unavailable in CV9.** Compose component details are diagnostics, not tag-specific selection rules yet.
 
 **Carry-forward.** Start S6 implementation with the `kroki-sandbox` processor contract bean. Do not close `epic-63b063e6`; S6 and S7 remain.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 step 1: Kroki sandbox processor contract
+
+**What shipped.** pi-fence now has a `kroki-sandbox` processor contract alongside `kroki-remote`. The sandbox processor keeps the Kroki tag catalog and render semantics, declares `placement: "sandbox"`, uses only a ready service-controller endpoint, fails closed when the controller is not ready, and has shared `FenceProcessor` contract coverage.
+
+**Implementation commits.**
+
+1. `5eec0a6` — step 1: split Kroki sandbox contract
+
+**Test count.** Fast suite 814 → 827 (+13).
+
+**Verification.**
+
+1. RED: `pnpm vitest run tests/unit/kroki.test.ts -t 'sandbox processor id'` — failed because `createKrokiSandboxProcessor` was missing.
+2. RED: `pnpm vitest run tests/unit/kroki.test.ts -t 'renders through the ready service controller endpoint'` — failed because sandbox render returned `ok:false`.
+3. GREEN: `pnpm vitest run tests/unit/kroki.test.ts tests/contract/kroki.contract.test.ts` — passed, 59 tests.
+4. `pnpm run feedback` — passed: 827 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Endpoint ownership stays controller-backed.** The sandbox processor asks its `SandboxController` for a ready endpoint before both availability and render; arbitrary `kroki.endpoint` values remain remote-only.
+2. **Remote and sandbox share behavior, not identity.** The shared HTTP/render helpers now log under the selected processor id while preserving all existing `kroki-remote` tests.
+3. **Unavailable means non-rendering.** Non-ready service status returns unavailable and render error results without making HTTP requests.
+
+**Carry-forward.** Continue S6 with single-container Kroki service wiring and lifecycle ownership.
