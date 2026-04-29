@@ -1,6 +1,6 @@
 # CV10.E1.S1 — Gondolin VM runtime for bundle-sandbox
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV10.E1 — Gondolin Bundle Runtime](cv10-e1--gondolin-bundle-runtime.md)
 **Date:** 2026-04-29 (spec)

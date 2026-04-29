@@ -5011,3 +5011,72 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Fallbacks are asserted absent.** The test verifies no Docker command and no HTTP request occur, so a later regression cannot silently pass through another processor.
 
 **Carry-forward.** Re-run completion/live gates and close CV10.E1.S1 from a clean tree.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 closed: Gondolin VM runtime for bundle-sandbox
+
+**What shipped.** Closed CV10.E1.S1, CV10.E1, and CV10. `bundle-sandbox` can now run through `sandboxes.bundle.runtime: "gondolin-vm"` using the same processor id and policy semantics as the Docker-backed runtime. The implementation adds config validation, the Gondolin dependency and lifecycle seam, VM-backed exec/workspace behavior, runtime-based processor wiring, trusted auto-start guardrails, opt-in live tests, and extension-level proof that the VM path renders without Docker or Kroki fallback.
+
+**Implementation commits.**
+
+1. `414f9f1` — step 1: gate Gondolin runtime to exec sandboxes
+2. `43f9a3e` — step 2: introduce Gondolin VM lifecycle seam
+3. `7ac9926` — step 3: preserve exec semantics for Gondolin VM
+4. `bb99c71` — step 4: route bundle sandbox by runtime
+5. `171628c` — step 4.5: auto-start Gondolin bundle runtimes
+6. `5e14288` — step 5: gate Gondolin bundle live tests
+7. `9288827` — fix CV10: trust-gate Gondolin auto-start images
+8. `14299bd` — fix CV10: serialize Gondolin VM lifecycle
+9. `0dbbdea` — fix CV10: skip unavailable Gondolin live runtime
+10. `2187da3` — test CV10: prove Gondolin-backed bundle rendering
+
+**Documentation commits.**
+
+1. `ccf5672` — spec CV10.E1.S1: ready Gondolin bundle runtime
+2. `d77ff7f` — docs: record CV10.E1.S1 spec readiness
+3. `1027e4e` — docs: record CV10.E1.S1 config gate
+4. `e558049` — docs: record CV10.E1.S1 Gondolin lifecycle seam
+5. `5ca4ede` — docs: record CV10.E1.S1 Gondolin exec parity
+6. `577ec9f` — docs: record CV10.E1.S1 runtime selection
+7. `36384e0` — docs: record CV10.E1.S1 auto-start
+8. `42e1913` — docs: record CV10.E1.S1 live gate
+9. `6e7e5df` — docs: record CV10 Gondolin image trust fix
+10. `70e73a9` — docs: record CV10 Gondolin lifecycle fix
+11. `25006e4` — docs: record CV10 Gondolin live skip fix
+12. `123399c` — docs: record CV10 Gondolin render proof
+
+**Beans.**
+
+1. Closed `task-15577a85` — config gate.
+2. Closed `task-6146bc0a` — Gondolin lifecycle seam.
+3. Closed `task-708918bf` — VM exec parity.
+4. Closed `task-ef6abdb9` — runtime routing.
+5. Closed `task-2cb29cc7` — auto-start support.
+6. Closed `task-d0c94dea` — live tests.
+7. Closed `bug-34c5f627` — trusted auto-start images.
+8. Closed `bug-9e1140dc` — lifecycle state hardening.
+9. Closed `bug-780dca66` — live preflight skip.
+10. Closed `task-1f96edc3` — extension render proof.
+
+**Test count.** Fast non-live suite finished at 879 tests. This story added 17 net non-live tests across config validation, lifecycle, VM exec/workspace behavior, runtime selection, auto-start, live-preflight helpers, and extension rendering proof.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed repeatedly during the loop; final run: 879 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm run inspect` — passed after inspection remediation: non-live CRAP pass, Sonar scan/report, 879 non-live tests in both coverage lanes, and successful Sonar analysis upload.
+3. `pnpm test:live` — passed: 30 tests passed, 28 skipped; the managed Kroki live container started and stopped cleanly, and Gondolin tests skipped without a configured image.
+4. `pnpm run render:verify` — passed: 5 headless render combos produced screenshots.
+
+**Design decisions that survived the story.**
+
+1. **Runtime selection belongs to sandbox config.** `bundle-sandbox` remains the processor id; `sandboxes.bundle.runtime` selects Docker exec or Gondolin VM backing.
+2. **Gondolin is exec-only.** Config accepts `gondolin-vm` only for `kind: "exec"`; service sandboxes remain Docker/Compose-shaped.
+3. **VM defaults are intentionally narrow.** The VM starts with `autoStart: false`, `vfs: null`, empty env, and no generic network egress.
+4. **Auto-start is trusted-config only.** Gondolin auto-start requires an explicit image from non-project config. Project-local config cannot auto-start VM images.
+5. **No new command surface yet.** `/fence bundle start|stop|status` remains a future UX task; CV10.E1.S1 proves lifecycle through controller/auto-start paths.
+6. **Live Gondolin is opt-in.** Fast and default live gates do not require QEMU or a Gondolin bundle image; setting `PI_FENCE_GONDOLIN_BUNDLE_IMAGE` enables the live VM render checks.
+
+**Known deviations.** No published pi-fence-owned Gondolin bundle image exists yet, so the story supports explicit image selectors/asset paths and defers a pinned default image until packaging exists.
+
+**Carry-forward.** Future work can add `/fence bundle start|stop|status` and a published, pinned Gondolin bundle image once the packaging flow exists.

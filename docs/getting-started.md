@@ -212,7 +212,7 @@ For the Gondolin VM runtime, configure the bundle sandbox explicitly:
 }
 ```
 
-`image` is a Gondolin image selector or local guest asset path that contains the same bundle contract as the Docker image: Graphviz `dot`, Mermaid CLI `mmdc`, Chromium runtime dependencies, `/opt/pi-fence-bundle/manifest.json`, and the Puppeteer config path used by the Mermaid handler. The VM options disable host VFS mounts, ambient env vars, and generic networking. If `autoStart` is false or omitted, the VM remains stopped and `bundle-sandbox` is unavailable until a future lifecycle command starts it.
+`image` is a Gondolin image selector or local guest asset path that contains the same bundle contract as the Docker image: Graphviz `dot`, Mermaid CLI `mmdc`, Chromium runtime dependencies, `/opt/pi-fence-bundle/manifest.json`, and the Puppeteer config path used by the Mermaid handler. `autoStart: true` is accepted only when an explicit image is supplied by a non-project config layer; project-local config cannot auto-start Gondolin images. The VM options disable host VFS mounts, ambient env vars, and generic networking. If `autoStart` is false or omitted, the VM remains stopped and `bundle-sandbox` is unavailable until a future lifecycle command starts it.
 
 The live gate for this runtime is opt-in: set `PI_FENCE_GONDOLIN_BUNDLE_IMAGE=<image-selector-or-asset-path>` before `pnpm test:live`. Without that variable, the Gondolin live tests skip cleanly.
 

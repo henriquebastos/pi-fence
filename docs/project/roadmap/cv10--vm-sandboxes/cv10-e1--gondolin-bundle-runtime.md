@@ -1,7 +1,7 @@
 # CV10.E1 — Gondolin Bundle Runtime
 
 **Roadmap:** [CV10](README.md)
-**Last updated:** 2026-04-29 — spec
+**Last updated:** 2026-04-29 — done
 
 `bundle-sandbox` already hides renderer binaries behind the `ExecSandboxEnvironment` seam. Today the only production implementation is Docker exec. This epic adds a second implementation backed by [Gondolin](https://github.com/earendil-works/gondolin): a local Linux micro-VM with host-controlled execution, filesystem, and network policy.
 
@@ -27,7 +27,7 @@ The processor id remains `bundle-sandbox`. Runtime selection belongs to `sandbox
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv10-e1-s1--gondolin-bundle-runtime.md) | **Gondolin VM runtime for bundle-sandbox** | Ready |
+| [S1](cv10-e1-s1--gondolin-bundle-runtime.md) | **Gondolin VM runtime for bundle-sandbox** | Done |
 
 ## Done criterion (epic-level)
 

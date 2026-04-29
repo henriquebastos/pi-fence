@@ -3,7 +3,7 @@
 > CLI renderers can run inside a VM-backed sandbox when container isolation is not enough.
 
 **Type:** `control`
-**Status:** Not started
+**Status:** Done
 
 CV9 made `sandbox` an explicit placement backed by named controllers. The first concrete exec sandbox, `bundle-sandbox`, is Docker-backed: pi-fence shells into a hardened `pi-fence-bundle` container that carries Graphviz and Mermaid CLI.
 
@@ -17,4 +17,4 @@ This CV is done when every Story in its Epics is done.
 
 | Code | Epic | State |
 |------|------|-------|
-| [CV10.E1](cv10-e1--gondolin-bundle-runtime.md) | **Gondolin Bundle Runtime** | Not started |
+| [CV10.E1](cv10-e1--gondolin-bundle-runtime.md) | **Gondolin Bundle Runtime** | Done |
