@@ -4955,3 +4955,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **No bundle slash command yet.** `/fence bundle start|stop|status` remains a future UX task; CV10.E1.S1 owns the controller lifecycle and auto-start path, not a new command surface.
 
 **Carry-forward.** Add live preflight skip behavior and Gondolin extension render proof.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 inspection fix: Gondolin live preflight skip
+
+**What shipped.** Gondolin bundle live tests now preflight the configured VM image by attempting a start/stop before registering the live describe block. If `PI_FENCE_GONDOLIN_BUNDLE_IMAGE` is unset, QEMU/Gondolin assets are missing, or the selected image cannot start, the Gondolin live tests skip cleanly instead of failing in `beforeAll`.
+
+**Implementation commit.**
+
+1. `0dbbdea` — fix CV10: skip unavailable Gondolin live runtime
+
+**Beans.**
+
+1. Closed `bug-780dca66` — CV10.E1.S1 inspection: skip unavailable Gondolin live deps.
+
+**Test count.** Fast suite increased from 876 to 878 with two live-preflight helper tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/integration/bundle-sandbox.live.test.ts --testNamePattern Gondolin` — skipped cleanly without `PI_FENCE_GONDOLIN_BUNDLE_IMAGE`.
+2. `pnpm run feedback` — passed: 878 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Preflight before registration.** The skip gate runs before the Gondolin live describe block, so environment absence remains a skip rather than a failed setup hook.
+2. **Start/stop is the readiness check.** The preflight uses the same controller lifecycle as production instead of shelling out to infer QEMU/Gondolin state separately.
+
+**Carry-forward.** Add fast extension render proof for Gondolin-backed `bundle-sandbox`.
