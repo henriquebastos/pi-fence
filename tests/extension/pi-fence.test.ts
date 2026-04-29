@@ -61,11 +61,13 @@ class FakeGondolinVM implements GondolinVMHandle {
 		readFile: async (): Promise<Buffer> => TINY_PNG,
 		deleteFile: async (): Promise<void> => {},
 	};
+	readonly execCalls: string[][] = [];
 	startCalls = 0;
 	closeCalls = 0;
 
 	async exec(command: string | readonly string[]): Promise<{ stdout: string; stdoutBuffer: Buffer; stderr: string; exitCode: number }> {
 		const parts = Array.isArray(command) ? command : [command];
+		this.execCalls.push(parts);
 		if (parts.includes("cat") && parts.includes(BUNDLE_MANIFEST_PATH)) {
 			return {
 				stdout: JSON.stringify({
@@ -80,6 +82,9 @@ class FakeGondolinVM implements GondolinVMHandle {
 				stderr: "",
 				exitCode: 0,
 			};
+		}
+		if (parts.includes("dot") && parts.includes("-Tpng")) {
+			return { stdout: "", stdoutBuffer: TINY_PNG, stderr: "", exitCode: 0 };
 		}
 		return { stdout: "ok\n", stdoutBuffer: Buffer.from("ok\n"), stderr: "", exitCode: 0 };
 	}
@@ -1371,6 +1376,55 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 
 			expect(gondolin.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
 			expect(gondolin.vm.startCalls).toBe(1);
+		},
+		20_000,
+	);
+
+	it(
+		"renders through Gondolin-backed bundle-sandbox without Docker or Kroki fallback",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox", "remote"],
+					sandboxes: {
+						bundle: {
+							kind: "exec",
+							runtime: "gondolin-vm",
+							image: "pi-fence-bundle:0.1.0",
+							autoStart: true,
+						},
+					},
+				}),
+			);
+			const gondolin = new FakeGondolinVMFactory();
+			const http = new FakeHttpClient();
+			const shell = new FakeShellRunner();
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+				undefined,
+				{ gondolin },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "bundle-sandbox",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+			expect(gondolin.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
+			expect(gondolin.vm.startCalls).toBe(1);
+			expect(gondolin.vm.execCalls.some((call) => call.includes("dot") && call.includes("-Tpng"))).toBe(true);
+			expect(http.requests).toHaveLength(0);
+			expect(shell.calls.some((call) => call.cmd === "docker")).toBe(false);
 		},
 		20_000,
 	);
@@ -3197,9 +3251,10 @@ async function runExtensionWithAssistantText(
 	shell?: FakeShellRunner,
 	configOptions?: LoadConfigOptions,
 	extraExtensionFactories?: Array<(pi: ExtensionAPI) => void | Promise<void>>,
+	runtimeDeps?: { gondolin?: GondolinVMFactory },
 ): Promise<Captured> {
 	const { session, sentCustomMessages, registeredRenderers, model, logger } =
-		await buildSessionWithExtension(http, shell, configOptions, extraExtensionFactories);
+		await buildSessionWithExtension(http, shell, configOptions, extraExtensionFactories, runtimeDeps);
 
 	session.agent.streamFn = cannedAssistantStream(model, assistantText);
 
