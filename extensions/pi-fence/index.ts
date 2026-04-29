@@ -35,7 +35,7 @@ import { NodeShellRunner } from "./io/shell-runner.ts";
 import { createColorProcessor } from "./color.ts";
 import { MetricsCollector } from "./metrics.ts";
 import { createHighlightProcessor } from "./highlight.ts";
-import { createKrokiProcessor, isDarkThemeName } from "./kroki.ts";
+import { createKrokiProcessor, createKrokiSandboxProcessor, isDarkThemeName } from "./kroki.ts";
 import { createQrProcessor } from "./qr.ts";
 import { createTableProcessor } from "./table.ts";
 import {
@@ -52,6 +52,7 @@ import {
 import {
 	createDockerContainerSandboxController,
 	createDockerExecSandboxEnvironment,
+	createKrokiDockerSandboxController,
 } from "./sandbox.ts";
 
 const MAX_BLOCKS_PER_TURN = 5;
@@ -84,6 +85,29 @@ export async function createPiFenceExtension(
 	const blockedProcessors: ReadonlySet<string> = new Set(config.blocked?.processors ?? []);
 	const blockedTags: ReadonlySet<string> = new Set(config.blocked?.tags ?? []);
 	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
+
+	// Auto-start Docker Kroki if configured and policy allows kroki-sandbox.
+	if (shouldAutoStartKrokiDocker(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
+		const controller = createKrokiDockerServiceController(deps);
+		const status = await controller.status();
+		if (status.state === "ready") {
+			deps.logger.debug("pi-fence", "Docker Kroki already running", {
+				endpoint: status.endpoint,
+			});
+		} else {
+			const startResult = await controller.start();
+			if (startResult.state === "ready") {
+				deps.logger.info("pi-fence", "Docker Kroki auto-started", {
+					endpoint: startResult.endpoint,
+				});
+			} else {
+				deps.logger.warn("pi-fence", "Docker Kroki auto-start failed", {
+					error: startResult.message,
+				});
+			}
+		}
+	}
+
 	const probedProcessors = filterProcessorsForAvailabilityProbe(
 		processors,
 		blockedProcessors,
@@ -103,28 +127,6 @@ export async function createPiFenceExtension(
 	logBindingResolution(bindingRows, deps.logger);
 	logBlockedProcessors(blockedProcessors, deps.logger);
 	logProcessorPrecedence(processorPrecedence, deps.logger);
-
-	// Auto-start Docker Kroki if configured and policy allows kroki-remote.
-	if (shouldAutoStartKrokiDocker(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
-		const dockerMgr = createKrokiDockerManager(deps.shell, deps.logger);
-		const dockerStatus = await dockerMgr.status();
-		if (dockerStatus.status === "running") {
-			deps.logger.debug("pi-fence", "Docker Kroki already running", {
-				endpoint: dockerStatus.endpoint,
-			});
-		} else {
-			const startResult = await dockerMgr.start();
-			if (startResult.ok) {
-				deps.logger.info("pi-fence", "Docker Kroki auto-started", {
-					endpoint: startResult.endpoint,
-				});
-			} else {
-				deps.logger.warn("pi-fence", "Docker Kroki auto-start failed", {
-					error: startResult.message,
-				});
-			}
-		}
-	}
 
 	// Build the endpoints map for /fence list display.
 	const endpoints: Record<string, string> = {};
@@ -235,10 +237,10 @@ function isKrokiAutoStartAllowed(
 	blockedTags: ReadonlySet<string>,
 	processorPrecedence: readonly string[],
 ): boolean {
-	const krokiRemote = processors.find((processor) => processor.id === "kroki-remote");
-	return krokiRemote !== undefined &&
-		isProcessorAllowed(krokiRemote.id, krokiRemote.placement, blockedProcessors, processorPrecedence) &&
-		!isProcessorFullyTagBlocked(krokiRemote, processors, blockedTags);
+	const krokiSandbox = processors.find((processor) => processor.id === "kroki-sandbox");
+	return krokiSandbox !== undefined &&
+		isProcessorAllowed(krokiSandbox.id, krokiSandbox.placement, blockedProcessors, processorPrecedence) &&
+		!isProcessorFullyTagBlocked(krokiSandbox, processors, blockedTags);
 }
 
 function createDefaultProcessors(
@@ -254,10 +256,32 @@ function createDefaultProcessors(
 		createQrProcessor(),
 		createColorProcessor(),
 		...createBundleSandboxProcessors(deps, config),
+		...createKrokiSandboxProcessors(deps, themeState, config),
 		createKrokiProcessor(deps.http, config.kroki?.endpoint, deps.logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
 		),
 	];
+}
+
+function createKrokiSandboxProcessors(
+	deps: PiFenceRuntimeDeps,
+	themeState: ThemeState,
+	config: PiFenceConfig,
+): FenceProcessor[] {
+	const kroki = config.sandboxes?.kroki;
+	if (kroki?.kind !== "service" || kroki.runtime !== "docker-container") return [];
+	const controller = createKrokiDockerServiceController(deps);
+	return [
+		createKrokiSandboxProcessor(deps.http, controller, deps.logger, () =>
+			isDarkThemeName(themeState.currentName) ? "dark" : "light",
+		),
+	];
+}
+
+function createKrokiDockerServiceController(deps: PiFenceRuntimeDeps) {
+	return createKrokiDockerSandboxController(
+		createKrokiDockerManager(deps.shell, deps.logger),
+	);
 }
 
 function createBundleSandboxProcessors(

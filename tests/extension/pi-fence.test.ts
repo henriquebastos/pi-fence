@@ -342,7 +342,7 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 				lines: string[];
 			};
 
-			expect(details.listings).toHaveLength(8);
+			expect(details.listings).toHaveLength(9);
 			expect(details.listings[0]).toMatchObject({
 				id: "graphviz-host",
 				status: "unavailable",
@@ -383,6 +383,13 @@ describe("pi-fence extension — /fence list command through AgentSession", () =
 			});
 			expect(details.listings[6].unavailableReason).toContain("bundle sandbox is error");
 			expect(details.listings[7]).toMatchObject({
+				id: "kroki-sandbox",
+				status: "unavailable",
+				tags: KROKI_CANONICAL_TAGS,
+				aliases: KROKI_ALIASES,
+			});
+			expect(details.listings[7].unavailableReason).toContain("Kroki sandbox is error");
+			expect(details.listings[8]).toMatchObject({
 				id: "kroki-remote",
 				status: "registered",
 				tags: KROKI_CANONICAL_TAGS,
@@ -693,6 +700,50 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"sandbox precedence renders dot through kroki-sandbox when the single-container service is ready",
+		async () => {
+			const shell = new FakeShellRunner();
+			programReadyKrokiSandbox(shell);
+			const http = makeKrokiHttp({
+				"http://localhost:8000/graphviz/png?theme=dark": TINY_PNG,
+			});
+
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container" },
+					},
+				}),
+			);
+
+			const captured = await runExtensionWithAssistantText(
+				http,
+				"```dot\ndigraph { A -> B }\n```",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "dot",
+				processor: "kroki-sandbox",
+				kind: "ok",
+			});
+			expectImageBytes(outputs[0].content, TINY_PNG);
+			expect(http.requests).toHaveLength(1);
+			expect(http.requests[0].url).toBe("http://localhost:8000/graphviz/png?theme=dark");
+			expect(shell.calls.some((call) => call.cmd === "dot")).toBe(false);
+			expect(shell.calls.some((call) => call.args.includes("pi-fence-bundle"))).toBe(false);
+		},
+		20_000,
+	);
+
+	it(
 		"does not register bundle-sandbox when the configured bundle sandbox is not docker exec",
 		async () => {
 			const home = makeTempDir();
@@ -993,6 +1044,60 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 	);
 
 	it(
+		"sandbox-only placement allows single-container Kroki auto-start",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container", autoStart: true },
+					},
+				}),
+			);
+			const shell = new FakeShellRunner();
+			shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+				stdout: "",
+				stderr: "No such container",
+				exitCode: 1,
+			});
+			shell.setResponse(
+				"docker",
+				[
+					"run", "-d",
+					"--name", "pi-fence-kroki",
+					"--label", "pi-fence.sandbox=kroki",
+					"-p", "8000:8000",
+					"yuzutech/kroki",
+				],
+				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+			);
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				shell,
+				{ home, cwd: makeTempDir() },
+			);
+
+			const runIndex = shell.calls.findIndex((call) => call.args[0] === "run");
+			const statusIndices = shell.calls
+				.map((call, index) =>
+					call.args.includes("{{.State.Running}}") && call.args.includes("pi-fence-kroki")
+						? index
+						: -1,
+				)
+				.filter((index) => index >= 0);
+			const lastStatusIndex = statusIndices[statusIndices.length - 1] ?? -1;
+			expect(runIndex).toBeGreaterThanOrEqual(0);
+			expect(lastStatusIndex).toBeGreaterThan(runIndex);
+		},
+		20_000,
+	);
+
+	it(
 		"sandboxes.kroki.autoStart starts the single-container Kroki sandbox",
 		async () => {
 			const home = makeTempDir();
@@ -1000,7 +1105,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox", "remote"],
 					sandboxes: {
 						kroki: { kind: "service", runtime: "docker-container", autoStart: true },
 					},
@@ -1045,7 +1150,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(cwd, ".pi", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					sandboxes: {
 						kroki: {
 							kind: "service",
@@ -1148,7 +1253,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					kroki: { docker: { autoStart: true } },
 				}),
 			);
@@ -1169,7 +1274,8 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				{ home, cwd },
 			);
 
-			expect(shell.calls).toHaveLength(0);
+			expect(shell.calls.some((call) => call.args.includes("pi-fence-kroki"))).toBe(false);
+			expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
 		},
 		20_000,
 	);
@@ -1184,7 +1290,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					kroki: { docker: { autoStart: true } },
 				}),
 			);
@@ -1205,7 +1311,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				{ home, cwd },
 			);
 
-			expect(shell.calls).toHaveLength(0);
+			expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
 		},
 		20_000,
 	);
@@ -1218,7 +1324,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					kroki: { docker: { autoStart: true } },
 				}),
 			);
@@ -1260,7 +1366,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					sandboxes: {
 						kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
 					},
@@ -1288,7 +1394,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			writeFileSync(
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					sandboxes: {
 						kroki: { kind: "exec", runtime: "docker-container", autoStart: true },
 					},
@@ -1317,7 +1423,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				join(home, ".pi", "agent", "pi-fence.config.json"),
 				JSON.stringify({
 					blocked: { tags: KROKI_CANONICAL_TAGS, processors: [] },
-					processorPrecedence: ["remote"],
+					processorPrecedence: ["sandbox"],
 					sandboxes: {
 						kroki: { kind: "service", runtime: "docker-container", autoStart: true },
 					},
@@ -2468,6 +2574,24 @@ function makeKrokiHttp(urlToPng: Record<string, Buffer>): FakeHttpClient {
 		http.setResponse("POST", url, pngResponse(bytes));
 	}
 	return http;
+}
+
+function programReadyKrokiSandbox(shell: FakeShellRunner): void {
+	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+		stdout: "true\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse("docker", ["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"], {
+		stdout: "yuzutech/kroki\n",
+		stderr: "",
+		exitCode: 0,
+	});
+	shell.setResponse(
+		"docker",
+		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-kroki"],
+		{ stdout: "kroki\n", stderr: "", exitCode: 0 },
+	);
 }
 
 function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: Buffer; mermaidPng?: Buffer } = {}): void {
