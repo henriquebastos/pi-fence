@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (CV9.E1 acceptance follow-up)
 
-- `pnpm test:live` now defaults `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, so Kroki live coverage uses the managed local `kroki-sandbox` path unless the caller sets another config.
+- `pnpm test:live` now defaults `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, starts the managed single-container Kroki sandbox when needed, and stops it only if the test run started it.
 - Kroki live tests now compose processors through config, built-in factories, availability, and resolver policy, so the live suite can verify the managed local `kroki-sandbox` path without relying on public `kroki.io`.
 
 ### Added (CV9.E1.S5 — Bundle sandbox processor)

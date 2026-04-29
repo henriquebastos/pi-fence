@@ -111,7 +111,7 @@ pnpm install
 pnpm test:watch          # red/green while editing
 pnpm run feedback        # TDD loop — every commit (tests + CRAP + lint)
 pnpm run inspect         # completion — when TDD session feels done (broader CRAP + Sonar)
-pnpm test:live           # live I/O — defaults Kroki checks to tests/fixtures/live-config/kroki-sandbox.json
+pnpm test:live           # live I/O — starts/stops local Kroki sandbox when needed
 pnpm run render:verify   # acceptance — before closing an epic (headless UI screenshots)
 ```
 

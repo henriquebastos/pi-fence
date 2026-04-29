@@ -4681,16 +4681,17 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 
 ---
 
-### 2026-04-29 — Live suite defaults to Kroki sandbox config
+### 2026-04-29 — Live suite defaults to managed Kroki sandbox
 
-**What shipped.** `pnpm test:live` now defaults `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, while preserving any caller-provided `PI_FENCE_CONFIG`. This makes the ordinary live command exercise the managed local `kroki-sandbox` path by default instead of depending on public `kroki.io`.
+**What shipped.** `pnpm test:live` now defaults `PI_FENCE_CONFIG` to `tests/fixtures/live-config/kroki-sandbox.json`, while preserving any caller-provided `PI_FENCE_CONFIG`. The live runner starts the managed single-container `pi-fence-kroki` sandbox when that config needs it, then stops/removes it only if the test run started it. If a developer already has `pi-fence-kroki` running, the suite leaves it running.
 
 **Implementation commits.**
 
 1. `af718b5` — fix live tests to default Kroki sandbox config
+2. `047ccd2` — fix live tests to manage Kroki sandbox lifecycle
 
 **Verification.**
 
-1. `pnpm test:live` — passed with the default sandbox config: 30 tests passed, 25 skipped.
+1. `pnpm test:live` with no pre-existing `pi-fence-kroki` — started the sandbox, passed with 30 tests and 25 skipped, then stopped/removed the sandbox.
 
-**Carry-forward.** Commit this follow-up, then keep the local `pi-fence-kroki` container running only if continued live work needs it.
+**Carry-forward.** Commit this follow-up; no live Kroki container should be left running after the managed test run.
