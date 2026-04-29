@@ -54,6 +54,98 @@ export interface ExecSandboxWorkspace {
 	dispose(options?: ExecSandboxRunOptions): Promise<void>;
 }
 
+export interface GondolinExecOptions {
+	cwd?: string;
+	stdin?: string | Buffer;
+	signal?: AbortSignal;
+	stdout?: "buffer";
+	stderr?: "buffer";
+}
+
+export interface GondolinExecResult {
+	stdout: string;
+	stdoutBuffer: Buffer;
+	stderr: string;
+	exitCode: number;
+}
+
+export interface GondolinExecFileSystem {
+	writeFile(path: string, data: string | Buffer, options?: { signal?: AbortSignal }): Promise<void>;
+	readFile(path: string, options?: { encoding?: null; signal?: AbortSignal }): Promise<Buffer>;
+	deleteFile(path: string, options?: { recursive?: boolean; force?: boolean; signal?: AbortSignal }): Promise<void>;
+}
+
+export interface GondolinExecVM {
+	readonly fs: GondolinExecFileSystem;
+	exec(command: string | readonly string[], options?: GondolinExecOptions): PromiseLike<GondolinExecResult>;
+}
+
+export interface GondolinExecSandboxEnvironmentOptions {
+	workspaceRoot?: string;
+}
+
+export function createGondolinExecSandboxEnvironment(
+	vm: GondolinExecVM,
+	options: GondolinExecSandboxEnvironmentOptions = {},
+): ExecSandboxEnvironment {
+	const workspaceRoot = normalizeWorkspaceRoot(options.workspaceRoot ?? "/tmp");
+	const runInVm = async (
+		command: string,
+		args: readonly string[],
+		runOptions: ExecSandboxRunOptions = {},
+	): Promise<GondolinExecResult> =>
+		vm.exec(["/usr/bin/env", command, ...args], gondolinExecOptions(runOptions));
+
+	return {
+		run: runInVm,
+		async createWorkspace(runOptions?: ExecSandboxRunOptions): Promise<ExecSandboxWorkspace> {
+			const result = await runInVm("mktemp", ["-d", `${workspaceRoot}/pi-fence-XXXXXX`], runOptions);
+			assertShellSuccess("mktemp", result);
+			const dir = result.stdout.trim();
+			if (!isWorkspaceChildPath(workspaceRoot, dir)) {
+				throw new Error(`mktemp returned path outside ${workspaceRoot}: ${dir || "<empty>"}`);
+			}
+			return createGondolinExecSandboxWorkspace(vm.fs, pathPosix.normalize(dir));
+		},
+	};
+}
+
+function gondolinExecOptions(options: ExecSandboxRunOptions): GondolinExecOptions {
+	return {
+		...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+		...(options.input !== undefined ? { stdin: options.input } : {}),
+		stdout: "buffer",
+		stderr: "buffer",
+		...(options.signal !== undefined ? { signal: options.signal } : {}),
+	};
+}
+
+function createGondolinExecSandboxWorkspace(
+	fs: GondolinExecFileSystem,
+	dir: string,
+): ExecSandboxWorkspace {
+	let disposed = false;
+	const path = (name: string): string => workspacePath(dir, name);
+	return {
+		path,
+		async writeText(name, contents, options): Promise<void> {
+			await fs.writeFile(path(name), contents, signalOption(options));
+		},
+		readBuffer(name, options): Promise<Buffer> {
+			return fs.readFile(path(name), { encoding: null, ...signalOption(options) });
+		},
+		async dispose(options): Promise<void> {
+			if (disposed) return;
+			await fs.deleteFile(dir, { recursive: true, force: true, ...signalOption(options) });
+			disposed = true;
+		},
+	};
+}
+
+function signalOption(options: ExecSandboxRunOptions | undefined): { signal?: AbortSignal } | undefined {
+	return options?.signal ? { signal: options.signal } : undefined;
+}
+
 export interface GondolinVMHandle {
 	start(): Promise<void>;
 	close(): Promise<void>;
