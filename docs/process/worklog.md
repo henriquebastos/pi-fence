@@ -4927,3 +4927,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Project config cannot run VM images.** A repository-local config may not auto-start a Gondolin VM, preserving the trusted-image boundary for untrusted checkouts.
 
 **Carry-forward.** Continue inspection remediation with lifecycle state/race hardening, live skip preflight, and Gondolin extension render proof.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 inspection fix: Gondolin lifecycle state
+
+**What shipped.** Hardened Gondolin VM lifecycle state after inspection. `stop()` now clears stale start errors and drops the closed VM handle, and concurrent `start()` calls single-flight through one VM creation/start instead of racing multiple VMs.
+
+**Implementation commit.**
+
+1. `14299bd` — fix CV10: serialize Gondolin VM lifecycle
+
+**Beans.**
+
+1. Closed `bug-9e1140dc` — CV10.E1.S1 inspection: harden Gondolin lifecycle state.
+
+**Test count.** Fast suite increased from 874 to 876 with two lifecycle tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern Gondolin` — passed: 7 tests, 32 skipped by name filter.
+2. `pnpm run feedback` — passed: 876 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Single-flight inside the controller.** Lifecycle serialization stays local to the Gondolin controller instead of leaking into the extension startup path.
+2. **No bundle slash command yet.** `/fence bundle start|stop|status` remains a future UX task; CV10.E1.S1 owns the controller lifecycle and auto-start path, not a new command surface.
+
+**Carry-forward.** Add live preflight skip behavior and Gondolin extension render proof.
