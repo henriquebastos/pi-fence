@@ -1,0 +1,13 @@
+{
+  "processorPrecedence": ["sandbox"],
+  "blocked": {
+    "processors": ["bundle-sandbox"],
+    "tags": ["mermaid", "plantuml", "c4plantuml", "vega", "vegalite"]
+  },
+  "sandboxes": {
+    "kroki": {
+      "kind": "service",
+      "runtime": "docker-container"
+    }
+  }
+}

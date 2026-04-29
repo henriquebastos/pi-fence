@@ -28,6 +28,7 @@ import {
 } from "../../extensions/pi-fence/config.ts";
 import {
 	loadPiFenceConfig,
+	PI_FENCE_CONFIG_ENV,
 	type LoadConfigOptions,
 } from "../../extensions/pi-fence/io/config-loader.ts";
 import { FakeLogger } from "../utilities/logger.ts";
@@ -753,6 +754,31 @@ describe("loadPiFenceConfig — missing files", () => {
 
 describe("loadPiFenceConfig — file-present paths", () => {
 	afterEach(() => cleanupTempDirs());
+
+	it("loads only PI_FENCE_CONFIG when the explicit config environment variable is set", async () => {
+		const explicitDir = makeTempDir();
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const explicitPath = writeConfig(
+			explicitDir,
+			JSON.stringify({ processorPrecedence: ["sandbox"], bindings: { dot: { processor: "kroki-sandbox" } } }),
+		);
+		const globalPath = writeConfig(globalDir, JSON.stringify({ processorPrecedence: ["remote"] }));
+		const projectPath = writeConfig(projectDir, JSON.stringify({ processorPrecedence: ["host"] }));
+
+		const result = await loadPiFenceConfig({
+			env: { [PI_FENCE_CONFIG_ENV]: explicitPath },
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+		});
+
+		expect(result.config.processorPrecedence).toEqual(["sandbox"]);
+		expect(result.config.bindings).toEqual({ dot: { processor: "kroki-sandbox" } });
+		expect(result.globalPath).toBe(explicitPath);
+		expect(result.globalStatus).toBe("loaded");
+		expect(result.projectPath).toBe(`(disabled by ${PI_FENCE_CONFIG_ENV})`);
+		expect(result.projectStatus).toBe("not-found");
+	});
 
 	it("reads the global config when only global is present", async () => {
 		const globalDir = makeTempDir();

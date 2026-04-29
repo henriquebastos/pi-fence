@@ -18,12 +18,17 @@ import {
 } from "../config.ts";
 import type { Logger } from "./logger.ts";
 
+export const PI_FENCE_CONFIG_ENV = "PI_FENCE_CONFIG";
+
 export interface LoadConfigOptions {
+	/** Explicit config file path. Replaces normal global/project discovery. */
+	configPath?: string;
 	globalConfigPath?: string;
 	projectConfigPath?: string;
 	cwd?: string;
 	home?: string;
 	logger?: Logger;
+	env?: Readonly<Record<string, string | undefined>>;
 }
 
 export type ConfigFileStatus =
@@ -48,13 +53,18 @@ export interface ConfigLoadResult {
 export async function loadPiFenceConfig(
 	opts: LoadConfigOptions = {},
 ): Promise<ConfigLoadResult> {
+	const logger = opts.logger;
+	const explicitPath = explicitConfigPath(opts);
+	if (explicitPath !== undefined) {
+		return loadExplicitConfig(explicitPath, logger);
+	}
+
 	const home = opts.home ?? homedir();
 	const cwd = opts.cwd ?? process.cwd();
 	const globalPath =
 		opts.globalConfigPath ?? join(home, ".pi", "agent", "pi-fence.config.json");
 	const projectPath =
 		opts.projectConfigPath ?? join(cwd, ".pi", "pi-fence.config.json");
-	const logger = opts.logger;
 
 	const [globalConfig, globalStatus] = await readConfigFileWithStatus(globalPath, "global", logger);
 	const [projectConfig, projectStatus] = await readConfigFileWithStatus(projectPath, "project", logger);
@@ -69,6 +79,33 @@ export async function loadPiFenceConfig(
 		projectStatus,
 		projectPath,
 	};
+}
+
+async function loadExplicitConfig(
+	path: string,
+	logger?: Logger,
+): Promise<ConfigLoadResult> {
+	const [config, status] = await readConfigFileWithStatus(path, "explicit", logger);
+	return {
+		config: mergePiFenceConfigs(
+			DEFAULT_CONFIG,
+			configFailurePrivacyLayer(status, config),
+		),
+		globalStatus: status,
+		globalPath: path,
+		projectStatus: "not-found",
+		projectPath: `(disabled by ${PI_FENCE_CONFIG_ENV})`,
+	};
+}
+
+function explicitConfigPath(opts: LoadConfigOptions): string | undefined {
+	const fromOption = nonEmptyPath(opts.configPath);
+	if (fromOption !== undefined) return fromOption;
+	return nonEmptyPath((opts.env ?? process.env)[PI_FENCE_CONFIG_ENV]);
+}
+
+function nonEmptyPath(path: string | undefined): string | undefined {
+	return path === undefined || path.length === 0 ? undefined : path;
 }
 
 function configFailurePrivacyLayer(
