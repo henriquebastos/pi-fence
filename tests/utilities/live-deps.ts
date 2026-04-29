@@ -14,6 +14,13 @@ const execFileAsync = promisify(execFile);
 
 const DEFAULT_NETWORK_PROBE = "https://kroki.io";
 
+export function gondolinBundleImageFromEnv(
+	env: Partial<Pick<NodeJS.ProcessEnv, "PI_FENCE_GONDOLIN_BUNDLE_IMAGE">> = process.env,
+): string | undefined {
+	const image = env.PI_FENCE_GONDOLIN_BUNDLE_IMAGE?.trim();
+	return image ? image : undefined;
+}
+
 /**
  * Does the `docker` binary exist and respond to `docker info`?
  *

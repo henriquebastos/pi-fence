@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { hasContainer, hasDocker, hasNetwork } from "./live-deps.ts";
+import { gondolinBundleImageFromEnv, hasContainer, hasDocker, hasNetwork } from "./live-deps.ts";
 
 describe("hasDocker", () => {
 	it("returns a boolean without throwing", async () => {
@@ -32,6 +32,14 @@ describe("hasContainer", () => {
 		// this test's prior check (hasDocker) reports false and hasContainer
 		// still returns false rather than throwing.
 		await expect(hasContainer("anything")).resolves.toBe(false);
+	});
+});
+
+describe("gondolinBundleImageFromEnv", () => {
+	it("returns a trimmed image selector only when configured", () => {
+		expect(gondolinBundleImageFromEnv({})).toBeUndefined();
+		expect(gondolinBundleImageFromEnv({ PI_FENCE_GONDOLIN_BUNDLE_IMAGE: "   " })).toBeUndefined();
+		expect(gondolinBundleImageFromEnv({ PI_FENCE_GONDOLIN_BUNDLE_IMAGE: " pi-fence-bundle:0.1.0 " })).toBe("pi-fence-bundle:0.1.0");
 	});
 });
 
