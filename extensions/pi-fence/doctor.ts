@@ -96,7 +96,8 @@ function processorIssue(
 ): DoctorIssue[] {
 	if (listing.status === "unavailable") {
 		const reason = listing.unavailableReason ? `: ${listing.unavailableReason}` : "";
-		const hint = listing.installHint ? `${reason ? ". " : ": "}${listing.installHint}` : "";
+		const hintPrefix = reason ? ". " : ": ";
+		const hint = listing.installHint ? `${hintPrefix}${listing.installHint}` : "";
 		return [{ message: `${listing.id} is unavailable${reason}${hint}` }];
 	}
 	if (listing.status === "blocked") return policyProcessorIssue(listing, listings, "blocked");
@@ -110,9 +111,8 @@ function policyProcessorIssue(
 	status: "blocked" | "disabled",
 ): DoctorIssue[] {
 	const orphanedCount = countOrphanedTags(listing, listings);
-	return orphanedCount > 0
-		? [{ message: `${listing.id} is ${status}; ${orphanedCount} tag(s) have no available processor` }]
-		: [];
+	if (orphanedCount === 0) return [];
+	return [{ message: `${listing.id} is ${status}; ${orphanedCount} tag(s) have no available processor` }];
 }
 
 function countOrphanedTags(

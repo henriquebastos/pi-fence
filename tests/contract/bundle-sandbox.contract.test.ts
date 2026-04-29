@@ -1,3 +1,5 @@
+import { describe, expect, it } from "vitest";
+
 import { runFenceProcessorContract } from "./fence-processor.ts";
 
 import { createBundleSandboxProcessor } from "../../extensions/pi-fence/bundle-sandbox.ts";
@@ -22,6 +24,15 @@ const MANIFEST = JSON.stringify({
 		dot: { command: "dot", versionCommand: ["dot", "-V"] },
 		mmdc: { command: "mmdc", versionCommand: ["mmdc", "--version"] },
 	},
+});
+
+describe("bundle-sandbox contract fixtures", () => {
+	it("covers the Graphviz and Mermaid bundle tools", () => {
+		expect(GOOD_DOT).toContain("digraph");
+		expect(GOOD_MERMAID).toContain("flowchart");
+		expect(BAD_DOT).not.toBe(GOOD_DOT);
+		expect(BAD_MERMAID).not.toBe(GOOD_MERMAID);
+	});
 });
 
 class ContractWorkspace implements ExecSandboxWorkspace {

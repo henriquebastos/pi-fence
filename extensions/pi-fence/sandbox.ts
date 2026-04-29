@@ -599,10 +599,11 @@ async function inspectSecurityOptions(
 	const securityOpt = await inspectFormat(shell, component, "{{json .HostConfig.SecurityOpt}}");
 	if (isInspectStatus(securityOpt)) return securityOpt;
 	const options = jsonStringArray(securityOpt);
-	if (security.noNewPrivileges && !options.some(isNoNewPrivilegesEnabled)) {
+	const hasNoNewPrivileges = options.includes("no-new-privileges") || options.includes("no-new-privileges=true");
+	if (security.noNewPrivileges && !hasNoNewPrivileges) {
 		return securityError(component, "does not set no-new-privileges.");
 	}
-	if (security.forbidUnconfinedSeccomp && options.some((entry) => entry === "seccomp=unconfined")) {
+	if (security.forbidUnconfinedSeccomp && options.includes("seccomp=unconfined")) {
 		return securityError(component, "uses unconfined seccomp; expected confined seccomp.");
 	}
 	return undefined;
@@ -643,10 +644,6 @@ function hasTmpfsMountAt(mounts: readonly unknown[], destination: string): boole
 	return mounts.some(
 		(entry) => isRecord(entry) && entry.Type === "tmpfs" && entry.Destination === destination,
 	);
-}
-
-function isNoNewPrivilegesEnabled(entry: string): boolean {
-	return entry === "no-new-privileges" || entry === "no-new-privileges=true";
 }
 
 function jsonStringArray(raw: string): string[] {

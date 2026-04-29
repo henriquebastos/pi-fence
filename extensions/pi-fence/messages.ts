@@ -31,15 +31,27 @@ export interface ImageContent {
 
 export type MessageContent = TextContent | ImageContent;
 
+export interface PiFenceListMessageOptions {
+	processors: readonly FenceProcessor[];
+	availability: ReadonlyMap<string, Availability>;
+	bindingRows: readonly BindingResolution[];
+	blockedProcessors?: ReadonlySet<string>;
+	blockedTags?: ReadonlySet<string>;
+	endpoints?: Readonly<Record<string, string>>;
+	processorPrecedence?: readonly ProcessorPlacement[];
+}
+
 export function sendPiFenceListMessage(
 	pi: ExtensionAPI,
-	processors: readonly FenceProcessor[],
-	availability: ReadonlyMap<string, Availability>,
-	bindingRows: readonly BindingResolution[],
-	blockedProcessors?: ReadonlySet<string>,
-	blockedTags?: ReadonlySet<string>,
-	endpoints?: Readonly<Record<string, string>>,
-	processorPrecedence?: readonly ProcessorPlacement[],
+	{
+		processors,
+		availability,
+		bindingRows,
+		blockedProcessors,
+		blockedTags,
+		endpoints,
+		processorPrecedence,
+	}: PiFenceListMessageOptions,
 ): void {
 	const listings: ProcessorListing[] = listProcessors(
 		processors,

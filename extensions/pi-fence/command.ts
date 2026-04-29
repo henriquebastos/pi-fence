@@ -65,8 +65,7 @@ export function registerFenceCommand({
 			logger.debug("command", "/fence invoked", { subcommand });
 			if (subcommand === "list") {
 				const bindingRows = currentBindingRows();
-				sendPiFenceListMessage(
-					pi,
+				sendPiFenceListMessage(pi, {
 					processors,
 					availability,
 					bindingRows,
@@ -74,7 +73,7 @@ export function registerFenceCommand({
 					blockedTags,
 					endpoints,
 					processorPrecedence,
-				);
+				});
 				return;
 			}
 			if (subcommand === "doctor") {
