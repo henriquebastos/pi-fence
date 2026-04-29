@@ -1,0 +1,21 @@
+name: pi-fence-kroki
+
+services:
+  core:
+    image: yuzutech/kroki
+    container_name: pi-fence-kroki-core
+    labels:
+      pi-fence.sandbox: kroki
+    ports:
+      - "8000:8000"
+    environment:
+      KROKI_MERMAID_HOST: mermaid
+      KROKI_MERMAID_PORT: "8002"
+    depends_on:
+      - mermaid
+
+  mermaid:
+    image: yuzutech/mermaid
+    container_name: pi-fence-kroki-mermaid
+    labels:
+      pi-fence.sandbox: kroki

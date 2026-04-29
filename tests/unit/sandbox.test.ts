@@ -4,6 +4,7 @@ import { createKrokiDockerManager } from "../../extensions/pi-fence/kroki-docker
 import {
 	createDockerComposeSandboxController,
 	createDockerContainerSandboxController,
+	createKrokiDockerComposeSandboxController,
 	createKrokiDockerSandboxController,
 } from "../../extensions/pi-fence/sandbox.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
@@ -525,6 +526,66 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 });
 
 describe("sandbox controller contract — Docker Compose status", () => {
+	it("builds the fixed Kroki Compose service controller", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+
+		expect(controller.id).toBe("kroki");
+		expect(controller.kind).toBe("service");
+		expect(controller.runtime).toBe("docker-compose");
+		expect(await controller.status()).toEqual({
+			state: "ready",
+			endpoint: "http://localhost:8000",
+			message: "Sandbox kroki is ready.",
+			components: [
+				{ id: "core", state: "ready", message: "Container pi-fence-kroki-core is running." },
+				{ id: "mermaid", state: "ready", message: "Container pi-fence-kroki-mermaid is running." },
+			],
+		});
+	});
+
+	it("starts and stops a configured Compose stack", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "kroki-core", KROKI_IMAGE);
+		setRunning(shell, "kroki-mermaid", MERMAID_IMAGE);
+		shell.setResponse(
+			"docker",
+			["compose", "-f", "docker/kroki/compose.yaml", "-p", "pi-fence-kroki", "up", "-d"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse(
+			"docker",
+			["compose", "-f", "docker/kroki/compose.yaml", "-p", "pi-fence-kroki", "down"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		const controller = createDockerComposeSandboxController(shell, {
+			id: "kroki",
+			kind: "service",
+			endpoint: "http://localhost:8000",
+			composeFile: "docker/kroki/compose.yaml",
+			projectName: "pi-fence-kroki",
+			components: composeComponents(),
+		});
+
+		expect(await controller.start()).toEqual({
+			state: "ready",
+			endpoint: "http://localhost:8000",
+			message: "Sandbox kroki is ready.",
+			components: [
+				{ id: "core", state: "ready", message: "Container kroki-core is running." },
+				{ id: "mermaid", state: "ready", message: "Container kroki-mermaid is running." },
+			],
+		});
+		expect(await controller.stop()).toEqual({
+			state: "absent",
+			message: "Stopped sandbox kroki.",
+		});
+		expect(shell.calls.some((call) => call.args.join(" ") === "compose -f docker/kroki/compose.yaml -p pi-fence-kroki up -d")).toBe(true);
+		expect(shell.calls.some((call) => call.args.join(" ") === "compose -f docker/kroki/compose.yaml -p pi-fence-kroki down")).toBe(true);
+	});
 	it("reports error when no components are configured", async () => {
 		const controller = createDockerComposeSandboxController(new FakeShellRunner(), {
 			id: "kroki",

@@ -2,7 +2,7 @@ import { posix as pathPosix } from "node:path";
 
 import type { ShellRunner, ShellResult, ShellRunOptions } from "./io/shell-runner.ts";
 import type { SandboxKind, SandboxRuntime } from "./config.ts";
-import type { KrokiDockerResult } from "./kroki-docker.ts";
+import { KROKI_DOCKER_IMAGE, type KrokiDockerResult } from "./kroki-docker.ts";
 
 export type SandboxState = "ready" | "partial" | "stopped" | "absent" | "error";
 
@@ -107,6 +107,38 @@ export function createKrokiDockerSandboxController(
 	};
 }
 
+const KROKI_SANDBOX_LABEL = "pi-fence.sandbox";
+const KROKI_SANDBOX_LABELS = { [KROKI_SANDBOX_LABEL]: "kroki" };
+const KROKI_MERMAID_IMAGE = "yuzutech/mermaid";
+export const KROKI_COMPOSE_FILE = "docker/kroki/compose.yaml";
+export const KROKI_COMPOSE_PROJECT_NAME = "pi-fence-kroki";
+
+export function createKrokiDockerComposeSandboxController(
+	shell: ShellRunner,
+): SandboxController {
+	return createDockerComposeSandboxController(shell, {
+		id: "kroki",
+		kind: "service",
+		endpoint: "http://localhost:8000",
+		composeFile: KROKI_COMPOSE_FILE,
+		projectName: KROKI_COMPOSE_PROJECT_NAME,
+		components: [
+			{
+				id: "core",
+				containerName: "pi-fence-kroki-core",
+				expectedImage: KROKI_DOCKER_IMAGE,
+				expectedLabels: KROKI_SANDBOX_LABELS,
+			},
+			{
+				id: "mermaid",
+				containerName: "pi-fence-kroki-mermaid",
+				expectedImage: KROKI_MERMAID_IMAGE,
+				expectedLabels: KROKI_SANDBOX_LABELS,
+			},
+		],
+	});
+}
+
 export interface DockerSandboxSecurityOptions {
 	networkMode?: string;
 	noPublishedPorts?: boolean;
@@ -142,6 +174,8 @@ export interface DockerComposeSandboxOptions {
 	kind: SandboxKind;
 	components: readonly DockerSandboxComponentOptions[];
 	endpoint?: string;
+	composeFile?: string;
+	projectName?: string;
 }
 
 export function createDockerContainerSandboxController(
@@ -190,8 +224,8 @@ export function createDockerComposeSandboxController(
 		kind: options.kind,
 		runtime: "docker-compose",
 		status,
-		start: () => unsupportedLifecycle("Start", options.id),
-		stop: () => unsupportedLifecycle("Stop", options.id),
+		start: createDockerComposeStart(shell, options, status),
+		stop: createDockerComposeStop(shell, options),
 	};
 }
 
@@ -200,6 +234,57 @@ async function unsupportedLifecycle(
 	id: string,
 ): Promise<SandboxStatus> {
 	return { state: "error", message: `${operation} is not implemented for sandbox ${id}.` };
+}
+
+function createDockerComposeStart(
+	shell: ShellRunner,
+	options: DockerComposeSandboxOptions,
+	status: () => Promise<SandboxStatus>,
+): SandboxController["start"] {
+	if (!hasComposeLifecycle(options)) return () => unsupportedLifecycle("Start", options.id);
+	return async () => {
+		const result = await runDockerCompose(shell, options, ["up", "-d"]);
+		if (result.exitCode !== 0) return composeCommandFailure(options.id, "start", result);
+		return status();
+	};
+}
+
+function createDockerComposeStop(
+	shell: ShellRunner,
+	options: DockerComposeSandboxOptions,
+): SandboxController["stop"] {
+	if (!hasComposeLifecycle(options)) return () => unsupportedLifecycle("Stop", options.id);
+	return async () => {
+		const result = await runDockerCompose(shell, options, ["down"]);
+		if (result.exitCode !== 0) return composeCommandFailure(options.id, "stop", result);
+		return { state: "absent", message: `Stopped sandbox ${options.id}.` };
+	};
+}
+
+function hasComposeLifecycle(
+	options: DockerComposeSandboxOptions,
+): options is DockerComposeSandboxOptions & { composeFile: string; projectName: string } {
+	return options.composeFile !== undefined && options.projectName !== undefined;
+}
+
+function runDockerCompose(
+	shell: ShellRunner,
+	options: DockerComposeSandboxOptions & { composeFile: string; projectName: string },
+	args: readonly string[],
+): Promise<ShellResult> {
+	return shell.run("docker", ["compose", "-f", options.composeFile, "-p", options.projectName, ...args]);
+}
+
+function composeCommandFailure(
+	id: string,
+	operation: "start" | "stop",
+	result: ShellResult,
+): SandboxStatus {
+	const detail = result.stderr.trim() || result.stdout.trim() || `docker compose ${operation} failed`;
+	return {
+		state: "error",
+		message: `Docker Compose ${operation} failed for sandbox ${id}: ${detail}`,
+	};
 }
 
 function dockerExecArgs(
