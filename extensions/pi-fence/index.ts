@@ -36,7 +36,7 @@ import {
 	createPiFenceListRenderer,
 	createPiFenceMessageRenderer,
 } from "./renderer.ts";
-import type { SandboxController } from "./sandbox.ts";
+import type { GondolinVMFactory, SandboxController } from "./sandbox.ts";
 import { createSandboxControllers } from "./sandbox-context.ts";
 
 const MAX_BLOCKS_PER_TURN = 5;
@@ -47,6 +47,7 @@ export interface PiFenceRuntimeDeps {
 	logger: Logger;
 	processors?: FenceProcessor[];
 	configOptions?: LoadConfigOptions;
+	gondolin?: GondolinVMFactory;
 }
 
 export async function createPiFenceExtension(
@@ -74,7 +75,7 @@ export async function createPiFenceExtension(
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-sandbox.
 	const krokiController = sandboxes.get("kroki");
-	if (krokiController && shouldAutoStartKrokiSandbox(config) && isKrokiAutoStartAllowed(processors, blockedProcessors, blockedTags, processorPrecedence)) {
+	if (krokiController && shouldAutoStartKrokiSandbox(config) && isProcessorAutoStartAllowed(processors, "kroki-sandbox", blockedProcessors, blockedTags, processorPrecedence)) {
 		const controller = krokiController;
 		const status = await controller.status();
 		if (status.state === "ready") {
@@ -89,6 +90,23 @@ export async function createPiFenceExtension(
 				});
 			} else {
 				deps.logger.warn("pi-fence", "Docker Kroki auto-start failed", {
+					error: startResult.message,
+				});
+			}
+		}
+	}
+
+	const bundleController = sandboxes.get("bundle");
+	if (bundleController && shouldAutoStartBundleSandbox(config) && isProcessorAutoStartAllowed(processors, "bundle-sandbox", blockedProcessors, blockedTags, processorPrecedence)) {
+		const status = await bundleController.status();
+		if (status.state === "ready") {
+			deps.logger.debug("pi-fence", "Gondolin bundle VM already running");
+		} else {
+			const startResult = await bundleController.start();
+			if (startResult.state === "ready") {
+				deps.logger.info("pi-fence", "Gondolin bundle VM auto-started");
+			} else {
+				deps.logger.warn("pi-fence", "Gondolin bundle VM auto-start failed", {
 					error: startResult.message,
 				});
 			}
@@ -218,17 +236,24 @@ function shouldAutoStartKrokiSandbox(config: PiFenceConfig): boolean {
 	return false;
 }
 
+function shouldAutoStartBundleSandbox(config: PiFenceConfig): boolean {
+	const bundleSandbox = config.sandboxes?.bundle;
+	return bundleSandbox?.kind === "exec" &&
+		bundleSandbox.runtime === "gondolin-vm" &&
+		bundleSandbox.autoStart === true;
+}
 
-function isKrokiAutoStartAllowed(
+function isProcessorAutoStartAllowed(
 	processors: readonly FenceProcessor[],
+	processorId: string,
 	blockedProcessors: ReadonlySet<string>,
 	blockedTags: ReadonlySet<string>,
 	processorPrecedence: readonly string[],
 ): boolean {
-	const krokiSandbox = processors.find((processor) => processor.id === "kroki-sandbox");
-	return krokiSandbox !== undefined &&
-		isProcessorAllowed(krokiSandbox.id, krokiSandbox.placement, blockedProcessors, processorPrecedence) &&
-		!isProcessorFullyTagBlocked(krokiSandbox, processors, blockedTags);
+	const processor = processors.find((candidate) => candidate.id === processorId);
+	return processor !== undefined &&
+		isProcessorAllowed(processor.id, processor.placement, blockedProcessors, processorPrecedence) &&
+		!isProcessorFullyTagBlocked(processor, processors, blockedTags);
 }
 
 async function createDefaultProcessors(

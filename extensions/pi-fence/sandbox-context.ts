@@ -13,12 +13,14 @@ import {
 	createGondolinVMFactory,
 	createKrokiDockerComposeSandboxController,
 	createKrokiDockerSandboxController,
+	type GondolinVMFactory,
 	type SandboxController,
 } from "./sandbox.ts";
 
 export interface SandboxControllerDeps {
 	shell: ShellRunner;
 	logger: Logger;
+	gondolin?: GondolinVMFactory;
 }
 
 export function createSandboxControllers(
@@ -40,7 +42,7 @@ function createBundleSandboxController(
 	const bundle = config.sandboxes?.bundle;
 	if (bundle?.kind !== "exec") return undefined;
 	if (bundle.runtime === "gondolin-vm") {
-		return createGondolinBundleSandboxController(createGondolinVMFactory(), { image: bundle.image });
+		return createGondolinBundleSandboxController(deps.gondolin ?? createGondolinVMFactory(), { image: bundle.image });
 	}
 	if (bundle.runtime !== "docker-container") return undefined;
 	return createDockerContainerSandboxController(deps.shell, {

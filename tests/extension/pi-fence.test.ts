@@ -38,6 +38,7 @@ import { KROKI_ALIASES, KROKI_CANONICAL_TAGS } from "../../extensions/pi-fence/k
 import { formatProcessorLines } from "../../extensions/pi-fence/list.ts";
 
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
+import type { GondolinVMFactory, GondolinVMHandle } from "../../extensions/pi-fence/sandbox.ts";
 import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
@@ -53,6 +54,54 @@ import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
 const TINY_PNG = Buffer.from([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad, 0xbe, 0xef,
 ]);
+
+class FakeGondolinVM implements GondolinVMHandle {
+	readonly fs = {
+		writeFile: async (): Promise<void> => {},
+		readFile: async (): Promise<Buffer> => TINY_PNG,
+		deleteFile: async (): Promise<void> => {},
+	};
+	startCalls = 0;
+	closeCalls = 0;
+
+	async exec(command: string | readonly string[]): Promise<{ stdout: string; stdoutBuffer: Buffer; stderr: string; exitCode: number }> {
+		const parts = Array.isArray(command) ? command : [command];
+		if (parts.includes("cat") && parts.includes(BUNDLE_MANIFEST_PATH)) {
+			return {
+				stdout: JSON.stringify({
+					name: "pi-fence-bundle",
+					version: "0.1.0",
+					tools: {
+						dot: { command: "dot", versionCommand: ["dot", "-V"] },
+						mmdc: { command: "mmdc", versionCommand: ["mmdc", "--version"] },
+					},
+				}),
+				stdoutBuffer: Buffer.alloc(0),
+				stderr: "",
+				exitCode: 0,
+			};
+		}
+		return { stdout: "ok\n", stdoutBuffer: Buffer.from("ok\n"), stderr: "", exitCode: 0 };
+	}
+
+	async start(): Promise<void> {
+		this.startCalls += 1;
+	}
+
+	async close(): Promise<void> {
+		this.closeCalls += 1;
+	}
+}
+
+class FakeGondolinVMFactory implements GondolinVMFactory {
+	readonly creates: Array<{ image?: string }> = [];
+	readonly vm = new FakeGondolinVM();
+
+	async create(options: { image?: string }): Promise<GondolinVMHandle> {
+		this.creates.push(options);
+		return this.vm;
+	}
+}
 
 describe("pi-fence extension — intercepts fenced blocks on agent_end", () => {
 	afterEach(() => {
@@ -1287,6 +1336,75 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			const lastStatusIndex = statusIndices[statusIndices.length - 1] ?? -1;
 			expect(runIndex).toBeGreaterThanOrEqual(0);
 			expect(lastStatusIndex).toBeGreaterThan(runIndex);
+		},
+		20_000,
+	);
+
+	it(
+		"sandboxes.bundle.autoStart starts the Gondolin bundle VM",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						bundle: {
+							kind: "exec",
+							runtime: "gondolin-vm",
+							image: "pi-fence-bundle:0.1.0",
+							autoStart: true,
+						},
+					},
+				}),
+			);
+			const gondolin = new FakeGondolinVMFactory();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				new FakeShellRunner(),
+				{ home, cwd: makeTempDir() },
+				{ gondolin },
+			);
+
+			expect(gondolin.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
+			expect(gondolin.vm.startCalls).toBe(1);
+		},
+		20_000,
+	);
+
+	it(
+		"sandboxes.bundle.autoStart false leaves the Gondolin bundle VM stopped",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({
+					processorPrecedence: ["sandbox"],
+					sandboxes: {
+						bundle: {
+							kind: "exec",
+							runtime: "gondolin-vm",
+							autoStart: false,
+						},
+					},
+				}),
+			);
+			const gondolin = new FakeGondolinVMFactory();
+
+			await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence list",
+				new FakeShellRunner(),
+				{ home, cwd: makeTempDir() },
+				{ gondolin },
+			);
+
+			expect(gondolin.creates).toEqual([]);
+			expect(gondolin.vm.startCalls).toBe(0);
 		},
 		20_000,
 	);
@@ -2979,6 +3097,7 @@ async function buildSessionWithExtension(
 	shell?: FakeShellRunner,
 	configOptions?: LoadConfigOptions,
 	extraExtensionFactories?: Array<(pi: ExtensionAPI) => void | Promise<void>>,
+	runtimeDeps?: { gondolin?: GondolinVMFactory },
 ): Promise<{
 	session: Awaited<ReturnType<typeof createAgentSession>>["session"];
 	sentCustomMessages: CapturedCustomMessage[];
@@ -3039,6 +3158,7 @@ async function buildSessionWithExtension(
 			shell: shellToUse,
 			logger,
 			...(configOptions !== undefined ? { configOptions } : {}),
+			...runtimeDeps,
 		});
 	};
 
@@ -3107,11 +3227,14 @@ async function runExtensionWithCommand(
 	command: string,
 	shell?: FakeShellRunner,
 	configOptions?: LoadConfigOptions,
+	runtimeDeps?: { gondolin?: GondolinVMFactory },
 ): Promise<Captured> {
 	const { session, sentCustomMessages, registeredRenderers, logger } = await buildSessionWithExtension(
 		http,
 		shell,
 		configOptions,
+		undefined,
+		runtimeDeps,
 	);
 
 	try {
