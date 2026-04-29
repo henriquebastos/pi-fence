@@ -4634,3 +4634,47 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
 
 **Carry-forward.** Close `task-333cb0de`, then update and close the CV9.E1 epic if final acceptance bookkeeping is clean.
+
+---
+
+### 2026-04-29 — CV9.E1 closed: policy-driven resolution
+
+**What shipped.** CV9.E1 is done. Processor selection is now policy-driven by placement (`embedded`, `host`, `sandbox`, `remote`), object bindings, blocked tags/processors, explicit sandbox controllers, and standard built-in processor factories. Built-ins include distinct trust-boundary ids (`graphviz-host`, `bundle-sandbox`, `kroki-sandbox`, `kroki-remote`, etc.), same-placement conflicts are ambiguous until bound, and `index.ts` no longer encodes built-in processor construction order.
+
+**Story close commits.**
+
+1. `7e227ba` — close CV9.E1.S1
+2. `8957ba3` — close CV9.E1.S2
+3. `bb109f0` — close CV9.E1.S3
+4. `1177844` — close CV9.E1.S4
+5. `6eaf219` — close CV9.E1.S5
+6. `61f6eda` — close CV9.E1.S6: Kroki sandbox processor
+7. `98ab8d6` — close CV9.E1.S7: processor factory discovery
+
+**Acceptance follow-up commits.**
+
+1. `a4d832f` — fix live Kroki composition with explicit config
+2. `99fa541` — docs: record env-configured Kroki live
+3. `2cc7fc5` — fix Kroki live Sonar marker
+4. `67d1ad7` — docs: record Kroki live Sonar marker
+
+**Test count.** Fast suite finished at 856 non-live tests. CV9.E1 added policy resolver, config, binding, blocked tag/processor, sandbox controller, bundle sandbox, Kroki sandbox, factory loader, and env-configured live-composition coverage.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 856 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm run inspect` — passed the completion target with 0 Sonar issues; Sonar's quality gate still reports `ERROR` only for the existing `new_security_hotspots_reviewed` condition.
+3. `PI_FENCE_CONFIG=tests/fixtures/live-config/kroki-sandbox.json pnpm test:live` — passed: 30 tests, 25 skipped.
+4. `pnpm run render:verify` — passed: 5 render scenarios wrote screenshots/gallery under `scripts/out/render-verify/`.
+
+**Design decisions that survived implementation.**
+
+1. **Placement policy owns selection.** Registration, import, and manifest order do not decide cross-placement winners.
+2. **Bindings are constraints.** Object bindings select an exact processor or placement but never bypass blocks, availability, or placement allowlists.
+3. **Sandbox ownership is explicit.** Localhost URLs remain unmanaged remote endpoints unless a ready sandbox controller owns the service.
+4. **Factory discovery is static and policy-neutral.** Built-in wrappers expose standard `processorFactory` registrations without order or priority metadata.
+5. **Live Kroki verification is configurable.** `PI_FENCE_CONFIG` lets acceptance select local `kroki-sandbox` through supported config instead of depending on public `kroki.io` availability.
+
+**Known deviations.** The local single-container Kroki sandbox fixture blocks companion-backed tags (`mermaid`, `plantuml`, `c4plantuml`, `vega`, `vegalite`) for acceptance. Fixing the Kroki Mermaid companion image / full companion stack remains future work, not CV9.E1 scope.
+
+**Carry-forward.** CV9 is closed. Next roadmap CV is CV6 unless project priorities change.

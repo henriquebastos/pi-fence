@@ -1,7 +1,7 @@
 # CV9.E1 — Policy-driven Resolution
 
 **CV:** [CV9 — Processor Policy](README.md)
-**Last updated:** 2026-04-29 — S7 done; epic acceptance blocked by live Kroki timeout
+**Last updated:** 2026-04-29 — done
 
 ## Summary
 
@@ -77,4 +77,9 @@ S5 and S6 are sandbox tracer bullets. S5 proves an exec sandbox through one mult
 
 ## Acceptance status
 
-Story implementation is complete, but the epic remains open until the acceptance gate can pass. On 2026-04-29, `pnpm test:live` was blocked by public Kroki request timeouts in `tests/integration/kroki.live.test.ts`; `pnpm run render:verify` passed. Rerun the live gate when Kroki/network is reachable before closing the epic.
+Accepted on 2026-04-29 with a config-selected local Kroki sandbox:
+
+1. `PI_FENCE_CONFIG=tests/fixtures/live-config/kroki-sandbox.json pnpm test:live` — passed.
+2. `pnpm run render:verify` — passed.
+
+The public `kroki.io` path remains covered by the same config-composed live test when selected by config, but epic acceptance no longer depends on public endpoint availability.
