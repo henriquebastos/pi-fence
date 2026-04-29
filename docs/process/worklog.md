@@ -4470,3 +4470,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Bad factories degrade to diagnostics.** Collection and creation keep valid processors and report bad records without activation-time throws.
 
 **Carry-forward.** Add built-in factory wrappers and a static manifest next, then route `index.ts` through the loader.
+
+---
+
+### 2026-04-28 — CV9.E1.S7 step 2: built-in factory wrappers
+
+**What shipped.** Added thin `processorFactory` wrappers for every built-in processor under `extensions/pi-fence/processors/`, plus a static built-in manifest and reusable sandbox controller context builder. The manifest collects embedded, host, sandbox, and remote factories without exposing precedence metadata. Sandbox factories are included for creation only when the matching sandbox controller is configured.
+
+**Implementation commits.**
+
+1. `1a967f8` — step 2: wrap built-in processor factories
+
+**Test count.** Fast suite increased from 848 to 853 with five unit tests for built-in factory collection, default processor creation, sandbox omission, and sandbox controller selection.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/built-in-processors.test.ts tests/unit/processor-factory.test.ts` — passed: 13 tests.
+2. `pnpm run feedback` — passed: 853 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Wrappers are adapters only.** Existing processor implementation files still own behavior; wrapper modules only map factory context to constructors.
+2. **Sandbox creation is context-driven.** `createSandboxControllers` builds configured controllers once and factories consume them through the shared context.
+3. **Manifest order remains inert.** The manifest names available factories, but selection behavior still belongs to the resolver and policy tests.
+
+**Carry-forward.** Route `index.ts` default processor creation through `createBuiltInProcessors`, then remove concrete processor constructor imports from the composition root.
