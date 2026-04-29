@@ -4495,3 +4495,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Manifest order remains inert.** The manifest names available factories, but selection behavior still belongs to the resolver and policy tests.
 
 **Carry-forward.** Route `index.ts` default processor creation through `createBuiltInProcessors`, then remove concrete processor constructor imports from the composition root.
+
+---
+
+### 2026-04-28 — CV9.E1.S7 step 3: composition root factory loader
+
+**What shipped.** `createPiFenceExtension` now creates sandbox controllers once, builds the default processor set through `createBuiltInProcessors`, and logs any factory diagnostics. `index.ts` no longer imports concrete built-in processor constructors or hand-builds embedded, host, sandbox, and remote processor arrays.
+
+**Implementation commits.**
+
+1. `b0d8306` — step 3: load default processors from factories
+
+**Test count.** Fast suite stayed at 853; existing extension coverage now exercises the factory-created default processor set.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'fence list command|sandbox precedence renders dot through kroki-sandbox|does not register bundle-sandbox'` — passed: 4 tests, 63 skipped by name filter.
+2. `pnpm run feedback` — passed: 853 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **`index.ts` remains a composition root.** It still wires runtime dependencies and handlers, but built-in processor construction moved behind the factory loader.
+2. **Sandbox controllers are shared.** Auto-start and sandbox factories now consume controllers from the same context map.
+3. **Factory diagnostics are visible.** Bad built-in factory records are logged through the extension logger instead of failing silently.
+
+**Carry-forward.** Add explicit order-independence, same-placement ambiguity, third-party registration, and architecture checks; then run completion inspection.
