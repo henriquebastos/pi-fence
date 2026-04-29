@@ -9,7 +9,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { gondolinBundleImageFromEnv, hasContainer, hasDocker, hasNetwork } from "./live-deps.ts";
+import { canStartLiveSandbox, gondolinBundleImageFromEnv, hasContainer, hasDocker, hasNetwork } from "./live-deps.ts";
 
 describe("hasDocker", () => {
 	it("returns a boolean without throwing", async () => {
@@ -40,6 +40,32 @@ describe("gondolinBundleImageFromEnv", () => {
 		expect(gondolinBundleImageFromEnv({})).toBeUndefined();
 		expect(gondolinBundleImageFromEnv({ PI_FENCE_GONDOLIN_BUNDLE_IMAGE: "   " })).toBeUndefined();
 		expect(gondolinBundleImageFromEnv({ PI_FENCE_GONDOLIN_BUNDLE_IMAGE: " pi-fence-bundle:0.1.0 " })).toBe("pi-fence-bundle:0.1.0");
+	});
+});
+
+describe("canStartLiveSandbox", () => {
+	it("returns false instead of throwing for unavailable live sandboxes", async () => {
+		await expect(canStartLiveSandbox({
+			start: async () => ({ state: "error", message: "qemu missing" }),
+			stop: async () => ({ state: "stopped", message: "stopped" }),
+		})).resolves.toBe(false);
+		await expect(canStartLiveSandbox({
+			start: async () => { throw new Error("assets missing"); },
+			stop: async () => ({ state: "stopped", message: "stopped" }),
+		})).resolves.toBe(false);
+	});
+
+	it("stops a ready live sandbox after preflight", async () => {
+		let stopCalls = 0;
+
+		await expect(canStartLiveSandbox({
+			start: async () => ({ state: "ready", message: "ready" }),
+			stop: async () => {
+				stopCalls += 1;
+				return { state: "stopped", message: "stopped" };
+			},
+		})).resolves.toBe(true);
+		expect(stopCalls).toBe(1);
 	});
 });
 

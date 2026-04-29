@@ -21,6 +21,22 @@ export function gondolinBundleImageFromEnv(
 	return image ? image : undefined;
 }
 
+export interface LiveSandboxPreflightController {
+	start(): Promise<{ state: string; message: string }>;
+	stop(): Promise<unknown>;
+}
+
+export async function canStartLiveSandbox(controller: LiveSandboxPreflightController): Promise<boolean> {
+	try {
+		const status = await controller.start();
+		if (status.state !== "ready") return false;
+		await controller.stop().catch(() => undefined);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /**
  * Does the `docker` binary exist and respond to `docker info`?
  *

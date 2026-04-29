@@ -13,10 +13,11 @@ import {
 	createGondolinBundleSandboxController,
 	createGondolinVMFactory,
 } from "../../extensions/pi-fence/sandbox.ts";
-import { gondolinBundleImageFromEnv, hasContainer } from "../utilities/live-deps.ts";
+import { canStartLiveSandbox, gondolinBundleImageFromEnv, hasContainer } from "../utilities/live-deps.ts";
 
 const containerRunning = await hasContainer(BUNDLE_SANDBOX_CONTAINER_NAME);
 const gondolinBundleImage = gondolinBundleImageFromEnv();
+const gondolinBundleReady = await canStartGondolinBundle(gondolinBundleImage);
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const SIZE_FLOOR_BYTES = 500;
 
@@ -71,7 +72,7 @@ describe.skipIf(!containerRunning)("bundle-sandbox — live", () => {
 	}, 20_000);
 });
 
-describe.skipIf(gondolinBundleImage === undefined)("bundle-sandbox — Gondolin live", () => {
+describe.skipIf(!gondolinBundleReady)("bundle-sandbox — Gondolin live", () => {
 	const controller = createGondolinBundleSandboxController(createGondolinVMFactory(), {
 		image: gondolinBundleImage,
 	});
@@ -112,3 +113,8 @@ describe.skipIf(gondolinBundleImage === undefined)("bundle-sandbox — Gondolin 
 		expect(result.png.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
 	}, 45_000);
 });
+
+async function canStartGondolinBundle(image: string | undefined): Promise<boolean> {
+	if (image === undefined) return false;
+	return canStartLiveSandbox(createGondolinBundleSandboxController(createGondolinVMFactory(), { image }));
+}
