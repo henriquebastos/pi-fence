@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (CV9.E1.S6 — Kroki sandbox processor)
+
+- Added `kroki-sandbox`, a sandbox-placement processor for managed local Kroki services, distinct from unmanaged `kroki-remote` endpoints.
+- `sandboxes.kroki.runtime: "docker-container"` can now select the trusted single-container Kroki service as `kroki-sandbox` when `sandbox` placement is allowed.
+- `sandboxes.kroki.runtime: "docker-compose"` can now select a fixed Compose-backed Kroki stack from `docker/kroki/compose.yaml`, starting with Kroki core plus the Mermaid companion service.
+- `processorPrecedence: ["sandbox", "remote"]` now prefers ready `kroki-sandbox` and falls back to `kroki-remote` when the managed service is unavailable.
+- `/fence list` and `/fence doctor` now surface `kroki-sandbox` availability, including partial Compose component details.
+- Added live tests for the single-container and Compose `kroki-sandbox` service paths; they skip cleanly when the managed Docker services are absent.
+
+### Changed (CV9.E1.S6 — Kroki sandbox processor)
+
+- Kroki Docker auto-start is now gated by `kroki-sandbox` policy (`sandbox` placement and sandbox blocks), not by `kroki-remote` policy.
+- `kroki.endpoint` remains unmanaged `kroki-remote` configuration even when it points at localhost; sandbox ownership now requires a ready `sandboxes.kroki` controller.
+
 ### Added (CV9.E1.S5 — Bundle sandbox processor)
 
 - Added `bundle-sandbox`, a sandbox-placement processor for `graphviz`/`dot` and `mermaid` backed by a labelled Docker exec container.
@@ -16,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed (CV9.E1.S4 — Sandbox control contract)
 
-- Config now accepts named sandbox controller policy under `sandboxes`, with default `bundle` and `kroki` entries. The default Kroki sandbox is a `service` using the existing single-container `docker-container` runtime; `docker-compose` remains an accepted future runtime value.
+- Config now accepts named sandbox controller policy under `sandboxes`, with default `bundle` and `kroki` entries. The default Kroki sandbox is a `service` using the existing single-container `docker-container` runtime; `docker-compose` is also supported for managed Kroki by CV9.E1.S6.
 - `sandboxes.kroki.autoStart: true` with `runtime: "docker-container"` starts the existing Docker Kroki manager. Existing `kroki.docker.autoStart: true` configs remain supported as a compatibility alias.
 - Docker Kroki lifecycle checks now require the expected `yuzutech/kroki` image and pi-fence ownership label before reporting readiness or running lifecycle commands; project sandbox `image` values are not executed by the current bridge.
 - `/fence kroki stop` now reports non-zero `docker stop` / `docker rm` exits as errors with Docker's stderr and exit code instead of reporting success.

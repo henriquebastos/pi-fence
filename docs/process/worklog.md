@@ -4326,3 +4326,28 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Bindings keep exact semantics.** A `{ "processor": "kroki-sandbox" }` binding selects the managed service without weakening blocked/placement policy.
 
 **Carry-forward.** Add Kroki sandbox live gates and user-facing docs, then run completion inspection for S6.
+
+---
+
+### 2026-04-28 — CV9.E1.S6 step 6: Kroki sandbox live gates and docs
+
+**What shipped.** S6 now has live integration coverage for both managed Kroki service runtimes. The single-container lane verifies `kroki-sandbox` through `pi-fence-kroki`; the Compose lane verifies the fixed `pi-fence-kroki-core` plus `pi-fence-kroki-mermaid` stack. User docs now describe `kroki-sandbox`, sandbox policy, Compose startup, remote fallback, and the localhost endpoint distinction.
+
+**Implementation commits.**
+
+1. `7f122fa` — step 6: gate Kroki sandbox live paths
+
+**Test count.** Fast suite unchanged at 839. Live coverage adds 4 skip-clean tests when the managed Kroki containers are absent.
+
+**Verification.**
+
+1. `pnpm vitest run tests/integration/kroki-sandbox.live.test.ts` — skipped cleanly in this environment: 1 file skipped, 4 tests skipped because managed Kroki containers were absent.
+2. `pnpm run feedback` — passed: 839 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Live tests do not start services.** They verify real service paths only when the expected managed containers already exist, matching the repo's clean-skip live test rule.
+2. **Single-container and Compose are separate live lanes.** Each runtime has its own availability and render checks, so a missing Compose companion stack does not hide single-container behavior.
+3. **Docs keep remote and sandbox separate.** `kroki.endpoint` remains remote configuration; `sandboxes.kroki` is the managed sandbox path.
+
+**Carry-forward.** Run S6 completion inspection, create beans for any findings, then close S6 from a clean tree if inspection is clean.

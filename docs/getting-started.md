@@ -200,9 +200,10 @@ S5 does not add `/fence bundle start|stop` or auto-start. Project-configured bun
 If you don't see an image, check:
 
 - Your terminal supports inline images.
-- For kroki.io-served tags: you have network access.
+- For `kroki-remote` tags served by kroki.io: you have network access.
 - For `dot` tags selected by `graphviz-host`: `graphviz` is on your PATH (`dot -V` should print a version).
 - For `dot` or `mermaid` tags selected by `bundle-sandbox`: the `pi-fence-bundle` Docker container is running, labelled, and built from the trusted bundle image.
+- For tags selected by `kroki-sandbox`: the configured `sandboxes.kroki` service runtime is ready and reports `http://localhost:8000`.
 
 ## Configuring the Kroki endpoint
 
@@ -216,13 +217,15 @@ By default, diagram tags that resolve to `kroki-remote` post sources to the publ
 }
 ```
 
-After `/reload`, every Kroki-rendered tag hits your local instance. `/fence list` shows the effective endpoint next to the processor:
+After `/reload`, every Kroki-rendered tag that resolves to `kroki-remote` hits your local instance. `/fence list` shows the effective endpoint next to the processor:
 
 ```text
 kroki-remote [registered] (http://localhost:8000) — mermaid, graphviz (dot), …
 ```
 
 Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. A global `kroki.endpoint` is treated as a privacy setting and cannot be replaced by project config. If no global endpoint is set, a project can point its own sessions at a local Docker Kroki.
+
+`kroki.endpoint` is always unmanaged `kroki-remote` configuration. A localhost URL alone does not make the processor sandbox-owned; use `sandboxes.kroki` to select `kroki-sandbox`.
 
 **Quick local Kroki via Docker:**
 
@@ -232,9 +235,11 @@ docker run -d -p 8000:8000 yuzutech/kroki
 
 That manual command is enough when you only want to point `kroki.endpoint` at a local service. pi-fence's lifecycle commands manage their own named, labelled container; use `/fence kroki start` when you want pi-fence to own start/stop/status.
 
-## Running Kroki locally via Docker
+## Running Kroki locally via managed sandbox
 
-Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-fence manages the Docker container for you:
+Instead of sending diagram source to `kroki.io`, you can let pi-fence select a managed local Kroki service as `kroki-sandbox`.
+
+The legacy slash commands still manage the trusted single-container Docker runtime:
 
 ```text
 /fence kroki start    → pulls and starts a local Kroki container on port 8000
@@ -242,9 +247,27 @@ Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-f
 /fence kroki stop     → stops and removes the container
 ```
 
-`/fence kroki start` only manages the container; it does not change the active processor endpoint. To use the local container, set `kroki.endpoint` to `http://localhost:8000` in your config file and `/reload` — see [Configuring the Kroki endpoint](#configuring-the-kroki-endpoint) above.
+To render through the managed container, allow `sandbox` placement:
 
-**Auto-start (opt-in):** to have pi-fence start the single-container Docker Kroki sandbox automatically on every session, add to your config:
+```json
+{
+  "processorPrecedence": ["sandbox", "remote"],
+  "sandboxes": {
+    "bundle": {
+      "kind": "exec",
+      "runtime": "docker-container"
+    },
+    "kroki": {
+      "kind": "service",
+      "runtime": "docker-container"
+    }
+  }
+}
+```
+
+`kroki-sandbox` wins over `kroki-remote` when the container is ready; if it is unavailable and `remote` remains allowed, pi-fence falls back to `kroki-remote`.
+
+**Auto-start (opt-in):** to have pi-fence start the single-container Docker Kroki sandbox automatically on every session, add `autoStart`:
 
 ```json
 {
@@ -262,9 +285,34 @@ Instead of sending diagram source to `kroki.io`, you can run Kroki locally. pi-f
 }
 ```
 
-`sandboxes` maps replace by layer, so include any default sandbox entries you still want active when overriding this section. Existing configs that use `kroki.docker.autoStart: true` still work as a compatibility alias. `sandboxes.kroki.runtime: "docker-compose"` is accepted by the config model for the future full Kroki stack, but it does not auto-start until the Compose-backed service controller ships.
+`sandboxes` maps replace by layer, so include any default sandbox entries you still want active when overriding this section. Existing configs that use `kroki.docker.autoStart: true` still work as a single-container compatibility alias.
 
-Auto-start follows processor policy: if `kroki-remote` is blocked or `remote` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the container stays running between sessions — subsequent starts are no-ops. The current single-container lifecycle uses the trusted default `yuzutech/kroki` image even if project config contains a sandbox `image` value; `stop` reports non-zero `docker stop` or `docker rm` exits with Docker's stderr instead of hiding them behind a success message.
+For the Compose-backed Kroki stack, start it manually from a source checkout:
+
+```bash
+docker compose -f docker/kroki/compose.yaml -p pi-fence-kroki up -d
+```
+
+or let pi-fence auto-start it:
+
+```json
+{
+  "processorPrecedence": ["sandbox", "remote"],
+  "sandboxes": {
+    "bundle": {
+      "kind": "exec",
+      "runtime": "docker-container"
+    },
+    "kroki": {
+      "kind": "service",
+      "runtime": "docker-compose",
+      "autoStart": true
+    }
+  }
+}
+```
+
+Auto-start follows sandbox processor policy: if `kroki-sandbox` is blocked, fully tag-blocked, or `sandbox` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the runtime stays running between sessions — subsequent starts are no-ops. The single-container lifecycle uses the trusted default `yuzutech/kroki` image even if project config contains a sandbox `image` value; `stop` reports non-zero `docker stop` or `docker rm` exits with Docker's stderr instead of hiding them behind a success message.
 
 ## Diagnosing the setup
 
@@ -281,6 +329,8 @@ mermaid-host [unavailable] — mermaid
     mmdc binary not found on PATH. Install @mermaid-js/mermaid-cli — npm i -g @mermaid-js/mermaid-cli
 bundle-sandbox [unavailable] — graphviz (dot), mermaid
     bundle sandbox is absent: Container pi-fence-bundle not found.
+kroki-sandbox [unavailable] — mermaid, graphviz (dot), plantuml (puml), …
+    Kroki sandbox is absent: Container pi-fence-kroki not found.
 kroki-remote [registered] — mermaid, graphviz (dot), plantuml (puml), …
 
 Issues
