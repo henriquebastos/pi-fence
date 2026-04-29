@@ -4837,3 +4837,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Policy unchanged.** Runtime selection happens under the named `bundle` sandbox; resolver placement and processor identity are unchanged.
 
 **Carry-forward.** Add Gondolin bundle image/live-gate scaffolding under `task-d0c94dea`, then run completion inspection for the story.
+
+---
+
+### 2026-04-29 — CV10.E1.S1 step 4.5: Gondolin bundle auto-start
+
+**What shipped.** Added extension startup support for `sandboxes.bundle.autoStart` when the bundle runtime is `gondolin-vm`. The extension can now receive a fake Gondolin VM factory in tests, starts the VM before availability probing when sandbox policy allows `bundle-sandbox`, and leaves the VM uncreated when `autoStart` is false. Kroki auto-start policy now shares the same processor-allowed helper instead of a Kroki-specific copy.
+
+**Implementation commit.**
+
+1. `171628c` — step 4.5: auto-start Gondolin bundle runtimes
+
+**Beans.**
+
+1. Closed `task-2cb29cc7` — CV10.E1.S1 step 4.5 Gondolin bundle auto-start.
+2. Next ready bean: `task-d0c94dea` — Gondolin bundle image contract and live gates.
+
+**Test count.** Fast suite increased from 869 to 871 with two extension tests for Gondolin bundle auto-start true/false.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern "Gondolin|autoStart"` — passed: 6 tests, 63 skipped by name filter.
+2. `pnpm run feedback` — passed: 871 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Policy-gated auto-start.** Bundle VM auto-start only happens when `bundle-sandbox` is present, not blocked, not fully tag-blocked, and `sandbox` placement is allowed.
+2. **Dependency injection for VM lifecycle.** Fast extension tests inject a fake Gondolin factory; no QEMU or guest assets are required outside live tests.
+3. **Kroki behavior preserved.** Existing Kroki auto-start tests remain green through the generalized processor auto-start guard.
+
+**Carry-forward.** Add skip-clean Gondolin live tests and setup docs under `task-d0c94dea`, then run story completion inspection.
