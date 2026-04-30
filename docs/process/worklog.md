@@ -7580,3 +7580,28 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 1. **Truncated opener lines fail closed.** Overlong unsupported fence openers still suppress nested supported renders instead of letting nested examples escape.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: truncated openers fail closed
+
+**What shipped.** Closed the truncated-opener parser finding. Opener-like lines whose retained text was capped now become opaque ignored fences instead of renderable supported fences. This prevents hidden suffixes, such as a backtick later in an overlong info string or an overlong delimiter length, from making the bounded parser accept an opener that the full parser would reject or close incorrectly.
+
+**Implementation commit.**
+
+1. `d7c98f8` — fix CV11.E5.S1: fail closed on truncated openers
+
+**Beans.**
+
+1. Closed `bug-54b84a21` — CV11.E5.S1 inspection: truncated opener lines fail open.
+
+**Test count.** Fast non-live suite increased from 1004 to 1006 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts --testNamePattern 'overlong|hidden backticks|shorter closers|ignored fenced|opaque'` — passed: 4 focused tests.
+2. `pnpm run feedback` — passed: 1006 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Bounded parsing is conservative.** If a fence opener cannot be fully trusted because its line was capped, pi-fence treats it as opaque ignored fenced content rather than rendering it.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
