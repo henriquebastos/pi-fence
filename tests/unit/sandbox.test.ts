@@ -680,6 +680,19 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 		});
 	});
 
+	it("reports error through the sandbox adapter when the managed container publishes Kroki on all interfaces", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
+		setPortBinding(shell, "pi-fence-kroki", "0.0.0.0");
+
+		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-kroki publishes 8000/tcp on 0.0.0.0:8000; expected 127.0.0.1:8000.",
+		});
+	});
+
 	it("normalizes stop() through the existing Kroki Docker manager", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
