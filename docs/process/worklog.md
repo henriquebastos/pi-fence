@@ -7312,3 +7312,29 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 2. **Limit failures use the ordinary error pipeline.** The user and LLM see the same controlled pi-fence diagnostic shape as processor errors.
 
 **Carry-forward.** Enforce processor output caps and Kroki response caps.
+
+### 2026-04-30 — CV11.E5.S1 oversized processor outputs become controlled errors
+
+**What shipped.** `agent_end` now applies the resolved processor-output byte cap after `render()` and before custom-message content is built. Oversized text and image outputs are replaced with bounded pi-fence error output, so large text does not enter message details and large image buffers are not base64 encoded for display.
+
+**Implementation commit.**
+
+1. `3e52f2b` — step 8: reject oversized processor outputs
+
+**Beans.**
+
+1. Closed `task-b51aa614` — CV11.E5.S1 reject oversized processor output before message build.
+
+**Test count.** Fast non-live suite increased from 984 to 986 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/messages.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'oversize|limit'` — passed: 3 focused extension tests; message tests skipped by the pattern.
+2. `pnpm run feedback` — passed: 986 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the slice.**
+
+1. **Output limits sit at the message boundary.** Processors can return large values, but pi-fence caps them before persistence/display conversion.
+2. **Limit failures preserve processor attribution.** Oversized output errors retain the processor id that produced the too-large result.
+
+**Carry-forward.** Add Kroki response cap behavior, then inspect CV11.E5.S1.
