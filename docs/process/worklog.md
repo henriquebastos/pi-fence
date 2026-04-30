@@ -6894,3 +6894,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **Docs do not predict S2.** Legacy result compatibility will be documented only after the runtime fully normalizes those results.
 
 **Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: default aliases are frozen
+
+**What shipped.** Closed the second-round inspection finding that processors omitting `aliases` received a mutable default alias map. Missing aliases now produce the same frozen null-prototype map as provided aliases, so `available()` cannot add unsafe alias entries before registry insertion.
+
+**Implementation commit.**
+
+1. `fbd6912` — fix CV11.E4.S1: freeze default aliases
+
+**Beans.**
+
+1. Closed `bug-0e4582dc` — CV11.E4.S1 inspection: freeze default alias map.
+
+**Test count.** Fast non-live suite increased from 964 to 965 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'available mutates|aliases'` — passed: 8 focused tests.
+2. `pnpm run feedback` — passed: 965 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Default and provided aliases share the same immutability rule.** No alias map enters registry state mutable.
+
+**Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
