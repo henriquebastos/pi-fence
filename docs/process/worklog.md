@@ -5370,3 +5370,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Invalid endpoints have no provenance.** A rejected endpoint cannot produce a `/fence doctor` endpoint-source warning.
 
 **Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 inspection fix: normalized endpoint forms
+
+**What shipped.** Hardened `kroki.endpoint` validation against WHATWG URL normalization after the second inspection round. Endpoint strings must now begin with explicit `http://` or `https://`, and raw backslashes are rejected before URL parsing, so malformed forms such as `https:example.com/kroki`, `https:@example.com/kroki`, and `https:\\example.com\\kroki` fail closed instead of normalizing to `https://example.com/kroki`.
+
+**Implementation commit.**
+
+1. `a4a8145` — fix CV11.E1.S2: reject normalized endpoint forms
+
+**Beans.**
+
+1. Closed `bug-088b2bf0` — CV11.E1.S2 inspection: reject WHATWG-normalized endpoint forms.
+
+**Test count.** Fast suite increased from 899 to 902 with three endpoint hardening cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern kroki.endpoint` — passed after RED failures for malformed authority and backslash-normalized endpoints.
+2. `pnpm vitest run tests/unit/config.test.ts` — passed: 108 tests.
+3. `pnpm run feedback` — passed: 902 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint. A first feedback attempt failed only because inspect subagents left an untracked `progress.md`; removing it and rerunning passed.
+
+**Design decisions that survived remediation.**
+
+1. **Require explicit authority syntax.** Valid endpoint strings must start with `http://` or `https://`; URL forms that WHATWG can repair are not accepted.
+2. **Reject raw backslashes.** Endpoint config stays URL-shaped, not browser-tolerant path syntax.
+
+**Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
