@@ -42,6 +42,7 @@ export function extractFencedBlocksFromChunks(
 	options: ExtractFencedBlocksOptions = {},
 ): FencedBlock[] {
 	const parser = createBlockParser(tags, options);
+	if (parser.done) return parser.finish();
 	for (const line of linesFromChunks(chunks, lineBufferLimit(options.maxSourceBytes))) {
 		parser.consume(line);
 		if (parser.done) break;
@@ -196,12 +197,13 @@ function parseLineOpener(line: LineRecord): Opener | null {
 }
 
 function parseTruncatedOpener(line: string): Opener | null {
-	const match = /^( {0,3})(`{3,}|~{3,})/.exec(line);
+	const match = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
 	if (!match) return null;
 	const fence = match[2];
+	const rest = match[3];
 	return {
 		char: fence[0] as "`" | "~",
-		length: Number.MAX_SAFE_INTEGER,
+		length: rest.length === 0 ? Number.MAX_SAFE_INTEGER : fence.length,
 		tag: "",
 	};
 }

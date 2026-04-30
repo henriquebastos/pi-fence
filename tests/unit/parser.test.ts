@@ -84,6 +84,36 @@ describe("extractFencedBlocks", () => {
 		]);
 	});
 
+	it("does not consume chunks when maxBlocks is zero", () => {
+		function* chunks(): Generator<string> {
+			throw new Error("should not consume any chunks");
+		}
+
+		expect(extractFencedBlocksFromChunks(chunks(), ["mermaid"], { maxBlocks: 0 })).toEqual([]);
+	});
+
+	it("closes overlong ignored info-string fences with their retained delimiter length", () => {
+		const blocks = extractFencedBlocks(
+			[
+				"```ignored " + "x".repeat(300_000),
+				"```",
+				"```mermaid",
+				"flowchart LR",
+				"```",
+			].join("\n"),
+			["mermaid"],
+			{ maxSourceBytes: 262_144 },
+		);
+
+		expect(blocks).toEqual([
+			{
+				tag: "mermaid",
+				source: "flowchart LR",
+				sourceBytes: 12,
+			},
+		]);
+	});
+
 	it("does not render overlong supported openers with hidden backticks", () => {
 		const blocks = extractFencedBlocks(
 			["```mermaid " + "x".repeat(300_000) + "`", "flowchart LR", "```"].join("\n"),
