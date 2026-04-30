@@ -6840,3 +6840,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 2. **Validation remains pure.** The listener owns the catch-and-emit boundary rather than coupling `register.ts` to pi's event bus.
 
 **Carry-forward.** Close the remaining CV11.E4.S1 inspection findings.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection test: alias safety coverage is independent
+
+**What shipped.** Closed the inspection testing finding. Alias-key tests now isolate `__proto__` from other unsafe keys, alias values now cover unsafe string targets, and id/tag tests pin leading and trailing hyphen rejection. This was a coverage-only finding: the behavior was already green after the validation hardening.
+
+**Implementation commit.**
+
+1. `ebcc23b` — test CV11.E4.S1: cover alias safe strings
+
+**Beans.**
+
+1. Closed `task-4af7bc5a` — CV11.E4.S1 inspection: strengthen alias safe-string coverage.
+
+**Test count.** Fast non-live suite increased from 962 to 964 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'alias|id|tag|hyphen|__proto__'` — passed: 30 focused tests.
+2. `pnpm run feedback` — passed: 964 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Coverage proves independent hazards independently.** `__proto__`, unsafe alias keys, unsafe alias targets, and boundary hyphens each have their own assertions.
+
+**Carry-forward.** Remove the premature legacy-output compatibility note from the processor guide.
