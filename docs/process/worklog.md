@@ -7338,3 +7338,29 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 2. **Limit failures preserve processor attribution.** Oversized output errors retain the processor id that produced the too-large result.
 
 **Carry-forward.** Add Kroki response cap behavior, then inspect CV11.E5.S1.
+
+### 2026-04-30 — CV11.E5.S1 Kroki responses are capped
+
+**What shipped.** Kroki success responses now check the resolved processor-output byte cap before image output or SVG rasterization. Built-in Kroki remote and sandbox factories receive the shared render limits through processor factory policy.
+
+**Implementation commit.**
+
+1. `b789572` — step 9: cap Kroki response bodies
+
+**Beans.**
+
+1. Closed `task-ba24b93c` — CV11.E5.S1 cap Kroki HTTP responses.
+
+**Test count.** Fast non-live suite increased from 986 to 987 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/kroki.test.ts --testNamePattern 'resolved policy|output limit|response'` — passed: 6 focused tests.
+2. `pnpm run feedback` — passed: 987 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the slice.**
+
+1. **Kroki cap is policy-driven.** Remote and sandbox factories use the same resolved output limit as the `agent_end` message boundary.
+2. **SVG-only Kroki responses are capped before rasterization.** Large SVG bodies do not enter `@resvg/resvg-js` through the Kroki path.
+
+**Carry-forward.** Run CV11.E5.S1 completion inspection and live verification.
