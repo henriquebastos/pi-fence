@@ -199,8 +199,8 @@ function emitRegisterError(pi: ExtensionAPI, logger: Logger, error: string): voi
 }
 
 function registrationErrorMessage(err: unknown): string {
-	if (err instanceof Error) return err.message;
 	try {
+		if (err instanceof Error) return String(err.message);
 		return String(err);
 	} catch {
 		return "non-stringifiable registration error";

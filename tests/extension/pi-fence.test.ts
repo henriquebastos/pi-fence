@@ -2518,6 +2518,53 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
+		"turns Error objects with throwing message getters into register-error events",
+		async () => {
+			const registrationErrors: unknown[] = [];
+			const error = new Error("placeholder");
+			Object.defineProperty(error, "message", {
+				get() {
+					throw new Error("message trap");
+				},
+			});
+			const throwingAliases = new Proxy({}, {
+				ownKeys() {
+					throw error;
+				},
+			});
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.on("pi-fence:register-error", (data) => {
+					registrationErrors.push(data);
+				});
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: throwingAliases,
+					available: async () => ({ ok: true }),
+					render: async () => ({ ok: true, text: "" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const { session } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+			session.dispose();
+			await new Promise((r) => setTimeout(r, 50));
+
+			expect(registrationErrors).toHaveLength(1);
+			expect(registrationErrors[0]).toMatchObject({
+				error: expect.stringContaining("non-stringifiable"),
+			});
+		},
+		20_000,
+	);
+
+	it(
 		"does not probe a third-party processor whose tag family is blocked",
 		async () => {
 			const home = makeTempDir();
