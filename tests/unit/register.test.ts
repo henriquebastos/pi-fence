@@ -170,9 +170,70 @@ describe("validateProcessor", () => {
 		if (!result.ok) expect(result.error).toContain("available");
 	});
 
+	it("accepts aliases whose safe targets exist in canonical tags", () => {
+		const aliases = { "test-alias": "test" };
+		const result = validateProcessor(makeValidProcessor({ aliases }));
+
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(Object.entries(result.processor.aliases)).toEqual([["test-alias", "test"]]);
+			expect(Object.getPrototypeOf(result.processor.aliases)).toBe(null);
+			expect(result.processor.aliases).not.toBe(aliases);
+		}
+	});
+
+	it("rejects invalid alias maps", () => {
+		for (const aliases of [[], "dot"] as const) {
+			const result = validateProcessor({ ...makeValidProcessor(), aliases });
+			expect(result).toMatchObject({ ok: false });
+		}
+	});
+
+	it("rejects inherited alias keys", () => {
+		const aliases = Object.create({ inherited: "test" }) as Record<string, string>;
+		aliases["test-alias"] = "test";
+
+		const result = validateProcessor({ ...makeValidProcessor(), aliases });
+
+		expect(result).toMatchObject({ ok: false });
+	});
+
+	it("rejects unsafe alias keys", () => {
+		const aliases = Object.create(null) as Record<string, string>;
+		Object.defineProperty(aliases, "__proto__", {
+			enumerable: true,
+			value: "test",
+		});
+
+		for (const aliasKey of ["bad/alias", "bad alias", "prototype"]) {
+			aliases[aliasKey] = "test";
+			const result = validateProcessor({ ...makeValidProcessor(), aliases });
+			expect(result, aliasKey).toMatchObject({ ok: false });
+			delete aliases[aliasKey];
+		}
+	});
+
+	it("rejects aliases with non-string targets", () => {
+		const result = validateProcessor({
+			...makeValidProcessor(),
+			aliases: { "test-alias": 42 },
+		});
+
+		expect(result).toMatchObject({ ok: false });
+	});
+
+	it("rejects aliases targeting missing canonical tags", () => {
+		const result = validateProcessor(makeValidProcessor({
+			aliases: { "test-alias": "missing" },
+		}));
+
+		expect(result).toMatchObject({ ok: false });
+	});
+
 	it("accepts processor without aliases (defaults to {})", () => {
 		const result = validateProcessor({ id: "x", placement: "remote", tags: ["t"], available: async () => ({ ok: true }), render: async () => ({ kind: "text", text: "" }) });
 		expect(result.ok).toBe(true);
+		if (result.ok) expect(Object.getPrototypeOf(result.processor.aliases)).toBe(null);
 	});
 });
 

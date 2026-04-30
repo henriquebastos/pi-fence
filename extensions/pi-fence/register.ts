@@ -79,22 +79,56 @@ export function validateProcessor(value: unknown): ValidationResult {
 		return { ok: false, error: "processor.render must be a function" };
 	}
 
-	// Default aliases to {} if missing.
-	const aliases = (typeof obj.aliases === "object" && obj.aliases !== null && !Array.isArray(obj.aliases))
-		? obj.aliases as Readonly<Record<string, string>>
-		: {};
+	const tags = obj.tags as readonly string[];
+	const aliases = validateAliases(Object.hasOwn(obj, "aliases") ? obj.aliases : undefined, tags);
+	if (!aliases.ok) {
+		return { ok: false, error: aliases.error };
+	}
 
 	return {
 		ok: true,
 		processor: {
 			id,
 			placement: obj.placement as ProcessorPlacement,
-			tags: obj.tags as readonly string[],
-			aliases,
+			tags,
+			aliases: aliases.aliases,
 			available: obj.available as FenceProcessor["available"],
 			render: obj.render as FenceProcessor["render"],
 		},
 	};
+}
+
+type AliasValidationResult =
+	| { ok: true; aliases: Readonly<Record<string, string>> }
+	| { ok: false; error: string };
+
+function validateAliases(value: unknown, tags: readonly string[]): AliasValidationResult {
+	const aliases = Object.create(null) as Record<string, string>;
+	if (value === undefined) return { ok: true, aliases };
+	if (!isAliasObject(value)) {
+		return { ok: false, error: "processor.aliases must be an own object" };
+	}
+
+	const canonicalTags = new Set(tags);
+	for (const [alias, target] of Object.entries(value)) {
+		if (!isSafeProcessorName(alias)) {
+			return { ok: false, error: "processor.aliases keys must be safe strings" };
+		}
+		if (typeof target !== "string" || !isSafeProcessorName(target)) {
+			return { ok: false, error: "processor.aliases values must be safe strings" };
+		}
+		if (!canonicalTags.has(target)) {
+			return { ok: false, error: `processor.aliases target ${target} must exist in processor.tags` };
+		}
+		aliases[alias] = target;
+	}
+	return { ok: true, aliases };
+}
+
+function isAliasObject(value: unknown): value is Record<string, unknown> {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+	const prototype = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
 }
 
 function isSafeProcessorName(value: string): boolean {
