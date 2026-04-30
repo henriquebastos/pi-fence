@@ -5891,3 +5891,25 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Convention written, not encoded in a flag.** A `cleanupSafe?: boolean` field would add a parallel surface; documenting the existing two-status convention keeps the result type small while protecting future verifiers from breaking the contract silently.
 
 **Carry-forward.** Reconcile the round-2 worklog test-count phrasing.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: reconcile worklog test-count phrasing
+
+**What shipped.** Reworded the round-2 entry for `da3ca1b` so the breakdown reads as nine cases (four manager-layer port-binding rejections, one manager-layer wrong-label-no-stop guard, four Compose-layer port-binding rejections), matching the +9 fast-suite delta.
+
+**Implementation commit.**
+
+1. `692a660` — docs CV11.E1.S3: reconcile worklog test-count phrasing
+
+**Beans.**
+
+1. Closed `task-41d2cf91` — CV11.E1.S3 inspection: reconcile worklog test-count phrasing.
+
+**Test count.** Fast suite unchanged (930); docs-only correction.
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+
+**Carry-forward.** Rerun S3 inspection. If it produces no further required findings, run completion checks and close CV11.E1.S3.
