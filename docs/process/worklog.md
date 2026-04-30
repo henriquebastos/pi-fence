@@ -5636,3 +5636,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Ready checks account for existing runtimes.** The package asset is loopback-bound, but runtime status also verifies the actual Docker-reported host binding.
 
 **Carry-forward.** Harden the static Compose asset test, then resolve the managed endpoint alignment finding.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: exact Compose asset port assertion
+
+**What shipped.** The static Compose asset test now extracts the `core` service `ports` list and asserts it is exactly `127.0.0.1:8000:8000`, instead of accepting any file text that happened to contain the loopback string.
+
+**Implementation commit.**
+
+1. `8bce5bd` — test CV11.E1.S3: assert exact Compose Kroki port
+
+**Beans.**
+
+1. Closed `task-aa95b082` — CV11.E1.S3 inspection: harden Compose asset port assertion.
+
+**Test count.** Fast suite remained at 912 tests; this was coverage-only remediation that tightened an existing assertion.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-compose.test.ts` — passed immediately because the fixed Compose asset already met the stricter contract.
+2. `pnpm run feedback` — passed: 912 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Assert the contract location.** The test now checks `services.core.ports`, so an unrelated comment or companion service mapping cannot satisfy the story.
+2. **No new parser dependency.** The Compose asset shape is simple enough for a tiny test helper, avoiding another package for one contract assertion.
+
+**Carry-forward.** Resolve the managed endpoint alignment finding.
