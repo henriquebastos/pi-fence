@@ -15,10 +15,11 @@ A CV is **done** only when every Story in its Epics is done.
 | [CV2 — Work Offline](cv2--work-offline/README.md) | `portability` | Done | Core rendering paths work without the public Kroki service. |
 | [CV3 — Beyond Diagrams](cv3--beyond-diagrams/README.md) | `legibility` | Done | The platform proves itself on non-diagram text-to-visual use cases. |
 | [CV4 — Platform](cv4--platform/README.md) | `extensibility` | Done | Third parties write processors as first-class citizens. |
-| [CVx — Verifiability](cvx--verifiability/README.md) | `verifiability` | Done | Testing and inspection infrastructure make correctness provable. |
+| [CVx — Verifiability](cvx--verifiability/README.md) | `verifiability` | In progress | Testing and inspection infrastructure make correctness provable. |
 | [CV5 — SVG Languages](cv5--svg-languages/README.md) | `legibility` | Done | Unlock Kroki languages the public endpoint serves only as SVG. |
 | [CV6 — Fixture Completeness](cv6--fixture-completeness/README.md) | `verifiability` | Not started | Every I/O-seam processor has live-derived fixtures; drift is detected automatically. |
 | [CV7 — Companion Backends](cv7--companion-backends/README.md) | `legibility` | Not started | Languages behind Kroki companion containers render via a shipped Compose stack. |
 | [CV8 — Internal Quality](cv8--internal-quality/README.md) | `simplification` | Done | Simplify internals that accumulated duplication or unnecessary indirection during feature delivery. |
 | [CV9 — Processor Policy](cv9--processor-policy/README.md) | `control` | Done | Processor selection is governed by explicit user policy, not import order or implicit trust assumptions. |
 | [CV10 — VM Sandboxes](cv10--vm-sandboxes/README.md) | `control` | Done | CLI renderers can run inside a VM-backed sandbox when container isolation is not enough. |
+| [CV11 — Trust Boundaries](cv11--trust-boundaries/README.md) | `control` | Not started | npm-installed pi-fence is safe and predictable across config, plugin, render, artifact, and TypeScript boundaries. |

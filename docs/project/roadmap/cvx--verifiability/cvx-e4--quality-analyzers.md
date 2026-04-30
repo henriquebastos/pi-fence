@@ -1,16 +1,17 @@
 # CVx.E4 — Quality Analyzers
 
 **Roadmap:** [CVx](../README.md)
-**Last updated:** 2026-04-22 — S1 Done, S2 Done, S3 Done
+**Last updated:** 2026-04-29 — S1 Done, S2 Done, S3 Done, S4 Ready
 
 `CVx.E3` made the architecture explicit and reduced the main runtime hotspots. The next confidence step is to encode those boundaries in tools that catch drift automatically.
 
-This Epic adds two complementary analyzers:
+This Epic adds complementary analyzers:
 
 1. an enforced architectural analyzer for import/layer rules
 2. a non-blocking SonarQube experiment to evaluate whether its broader signal is worth adopting later
+3. a staged Fallow changed-file audit for dead-code, duplication, and health findings during completion inspection
 
-The order is deliberate. Architectural rules should become executable first. Broader code-quality reporting can follow as an experiment once the repo already knows how to reject the highest-value structural regressions.
+The order is deliberate. Architectural rules should become executable first. Broader code-quality reporting can follow as an experiment once the repo already knows how to reject the highest-value structural regressions. Fallow adoption starts in the inspect lane, not the fast gate, so the repo can use the signal without turning current repo-wide findings into mandatory churn.
 
 ## Stories
 
@@ -19,6 +20,7 @@ The order is deliberate. Architectural rules should become executable first. Bro
 | [S1](cvx-e4-s1--dependency-cruiser-boundaries.md) | **Architectural import boundaries are enforced automatically with dependency-cruiser** | ✅ Done |
 | [S2](cvx-e4-s2--sonarqube-experiment.md) | **SonarQube runs as a non-blocking experiment so we can judge its signal before adopting any gate** | ✅ Done |
 | [S3](cvx-e4-s3--sonar-report-pipeline-cleanup.md) | **The Sonar report pipeline is readable enough that its own findings are signal, not self-noise** | ✅ Done |
+| [S4](cvx-e4-s4--fallow-staged-inspect-signal.md) | **Fallow runs as a staged inspect signal before any fast-gate adoption** | Ready |
 
 ## Deliverable vision (epic scope)
 
@@ -27,7 +29,8 @@ A contributor changes pi-fence's architecture and gets fast, specific feedback w
 1. Production runtime code cannot import from `tests/**`.
 2. The extension runtime lane and tooling/test lanes have explicit, machine-checked boundaries where that pays its way.
 3. A SonarQube experiment produces a report the team can inspect without turning generic smell counts into mandatory churn.
-4. Future adoption decisions are evidence-based: architectural rules are enforced because they are high-signal; broader analyzers are adopted only if their findings are worth the maintenance cost.
+4. A Fallow changed-file audit can run during completion inspection while repo-wide findings remain advisory until classified.
+5. Future adoption decisions are evidence-based: architectural rules are enforced because they are high-signal; broader analyzers are adopted only if their findings are worth the maintenance cost.
 
 ## Why this Epic is earned now
 
@@ -63,4 +66,5 @@ The Epic is done when the following are true together:
 2. Any additional dependency rules adopted in the same story are documented and clearly tied to the architecture note.
 3. SonarQube can run against the repo in a documented, reproducible, non-blocking way.
 4. The SonarQube story closes with an explicit judgment about what was useful, what was noisy, and what — if anything — should become policy later.
-5. The roadmap/worklog describe these analyzers as evidence-backed tooling, not as aspirational garnish.
+5. Fallow has a changed-file inspect command, a repo-wide advisory command, and a close judgment about current finding signal/noise.
+6. The roadmap/worklog describe these analyzers as evidence-backed tooling, not as aspirational garnish.
