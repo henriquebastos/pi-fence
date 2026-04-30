@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (CV11.E1.S1 — Package runtime assets)
 
 - npm packages now include `docker/bundle/`, `docker/kroki/`, and `gondolin/bundle/`, so installed users receive the runtime assets for bundle image workflows and the managed Kroki Compose stack.
+- The managed Kroki Compose lifecycle now invokes Docker with a package-resolved absolute `docker/kroki/compose.yaml` path instead of a user-cwd-relative path.
 
 ### Added (CV10.E1.S1 — Gondolin VM runtime for bundle-sandbox)
 

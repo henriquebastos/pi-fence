@@ -10,7 +10,7 @@ CV11 — Trust Boundaries is in progress. CV11.E1.S1 is active.
 
 ## Next
 
-Next bean: `task-d089d596` — CV11.E1.S1 step 2, package-resolved Compose path.
+Next step: run CV11.E1.S1 inspection and remediate findings as beans.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5146,3 +5146,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Runtime directories, not individual source files.** `package.json.files` includes `docker/bundle`, `docker/kroki`, and `gondolin/bundle`, keeping related assets together while still excluding live-test-only `docker/Dockerfile`.
 
 **Carry-forward.** Compose lifecycle still passes `docker/kroki/compose.yaml` as a relative path. Fix under `task-d089d596`.
+
+---
+
+### 2026-04-29 — CV11.E1.S1 step 2: package-resolved Compose path
+
+**What shipped.** The Kroki Docker Compose sandbox controller now passes Docker an absolute Compose file path resolved from pi-fence's installed package location. Generic Compose controllers still accept caller-provided paths, but the fixed Kroki controller no longer depends on the user's project cwd containing `docker/kroki/compose.yaml`.
+
+**Implementation commit.**
+
+1. `421ba23` — step 2: resolve Compose assets from package path
+
+**Beans.**
+
+1. Closed `task-d089d596` — CV11.E1.S1 step 2 package-resolved Compose path.
+
+**Test count.** Fast suite increased from 880 to 881 with one package-path Compose lifecycle test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern Compose` — passed after the RED failure showed Docker was still called with `docker/kroki/compose.yaml`.
+2. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern docker-compose` — passed.
+3. `pnpm vitest run tests/unit/package-scripts.test.ts tests/unit/sandbox.test.ts` — passed: 44 tests.
+4. `pnpm exec npm pack --dry-run --json` — passed; required runtime assets remained in pack output.
+5. `pnpm run feedback` — passed: 881 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Resolve at the fixed adapter boundary.** `createKrokiDockerComposeSandboxController()` owns package asset resolution; `createDockerComposeSandboxController()` remains generic and preserves explicit caller paths.
+2. **Keep the relative constant for docs/tests.** `KROKI_COMPOSE_FILE` still names the package asset (`docker/kroki/compose.yaml`), while the fixed controller converts it to an absolute path for Docker.
+
+**Carry-forward.** Run CV11.E1.S1 inspection. If it creates no required findings, close the story and then continue to CV11.E1.S2.
