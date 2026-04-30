@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV11 — Trust Boundaries is in progress. CV11.E1.S2 is active.
+CV11 — Trust Boundaries is in progress. CV11.E1.S3 is ready.
 
 ## Next
 
-Next step: rerun CV11.E1.S2 inspection and close the story if no new findings remain.
+Next story: CV11.E1.S3 — Managed Kroki runtimes bind to loopback.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5457,3 +5457,63 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Encoded dot segments count.** `%2e` / `%2e%2e` are rejected the same as `.` / `..`.
 
 **Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S2 closed: Kroki endpoint config is normalized and diagnosed
+
+**What shipped.** Closed CV11.E1.S2. `kroki.endpoint` now fails closed unless it is a credential-free `http://` or `https://` URL with explicit authority. The validator rejects unsupported schemes, malformed and browser-repaired authority forms, credentials, query/hash delimiters, raw spaces/control characters, backslashes, and raw or encoded dot-segment paths. Endpoint path prefixes are preserved by rejecting rewrites, request URLs are built with `URL`, and `/fence doctor` warns when the active endpoint comes from project-local config.
+
+**Implementation commits.**
+
+1. `45d7319` — step 1: fail closed on unsafe Kroki endpoints
+2. `03df144` — step 2: compose Kroki request URLs safely
+3. `1fbe89d` — step 3: diagnose project Kroki endpoints
+4. `dfe4aef` — fix CV11.E1.S2: reject surprising endpoint delimiters
+5. `168a80d` — test CV11.E1.S2: cover endpoint provenance semantics
+6. `a4a8145` — fix CV11.E1.S2: reject normalized endpoint forms
+7. `a26a896` — fix CV11.E1.S2: reject repaired endpoint syntax
+8. `7b45361` — fix CV11.E1.S2: preserve endpoint path prefixes
+
+**Documentation commits.**
+
+1. `98813f3` — docs: record CV11.E1.S2 endpoint validation
+2. `46946df` — docs: record CV11.E1.S2 URL builder
+3. `b999724` — docs: record CV11.E1.S2 endpoint diagnostic
+4. `ca377c8` — docs: record CV11.E1.S2 endpoint hardening
+5. `78586ad` — docs: record CV11.E1.S2 provenance coverage
+6. `5f49d62` — docs: record CV11.E1.S2 normalized endpoint fix
+7. `46475c6` — docs: record CV11.E1.S2 repaired endpoint fix
+8. `5fe843c` — docs: record CV11.E1.S2 dot-segment fix
+
+**Beans.**
+
+1. Closed `task-c7015390` — endpoint validation and normalization.
+2. Closed `task-c21c13f0` — Kroki request URL builder.
+3. Closed `task-53c0659d` — project endpoint diagnostic.
+4. Closed `bug-1c47fc72` — reject surprising endpoint delimiters.
+5. Closed `task-06b7fca5` — cover endpoint provenance semantics.
+6. Closed `bug-088b2bf0` — reject WHATWG-normalized endpoint forms.
+7. Closed `bug-074ffb84` — reject repaired authority and path forms.
+8. Closed `bug-b4350dca` — reject endpoint dot-segment paths.
+
+**Test count.** Fast non-live suite finished at 909 tests. This story added 28 net non-live tests across endpoint validation, URL construction, doctor diagnostics, provenance semantics, and inspection-driven endpoint hardening.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/kroki.test.ts` — passed during the story.
+2. `pnpm vitest run tests/unit/doctor.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'endpoint|doctor'` — passed during the story.
+3. `pnpm run feedback` — passed after each implementation/remediation commit; final run: 909 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+4. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: non-live CRAP completion inspection; Sonar skipped as unconfigured.
+5. `inspect5p` rounds 1–4 — produced endpoint-hardening and provenance-coverage beans, all closed.
+6. `inspect5p` round 5 — no issues found.
+
+**Design decisions that survived the story.**
+
+1. **Reject, do not strip, surprising URL parts.** Query strings, hash fragments, credentials, browser-repaired syntax, and path rewrites all fail closed at the config boundary.
+2. **Project endpoints remain allowed.** The user keeps control, but `/fence doctor` names project-local endpoint provenance because diagram source may leave the project.
+3. **URL construction is runtime-local.** Config validates and normalizes endpoints; `kroki.ts` composes request URLs with URL helpers at render time.
+
+**Known deviations.** None.
+
+**Carry-forward.** Implement CV11.E1.S3 next: bind managed single-container and Compose Kroki runtimes to loopback before closing CV11.E1.
