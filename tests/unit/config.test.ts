@@ -111,10 +111,10 @@ describe("config core", () => {
 	it("resolved policy: default config becomes non-optional runtime values", () => {
 		const policy = resolvePiFencePolicy(DEFAULT_CONFIG);
 
-		expect(policy.bindings).toEqual({});
-		expect(policy.blockedProcessors).toEqual(new Set());
-		expect(policy.blockedTags).toEqual(new Set());
-		expect(policy.processorPrecedence).toEqual(["embedded", "host", "sandbox", "remote"]);
+		expect(policy.processorResolution.bindings).toEqual({});
+		expect(policy.processorResolution.blockedProcessors).toEqual(new Set());
+		expect(policy.processorResolution.blockedTags).toEqual(new Set());
+		expect(policy.processorResolution.processorPrecedence).toEqual(["embedded", "host", "sandbox", "remote"]);
 		expect(policy.kroki.endpoint).toBe("https://kroki.io");
 		expect(policy.endpointsByProcessor).toEqual({});
 		expect(policy.sandboxes.get("bundle")).toEqual({
@@ -142,10 +142,10 @@ describe("config core", () => {
 			processorOutputMaxBytes: Number.POSITIVE_INFINITY,
 		});
 		expect(policy.processorResolution).toEqual({
-			bindings: policy.bindings,
-			blockedProcessors: policy.blockedProcessors,
-			blockedTags: policy.blockedTags,
-			processorPrecedence: policy.processorPrecedence,
+			bindings: {},
+			blockedProcessors: new Set(),
+			blockedTags: new Set(),
+			processorPrecedence: ["embedded", "host", "sandbox", "remote"],
 		});
 	});
 
@@ -178,10 +178,10 @@ describe("config core", () => {
 		const policy = resolvePiFencePolicy(merged);
 		projectBinding.processor = "graphviz-host";
 
-		expect(policy.bindings.graphviz).toEqual({ processor: "kroki-remote" });
-		expect(policy.blockedTags).toEqual(new Set(["mermaid"]));
-		expect(policy.blockedProcessors).toEqual(new Set(["kroki-sandbox"]));
-		expect(policy.processorPrecedence).toEqual(["host", "remote"]);
+		expect(policy.processorResolution.bindings.graphviz).toEqual({ processor: "kroki-remote" });
+		expect(policy.processorResolution.blockedTags).toEqual(new Set(["mermaid"]));
+		expect(policy.processorResolution.blockedProcessors).toEqual(new Set(["kroki-sandbox"]));
+		expect(policy.processorResolution.processorPrecedence).toEqual(["host", "remote"]);
 		expect(policy.kroki).toEqual({
 			endpoint: "http://global-kroki.local:8000",
 			customEndpoint: true,

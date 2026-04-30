@@ -48,7 +48,7 @@ export interface ProcessorFactoryPolicy {
 	kroki: KrokiEndpointPolicy;
 }
 
-export interface ResolvedPiFencePolicy extends ProcessorResolutionPolicy {
+export interface ResolvedPiFencePolicy {
 	processorResolution: ProcessorResolutionPolicy;
 	processorFactories: ProcessorFactoryPolicy;
 	kroki: KrokiEndpointPolicy;
@@ -77,7 +77,6 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 		customEndpoint: customKrokiEndpoint,
 	};
 	return {
-		...processorResolution,
 		processorResolution,
 		processorFactories: { kroki },
 		kroki,
