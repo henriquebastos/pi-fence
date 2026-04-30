@@ -1,18 +1,17 @@
 /**
  * Self-tests for `HttpClient` and its Fake implementation.
  *
- * `NodeHttpClient` is a thin wrapper over the global `fetch`. Unit-testing
- * it would mostly exercise fetch. Live coverage lands in
- * `tests/integration/kroki.live.test.ts` (S1).
+ * `NodeHttpClient` is a thin wrapper over the global `fetch` plus response-size
+ * enforcement. Live coverage lands in `tests/integration/kroki.live.test.ts`.
  *
  * FakeHttpClient is the workhorse fake for all unit-level tests that touch
  * HTTP — the Kroki processor test in S1 uses it for assertions like
  * "the kroki call posted the correct body to the correct URL".
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
-import type { HttpClient, HttpRequest, HttpResponse } from "../../extensions/pi-fence/io/http-client.ts";
+import { NodeHttpClient, type HttpClient, type HttpRequest, type HttpResponse } from "../../extensions/pi-fence/io/http-client.ts";
 import { FakeHttpClient } from "./http-client.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
@@ -22,6 +21,63 @@ function textResponse(status: number, body: string): HttpResponse {
 		body: Buffer.from(body, "utf8"),
 	};
 }
+
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+	globalThis.fetch = originalFetch;
+});
+
+describe("NodeHttpClient", () => {
+	it("returns a buffered response under the requested byte cap", async () => {
+		globalThis.fetch = async () => new Response("ok", {
+			status: 200,
+			headers: { "content-type": "text/plain", "content-length": "2" },
+		});
+		const http = new NodeHttpClient();
+
+		const result = await http.request({
+			method: "GET",
+			url: "https://example.com/ok",
+			maxResponseBytes: 2,
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.headers["content-type"]).toBe("text/plain");
+		expect(result.body.toString("utf8")).toBe("ok");
+	});
+
+	it("rejects a response whose content-length exceeds the byte cap", async () => {
+		globalThis.fetch = async () => new Response("too large", {
+			status: 200,
+			headers: { "content-length": "9" },
+		});
+		const http = new NodeHttpClient();
+
+		await expect(http.request({
+			method: "GET",
+			url: "https://example.com/large",
+			maxResponseBytes: 8,
+		})).rejects.toThrow("HTTP response is too large: 9 bytes exceeds limit of 8 bytes");
+	});
+
+	it("rejects a streamed response once reads exceed the byte cap", async () => {
+		globalThis.fetch = async () => new Response(new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(Uint8Array.from([1, 2]));
+				controller.enqueue(Uint8Array.from([3, 4]));
+				controller.close();
+			},
+		}), { status: 200 });
+		const http = new NodeHttpClient();
+
+		await expect(http.request({
+			method: "GET",
+			url: "https://example.com/stream",
+			maxResponseBytes: 3,
+		})).rejects.toThrow("HTTP response is too large: 4 bytes exceeds limit of 3 bytes");
+	});
+});
 
 describe("FakeHttpClient", () => {
 	it("returns the default response when no match is programmed", async () => {

@@ -2333,6 +2333,7 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 	it(
 		"rejects oversized text output before building message content",
 		async () => {
+			const oversizedText = "é".repeat(5_242_881); // 10,485,762 UTF-8 bytes.
 			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
 				pi.events.emit("pi-fence:register", {
 					id: "huge-text",
@@ -2340,7 +2341,7 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 					tags: ["hugetext"],
 					aliases: {},
 					available: async () => ({ ok: true }),
-					render: async () => ({ kind: "text", text: "x".repeat(10_485_761) }),
+					render: async () => ({ kind: "text", text: oversizedText }),
 				});
 				await new Promise((r) => setTimeout(r, 50));
 			};
@@ -2364,7 +2365,7 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 			expect(outputs[0].content).toEqual([
 				{
 					type: "text",
-					text: "Processor output is too large: 10485761 bytes exceeds limit of 10485760 bytes",
+					text: "Processor output is too large: 10485762 bytes exceeds limit of 10485760 bytes",
 				},
 			]);
 		},
@@ -2430,7 +2431,7 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 				});
 				await new Promise((r) => setTimeout(r, 50));
 			};
-			const oversizedSource = "x".repeat(262_145);
+			const oversizedSource = "é".repeat(131_073); // 262,146 UTF-8 bytes.
 
 			const captured = await runExtensionWithAssistantText(
 				new FakeHttpClient(),
@@ -2452,9 +2453,20 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 			expect(outputs[0].content).toEqual([
 				{
 					type: "text",
-					text: "Fence source is too large: 262145 bytes exceeds limit of 262144 bytes",
+					text: "Fence source is too large: 262146 bytes exceeds limit of 262144 bytes",
 				},
 			]);
+			const details = outputs[0].details as {
+				source?: string;
+				sourcePreview?: { text: string; truncated: boolean; omittedBytes?: number; omittedLines?: number };
+			};
+			expect(details.source).toBeUndefined();
+			expect(Buffer.byteLength(details.sourcePreview?.text ?? "", "utf8")).toBeLessThanOrEqual(8192);
+			expect(details.sourcePreview).toMatchObject({
+				truncated: true,
+				omittedBytes: 262_146 - 8192,
+				omittedLines: 0,
+			});
 		},
 		20_000,
 	);

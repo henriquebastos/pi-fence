@@ -6,14 +6,21 @@ import {
 	type SandboxRuntime,
 	type TagBinding,
 } from "./config.ts";
+import {
+	DEFAULT_FENCE_SOURCE_MAX_BYTES,
+	DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+} from "./limits.ts";
 import type { ProcessorPlacement } from "./processor.ts";
+
+export {
+	DEFAULT_FENCE_SOURCE_MAX_BYTES,
+	DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+} from "./limits.ts";
 
 export const DEFAULT_KROKI_ENDPOINT = "https://kroki.io";
 export const DEFAULT_MAX_BLOCKS_PER_TURN = 5;
 export const DEFAULT_SOURCE_PREVIEW_MAX_BYTES = 8192;
 export const DEFAULT_SOURCE_PREVIEW_MAX_LINES = 40;
-export const DEFAULT_FENCE_SOURCE_MAX_BYTES = 262_144;
-export const DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES = 10_485_760;
 
 export interface ResolvedSandboxPolicy {
 	kind: SandboxKind;

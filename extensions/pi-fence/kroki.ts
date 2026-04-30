@@ -25,7 +25,7 @@
 
 import type { HttpClient, HttpResponse } from "./io/http-client.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
-import { DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES } from "./policy.ts";
+import { DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES, formatByteLimitError } from "./limits.ts";
 import type { SandboxController, SandboxStatus } from "./sandbox.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
@@ -256,6 +256,7 @@ async function requestKroki(
 			headers: { "content-type": "text/plain" },
 			body: source,
 			signal,
+			maxResponseBytes: context.maxResponseBytes,
 		});
 		return { ok: true, response };
 	} catch (err) {
@@ -271,6 +272,9 @@ async function renderKrokiResponse(
 	logger: Logger,
 	processorId: string,
 ): Promise<FenceOutput> {
+	if (response.body.length > context.maxResponseBytes) {
+		return errorOutput(formatByteLimitError("Kroki response", response.body.length, context.maxResponseBytes));
+	}
 	return response.status >= 200 && response.status < 300
 		? renderSuccessfulKrokiResponse(response, context, logger, processorId)
 		: renderFailedKrokiResponse(response, context, logger, processorId);
@@ -282,9 +286,6 @@ async function renderSuccessfulKrokiResponse(
 	logger: Logger,
 	processorId: string,
 ): Promise<FenceOutput> {
-	if (response.body.length > context.maxResponseBytes) {
-		return errorOutput(limitError("Kroki response", response.body.length, context.maxResponseBytes));
-	}
 	const rendered = await responseBodyToPng(response.body, context, logger, processorId);
 	if (rendered.kind !== "image") return rendered;
 
@@ -317,10 +318,6 @@ async function responseBodyToPng(
 		logger.error(processorId, `svg→png failed: ${message}`, { tag: context.tag });
 		return errorOutput(`SVG rasterization failed: ${message}`);
 	}
-}
-
-function limitError(label: string, actualBytes: number, maxBytes: number): string {
-	return `${label} is too large: ${actualBytes} bytes exceeds limit of ${maxBytes} bytes`;
 }
 
 function renderFailedKrokiResponse(

@@ -365,6 +365,7 @@ describe("createKrokiProcessor", () => {
 		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png");
 		expect(http.requests[0].headers?.["content-type"]).toBe("text/plain");
 		expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
+		expect(http.requests[0].maxResponseBytes).toBe(10_485_760);
 	});
 
 	it("returns an error when a 2xx response body exceeds the output limit", async () => {
@@ -405,6 +406,19 @@ describe("createKrokiProcessor", () => {
 		expect(result.kind).toBe("error");
 		if (result.kind === "error") {
 			expect(result.error).toContain("bad mermaid syntax");
+		}
+	});
+
+	it("returns a limit error before decoding an oversized 4xx body", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/mermaid/png", textResponse(400, "x".repeat(10_485_761)));
+		const kroki = createKrokiProcessor(http);
+
+		const result = await kroki.render("mermaid", "not valid mermaid");
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
+			expect(result.error).toBe("Kroki response is too large: 10485761 bytes exceeds limit of 10485760 bytes");
 		}
 	});
 

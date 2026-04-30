@@ -19,6 +19,7 @@ export interface RecordedHttpRequest {
 	url: string;
 	headers?: Record<string, string>;
 	body?: string | Buffer;
+	maxResponseBytes?: number;
 }
 
 type ResponseOrFn = HttpResponse | ((req: HttpRequest) => HttpResponse);
@@ -51,6 +52,7 @@ export class FakeHttpClient implements HttpClient {
 			url: input.url,
 			headers: input.headers,
 			body: input.body,
+			maxResponseBytes: input.maxResponseBytes,
 		});
 
 		const programmed = this.programmed.get(keyFor(input.method, input.url));

@@ -3,6 +3,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Logger } from "./io/logger.ts";
+import { formatByteLimitError } from "./limits.ts";
 import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
@@ -91,7 +92,11 @@ interface RenderBlockOptions {
 async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Promise<void> {
 	const sourceBytes = Buffer.byteLength(block.source, "utf8");
 	if (sourceBytes > options.renderLimits.fenceSourceMaxBytes) {
-		sendLimitError(block, limitError("Fence source", sourceBytes, options.renderLimits.fenceSourceMaxBytes), options);
+		sendLimitError(
+			block,
+			formatByteLimitError("Fence source", sourceBytes, options.renderLimits.fenceSourceMaxBytes),
+			options,
+		);
 		return;
 	}
 
@@ -135,7 +140,7 @@ function enforceOutputLimit(output: FenceOutput, maxBytes: number): FenceOutput 
 	if (output.kind === "error") return output;
 	const bytes = output.kind === "image" ? output.data.length : Buffer.byteLength(output.text, "utf8");
 	return bytes > maxBytes
-		? errorOutput(limitError("Processor output", bytes, maxBytes))
+		? errorOutput(formatByteLimitError("Processor output", bytes, maxBytes))
 		: output;
 }
 
@@ -153,10 +158,6 @@ function sendLimitError(block: FencedBlock, message: string, options: RenderBloc
 	));
 	options.metrics?.recordRender("pi-fence", block.tag, false);
 	sendErrorFollowup(block, "pi-fence", message, options);
-}
-
-function limitError(label: string, actualBytes: number, maxBytes: number): string {
-	return `${label} is too large: ${actualBytes} bytes exceeds limit of ${maxBytes} bytes`;
 }
 
 function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions): boolean {
