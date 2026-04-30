@@ -32,8 +32,12 @@ export interface RenderLimitsPolicy {
 	processorOutputMaxBytes: number;
 }
 
+export type ProcessorBindingPolicy =
+	| { processor: string }
+	| { placement: ProcessorPlacement };
+
 export interface ProcessorResolutionPolicy {
-	bindings: Readonly<Record<string, TagBinding>>;
+	bindings: Readonly<Record<string, ProcessorBindingPolicy>>;
 	blockedProcessors: ReadonlySet<string>;
 	blockedTags: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
@@ -99,8 +103,8 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 	};
 }
 
-function copyBindings(bindings: Readonly<Record<string, TagBinding>>): Record<string, TagBinding> {
-	const out = Object.create(null) as Record<string, TagBinding>;
+function copyBindings(bindings: Readonly<Record<string, TagBinding>>): Record<string, ProcessorBindingPolicy> {
+	const out = Object.create(null) as Record<string, ProcessorBindingPolicy>;
 	for (const [tag, binding] of Object.entries(bindings)) {
 		out[tag] = { ...binding };
 	}

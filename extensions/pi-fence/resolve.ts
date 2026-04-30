@@ -23,7 +23,8 @@
  * placement cannot produce exactly one eligible processor.
  */
 
-import { DEFAULT_PROCESSOR_PRECEDENCE, type TagBinding } from "./config.ts";
+import { DEFAULT_PROCESSOR_PRECEDENCE } from "./config.ts";
+import type { ProcessorBindingPolicy } from "./policy.ts";
 import type {
 	Availability,
 	FenceProcessor,
@@ -68,7 +69,7 @@ interface CandidateContext {
 }
 
 interface ResolveContext extends CandidateContext {
-	binding?: TagBinding;
+	binding?: ProcessorBindingPolicy;
 	boundId?: string;
 	placementRank: ReadonlyMap<ProcessorPlacement, number>;
 }
@@ -125,7 +126,7 @@ export function resolveProcessor(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
-	bindings?: Readonly<Record<string, TagBinding>>,
+	bindings?: Readonly<Record<string, ProcessorBindingPolicy>>,
 	blockedProcessors?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 	blockedTags?: ReadonlySet<string>,
@@ -419,20 +420,20 @@ function canonicalTagFamily(processors: readonly FenceProcessor[], tag: string):
 	return tag;
 }
 
-function processorBindingId(binding: TagBinding | undefined): string | undefined {
+function processorBindingId(binding: ProcessorBindingPolicy | undefined): string | undefined {
 	return binding && isProcessorBinding(binding) ? binding.processor : undefined;
 }
 
 function bindingForTag(
-	bindings: Readonly<Record<string, TagBinding>> | undefined,
+	bindings: Readonly<Record<string, ProcessorBindingPolicy>> | undefined,
 	tag: string,
-): TagBinding | undefined {
+): ProcessorBindingPolicy | undefined {
 	if (bindings === undefined || !Object.hasOwn(bindings, tag)) return undefined;
 	const binding = bindings[tag] as unknown;
 	return isTagBinding(binding) ? binding : undefined;
 }
 
-function isTagBinding(binding: unknown): binding is TagBinding {
+function isTagBinding(binding: unknown): binding is ProcessorBindingPolicy {
 	if (!isPlainBindingObject(binding)) return false;
 	const hasProcessor = Object.hasOwn(binding, "processor");
 	const hasPlacement = Object.hasOwn(binding, "placement");
@@ -442,11 +443,11 @@ function isTagBinding(binding: unknown): binding is TagBinding {
 	);
 }
 
-function isProcessorBinding(binding: TagBinding): binding is { processor: string } {
+function isProcessorBinding(binding: ProcessorBindingPolicy): binding is { processor: string } {
 	return Object.hasOwn(binding, "processor");
 }
 
-function isPlacementBinding(binding: TagBinding): binding is { placement: ProcessorPlacement } {
+function isPlacementBinding(binding: ProcessorBindingPolicy): binding is { placement: ProcessorPlacement } {
 	return Object.hasOwn(binding, "placement");
 }
 
@@ -499,7 +500,7 @@ export type BindingResolution =
 export function resolveBindings(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
-	bindings: Readonly<Record<string, TagBinding>>,
+	bindings: Readonly<Record<string, ProcessorBindingPolicy>>,
 	blockedProcessors?: ReadonlySet<string>,
 	processorPrecedence: readonly ProcessorPlacement[] = DEFAULT_PROCESSOR_PRECEDENCE,
 	blockedTags?: ReadonlySet<string>,
@@ -524,7 +525,7 @@ function resolveBinding(
 	processors: readonly FenceProcessor[],
 	availability: ReadonlyMap<string, Availability>,
 	tag: string,
-	binding: TagBinding,
+	binding: ProcessorBindingPolicy,
 	blockedProcessors: ReadonlySet<string> | undefined,
 	allowedPlacements: ReadonlySet<ProcessorPlacement>,
 	blockedTags: ReadonlySet<string> | undefined,
