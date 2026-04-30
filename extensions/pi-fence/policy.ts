@@ -84,7 +84,11 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 }
 
 function copyBindings(bindings: Readonly<Record<string, TagBinding>>): Record<string, TagBinding> {
-	return Object.assign(Object.create(null), bindings) as Record<string, TagBinding>;
+	const out = Object.create(null) as Record<string, TagBinding>;
+	for (const [tag, binding] of Object.entries(bindings)) {
+		out[tag] = { ...binding };
+	}
+	return out;
 }
 
 function resolveSandboxes(config: PiFenceConfig): ReadonlyMap<string, ResolvedSandboxPolicy> {

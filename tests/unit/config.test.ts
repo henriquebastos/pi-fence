@@ -143,6 +143,63 @@ describe("config core", () => {
 		});
 	});
 
+	it("resolved policy: merged config carries user controls without leaking raw binding objects", () => {
+		const projectBinding = { processor: "kroki-remote" };
+		const merged = mergePiFenceConfigs(
+			{
+				bindings: {},
+				blocked: { tags: ["qr"], processors: ["graphviz-host"] },
+				processorPrecedence: ["remote", "host", "embedded"],
+				kroki: { endpoint: "http://global-kroki.local:8000", docker: { autoStart: true } },
+			},
+			{
+				bindings: { graphviz: projectBinding },
+				blocked: { tags: ["mermaid"], processors: ["kroki-sandbox"] },
+				processorPrecedence: ["host", "remote"],
+				kroki: { endpoint: "http://project-kroki.local:9000" },
+				sandboxes: {
+					bundle: {
+						kind: "exec",
+						runtime: "gondolin-vm",
+						image: "pi-fence-bundle.img",
+						autoStart: true,
+					},
+					kroki: { kind: "service", runtime: "docker-compose", autoStart: true },
+				},
+			},
+		);
+
+		const policy = resolvePiFencePolicy(merged);
+		projectBinding.processor = "graphviz-host";
+
+		expect(policy.bindings.graphviz).toEqual({ processor: "kroki-remote" });
+		expect(policy.blockedTags).toEqual(new Set(["mermaid"]));
+		expect(policy.blockedProcessors).toEqual(new Set(["kroki-sandbox"]));
+		expect(policy.processorPrecedence).toEqual(["host", "remote"]);
+		expect(policy.kroki).toEqual({
+			endpoint: "http://global-kroki.local:8000",
+			customEndpoint: true,
+		});
+		expect(policy.endpointsByProcessor).toEqual({
+			"kroki-remote": "http://global-kroki.local:8000",
+		});
+		expect(policy.sandboxes.get("bundle")).toEqual({
+			kind: "exec",
+			runtime: "gondolin-vm",
+			image: "pi-fence-bundle.img",
+			autoStart: true,
+		});
+		expect(policy.sandboxes.get("kroki")).toEqual({
+			kind: "service",
+			runtime: "docker-compose",
+			autoStart: true,
+		});
+		expect(policy.autoStart).toEqual({
+			bundleSandbox: true,
+			krokiSandbox: true,
+		});
+	});
+
 	it("validates blocked policy: accepts tag and processor string arrays", () => {
 		const result = validatePiFenceConfig(
 			{ blocked: { tags: ["qr", "dot"], processors: ["kroki-remote"] } },
