@@ -13,10 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a Gondolin `ExecSandboxEnvironment` that preserves bundle command execution, stdin/stdout capture, binary PNG output, abort signals, and guest temp workspaces without host VFS mounts or generic networking.
 - `sandboxes.bundle.autoStart: true` now starts the Gondolin bundle VM during extension startup when `bundle-sandbox` is allowed by processor policy, the config supplies an explicit image, and the setting does not come from project-local config; `autoStart: false` leaves it stopped and unavailable.
 - Added opt-in Gondolin bundle live tests for Graphviz and Mermaid, gated by `PI_FENCE_GONDOLIN_BUNDLE_IMAGE` and skipped cleanly when no VM image is configured.
+- Added `gondolin/bundle/` and `pnpm run gondolin:bundle:build` to build the local `pi-fence-bundle:0.1.0` Gondolin image with Graphviz, Mermaid CLI, Chromium, `dot -c`, and the bundle manifest contract.
 
 ### Changed (CV10.E1.S1 — Gondolin VM runtime for bundle-sandbox)
 
 - `bundle-sandbox` keeps the same processor id, tags, aliases, manifest probes, and placement semantics across Docker and Gondolin runtimes.
+- Gondolin VM options now let explicit controller `start()` boot the VM while still disabling host VFS mounts and generic networking.
 - Config validation accepts `gondolin-vm` only for `kind: "exec"` sandboxes and fails closed if it is used with `kind: "service"`, if `autoStart` has no explicit image, or if project-local config tries to auto-start a Gondolin image.
 
 ### Added (CV9.E1.S6 — Kroki sandbox processor)

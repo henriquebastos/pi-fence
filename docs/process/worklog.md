@@ -5080,3 +5080,38 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviations.** No published pi-fence-owned Gondolin bundle image exists yet, so the story supports explicit image selectors/asset paths and defers a pinned default image until packaging exists.
 
 **Carry-forward.** Future work can add `/fence bundle start|stop|status` and a published, pinned Gondolin bundle image once the packaging flow exists.
+
+---
+
+### 2026-04-29 — CV10 follow-up: runnable Gondolin bundle image
+
+**What shipped.** Added the reproducible Gondolin bundle image spec under `gondolin/bundle/` and `pnpm run gondolin:bundle:build`. The image builds Graphviz, Mermaid CLI, Chromium, the bundle manifest, and the Puppeteer config into a Gondolin guest. Real image testing exposed and fixed the runtime start option: pi-fence now omits `autoStart:false` from `VM.create()` options so explicit controller `start()` can boot a stopped Gondolin 0.8 VM while keeping `vfs:null`, `env:{}`, and `netEnabled:false`.
+
+**Implementation commit.**
+
+1. `bd17917` — fix CV10: build runnable Gondolin bundle image
+
+**Beans.**
+
+1. Closed `bug-637fee67` — CV10 follow-up: build and prove Gondolin bundle image.
+
+**Image build.**
+
+1. Final local image build id: `440628a1-1fb3-59e2-b0f2-c290e01b2ade`.
+2. Local tag: `pi-fence-bundle:0.1.0`.
+3. Asset path: `/Users/henrique/.cache/pi-fence/gondolin-bundle/assets`.
+4. Important build fixes found live: `runtimeDefaults.rootfsMode` must be `cow` rather than `readonly`; `mmdc` is symlinked into `/usr/bin`; `dot -c` runs during `postBuild` so PNG plugins are registered.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 879 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `pnpm exec gondolin build --verify /Users/henrique/.cache/pi-fence/gondolin-bundle/assets` — passed.
+3. `PI_FENCE_GONDOLIN_BUNDLE_IMAGE=pi-fence-bundle:0.1.0 pnpm vitest run tests/integration/bundle-sandbox.live.test.ts --reporter verbose` — passed: 3 Gondolin tests passed, 3 Docker bundle tests skipped.
+4. `PI_FENCE_GONDOLIN_BUNDLE_IMAGE=pi-fence-bundle:0.1.0 pnpm test:live` — passed on retry: 33 tests passed, 25 skipped. The first full-live attempt hit the existing Kroki startup flake.
+
+**Design decisions that changed.**
+
+1. **Controller start owns boot.** `autoStart:false` is not part of the safe VM options because Gondolin 0.8 treats it as refusing to boot a stopped sandbox during `vm.start()`. The controller still prevents accidental start by only calling `start()` when policy allows it.
+2. **Writable throwaway rootfs is required.** `cow` is the correct image default because guest init must create mount points such as `/data`; writes remain isolated in a disposable qcow2 overlay.
+
+**Carry-forward.** Publish/pin a hosted `pi-fence-bundle` Gondolin image when release packaging exists; until then, users build/tag it locally with `pnpm run gondolin:bundle:build`.
