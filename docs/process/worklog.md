@@ -6921,3 +6921,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **Default and provided aliases share the same immutability rule.** No alias map enters registry state mutable.
 
 **Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: registration error strings are safe
+
+**What shipped.** Closed the third-round inspection finding that an unstringifiable thrown validation value could make the register-error catch block throw while reporting the original error. Registration exception formatting now falls back to a stable `non-stringifiable registration error` message if `String(err)` itself throws.
+
+**Implementation commit.**
+
+1. `71f816b` — fix CV11.E4.S1: stringify registration errors safely
+
+**Beans.**
+
+1. Closed `bug-12e1ea4c` — CV11.E4.S1 inspection: safe registration exception stringification.
+
+**Test count.** Fast non-live suite increased from 965 to 966 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'validation exceptions|unstringifiable|register'` — passed: 5 focused extension tests.
+2. `pnpm run feedback` — passed: 966 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **The rejection path is defensive about the thrown value too.** Malicious validation exceptions still become register-error events.
+
+**Carry-forward.** Reject symbol-keyed alias maps and add empty string coverage.
