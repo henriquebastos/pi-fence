@@ -6489,3 +6489,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
 
 **Carry-forward.** Run and record the CV11.E3.S1 live gate, then re-run S1 inspection.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 verification: live gate covers Kroki factory wiring
+
+**What shipped.** Ran the live gate required after changing Kroki processor construction and live runtime wiring. The result is now recorded before S1 closeout.
+
+**Implementation commit.**
+
+1. `07806ef` — refactor CV11.E3.S1: drop unused live endpoint import (the last code/test change before the live gate)
+
+**Beans.**
+
+1. Closing now: `task-1b3394ff` — CV11.E3.S1 inspection: record live gate for Kroki factory wiring.
+
+**Test count.** Live suite stayed at 30 passed, 28 skipped.
+
+**Verification.**
+
+1. `pnpm test:live` — passed: 30 live tests passed, 28 skipped.
+2. `pnpm run lint:markdown` — passed for this docs record.
+
+**Carry-forward.** Re-run S1 inspection. If no new findings remain, close CV11.E3.S1.
