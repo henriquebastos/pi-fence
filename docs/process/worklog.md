@@ -6267,3 +6267,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Binding selectors are copied.** Runtime policy owns its binding objects instead of holding mutable references from raw config layers.
 
 **Carry-forward.** Thread resolved policy through `index.ts`, `/fence` command wiring, and `agent_end` rendering without changing user-visible behavior.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 step 3: runtime handlers consume resolved policy
+
+**What shipped.** `index.ts` now resolves `ResolvedPiFencePolicy` once after config load and threads focused policy objects through sandbox creation, built-in processor factories, availability probing, third-party registration, `/fence` command wiring, and `agent_end` rendering. Raw optional config fields no longer drive the normal processor-resolution/list/render paths. Kroki processor construction receives the effective policy endpoint while `/fence list` still displays only intentionally configured endpoint overrides.
+
+**Implementation commit.**
+
+1. `e7f0e9d` — step 3: thread resolved policy through runtime
+
+**Beans.**
+
+1. Closed `task-babb407d` — CV11.E3.S1 step 3: thread policy through runtime handlers.
+
+**Test count.** Fast non-live suite stayed at 939 tests; this step refactored wiring under existing extension coverage and the new focused policy-object assertion.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern 'resolved policy|resolvePiFencePolicy'` — passed.
+2. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts tests/unit/built-in-processors.test.ts tests/unit/processor-factory.test.ts` — passed.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'blocked|precedence|endpoint|doctor'` — passed.
+4. `pnpm run feedback` — passed: 939 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **One policy resolution at composition root.** `createPiFenceExtension()` owns raw config loading; downstream handlers receive `ProcessorResolutionPolicy` or the full resolved policy instead of optional config bags.
+2. **Processor factories use operational config.** `kroki-remote` receives `policy.kroki.endpoint`, so endpoint defaults and user overrides are resolved before factory construction.
+3. **Sandbox construction uses the policy summary.** `createSandboxControllers()` now consumes resolved sandbox policy entries, keeping optional raw sandbox config out of controller selection.
+
+**Carry-forward.** Run S1 inspection, close any findings through beans, then close CV11.E3.S1 before starting S2.
