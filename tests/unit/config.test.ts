@@ -722,8 +722,13 @@ describe("config core", () => {
 		"file:///tmp/kroki",
 		"ftp://example.com/kroki",
 		"https://user@example.com/kroki",
+		"https://@example.com/kroki",
 		"https://example.com/kroki?token=secret",
+		"https://example.com/kroki?",
 		"https://example.com/kroki#fragment",
+		"https://example.com/kroki#",
+		" https://example.com/kroki",
+		"https://example.com/kroki\n",
 	])("validates kroki.endpoint: rejects unsafe endpoint %s", (endpoint) => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(

@@ -530,6 +530,16 @@ type KrokiEndpointValidation =
 	| { ok: false; reason: string };
 
 function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
+	if (value.trim() !== value || /[\u0000-\u001F\u007F]/.test(value)) {
+		return { ok: false, reason: "surrounding whitespace or control characters are not allowed" };
+	}
+	if (value.includes("?")) {
+		return { ok: false, reason: "query strings are not allowed" };
+	}
+	if (value.includes("#")) {
+		return { ok: false, reason: "hash fragments are not allowed" };
+	}
+
 	let url: URL;
 	try {
 		url = new URL(value);
@@ -539,17 +549,19 @@ function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
 	if (url.protocol !== "http:" && url.protocol !== "https:") {
 		return { ok: false, reason: "unsupported URL scheme" };
 	}
-	if (url.username !== "" || url.password !== "") {
+	if (url.username !== "" || url.password !== "" || hasCredentialDelimiter(value)) {
 		return { ok: false, reason: "credentials are not allowed" };
-	}
-	if (url.search !== "") {
-		return { ok: false, reason: "query strings are not allowed" };
-	}
-	if (url.hash !== "") {
-		return { ok: false, reason: "hash fragments are not allowed" };
 	}
 	const path = url.pathname.replace(/\/+$/, "");
 	return { ok: true, value: `${url.origin}${path}` };
+}
+
+function hasCredentialDelimiter(value: string): boolean {
+	const authorityStart = value.indexOf("://") + 3;
+	if (authorityStart < 3) return false;
+	const pathStart = value.indexOf("/", authorityStart);
+	const authority = pathStart === -1 ? value.slice(authorityStart) : value.slice(authorityStart, pathStart);
+	return authority.includes("@");
 }
 
 function validateKrokiDocker(
