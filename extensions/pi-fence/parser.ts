@@ -35,13 +35,24 @@
 export interface FencedBlock {
 	tag: string;
 	source: string;
+	sourceBytes?: number;
+	sourceTruncated?: boolean;
+}
+
+export interface ExtractFencedBlocksOptions {
+	maxBlocks?: number;
+	maxSourceBytes?: number;
 }
 
 /**
  * Extract every fenced block whose opening tag is in `tags`, in source
  * order.
  */
-export function extractFencedBlocks(markdown: string, tags: string[]): FencedBlock[] {
+export function extractFencedBlocks(
+	markdown: string,
+	tags: string[],
+	options: ExtractFencedBlocksOptions = {},
+): FencedBlock[] {
 	const allowlist = new Set(tags);
 	const lines = markdown.replaceAll(/\r\n?/g, "\n").split("\n");
 	const blocks: FencedBlock[] = [];
@@ -63,8 +74,8 @@ export function extractFencedBlocks(markdown: string, tags: string[]): FencedBlo
 		}
 
 		if (allowlist.has(opener.tag)) {
-			const body = lines.slice(i + 1, closerIndex).join("\n");
-			blocks.push({ tag: opener.tag, source: body });
+			blocks.push({ tag: opener.tag, ...collectBody(lines, i + 1, closerIndex, options.maxSourceBytes) });
+			if (options.maxBlocks !== undefined && blocks.length >= options.maxBlocks) break;
 		}
 
 		i = closerIndex + 1;
@@ -76,6 +87,47 @@ export function extractFencedBlocks(markdown: string, tags: string[]): FencedBlo
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
+
+function collectBody(
+	lines: readonly string[],
+	from: number,
+	to: number,
+	maxSourceBytes: number | undefined,
+): Pick<FencedBlock, "source" | "sourceBytes" | "sourceTruncated"> {
+	let source = "";
+	let sourceBytes = 0;
+	let sourceTruncated = false;
+	for (let index = from; index < to; index++) {
+		const segment = `${index === from ? "" : "\n"}${lines[index]}`;
+		const segmentBytes = Buffer.byteLength(segment, "utf8");
+		sourceBytes += segmentBytes;
+		if (maxSourceBytes === undefined || Buffer.byteLength(source, "utf8") + segmentBytes <= maxSourceBytes) {
+			source += segment;
+			continue;
+		}
+		sourceTruncated = true;
+		const remainingBytes = Math.max(0, maxSourceBytes - Buffer.byteLength(source, "utf8"));
+		source += clipUtf8ToBytes(segment, remainingBytes);
+	}
+	return {
+		source,
+		...(maxSourceBytes !== undefined ? { sourceBytes } : {}),
+		...(sourceTruncated ? { sourceTruncated } : {}),
+	};
+}
+
+function clipUtf8ToBytes(text: string, maxBytes: number): string {
+	let out = "";
+	let bytes = 0;
+	for (const char of text) {
+		const charBytes = Buffer.byteLength(char, "utf8");
+		if (bytes + charBytes > maxBytes) break;
+		out += char;
+		bytes += charBytes;
+	}
+	return out;
+}
+
 
 interface Opener {
 	char: "`" | "~";

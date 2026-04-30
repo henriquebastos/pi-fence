@@ -52,23 +52,17 @@ export function registerPiFenceAgentEndHandler({
 		if (!assistantText) return;
 
 		const tags = typeof supportedTags === "function" ? supportedTags() : supportedTags;
-		const blocks = extractFencedBlocks(assistantText, tags);
+		const blocks = extractFencedBlocks(assistantText, tags, {
+			maxBlocks: renderLimits.maxBlocksPerTurn,
+			maxSourceBytes: renderLimits.fenceSourceMaxBytes,
+		});
 		logger.debug("pi-fence", "agent_end parsed", {
 			assistantTextBytes: assistantText.length,
 			blocks: blocks.length,
 		});
 		if (blocks.length === 0) return;
 
-		const maxBlocksPerTurn = renderLimits.maxBlocksPerTurn;
-		const toRender = blocks.slice(0, maxBlocksPerTurn);
-		if (blocks.length > maxBlocksPerTurn) {
-			logger.warn(
-				"pi-fence",
-				`Assistant emitted ${blocks.length} fenced blocks; rendering first ${maxBlocksPerTurn}`,
-			);
-		}
-
-		for (const block of toRender) {
+		for (const block of blocks) {
 			await renderBlock(block, {
 				pi,
 				logger,
@@ -95,7 +89,7 @@ interface RenderBlockOptions {
 }
 
 async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Promise<void> {
-	const sourceBytes = Buffer.byteLength(block.source, "utf8");
+	const sourceBytes = block.sourceBytes ?? Buffer.byteLength(block.source, "utf8");
 	if (sourceBytes > options.renderLimits.fenceSourceMaxBytes) {
 		sendSourceLimitError(
 			block,

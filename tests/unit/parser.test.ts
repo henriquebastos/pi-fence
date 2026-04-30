@@ -16,6 +16,34 @@ import { describe, expect, it } from "vitest";
 import { extractFencedBlocks } from "../../extensions/pi-fence/parser.ts";
 
 describe("extractFencedBlocks", () => {
+	it("can bound extracted source while preserving actual source byte count", () => {
+		const blocks = extractFencedBlocks(
+			"```mermaid\nééé\n```",
+			["mermaid"],
+			{ maxSourceBytes: 4 },
+		);
+
+		expect(blocks).toEqual([
+			{
+				tag: "mermaid",
+				source: "éé",
+				sourceBytes: 6,
+				sourceTruncated: true,
+			},
+		]);
+	});
+
+	it("can stop after the requested number of matching blocks", () => {
+		const blocks = extractFencedBlocks(
+			"```mermaid\none\n```\n```graphviz\ntwo\n```",
+			["mermaid", "graphviz"],
+			{ maxBlocks: 1 },
+		);
+
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0]).toMatchObject({ tag: "mermaid", source: "one" });
+	});
+
 	it("finds a single mermaid block with backtick fences", () => {
 		const md = [
 			"Here is a diagram:",
