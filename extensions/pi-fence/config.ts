@@ -543,6 +543,9 @@ function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
 	if (authority === undefined) {
 		return { ok: false, reason: "URL authority is required" };
 	}
+	if (hasPathDotSegment(value, authority)) {
+		return { ok: false, reason: "path dot segments are not allowed" };
+	}
 	if (value.includes("?")) {
 		return { ok: false, reason: "query strings are not allowed" };
 	}
@@ -572,6 +575,24 @@ function endpointAuthority(value: string): string | undefined {
 	const pathStart = value.indexOf("/", authorityStart);
 	const authority = pathStart === -1 ? value.slice(authorityStart) : value.slice(authorityStart, pathStart);
 	return authority === "" ? undefined : authority;
+}
+
+function hasPathDotSegment(value: string, authority: string): boolean {
+	const pathStart = value.indexOf("://") + 3 + authority.length;
+	const rawPath = value.slice(pathStart);
+	for (const segment of rawPath.split("/")) {
+		const decoded = safeDecodeURIComponent(segment).toLowerCase();
+		if (decoded === "." || decoded === "..") return true;
+	}
+	return false;
+}
+
+function safeDecodeURIComponent(value: string): string {
+	try {
+		return decodeURIComponent(value);
+	} catch {
+		return ".";
+	}
 }
 
 function validateKrokiDocker(
