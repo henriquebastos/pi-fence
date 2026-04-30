@@ -6326,3 +6326,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Compatibility remains scoped.** Legacy `kroki.docker.autoStart:true` still works only when the Docker-container Kroki sandbox does not state its own auto-start preference.
 
 **Carry-forward.** Continue inspection remediation with the processor-factory context and processor-resolution policy shape findings.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection refactor: narrow processor factory policy
+
+**What shipped.** Narrowed `ProcessorFactoryContext` so processor factories receive a focused `ProcessorFactoryPolicy` instead of the full `ResolvedPiFencePolicy`. The Kroki factory still receives the effective endpoint settings it needs; unrelated resolution, sandbox, source-retention, and render-limit policy no longer crosses that factory seam.
+
+**Implementation commit.**
+
+1. `1ffae12` — refactor CV11.E3.S1: narrow processor factory policy
+
+**Beans.**
+
+1. Closed `task-98803d69` — CV11.E3.S1 inspection: narrow processor factory policy context.
+
+**Test count.** Fast non-live suite unchanged at 940 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/processor-factory.test.ts tests/unit/built-in-processors.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'endpoint|built-in|processor'` — passed before and after the refactor.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the refactor.**
+
+1. **Factories get endpoint policy, not all policy.** `ProcessorFactoryPolicy` is intentionally smaller than `ResolvedPiFencePolicy`.
+2. **Composition root keeps the full view.** `index.ts` still owns the full resolved policy and hands narrower slices to each downstream seam.
+
+**Carry-forward.** Remove duplicate processor-resolution policy paths, then narrow listing/registration option passing.
