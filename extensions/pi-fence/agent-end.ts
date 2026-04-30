@@ -10,7 +10,7 @@ import {
 	buildPiFenceOutputMessageWithPreview,
 	type TextContent,
 } from "./messages.ts";
-import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
+import { extractFencedBlocksFromChunks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import type { ProcessorResolutionPolicy, RenderLimitsPolicy, SourceRetentionPolicy } from "./policy.ts";
 import { errorOutput, type Availability, type FenceOutput, type FenceProcessor } from "./processor.ts";
@@ -48,16 +48,12 @@ export function registerPiFenceAgentEndHandler({
 	pi.on("agent_end", async (event, ctx) => {
 		tryCaptureThemeName(ctx, logger, themeState);
 
-		const assistantText = extractAssistantText(event.messages);
-		if (!assistantText) return;
-
 		const tags = typeof supportedTags === "function" ? supportedTags() : supportedTags;
-		const blocks = extractFencedBlocks(assistantText, tags, {
+		const blocks = extractFencedBlocksFromChunks(assistantTextChunks(event.messages), tags, {
 			maxBlocks: renderLimits.maxBlocksPerTurn,
 			maxSourceBytes: renderLimits.fenceSourceMaxBytes,
 		});
 		logger.debug("pi-fence", "agent_end parsed", {
-			assistantTextBytes: assistantText.length,
 			blocks: blocks.length,
 		});
 		if (blocks.length === 0) return;
@@ -282,33 +278,25 @@ function tryCaptureThemeName(
 	}
 }
 
-function extractAssistantText(messages: unknown): string {
-	if (!Array.isArray(messages)) {
-		return "";
-	}
-
-	let text = "";
+function* assistantTextChunks(messages: unknown): Generator<string> {
+	if (!Array.isArray(messages)) return;
 	for (const message of messages as Array<{ role?: string; content?: unknown }>) {
-		if (message?.role === "assistant") {
-			text += extractAssistantContentText(message.content);
-		}
+		if (message?.role !== "assistant") continue;
+		yield* assistantContentTextChunks(message.content);
 	}
-	return text;
 }
 
-function extractAssistantContentText(content: unknown): string {
+function* assistantContentTextChunks(content: unknown): Generator<string> {
 	if (typeof content === "string") {
-		return `${content}\n`;
+		yield content;
+		yield "\n";
+		return;
 	}
-	if (!Array.isArray(content)) {
-		return "";
-	}
-
-	let text = "";
+	if (!Array.isArray(content)) return;
 	for (const part of content as Array<{ type?: string; text?: string }>) {
 		if (part?.type === "text" && typeof part.text === "string") {
-			text += `${part.text}\n`;
+			yield part.text;
+			yield "\n";
 		}
 	}
-	return text;
 }

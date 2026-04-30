@@ -13,9 +13,18 @@
 
 import { describe, expect, it } from "vitest";
 
-import { extractFencedBlocks } from "../../extensions/pi-fence/parser.ts";
+import { extractFencedBlocks, extractFencedBlocksFromChunks } from "../../extensions/pi-fence/parser.ts";
 
 describe("extractFencedBlocks", () => {
+	it("parses incrementally across chunks without requiring a full markdown string", () => {
+		const blocks = extractFencedBlocksFromChunks(
+			["intro\n```mer", "maid\nflow", "chart LR\nA --> B\n```\n"],
+			["mermaid"],
+		);
+
+		expect(blocks).toEqual([{ tag: "mermaid", source: "flowchart LR\nA --> B" }]);
+	});
+
 	it("can bound extracted source while preserving actual source byte count", () => {
 		const blocks = extractFencedBlocks(
 			"```mermaid\nééé\n```",
