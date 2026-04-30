@@ -7450,3 +7450,29 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 1. **Rejected-source message construction is bounded too.** The source limit path clips preview content before calling `pi.sendMessage()` instead of relying on the normal full-source preview builder.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and then live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: parser extraction honors caps
+
+**What shipped.** Closed the fourth-round CV11.E5.S1 security finding. `agent_end` now asks the parser for at most the policy block count and at most the policy source bytes per retained block. The parser still reports actual source byte count for truncated blocks, so oversized-source rejection remains accurate without joining and retaining full matching block bodies before the limit check.
+
+**Implementation commit.**
+
+1. `9461220` — fix CV11.E5.S1: cap parser extraction work
+
+**Beans.**
+
+1. Closed `bug-c2cfeda6` — CV11.E5.S1 inspection: cap parser extraction work.
+
+**Test count.** Fast non-live suite increased from 993 to 995 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'bound extracted|stop after|render resource limits'` — passed before the final full gate.
+2. `pnpm run feedback` — passed: 995 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Block and source caps start in parsing.** Processor resolution, rendering, and message construction now receive already-bounded block lists and bounded oversized-source previews.
+2. **The parser remains backward-compatible by default.** Existing callers that do not request caps receive the same `{ tag, source }` shape.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and then live verification.
