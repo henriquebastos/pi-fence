@@ -138,8 +138,8 @@ describe("config core", () => {
 		});
 		expect(policy.renderLimits).toEqual({
 			maxBlocksPerTurn: 5,
-			fenceSourceMaxBytes: Number.POSITIVE_INFINITY,
-			processorOutputMaxBytes: Number.POSITIVE_INFINITY,
+			fenceSourceMaxBytes: 262_144,
+			processorOutputMaxBytes: 10_485_760,
 		});
 		expect(policy.processorResolution).toEqual({
 			bindings: {},
