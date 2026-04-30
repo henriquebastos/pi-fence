@@ -6102,3 +6102,70 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. `pnpm run lint:markdown` — passed.
 
 **Carry-forward.** Run the completion gate and close CV11.E1.S3 (and CV11.E1, since S3 is the last story in the epic).
+
+---
+
+### 2026-04-30 — CV11.E1.S3 closed: managed Kroki runtimes bind to loopback (CV11.E1 epic done)
+
+**What shipped.** Closed CV11.E1.S3. pi-fence-managed single-container and Compose Kroki runtimes now bind only to `127.0.0.1`, advertise their endpoint as `http://127.0.0.1:8000`, and fail closed for any pre-existing managed runtime whose Docker `8000/tcp` host binding is broader than loopback. The fixed Compose mermaid sidecar carries `noPublishedPorts: true` so an out-of-band override that publishes the companion service is rejected. Sandbox port policy is consolidated under `DockerSandboxSecurityOptions`, contradictory `noPublishedPorts` + `requiredLoopbackPorts` configurations fail closed, and `/fence kroki status` notifies with `error` severity when the managed runtime fails closed. With S1 (package runtime assets), S2 (kroki.endpoint normalization), and S3 done, **CV11.E1 — Installed Runtime Trust is Done**.
+
+**Implementation commits (story-driven).**
+
+1. `962e9b4` — step 1: bind single-container Kroki to loopback
+2. `ddab45f` — step 2: bind Compose Kroki to loopback
+3. `75b8aee` — fix CV11.E1.S3: reject broad Kroki container binds
+4. `218ec44` — fix CV11.E1.S3: reject broad Compose Kroki binds
+5. `8bce5bd` — test CV11.E1.S3: assert exact Compose Kroki port
+6. `52c4029` — fix CV11.E1.S3: pin managed Kroki endpoint to loopback
+7. `672c71b` — docs CV11.E1.S3: clarify managed endpoint and test scope
+8. `da3ca1b` — test CV11.E1.S3: harden Kroki port-binding negative coverage
+9. `aa118e3` — test CV11.E1.S3: cover sandbox-layer broad-bind rejection
+10. `264a836` — refactor CV11.E1.S3: consolidate Kroki sandbox port policy under security
+11. `4dac759` — fix CV11.E1.S3: reject contradictory Kroki sandbox port policy
+12. `3bc55b8` — test CV11.E1.S3: cover Kroki port-verifier diagnostic edges
+13. `e944787` — refactor CV11.E1.S3: document Kroki stop ownership convention
+14. `692a660` — docs CV11.E1.S3: reconcile worklog test-count phrasing
+15. `9e5d68d` — fix CV11.E1.S3: harden Compose mermaid against published ports
+16. `4882c99` — refactor CV11.E1.S3: centralize managed Kroki host port
+17. `26076d3` — test CV11.E1.S3: cover lifecycle start fail-closed on broad-bound containers
+18. `0bbf35c` — fix CV11.E1.S3: harden port-binding find against falsy entries
+19. `948aaac` — fix CV11.E1.S3: accept Docker EXPOSE shape in noPublishedPorts
+20. `40eae71` — fix CV11.E1.S3: surface fence kroki status fail-closed signal
+21. `0499883` — docs CV11.E1.S3: align verification with kroki-compose test
+
+Adjacent docs catch-up commits were recorded immediately after each feature commit.
+
+**Beans.**
+
+1. Closed `task-15188e3f` — step 1: single-container loopback bind.
+2. Closed `task-b7f2be6c` — step 2: Compose loopback bind.
+3. Closed inspection beans (round 1–5): `bug-a3f21f9c`, `bug-06e55ad8`, `task-aa95b082`, `bug-cb687a2b`, `task-65c3f949`, `task-e02d5d43`, `task-43f1256d`, `task-e74d535a`, `bug-fd70c2a8`, `task-25372107`, `task-0e6c84c5`, `task-41d2cf91`, `bug-9aa00a05`, `task-bbcc01d8`, `task-623074be`, `bug-132388d2`, `bug-4fe84d63`, `bug-c9a7b406`, `task-9d811a99`.
+4. Closing now: `task-fed05200` (S3 story bean) and `epic-5d8ac485` (CV11.E1 epic bean).
+
+**Test count.** Fast non-live suite finished at 937 tests. This story added 28 net non-live tests across loopback bind args/YAML, runtime port-binding verification, IPv4 endpoint pinning, contradictory-config rejection, port-verifier diagnostic edges, lifecycle start fail-closed coverage, falsy-entry hardening, EXPOSE-shape acceptance, and `/fence kroki status` severity.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/kroki-compose.test.ts` — passed.
+2. `pnpm vitest run tests/unit/sandbox.test.ts tests/extension/pi-fence.test.ts` — passed.
+3. `pnpm run feedback` — passed: 937 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+4. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: non-live CRAP completion inspection; Sonar skipped as unconfigured.
+5. `inspect5p` rounds 1–5 — produced loopback-bind, runtime port-verification, endpoint-pinning, port-policy-consolidation, contradictory-config, port-verifier diagnostic, mermaid sidecar, host-port consolidation, lifecycle start coverage, falsy-entry, EXPOSE-shape, and `/fence kroki status` severity beans, all closed.
+
+**Design decisions that survived the story.**
+
+1. **Loopback is the trust boundary.** Both managed runtimes bind Docker on `127.0.0.1` and advertise `http://127.0.0.1:8000`, so the verified bind matches the URL clients receive.
+2. **Verifier convention encodes ownership vs configuration.** `KrokiDockerResult` documents the contract that ownership-failure verifiers return `status: "absent"` (so `stop()` short-circuits) while configuration-failure verifiers on owned containers return `status: "running"` (so the lifecycle can clean them up).
+3. **Port policy lives under security.** `DockerSandboxSecurityOptions` is the single surface for port and security rules; contradictory combinations fail closed before any inspection runs.
+4. **Companion services share the boundary.** The Compose mermaid sidecar carries `noPublishedPorts: true` so any host-published port is treated as a trust-boundary failure.
+5. **One canonical host-port constant.** `KROKI_HOST_PORT` drives the advertised endpoint, the Compose `requiredLoopbackPorts`, and the YAML contract test, preventing silent drift if the port ever changes.
+
+**Known deviations.** The story spec was edited post-`Ready` in commits `672c71b`, `692a660`, `0499883` to (a) narrow the conditional managed endpoint criterion to the chosen IPv4 branch after inspection produced the stronger reason, (b) acknowledge that S3 also touched extension fixtures, (c) reword the round-2 test-count phrasing, and (d) align the `Verification` command and `Key files` block with `tests/unit/kroki-compose.test.ts`. Per `docs/process/implementation-loop.md` Story-file boundary, post-`Ready` edits are limited to status changes and clarifications of ambiguous criteria; the implementation transcript and inspection beans capture the rationale, and the user-visible contract did not regress.
+
+**Carry-forward.**
+
+1. Deduplicate the Docker port-binding helper between `extensions/pi-fence/kroki-docker.ts` and `extensions/pi-fence/sandbox.ts` (declared deferred in the S3 spec `Tests > Deferred`).
+2. Broader container resource limits (`--memory`, `--cpus`, `--pids-limit`) for managed Kroki runtimes (declared deferred in the S3 spec).
+3. Multi-binding (`IPv4` + `IPv6`) coverage and the unreachable `<invalid>` formatter branches surfaced in round 4 are deferred as low-priority defense-in-depth.
+4. Hand-rolled Compose YAML parser in `tests/unit/kroki-compose.test.ts::coreServicePorts` is acknowledged-deferred; replacing it with a YAML library would add a runtime dep for one contract assertion.
+5. CV11.E1 is now Done. The next CV11 epic, [CV11.E2 — Source Retention Decision](../project/roadmap/cv11--trust-boundaries/cv11-e2--source-retention-decision.md), starts the source-retention discovery before any further refactor.

@@ -1,7 +1,8 @@
 # CV11.E1 — Installed Runtime Trust
 
 **CV:** [CV11 — Trust Boundaries](README.md)
-**Last updated:** 2026-04-30 — S2 done
+**Last updated:** 2026-04-30 — epic done
+**Status:** Done
 
 ## Summary
 
@@ -17,7 +18,7 @@ Project-local Kroki endpoint config remains allowed. The improvement is validati
 |------|-------|--------|
 | [S1](cv11-e1-s1--package-runtime-assets.md) | **Package runtime assets resolve from npm installs** | Done |
 | [S2](cv11-e1-s2--kroki-endpoint-normalization.md) | **Kroki endpoint config is normalized and diagnosed** | Done |
-| [S3](cv11-e1-s3--managed-kroki-loopback.md) | **Managed Kroki runtimes bind to loopback** | Ready |
+| [S3](cv11-e1-s3--managed-kroki-loopback.md) | **Managed Kroki runtimes bind to loopback** | Done |
 
 ## Done criterion (epic-level)
 

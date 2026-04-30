@@ -1,6 +1,6 @@
 # CV11.E1.S3 — Managed Kroki runtimes bind to loopback
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E1 — Installed Runtime Trust](cv11-e1--installed-runtime-trust.md)
 **Depends on:** [CV11.E1.S1 — Package runtime assets resolve from npm installs](cv11-e1-s1--package-runtime-assets.md)
