@@ -7555,3 +7555,28 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 1. **Opaque code examples win over unclosed-fence recovery.** pi-fence will not render a supported fence nested inside an ignored fenced block, even if that means an unclosed ignored fence can hide later fences until EOF.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: overlong ignored openers stay closed
+
+**What shipped.** Closed the overlong ignored-fence opener security finding. The parser now recognizes opener prefixes even when the retained line text is capped, so an unsupported fenced block with a very long info string still enters opaque ignored-fence mode. Truncated lines remain ineligible as closers.
+
+**Implementation commit.**
+
+1. `a1bd413` — fix CV11.E5.S1: parse overlong ignored openers
+
+**Beans.**
+
+1. Closed `bug-bd5df86b` — CV11.E5.S1 inspection: overlong ignored opener fails open.
+
+**Test count.** Fast non-live suite increased from 1003 to 1004 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts --testNamePattern 'overlong|ignored fenced|opaque'` — passed: 2 focused tests.
+2. `pnpm run feedback` — passed: 1004 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Truncated opener lines fail closed.** Overlong unsupported fence openers still suppress nested supported renders instead of letting nested examples escape.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
