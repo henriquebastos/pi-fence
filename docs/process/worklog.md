@@ -5722,3 +5722,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Implementation transcript stays in worklog.** The story file lists what is contracted, not how it was sequenced; concrete commits and findings remain in worklog/bean records.
 
 **Carry-forward.** Cover the remaining medium round-2 findings: harden Kroki port-binding negative coverage and add a sandbox-controller broad-bind rejection test.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: Kroki port-binding negative coverage
+
+**What shipped.** Coverage-only tests that lock down Kroki port-binding rejection against wrong host ports, missing `8000/tcp`, null bindings, and malformed JSON — for both the single-container manager and the Compose core service. A wrong-label-no-stop test pins down the manager's ownership-aware stop guard.
+
+**Implementation commit.**
+
+1. `da3ca1b` — test CV11.E1.S3: harden Kroki port-binding negative coverage
+
+**Beans.**
+
+1. Closed `task-e02d5d43` — CV11.E1.S3 inspection: harden Kroki port-binding negative coverage.
+
+**Test count.** Fast suite increased from 912 to 921 with five manager-layer and four Compose-layer port-binding cases plus one wrong-label-no-stop guard.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'wrong host port|does not publish|null port bindings|malformed port JSON|wrong-label container'` — all green on the existing logic, recorded as coverage-only remediation.
+2. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'wrong host port|does not publish 8000|null port bindings|malformed port JSON|all interfaces'` — same.
+3. `pnpm run feedback` — passed: 921 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Coverage where production logic already covers the case.** No production edits; the new tests prove the existing port-binding parser/validator already rejects each shape.
+2. **Stop-ownership behavior is locked in tests.** A wrong-label managed container is now provably non-stoppable through `/fence kroki stop` even after the broad-bind change loosened `stop()` to accept ok:false running statuses.
+
+**Carry-forward.** Cover sandbox-controller broad-bind rejection at the adapter layer.
