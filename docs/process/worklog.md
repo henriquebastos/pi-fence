@@ -6948,3 +6948,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **The rejection path is defensive about the thrown value too.** Malicious validation exceptions still become register-error events.
 
 **Carry-forward.** Reject symbol-keyed alias maps and add empty string coverage.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: symbol aliases fail closed
+
+**What shipped.** Closed the third-round inspection finding that own symbol-keyed alias properties were silently ignored by `Object.entries()`. Alias validation now rejects any own symbol keys before reading string entries, and tests pin empty tag strings plus empty alias keys and values.
+
+**Implementation commit.**
+
+1. `a22bac8` — fix CV11.E4.S1: reject symbol aliases
+
+**Beans.**
+
+1. Closed `bug-da345c07` — CV11.E4.S1 inspection: reject symbol and empty alias keys.
+
+**Test count.** Fast non-live suite increased from 966 to 967 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'symbol|empty|alias|tag'` — passed: 18 focused tests.
+2. `pnpm run feedback` — passed: 967 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Alias maps are string-key maps only.** Symbol-owned properties make the registration invalid rather than being silently ignored.
+
+**Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
