@@ -923,6 +923,22 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		});
 	});
 
+	it("reports error when Compose core port bindings include a null entry", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-core", JSON.stringify({ "8000/tcp": [null] }));
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core publishes 8000/tcp on <invalid>; expected 127.0.0.1:8000.",
+		});
+	});
+
 	it("reports error when the Compose core returns malformed port JSON", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);

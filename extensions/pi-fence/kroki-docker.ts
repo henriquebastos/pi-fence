@@ -220,9 +220,9 @@ function krokiPortBindingIssue(rawPorts: string): string | undefined {
 	if (!Array.isArray(bindings) || bindings.length === 0) {
 		return `does not publish ${CONTAINER_PORT}/tcp; expected ${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}.`;
 	}
-	const unexpected = bindings.find((binding) => !isExpectedKrokiPortBinding(binding));
-	if (!unexpected) return undefined;
-	return `publishes ${CONTAINER_PORT}/tcp on ${formatPortBinding(unexpected)}; expected ${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}.`;
+	const unexpectedIndex = bindings.findIndex((binding) => !isExpectedKrokiPortBinding(binding));
+	if (unexpectedIndex === -1) return undefined;
+	return `publishes ${CONTAINER_PORT}/tcp on ${formatPortBinding(bindings[unexpectedIndex])}; expected ${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}.`;
 }
 
 function isExpectedKrokiPortBinding(binding: unknown): boolean {

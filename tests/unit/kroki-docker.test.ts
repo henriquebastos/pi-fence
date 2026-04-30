@@ -163,6 +163,18 @@ describe("kroki-docker — status()", () => {
 		expect(result.message).toBe("Container pi-fence-kroki has invalid port bindings; expected 127.0.0.1:8000.");
 	});
 
+	it("reports error when port bindings include a null entry", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortsRaw(shell, JSON.stringify({ "8000/tcp": [null] }));
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki publishes 8000/tcp on <invalid>; expected 127.0.0.1:8000.");
+	});
+
 	it("reports error when the managed container returns malformed port JSON", async () => {
 		const shell = makeShell();
 		setRunning(shell);

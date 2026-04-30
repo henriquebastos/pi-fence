@@ -890,9 +890,9 @@ function loopbackPortBindingIssue(rawPorts: string, port: number): string | unde
 	if (!Array.isArray(bindings) || bindings.length === 0) {
 		return `does not publish ${key}; expected ${LOOPBACK_HOST}:${port}.`;
 	}
-	const unexpected = bindings.find((binding) => !isExpectedLoopbackPortBinding(binding, port));
-	if (!unexpected) return undefined;
-	return `publishes ${key} on ${formatDockerPortBinding(unexpected)}; expected ${LOOPBACK_HOST}:${port}.`;
+	const unexpectedIndex = bindings.findIndex((binding) => !isExpectedLoopbackPortBinding(binding, port));
+	if (unexpectedIndex === -1) return undefined;
+	return `publishes ${key} on ${formatDockerPortBinding(bindings[unexpectedIndex])}; expected ${LOOPBACK_HOST}:${port}.`;
 }
 
 function isExpectedLoopbackPortBinding(binding: unknown, port: number): boolean {
