@@ -6975,3 +6975,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **Alias maps are string-key maps only.** Symbol-owned properties make the registration invalid rather than being silently ignored.
 
 **Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: registration fields are snapshotted
+
+**What shipped.** Closed the fourth-round inspection finding that getter/proxy-backed top-level fields could return safe values during validation and unsafe values during processor construction. `validateProcessor()` now captures id, placement, tags, aliases, `available`, and `render` once, copies the tag snapshot once, validates those snapshots, and builds the frozen processor only from them.
+
+**Implementation commit.**
+
+1. `39ac2b1` — fix CV11.E4.S1: snapshot processor fields
+
+**Beans.**
+
+1. Closed `bug-d2146db0` — CV11.E4.S1 inspection: snapshot registration fields once.
+
+**Test count.** Fast non-live suite increased from 967 to 968 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'same tag snapshot|unsafe tags'` — passed: 2 focused tests.
+2. `pnpm run feedback` — passed: 968 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Snapshot then validate.** Semi-trusted getters cannot provide one value for validation and another value for registry state.
+
+**Carry-forward.** Guard Error message getter access, then re-run CV11.E4.S1 inspection.
