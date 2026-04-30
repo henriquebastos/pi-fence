@@ -25,6 +25,11 @@ export interface ProcessorRegistry {
 
 // ── Validation ──────────────────────────────────────────────────────
 
+const MAX_PROCESSOR_NAME_LENGTH = 64;
+const SAFE_PROCESSOR_NAME = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const RESERVED_PROCESSOR_NAMES = new Set(["__proto__", "constructor", "prototype"]);
+const FORBIDDEN_PROCESSOR_FIELDS = ["order", "priority", "processorPrecedence"] as const;
+
 export type ValidationResult =
 	| { ok: true; processor: FenceProcessor }
 	| { ok: false; error: string };
@@ -41,8 +46,15 @@ export function validateProcessor(value: unknown): ValidationResult {
 
 	const obj = value as Record<string, unknown>;
 
-	if (typeof obj.id !== "string" || obj.id.length === 0) {
-		return { ok: false, error: "processor.id must be a non-empty string" };
+	for (const field of FORBIDDEN_PROCESSOR_FIELDS) {
+		if (Object.hasOwn(obj, field)) {
+			return { ok: false, error: `processor must not declare ${field}` };
+		}
+	}
+
+	const id = obj.id;
+	if (typeof id !== "string" || !isSafeProcessorName(id)) {
+		return { ok: false, error: "processor.id must be a safe non-empty string" };
 	}
 
 	if (!PROCESSOR_PLACEMENTS.includes(obj.placement as ProcessorPlacement)) {
@@ -54,8 +66,8 @@ export function validateProcessor(value: unknown): ValidationResult {
 	}
 
 	for (const tag of obj.tags) {
-		if (typeof tag !== "string" || tag.length === 0) {
-			return { ok: false, error: "processor.tags must contain only non-empty strings" };
+		if (typeof tag !== "string" || !isSafeProcessorName(tag)) {
+			return { ok: false, error: "processor.tags must contain only safe non-empty strings" };
 		}
 	}
 
@@ -75,7 +87,7 @@ export function validateProcessor(value: unknown): ValidationResult {
 	return {
 		ok: true,
 		processor: {
-			id: obj.id,
+			id,
 			placement: obj.placement as ProcessorPlacement,
 			tags: obj.tags as readonly string[],
 			aliases,
@@ -83,6 +95,12 @@ export function validateProcessor(value: unknown): ValidationResult {
 			render: obj.render as FenceProcessor["render"],
 		},
 	};
+}
+
+function isSafeProcessorName(value: string): boolean {
+	return value.length <= MAX_PROCESSOR_NAME_LENGTH &&
+		SAFE_PROCESSOR_NAME.test(value) &&
+		!RESERVED_PROCESSOR_NAMES.has(value);
 }
 
 // ── Registration ────────────────────────────────────────────────────

@@ -58,6 +58,41 @@ describe("validateProcessor", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it("rejects unsafe processor ids", () => {
+		const unsafeIds = [
+			" custom-upper",
+			"custom-upper ",
+			"custom/upper",
+			"custom\\upper",
+			".",
+			"..",
+			"CustomUpper",
+			"custom\nupper",
+			"__proto__",
+			"constructor",
+			"a".repeat(65),
+		];
+
+		for (const id of unsafeIds) {
+			const result = validateProcessor(makeValidProcessor({ id }));
+			expect(result, id).toMatchObject({ ok: false });
+		}
+	});
+
+	it("accepts safe maximum-length processor ids", () => {
+		const id = "a".repeat(64);
+		const result = validateProcessor(makeValidProcessor({ id }));
+		expect(result.ok).toBe(true);
+	});
+
+	it("rejects forbidden processor precedence metadata", () => {
+		for (const field of ["order", "priority", "processorPrecedence"] as const) {
+			const result = validateProcessor({ ...makeValidProcessor(), [field]: 1 });
+			expect(result, field).toMatchObject({ ok: false });
+			if (!result.ok) expect(result.error).toContain(field);
+		}
+	});
+
 	it("rejects missing placement", () => {
 		const proc = makeValidProcessor();
 		const { placement: _, ...rest } = proc as unknown as Record<string, unknown>;
@@ -94,6 +129,33 @@ describe("validateProcessor", () => {
 	it("rejects non-array tags", () => {
 		const result = validateProcessor({ id: "x", placement: "remote", tags: "mermaid", aliases: {}, available: async () => ({ ok: true }), render: async () => ({ kind: "text", text: "" }) });
 		expect(result.ok).toBe(false);
+	});
+
+	it("rejects unsafe tags", () => {
+		const unsafeTags = [
+			" custom",
+			"custom ",
+			"custom/tag",
+			"custom\\tag",
+			".",
+			"..",
+			"CustomTag",
+			"custom\ttag",
+			"__proto__",
+			"prototype",
+			"a".repeat(65),
+		];
+
+		for (const tag of unsafeTags) {
+			const result = validateProcessor(makeValidProcessor({ tags: [tag] }));
+			expect(result, tag).toMatchObject({ ok: false });
+		}
+	});
+
+	it("accepts safe maximum-length tags", () => {
+		const tag = "a".repeat(64);
+		const result = validateProcessor(makeValidProcessor({ tags: [tag] }));
+		expect(result.ok).toBe(true);
 	});
 
 	it("rejects missing render function", () => {
