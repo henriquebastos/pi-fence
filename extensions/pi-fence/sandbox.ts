@@ -325,6 +325,7 @@ export function createKrokiDockerSandboxController(
 const KROKI_SANDBOX_LABEL = "pi-fence.sandbox";
 const KROKI_SANDBOX_LABELS = { [KROKI_SANDBOX_LABEL]: "kroki" };
 const KROKI_MERMAID_IMAGE = "yuzutech/mermaid";
+const LOOPBACK_HOST = "127.0.0.1";
 export const KROKI_COMPOSE_FILE = "docker/kroki/compose.yaml";
 export const KROKI_COMPOSE_PROJECT_NAME = "pi-fence-kroki";
 
@@ -347,6 +348,7 @@ export function createKrokiDockerComposeSandboxController(
 				containerName: "pi-fence-kroki-core",
 				expectedImage: KROKI_DOCKER_IMAGE,
 				expectedLabels: KROKI_SANDBOX_LABELS,
+				requiredLoopbackPorts: [8000],
 			},
 			{
 				id: "mermaid",
@@ -376,6 +378,7 @@ export interface DockerSandboxComponentOptions {
 	expectedImage: string;
 	expectedLabels: Readonly<Record<string, string>>;
 	security?: DockerSandboxSecurityOptions;
+	requiredLoopbackPorts?: readonly number[];
 }
 
 export interface DockerContainerSandboxOptions {
@@ -615,6 +618,10 @@ async function inspectDockerContainer(
 		if (imageStatus) return imageStatus;
 		const labelStatus = await inspectContainerLabels(shell, component);
 		if (labelStatus) return labelStatus;
+		if (running) {
+			const portStatus = await inspectRequiredLoopbackPorts(shell, component);
+			if (portStatus) return portStatus;
+		}
 		if (running && component.security) {
 			const securityStatus = await inspectContainerSecurity(shell, component);
 			if (securityStatus) return securityStatus;
@@ -720,6 +727,21 @@ async function inspectContainerSecurity(
 	]) {
 		const status = await check(shell, component, security);
 		if (status) return status;
+	}
+	return undefined;
+}
+
+async function inspectRequiredLoopbackPorts(
+	shell: ShellRunner,
+	component: DockerSandboxComponentOptions,
+): Promise<SandboxComponentStatus | undefined> {
+	const requiredPorts = component.requiredLoopbackPorts ?? [];
+	if (requiredPorts.length === 0) return undefined;
+	const rawPorts = await inspectFormat(shell, component, "{{json .NetworkSettings.Ports}}");
+	if (isInspectStatus(rawPorts)) return rawPorts;
+	for (const port of requiredPorts) {
+		const issue = loopbackPortBindingIssue(rawPorts, port);
+		if (issue) return securityError(component, issue);
 	}
 	return undefined;
 }
@@ -843,6 +865,30 @@ function isInspectStatus(value: string | SandboxComponentStatus): value is Sandb
 
 function securityError(component: DockerSandboxComponentOptions, detail: string): SandboxComponentStatus {
 	return { id: component.id, state: "error", message: `Container ${component.containerName} ${detail}` };
+}
+
+function loopbackPortBindingIssue(rawPorts: string, port: number): string | undefined {
+	const parsed = parseJson(rawPorts);
+	if (!isRecord(parsed)) return `has invalid port bindings; expected ${LOOPBACK_HOST}:${port}.`;
+	const key = `${port}/tcp`;
+	const bindings = parsed[key];
+	if (!Array.isArray(bindings) || bindings.length === 0) {
+		return `does not publish ${key}; expected ${LOOPBACK_HOST}:${port}.`;
+	}
+	const unexpected = bindings.find((binding) => !isExpectedLoopbackPortBinding(binding, port));
+	if (!unexpected) return undefined;
+	return `publishes ${key} on ${formatDockerPortBinding(unexpected)}; expected ${LOOPBACK_HOST}:${port}.`;
+}
+
+function isExpectedLoopbackPortBinding(binding: unknown, port: number): boolean {
+	return isRecord(binding) && binding.HostIp === LOOPBACK_HOST && binding.HostPort === String(port);
+}
+
+function formatDockerPortBinding(binding: unknown): string {
+	if (!isRecord(binding)) return "<invalid>";
+	const hostIp = typeof binding.HostIp === "string" && binding.HostIp.length > 0 ? binding.HostIp : "<all interfaces>";
+	const hostPort = typeof binding.HostPort === "string" && binding.HostPort.length > 0 ? binding.HostPort : "<unknown>";
+	return `${hostIp}:${hostPort}`;
 }
 
 function isEmptyDockerJsonObject(raw: string): boolean {

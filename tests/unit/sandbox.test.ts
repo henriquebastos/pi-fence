@@ -741,6 +741,28 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		});
 	});
 
+	it("reports error when the Compose core publishes Kroki on all interfaces", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortBinding(shell, "pi-fence-kroki-core", "0.0.0.0");
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Sandbox kroki status failed.",
+			components: [
+				{
+					id: "core",
+					state: "error",
+					message: "Container pi-fence-kroki-core publishes 8000/tcp on 0.0.0.0:8000; expected 127.0.0.1:8000.",
+				},
+				{ id: "mermaid", state: "ready", message: "Container pi-fence-kroki-mermaid is running." },
+			],
+		});
+	});
+
 	it("starts and stops a configured Compose stack", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "kroki-core", KROKI_IMAGE);
