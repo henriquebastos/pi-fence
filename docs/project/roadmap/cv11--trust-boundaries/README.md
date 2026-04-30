@@ -30,7 +30,7 @@ The order is deliberate:
 | [CV11.E1](cv11-e1--installed-runtime-trust.md) | **Installed Runtime Trust** | Done |
 | [CV11.E2](cv11-e2--source-retention-decision.md) | **Source Retention Decision** | Done |
 | [CV11.E3](cv11-e3--explicit-runtime-model.md) | **Explicit Runtime Model** | Done |
-| [CV11.E4](cv11-e4--semi-trusted-processors.md) | **Semi-trusted Processors** | In progress |
+| [CV11.E4](cv11-e4--semi-trusted-processors.md) | **Semi-trusted Processors** | Done |
 | [CV11.E5](cv11-e5--render-resource-limits.md) | **Render Resource Limits** | Not started |
 | [CV11.E6](cv11-e6--tooling-quality.md) | **Tooling Quality** | Not started |
 | [CV11.E7](cv11-e7--strict-typescript.md) | **Staged Strict TypeScript** | Not started |

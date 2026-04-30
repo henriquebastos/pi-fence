@@ -7217,3 +7217,47 @@ Adjacent docs catch-up commits were recorded immediately after each feature, fix
 1. **Thrown render details are not user/LLM output.** A processor can intentionally return an error string, but an accidental throw does not leak its message.
 
 **Carry-forward.** Re-run CV11.E4.S2 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — Closed CV11.E4.S2 and CV11.E4
+
+**What closed.** Marked CV11.E4.S2 done and closed CV11.E4. pi-fence now treats third-party processors as semi-trusted at both boundaries: registration validates and snapshots shape, while runtime availability and render results are normalized before list, doctor, render, metrics, and follow-up paths consume them.
+
+**S2 implementation commits.**
+
+1. `1a4f792` — step 4: normalize processor availability
+2. `85c441a` — step 5: normalize processor render outputs
+3. `70cc96e` — fix CV11.E4.S2: preserve render receiver
+4. `d0594a9` — test CV11.E4.S2: cover result normalization edges
+5. `a8fcf9d` — fix CV11.E4.S2: hide thrown render details
+
+Adjacent docs catch-up commits were recorded immediately after each S2 feature, fix, or test commit.
+
+**Beans.**
+
+1. Closed implementation beans: `task-25eaddb0`, `task-a2e4335a`.
+2. Closed inspection beans: `bug-b2bc8b2d`, `task-1598861e`, `task-3cb63d2a`, `task-b40dfba7`, `bug-cd0ce938`.
+3. Closing now: `task-845b265b` — CV11.E4.S2 story bean.
+4. Closing now: `epic-afe9e7b3` — CV11.E4 epic bean.
+
+**Test count.** Fast non-live suite increased from 969 to 983 tests during S2, and from 947 to 983 tests across CV11.E4.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed after each S2 implementation/fix step; final pass reported 983 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: 983 non-live tests in the inspection coverage pass, CRAP report generated, Sonar skipped because credentials were unset.
+3. `inspect5p` rounds 1–3 — produced render-receiver, thrown-availability coverage, malformed-render metrics, malformed-variant coverage, and thrown-render privacy beans; final round found no issues.
+4. `pnpm test:live` — passed: 30 live tests passed, 28 skipped; the script started and stopped the managed `pi-fence-kroki` container.
+5. `pnpm run render:verify` — passed: rendered 5 headless UI scenarios and wrote the verification gallery.
+
+**Design decisions that survived the story.**
+
+1. **Availability failures become listable diagnostics.** Throws and malformed values are unavailable states, not registration crashes.
+2. **Render failures become explicit output.** Throws and malformed values reach `agent_end` as `FenceOutput` error variants, preserving metrics and follow-up behavior.
+3. **Thrown render messages are private by default.** Accidental exception text is not displayed or sent to the LLM; processors can intentionally return an error string when they want it surfaced.
+4. **Legacy render results are normalized before runtime decisions.** `{ ok, text/png/error }` compatibility remains, but runtime code consumes explicit variants.
+
+**Known deviations.** Inspection broadened S2 beyond the initial helper tests by requiring extension-level thrown-availability coverage, malformed-render metrics/follow-up coverage, method receiver preservation, and thrown-render privacy.
+
+**Carry-forward.** CV11.E5 — Render Resource Limits — is next.

@@ -1,6 +1,6 @@
 # CV11.E4.S2 — Third-party processor result normalization
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E4 — Semi-trusted Processors](cv11-e4--semi-trusted-processors.md)
 **Depends on:** [CV11.E4.S1 — Processor registration shape validation](cv11-e4-s1--processor-registration-shape-validation.md)

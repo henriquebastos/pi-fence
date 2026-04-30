@@ -1,7 +1,7 @@
 # CV11.E4 — Semi-trusted Processors
 
 **CV:** [CV11 — Trust Boundaries](README.md)
-**Last updated:** 2026-04-29 — planned
+**Last updated:** 2026-04-30 — closed
 
 ## Summary
 
@@ -14,7 +14,7 @@ This epic does not sandbox third-party extension code. It prevents malformed reg
 | Code | Story | Status |
 |------|-------|--------|
 | [S1](cv11-e4-s1--processor-registration-shape-validation.md) | **Processor registration shape validation** | Done |
-| [S2](cv11-e4-s2--third-party-processor-result-normalization.md) | **Third-party processor result normalization** | Ready |
+| [S2](cv11-e4-s2--third-party-processor-result-normalization.md) | **Third-party processor result normalization** | Done |
 
 ## Done criterion (epic-level)
 

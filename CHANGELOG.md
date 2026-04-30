@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E4.S2 — Third-party processor result normalization)
+
+- Third-party `available()` throws and malformed returns now become unavailable diagnostics instead of corrupting `/fence list` or `/fence doctor` state.
+- Third-party `render()` throws and malformed returns now become controlled pi-fence error output, preserving normal failed-render metrics and LLM follow-up behavior.
+- Legacy third-party render shapes (`{ ok: true, text }`, `{ ok: true, png }`, `{ ok: false, error }`) are normalized to explicit `FenceOutput` variants before `agent_end` logging, metrics, message building, and follow-up decisions.
+- Thrown render exceptions now use generic user/LLM output (`render() threw`) so accidental exception details do not leak through follow-up messages.
+
 ### Changed (CV11.E4.S1 — Processor registration shape validation)
 
 - Third-party processor registration now rejects unsafe ids, tags, placements, aliases, and processor-controlled precedence metadata before those values enter registry, resolver, list, or render state.
