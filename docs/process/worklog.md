@@ -5576,3 +5576,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Endpoint remains stable.** The processor and sandbox controller continue to hand pi-fence `http://localhost:8000`.
 
 **Carry-forward.** Run S3 inspection on the implementation diff, then close any findings through beans before closing CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: single-container port binding verification
+
+**What shipped.** A running managed `pi-fence-kroki` container is no longer considered ready unless Docker reports `8000/tcp` bound to `127.0.0.1:8000`. Containers with the right image and label but a broad host bind now report an error, and `/fence kroki stop` can still stop and remove that managed container so the user can recreate it with the loopback bind.
+
+**Implementation commit.**
+
+1. `75b8aee` — fix CV11.E1.S3: reject broad Kroki container binds
+
+**Beans.**
+
+1. Closed `bug-a3f21f9c` — CV11.E1.S3 inspection: reject broad single-container port bindings.
+
+**Test count.** Fast suite increased from 909 to 911 with two single-container port-binding tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'port binding|all interfaces'` — failed before the port inspection was added, then passed.
+2. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'stops a managed container even when its port binding is too broad'` — failed before stop allowed owned but incorrectly bound containers, then passed.
+3. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/sandbox.test.ts tests/unit/fence-command.test.ts --testNamePattern 'port binding|kroki|Docker adapter'` — passed after dependent fixtures included the Docker ports inspection.
+4. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'single-container service is ready|ambiguous until bound|binding selects kroki-sandbox'` — passed after extension fixtures included loopback port bindings.
+5. `pnpm run feedback` — passed: 911 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Ready means image, label, and bind address.** Ownership alone is not enough for the managed trust boundary once older containers can exist.
+2. **Stop stays available for owned unsafe state.** A broad-bound but labelled managed container is not ready, but pi-fence can still remove it through the lifecycle command.
+
+**Carry-forward.** Continue S3 inspection remediation with the Compose core port-binding finding.

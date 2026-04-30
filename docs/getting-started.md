@@ -341,7 +341,7 @@ or let pi-fence auto-start it:
 }
 ```
 
-Auto-start follows sandbox processor policy: if `kroki-sandbox` is blocked, fully tag-blocked, or `sandbox` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the runtime stays running between sessions — subsequent starts are no-ops. The single-container lifecycle uses the trusted default `yuzutech/kroki` image even if project config contains a sandbox `image` value; `stop` reports non-zero `docker stop` or `docker rm` exits with Docker's stderr instead of hiding them behind a success message.
+Auto-start follows sandbox processor policy: if `kroki-sandbox` is blocked, fully tag-blocked, or `sandbox` placement is omitted from `processorPrecedence`, pi-fence skips Docker startup. When it does start, the runtime stays running between sessions — subsequent starts are no-ops. The single-container lifecycle uses the trusted default `yuzutech/kroki` image even if project config contains a sandbox `image` value; it reports an error if an existing managed container publishes `8000/tcp` outside `127.0.0.1:8000`, and `stop` still removes that managed container. `stop` reports non-zero `docker stop` or `docker rm` exits with Docker's stderr instead of hiding them behind a success message.
 
 ## Diagnosing the setup
 
