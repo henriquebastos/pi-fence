@@ -6024,3 +6024,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Explicit not-found discriminator.** `findIndex` plus `=== -1` separates `not found` from `matched a falsy entry`, so the verifier can never collapse the two outcomes again.
 
 **Carry-forward.** Rerun S3 inspection (round 5). If clean or only deferable lows, run completion checks and close CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: accept Docker EXPOSE shape in noPublishedPorts
+
+**What shipped.** Round 4 added `noPublishedPorts: true` to the Compose mermaid sidecar but `isEmptyDockerJsonObject` only accepted `''`, `'null'`, or `'{}'`. Real Docker reports an EXPOSE-only port as `{"8002/tcp": null}`, which fail-closed the controller against a correctly configured runtime. The helper now also accepts Ports maps whose every entry is `null` or `[]`, and the test fixtures model that shape.
+
+**Implementation commit.**
+
+1. `948aaac` — fix CV11.E1.S3: accept Docker EXPOSE shape in noPublishedPorts
+
+**Beans.**
+
+1. Closed `bug-4fe84d63` — CV11.E1.S3 inspection: accept Docker EXPOSE shape in noPublishedPorts.
+
+**Test count.** Fast suite increased from 935 to 936 with one EXPOSE-only acceptance test. The existing mermaid published-ports rejection test stayed green.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'EXPOSE-only Ports shape'` — failed before the helper widened, then passed.
+2. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'mermaid|noPublishedPorts|exposes ports'` — green.
+3. `pnpm run feedback` — passed: 936 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **EXPOSE is internal.** A Ports map with only null or [] values means the container declared an internal port via EXPOSE but did not publish anything to the host. That counts as no host bindings.
+2. **Test fixtures track real Docker.** Both unit and extension fixtures now program `{"8002/tcp":null}` for the mermaid sidecar instead of bare `null`, matching what the live container reports.
+
+**Carry-forward.** Surface fence kroki status fail-closed signal and align the story spec Verification list with the Compose contract test.
