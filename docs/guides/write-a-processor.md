@@ -57,7 +57,7 @@ type FenceOutput =
   | { kind: "error"; error: string };
 ```
 
-New processors should return `FenceOutput` directly.
+New processors should return `FenceOutput` directly. For compatibility with older processors, pi-fence also normalizes `{ ok: true, text }`, `{ ok: true, png }`, and `{ ok: false, error }` results. Throws or malformed render results become controlled pi-fence error output.
 
 ## Minimal example — an `uppercase` processor
 
@@ -175,4 +175,4 @@ If `render()` returns `{ kind: "error", error }`:
 1. pi-fence shows an error panel to the user.
 2. The error is sent as a follow-up message to the LLM so it can self-correct.
 
-Never throw from `render()` or `available()` — return the error/unavailable variant instead.
+Never throw from `render()` or `available()` — return the error/unavailable variant instead. pi-fence still catches throws and malformed results at runtime so one bad processor cannot crash `/fence list`, `/fence doctor`, or `agent_end`.

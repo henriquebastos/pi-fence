@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	mergeSignals,
 	normalizeAvailabilityResult,
+	normalizeFenceOutput,
 	withRenderGuards,
 	withSignalGuard,
 	type FenceOutput,
@@ -23,6 +24,51 @@ describe("processor availability normalization", () => {
 			expect(normalizeAvailabilityResult(result), String(result)).toMatchObject({
 				ok: false,
 				reason: expect.stringContaining("malformed"),
+			});
+		}
+	});
+});
+
+describe("processor output normalization", () => {
+	it("accepts explicit and legacy text output", () => {
+		expect(normalizeFenceOutput({ kind: "text", text: "ok" })).toEqual({ kind: "text", text: "ok" });
+		expect(normalizeFenceOutput({ ok: true, text: "ok" })).toEqual({ kind: "text", text: "ok" });
+	});
+
+	it("accepts explicit and legacy image output", () => {
+		const png = Buffer.from([0x89, 0x50]);
+		expect(normalizeFenceOutput({ kind: "image", data: png, mimeType: "image/png" })).toEqual({
+			kind: "image",
+			data: png,
+			mimeType: "image/png",
+		});
+		expect(normalizeFenceOutput({ ok: true, png })).toEqual({
+			kind: "image",
+			data: png,
+			mimeType: "image/png",
+		});
+	});
+
+	it("accepts explicit and legacy error output", () => {
+		expect(normalizeFenceOutput({ kind: "error", error: "bad" })).toEqual({ kind: "error", error: "bad" });
+		expect(normalizeFenceOutput({ ok: false, error: "bad" })).toEqual({ kind: "error", error: "bad" });
+	});
+
+	it("returns error output for malformed render results", () => {
+		const png = Buffer.from([0x89, 0x50]);
+		for (const result of [
+			undefined,
+			null,
+			{ kind: "text" },
+			{ kind: "image", data: "not-buffer", mimeType: "image/png" },
+			{ kind: "error", error: "" },
+			{ ok: true },
+			{ ok: true, text: "ok", png },
+			{ ok: false },
+		]) {
+			expect(normalizeFenceOutput(result)).toEqual({
+				kind: "error",
+				error: "render() returned malformed result",
 			});
 		}
 	});

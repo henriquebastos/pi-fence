@@ -12,6 +12,8 @@ import {
 	PROCESSOR_PLACEMENTS,
 	availabilityFromThrownError,
 	normalizeAvailabilityResult,
+	normalizeFenceOutput,
+	renderOutputFromThrownError,
 	type Availability,
 	type FenceProcessor,
 	type ProcessorPlacement,
@@ -105,7 +107,7 @@ export function validateProcessor(value: unknown): ValidationResult {
 			tags,
 			aliases: aliases.aliases,
 			available: available as FenceProcessor["available"],
-			render: render as FenceProcessor["render"],
+			render: wrapRender(render),
 		}),
 	};
 }
@@ -145,6 +147,16 @@ function isAliasObject(value: unknown): value is Record<string, unknown> {
 	if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
 	const prototype = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
+}
+
+function wrapRender(render: unknown): FenceProcessor["render"] {
+	return async (tag, source, signal) => {
+		try {
+			return normalizeFenceOutput(await (render as FenceProcessor["render"])(tag, source, signal));
+		} catch (err) {
+			return renderOutputFromThrownError(err);
+		}
+	};
 }
 
 function isSafeProcessorName(value: string): boolean {

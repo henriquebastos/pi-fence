@@ -2603,6 +2603,93 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
+		"turns thrown third-party render into error output, follow-up, and error metrics",
+		async () => {
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => { throw new Error("boom"); },
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+			const { session, sentCustomMessages, model } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+			session.agent.streamFn = cannedAssistantStream(model, "```upper\nhello\n```");
+			try {
+				await session.prompt("render it");
+				await new Promise((r) => setTimeout(r, 50));
+				await session.prompt("/fence stats");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
+
+			const outputs = filterPiFenceOutputs(sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "upper",
+				processor: "custom-upper",
+				kind: "error",
+				outputKind: "error",
+			});
+			expect((outputs[0].content as Array<{ text?: string }>)[0].text).toContain("render() threw: boom");
+			expect(sentCustomMessages.filter((message) => message.options?.deliverAs === "followUp"))
+				.toHaveLength(1);
+			const stats = sentCustomMessages.find(
+				(message) => message.customType === "pi-fence:list" &&
+					(message.details as { lines?: string[] }).lines?.includes("Session metrics"),
+			)?.details as { lines: string[] };
+			expect(stats.lines).toContain("Total renders: 1 (0 ok, 1 errors)");
+			expect(stats.lines).toContain("  custom-upper: 1 (0 ok, 1 errors)");
+		},
+		20_000,
+	);
+
+	it(
+		"turns malformed third-party render output into an error message",
+		async () => {
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => undefined,
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				"```upper\nhello\n```",
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				processor: "custom-upper",
+				kind: "error",
+				outputKind: "error",
+			});
+			expect((outputs[0].content as Array<{ text?: string }>)[0].text)
+				.toContain("render() returned malformed result");
+		},
+		20_000,
+	);
+
+	it(
 		"does not probe a third-party processor whose tag family is blocked",
 		async () => {
 			const home = makeTempDir();

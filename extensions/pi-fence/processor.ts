@@ -40,11 +40,42 @@ export function errorOutput(error: string): FenceOutput {
 	return { kind: "error", error };
 }
 
-export function normalizeFenceOutput(result: FenceResult | FenceOutput): FenceOutput {
-	if ("kind" in result) return result;
-	if (!result.ok) return { kind: "error", error: result.error };
-	if ("png" in result) return { kind: "image", data: result.png, mimeType: "image/png" };
-	return { kind: "text", text: result.text };
+export function normalizeFenceOutput(result: unknown): FenceOutput {
+	if (!isRecord(result)) return malformedFenceOutput();
+	if (result.kind === "image") {
+		return Buffer.isBuffer(result.data) && result.mimeType === "image/png"
+			? imageOutput(result.data)
+			: malformedFenceOutput();
+	}
+	if (result.kind === "text") {
+		return typeof result.text === "string" ? textOutput(result.text) : malformedFenceOutput();
+	}
+	if (result.kind === "error") {
+		return typeof result.error === "string" && result.error.length > 0
+			? errorOutput(result.error)
+			: malformedFenceOutput();
+	}
+	if (result.ok === false) {
+		return typeof result.error === "string" && result.error.length > 0
+			? errorOutput(result.error)
+			: malformedFenceOutput();
+	}
+	if (result.ok === true) {
+		const hasPng = Object.hasOwn(result, "png");
+		const hasText = Object.hasOwn(result, "text");
+		if (hasPng === hasText) return malformedFenceOutput();
+		if (hasPng) return Buffer.isBuffer(result.png) ? imageOutput(result.png) : malformedFenceOutput();
+		return typeof result.text === "string" ? textOutput(result.text) : malformedFenceOutput();
+	}
+	return malformedFenceOutput();
+}
+
+export function renderOutputFromThrownError(err: unknown): FenceOutput {
+	return errorOutput(`render() threw: ${safeErrorMessage(err)}`);
+}
+
+function malformedFenceOutput(): FenceOutput {
+	return errorOutput("render() returned malformed result");
 }
 
 export const DEFAULT_RENDER_TIMEOUT_MS = 15_000;
