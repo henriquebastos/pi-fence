@@ -1,7 +1,8 @@
 # CV11.E2 — Source Retention Decision
 
 **CV:** [CV11 — Trust Boundaries](README.md)
-**Last updated:** 2026-04-29 — planned
+**Last updated:** 2026-04-30 — epic done
+**Status:** Done
 
 ## Summary
 
@@ -13,7 +14,7 @@ The current behavior duplicates raw fence source in the assistant text and in th
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv11-e2-s1--custom-message-source-retention-spike.md) | **Custom-message source retention spike** | Ready |
+| [S1](cv11-e2-s1--custom-message-source-retention-spike.md) | **Custom-message source retention spike** | Done |
 
 ## Done criterion (epic-level)
 

@@ -14,11 +14,12 @@ Make render output and sandbox lifecycle state explicit domain unions. Today `Fe
 
 1. Fence output is represented as explicit variants for image, text, and error.
 2. Message building uses exhaustive variant handling instead of field-presence checks.
-3. Sandbox status distinguishes ready service endpoints from ready exec runtimes, or otherwise makes endpoint availability impossible to misuse.
-4. Kroki sandbox endpoint extraction no longer has to handle `ready` without endpoint as a normal state unless that state is explicitly represented as an error.
-5. Existing processor contract tests are updated to the new shape.
-6. Existing user-visible rendering remains unchanged unless CV11.E2 decided to change source retention.
-7. `pnpm run feedback` passes.
+3. Output details represent a bounded retained source preview, not full raw source, per the CV11.E2 source-retention decision.
+4. Sandbox status distinguishes ready service endpoints from ready exec runtimes, or otherwise makes endpoint availability impossible to misuse.
+5. Kroki sandbox endpoint extraction no longer has to handle `ready` without endpoint as a normal state unless that state is explicitly represented as an error.
+6. Existing processor contract tests are updated to the new shape.
+7. Existing user-visible rendering remains unchanged except for the CV11.E2 bounded source-preview retention decision.
+8. `pnpm run feedback` passes.
 
 ## Scope
 
@@ -49,7 +50,7 @@ Make render output and sandbox lifecycle state explicit domain unions. Today `Fe
 ## Tests
 
 1. **Layers touched:** unit, contract, extension.
-2. **Events / interactions covered:** successful image output, successful text output, error output/follow-up, service sandbox readiness, exec sandbox readiness.
+2. **Events / interactions covered:** successful image output, successful text output, error output/follow-up, bounded source-preview detail retention, service sandbox readiness, exec sandbox readiness.
 3. **Fakes added:** none expected.
 4. **Live tests:** not required for the type refactor; existing live tests can be run later for confidence.
 5. **Deferred:** third-party bad-result normalization.

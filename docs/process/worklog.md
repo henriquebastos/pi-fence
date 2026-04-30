@@ -6169,3 +6169,43 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. Multi-binding (`IPv4` + `IPv6`) coverage and the unreachable `<invalid>` formatter branches surfaced in round 4 are deferred as low-priority defense-in-depth.
 4. Hand-rolled Compose YAML parser in `tests/unit/kroki-compose.test.ts::coreServicePorts` is acknowledged-deferred; replacing it with a YAML library would add a runtime dep for one contract assertion.
 5. CV11.E1 is now Done. The next CV11 epic, [CV11.E2 — Source Retention Decision](../project/roadmap/cv11--trust-boundaries/cv11-e2--source-retention-decision.md), starts the source-retention discovery before any further refactor.
+
+---
+
+### 2026-04-30 — CV11.E2.S1 closed: custom messages retain only bounded source previews (CV11.E2 epic done)
+
+**What shipped.** Closed CV11.E2.S1. The spike read pi source from `~/me/oss/pi-mono` at `upstream/main` commit `156a9052bc08a5ed08b7f2b82a27796253c4760d` and recorded the source-retention decision in [docs/project/decisions.md](../project/decisions.md): pi-fence custom output details must not retain full raw fence source; they may retain a bounded source preview plus render metadata. CV11.E3.S2 and CV11.E5.S1 scope now carry that follow-up requirement.
+
+**Implementation commit.**
+
+1. `3998df4` — docs CV11.E2.S1: decide bounded source retention
+
+**Beans.**
+
+1. Closed `task-adea5bb8` — CV11.E2.S1 step 1: pi custom-message evidence.
+2. Closed `task-ec80e622` — CV11.E2.S1 step 2: source retention decision entry.
+3. Closing now: `task-743fa3cc` (inspection: source-preview follow-up test docs), `task-3dfc20b9` (inspection: epic acceptance gate record), `task-32874fad` (inspection: keep Ready story plan acceptance-oriented), `task-066da752` (inspection: record live gate for HttpClient cap story), `task-bbab9a9b` (spike closeout), `task-411b5f99` (S1 story bean), and `epic-c88cf332` (CV11.E2 epic bean).
+
+**Test count.** Fast suite unchanged by this docs-only spike; no production or test code changed.
+
+**Verification.**
+
+1. `cd ~/me/oss/pi-mono && git fetch --all && git rev-parse upstream/main` — read `156a9052bc08a5ed08b7f2b82a27796253c4760d`.
+2. `git grep -n -e customType -e details -e sendMessage -e CustomMessage upstream/main -- packages/coding-agent/src packages/tui/src` — identified the relevant pi custom-message paths.
+3. `pnpm run lint:markdown` — passed.
+4. `pnpm test:live` — passed: 30 live tests passed, 28 skipped.
+5. `pnpm run render:verify` — passed: rendered 5 scenario/viewport combos.
+
+**Design decisions that survived the story.**
+
+1. **Details are runtime/render metadata, not model context.** pi persists custom-message `details` but `convertToLlm()` sends only custom-message `content` to providers.
+2. **Export/share expands the retention boundary.** HTML export embeds all session entries, the viewer can download JSONL, `/share` uploads the HTML to a secret gist, and debug logs serialize agent messages.
+3. **A bounded preview preserves the useful UI affordance.** Custom renderers cannot recover the original assistant text on their own, so pi-fence should carry source-derived data, but only a clipped preview.
+
+**Known deviations.** The story spec referenced `packages/pi-coding-agent` and `packages/pi-tui`; upstream pi-mono now stores those sources under `packages/coding-agent` and `packages/tui`. The evidence bean recorded the corrected paths.
+
+**Carry-forward.**
+
+1. Implement CV11.E3.S2's explicit retained-preview shape while tolerating legacy sessions if needed.
+2. Implement CV11.E5.S1's source/output limits before custom message construction, including persisted preview bytes.
+3. CV11.E2 is now Done. The next CV11 epic is [CV11.E3 — Explicit Runtime Model](../project/roadmap/cv11--trust-boundaries/cv11-e3--explicit-runtime-model.md).

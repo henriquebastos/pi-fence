@@ -18,9 +18,10 @@ Add first-class render limits for fence source bytes, rendered output bytes, and
 4. Oversize rejection sends a normal pi-fence error output message.
 5. Metrics record oversize failure when metrics are available.
 6. Output-size checks run before custom message content is built.
-7. HTTP/Kroki response handling has a cap or a clearly tested cap point.
-8. Tests prove processors are not invoked for oversized source.
-9. `pnpm run feedback` passes.
+7. Custom message details retain only a bounded source preview, clipped before `pi.sendMessage()`.
+8. HTTP/Kroki response handling has a cap or a clearly tested cap point.
+9. Tests prove processors are not invoked for oversized source.
+10. `pnpm run feedback` passes.
 
 ## Scope
 
@@ -29,8 +30,9 @@ Add first-class render limits for fence source bytes, rendered output bytes, and
 1. `RenderLimits` in resolved policy.
 2. Source-byte check in `agent-end.ts`.
 3. Output-byte check in message/output normalization path.
-4. Kroki/HTTP response cap behavior.
-5. Unit and extension tests for rejection paths.
+4. Source-preview byte/line cap in message details, per the CV11.E2 decision.
+5. Kroki/HTTP response cap behavior.
+6. Unit and extension tests for rejection paths.
 
 **Out of scope:**
 
@@ -52,17 +54,18 @@ Add first-class render limits for fence source bytes, rendered output bytes, and
 ## Tests
 
 1. **Layers touched:** unit and extension.
-2. **Events / interactions covered:** oversize source, oversize image output, oversize text output, Kroki response cap, metrics on failure.
+2. **Events / interactions covered:** oversize source, oversize image output, oversize text output, bounded source-preview retention, Kroki response cap, metrics on failure.
 3. **Fakes added:** none expected.
-4. **Live tests:** none required; live suite can run unchanged.
+4. **Live tests:** run `pnpm test:live` when the implementation changes `HttpClient` or another I/O seam for Kroki/HTTP caps.
 5. **Deferred:** per-processor expansion-specific controls.
 
 ## Verification
 
 ```bash
-pnpm vitest run tests/unit/config.test.ts tests/unit/kroki.test.ts tests/unit/messages.test.ts
+pnpm vitest run tests/unit/config.test.ts tests/unit/kroki.test.ts tests/unit/messages.test.ts tests/unit/renderer.test.ts
 pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern "limit|oversize|large"
 pnpm run feedback
+pnpm test:live
 ```
 
 ## Key files

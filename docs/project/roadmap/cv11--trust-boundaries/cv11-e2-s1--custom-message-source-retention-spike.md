@@ -1,6 +1,6 @@
 # CV11.E2.S1 — Custom-message source retention spike
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E2 — Source Retention Decision](cv11-e2--source-retention-decision.md)
 **Depends on:** [CV11.E1 — Installed Runtime Trust](cv11-e1--installed-runtime-trust.md)

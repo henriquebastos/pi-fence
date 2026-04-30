@@ -28,7 +28,7 @@ The order is deliberate:
 | Code | Epic | State |
 |------|------|-------|
 | [CV11.E1](cv11-e1--installed-runtime-trust.md) | **Installed Runtime Trust** | Done |
-| [CV11.E2](cv11-e2--source-retention-decision.md) | **Source Retention Decision** | Not started |
+| [CV11.E2](cv11-e2--source-retention-decision.md) | **Source Retention Decision** | Done |
 | [CV11.E3](cv11-e3--explicit-runtime-model.md) | **Explicit Runtime Model** | Not started |
 | [CV11.E4](cv11-e4--semi-trusted-processors.md) | **Semi-trusted Processors** | Not started |
 | [CV11.E5](cv11-e5--render-resource-limits.md) | **Render Resource Limits** | Not started |
