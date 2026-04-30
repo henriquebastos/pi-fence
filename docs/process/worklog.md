@@ -5969,3 +5969,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Compose YAML stays explicit.** The YAML still names the literal `127.0.0.1:8000:8000` because it is parsed by Docker, not by the extension; the contract test is what binds it back to the constant.
 
 **Carry-forward.** Cover lifecycle start fail-closed paths and harden the find-falsy idiom in the port-binding parsers.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: lifecycle start fail-closed coverage
+
+**What shipped.** Coverage-only tests pin down `/fence kroki start` and the fixed Kroki Compose `start()` against pre-existing broadly-bound managed runtimes. The single-container path asserts `docker run` is not invoked over an existing broad-bound container; the Compose path asserts the controller's `start()` returns `state: "error"` after `docker compose up -d` succeeds but core comes up bound on `0.0.0.0:8000`.
+
+**Implementation commit.**
+
+1. `26076d3` — test CV11.E1.S3: cover lifecycle start fail-closed on broad-bound containers
+
+**Beans.**
+
+1. Closed `task-623074be` — CV11.E1.S3 inspection: cover lifecycle start fail-closed on broad-bound containers.
+
+**Test count.** Fast suite increased from 931 to 933 with two lifecycle start coverage cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/sandbox.test.ts --testNamePattern 'broad-bound managed container|broad host bind'` — green on the existing logic, recorded as coverage-only remediation.
+2. `pnpm run feedback` — passed: 933 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Coverage where the contract already holds.** The `start()` paths inherit fail-closed behavior from `status()`; the new tests prove the user-facing entry points respect it.
+
+**Carry-forward.** Harden the find-falsy idiom in the port-binding parsers, then rerun S3 inspection.
