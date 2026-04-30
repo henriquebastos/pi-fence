@@ -5913,3 +5913,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. `pnpm run lint:markdown` — passed.
 
 **Carry-forward.** Rerun S3 inspection. If it produces no further required findings, run completion checks and close CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: harden Compose mermaid against published ports
+
+**What shipped.** The mermaid sidecar in the fixed Kroki Compose controller now carries `security: { noPublishedPorts: true }` so an out-of-band Compose override or future YAML edit that publishes the companion service fails closed. Test fixtures program a realistic mermaid Ports response (`null`) by default.
+
+**Implementation commit.**
+
+1. `9e5d68d` — fix CV11.E1.S3: harden Compose mermaid against published ports
+
+**Beans.**
+
+1. Closed `bug-9aa00a05` — CV11.E1.S3 inspection: harden Compose mermaid against published ports.
+
+**Test count.** Fast suite increased from 930 to 931 with one mermaid-publishes-ports rejection test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'mermaid component publishes any host ports'` — failed before mermaid received the security policy, then passed.
+2. `pnpm run feedback` — passed: 931 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Companion services share the trust boundary.** Mermaid is internal-only by design; pi-fence now treats any host bindings on it as an error rather than relying on the Compose YAML alone to keep it offline.
+2. **Generic invariant test for security-less components.** The post-refactor invariant 'components without a port security policy skip the ports inspect' is locked through `createDockerComposeSandboxController` directly, since the fixed Kroki controller now sets policies on every component.
+
+**Carry-forward.** Continue round-4 remediation: centralize the host port, add lifecycle start broad-bind coverage, and harden the find-falsy idiom.

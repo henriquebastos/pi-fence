@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The managed Kroki Compose stack now publishes `127.0.0.1:8000:8000` from `docker/kroki/compose.yaml` and reports the managed endpoint as `http://127.0.0.1:8000`.
 - Existing managed single-container Kroki containers are no longer treated as ready if Docker reports `8000/tcp` bound outside `127.0.0.1:8000`.
 - Existing managed Kroki Compose stacks are no longer treated as ready if the core service reports `8000/tcp` bound outside `127.0.0.1:8000`.
+- The fixed Kroki Compose mermaid sidecar is no longer treated as ready if Docker reports any host port bindings on it.
 
 ### Changed (CV11.E1.S2 — Kroki endpoint normalization)
 
