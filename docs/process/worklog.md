@@ -5695,3 +5695,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Unmanaged endpoint control stays untouched.** Users can still configure `kroki.endpoint` to any S2-valid HTTP(S) URL, including `localhost`, but managed sandbox endpoints are pinned to the verified bind address.
 
 **Carry-forward.** Rerun S3 inspection after all round-1 findings are closed.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: clarify story spec endpoint and test scope
+
+**What shipped.** The S3 story spec now states that managed Kroki runtimes report `http://127.0.0.1:8000` (matching the verified IPv4 loopback bind), that existing managed runtimes with broader bindings fail closed, and that unmanaged `kroki.endpoint` is unchanged. The Tests section also acknowledges runtime port-binding verification and updated extension fixtures.
+
+**Implementation commit.**
+
+1. `672c71b` — docs CV11.E1.S3: clarify managed endpoint and test scope
+
+**Beans.**
+
+1. Closed `task-65c3f949` — CV11.E1.S3 inspection: clarify endpoint and test scope in story spec.
+
+**Test count.** Fast suite unchanged (912); docs-only edit.
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+
+**Design decisions that survived remediation.**
+
+1. **Story spec mirrors the chosen branch.** The conditional endpoint statement is replaced with the actual implementation contract because inspection produced the stronger reason (IPv6 localhost ambiguity).
+2. **Implementation transcript stays in worklog.** The story file lists what is contracted, not how it was sequenced; concrete commits and findings remain in worklog/bean records.
+
+**Carry-forward.** Cover the remaining medium round-2 findings: harden Kroki port-binding negative coverage and add a sandbox-controller broad-bind rejection test.
