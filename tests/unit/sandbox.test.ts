@@ -233,13 +233,40 @@ function expectedKrokiComposeFilePath(): string {
 	return fileURLToPath(new URL("../../docker/kroki/compose.yaml", import.meta.url));
 }
 
+describe("sandbox status variants", () => {
+	it("represents a ready service sandbox with a required endpoint", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
+		const controller = createDockerContainerSandboxController(shell, {
+			...krokiContainerOptions(),
+			endpoint: "http://127.0.0.1:8000",
+		});
+
+		await expect(controller.status()).resolves.toMatchObject({
+			kind: "ready-service",
+			state: "ready",
+			endpoint: "http://127.0.0.1:8000",
+		});
+	});
+
+	it("represents a ready exec sandbox without an endpoint", async () => {
+		const factory = new FakeGondolinVMFactory();
+		const controller = createGondolinBundleSandboxController(factory, { image: "pi-fence-bundle:0.1.0" });
+
+		const status = await controller.start();
+
+		expect(status).toMatchObject({ kind: "ready-exec", state: "ready" });
+		expect(status).not.toHaveProperty("endpoint");
+	});
+});
+
 describe("sandbox controller contract — Gondolin bundle VM status", () => {
 	it("reports stopped before creating a VM", async () => {
 		const factory = new FakeGondolinVMFactory();
 		const controller = createGondolinBundleSandboxController(factory, { image: "pi-fence-bundle:0.1.0" });
 
 		expect(controller).toMatchObject({ id: "bundle", kind: "exec", runtime: "gondolin-vm" });
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "stopped",
 			message: "Gondolin VM for sandbox bundle is stopped.",
 		});
@@ -250,13 +277,13 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 		const factory = new FakeGondolinVMFactory();
 		const controller = createGondolinBundleSandboxController(factory, { image: "pi-fence-bundle:0.1.0" });
 
-		expect(await controller.start()).toEqual({
+		expect(await controller.start()).toMatchObject({
 			state: "ready",
 			message: "Gondolin VM for sandbox bundle is ready.",
 		});
 		expect(factory.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
 		expect(factory.vm.startCalls).toBe(1);
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "ready",
 			message: "Gondolin VM for sandbox bundle is ready.",
 		});
@@ -268,12 +295,12 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 
 		await controller.start();
 
-		expect(await controller.stop()).toEqual({
+		expect(await controller.stop()).toMatchObject({
 			state: "stopped",
 			message: "Gondolin VM for sandbox bundle is stopped.",
 		});
 		expect(factory.vm.closeCalls).toBe(1);
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "stopped",
 			message: "Gondolin VM for sandbox bundle is stopped.",
 		});
@@ -284,11 +311,11 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 		factory.vm.startError = new Error("qemu missing");
 		const controller = createGondolinBundleSandboxController(factory);
 
-		expect(await controller.start()).toEqual({
+		expect(await controller.start()).toMatchObject({
 			state: "error",
 			message: "Gondolin VM for sandbox bundle failed to start: qemu missing",
 		});
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Gondolin VM for sandbox bundle failed to start: qemu missing",
 		});
@@ -301,11 +328,11 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 
 		await controller.start();
 
-		expect(await controller.stop()).toEqual({
+		expect(await controller.stop()).toMatchObject({
 			state: "stopped",
 			message: "Gondolin VM for sandbox bundle is stopped.",
 		});
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "stopped",
 			message: "Gondolin VM for sandbox bundle is stopped.",
 		});
@@ -326,7 +353,7 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 		expect(factory.creates).toEqual([{ image: "pi-fence-bundle:0.1.0" }]);
 
 		releaseCreate();
-		await expect(Promise.all([first, second])).resolves.toEqual([
+		await expect(Promise.all([first, second])).resolves.toMatchObject([
 			{ state: "ready", message: "Gondolin VM for sandbox bundle is ready." },
 			{ state: "ready", message: "Gondolin VM for sandbox bundle is ready." },
 		]);
@@ -358,7 +385,7 @@ describe("sandbox controller contract — Docker container status", () => {
 		expect(controller.id).toBe("kroki");
 		expect(controller.kind).toBe("service");
 		expect(controller.runtime).toBe("docker-container");
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "ready",
 			endpoint: "http://localhost:8000",
 			message: "Container pi-fence-kroki is running.",
@@ -371,7 +398,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-kroki image mismatch: expected yuzutech/kroki, got attacker/kroki.",
 		});
@@ -383,7 +410,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-kroki label mismatch: expected pi-fence.sandbox=kroki, got other.",
 		});
@@ -398,7 +425,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "ready",
 			message: "Container pi-fence-bundle is running.",
 		});
@@ -413,7 +440,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle exposes ports; expected no published or exposed ports.",
 		});
@@ -428,7 +455,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle network mode bridge; expected none.",
 		});
@@ -443,7 +470,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle has non-tmpfs mounts; expected no host mounts.",
 		});
@@ -458,7 +485,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle missing tmpfs mount at /tmp.",
 		});
@@ -473,7 +500,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle does not drop all capabilities.",
 		});
@@ -488,7 +515,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle adds capabilities SYS_ADMIN; expected none.",
 		});
@@ -503,7 +530,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle is privileged; expected non-privileged.",
 		});
@@ -518,7 +545,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle does not set no-new-privileges.",
 		});
@@ -533,7 +560,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle does not set no-new-privileges.",
 		});
@@ -548,7 +575,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, bundleContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-bundle uses unconfined seccomp; expected confined seccomp.",
 		});
@@ -560,7 +587,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "stopped",
 			message: "Container pi-fence-kroki exists but is stopped.",
 		});
@@ -572,7 +599,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-kroki image mismatch: expected yuzutech/kroki, got attacker/kroki.",
 		});
@@ -584,7 +611,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "absent",
 			message: "Container pi-fence-kroki not found.",
 		});
@@ -600,7 +627,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "absent",
 			message: "Container pi-fence-kroki not found.",
 		});
@@ -616,7 +643,7 @@ describe("sandbox controller contract — Docker container status", () => {
 
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Docker inspect failed for pi-fence-kroki: permission denied while trying to connect to the Docker daemon socket",
 		});
@@ -626,7 +653,7 @@ describe("sandbox controller contract — Docker container status", () => {
 		const shell = new FakeShellRunner();
 		const controller = createDockerContainerSandboxController(shell, krokiContainerOptions());
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Docker not available: FakeShellRunner: no programmed response for docker inspect --format {{.State.Running}} pi-fence-kroki and no default set",
 		});
@@ -641,7 +668,7 @@ describe("sandbox controller contract — Docker container status", () => {
 			security: { noPublishedPorts: true, requiredLoopbackPorts: [8000] },
 		});
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-kroki configures both noPublishedPorts and requiredLoopbackPorts; expected one or the other.",
 		});
@@ -650,11 +677,11 @@ describe("sandbox controller contract — Docker container status", () => {
 	it("reports unsupported lifecycle operations explicitly", async () => {
 		const controller = createDockerContainerSandboxController(new FakeShellRunner(), krokiContainerOptions());
 
-		expect(await controller.start()).toEqual({
+		expect(await controller.start()).toMatchObject({
 			state: "error",
 			message: "Start is not implemented for sandbox kroki.",
 		});
-		expect(await controller.stop()).toEqual({
+		expect(await controller.stop()).toMatchObject({
 			state: "error",
 			message: "Stop is not implemented for sandbox kroki.",
 		});
@@ -671,7 +698,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 		expect(controller.id).toBe("kroki");
 		expect(controller.kind).toBe("service");
 		expect(controller.runtime).toBe("docker-container");
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "ready",
 			endpoint: "http://127.0.0.1:8000",
 			message: "Container pi-fence-kroki is running on port 8000.",
@@ -694,7 +721,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 		);
 		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
 
-		expect(await controller.start()).toEqual({
+		expect(await controller.start()).toMatchObject({
 			state: "ready",
 			endpoint: "http://127.0.0.1:8000",
 			message: "Started pi-fence-kroki on port 8000.",
@@ -708,7 +735,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 
 		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Container pi-fence-kroki publishes 8000/tcp on 0.0.0.0:8000; expected 127.0.0.1:8000.",
 		});
@@ -729,7 +756,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 		});
 		const controller = createKrokiDockerSandboxController(createKrokiDockerManager(shell));
 
-		expect(await controller.stop()).toEqual({
+		expect(await controller.stop()).toMatchObject({
 			state: "absent",
 			message: "Stopped and removed pi-fence-kroki.",
 		});
@@ -750,7 +777,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		const controller = createKrokiDockerComposeSandboxController(shell);
 
 		expect(isAbsolute(composeFile)).toBe(true);
-		expect(await controller.start()).toEqual({
+		expect(await controller.start()).toMatchObject({
 			state: "ready",
 			endpoint: "http://127.0.0.1:8000",
 			message: "Sandbox kroki is ready.",
@@ -794,7 +821,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		expect(controller.id).toBe("kroki");
 		expect(controller.kind).toBe("service");
 		expect(controller.runtime).toBe("docker-compose");
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "ready",
 			endpoint: "http://127.0.0.1:8000",
 			message: "Sandbox kroki is ready.",
@@ -846,8 +873,8 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 		const controller = createKrokiDockerComposeSandboxController(shell);
 		const status = await controller.status();
-		expect(status.state).toBe("ready");
-		expect(status.endpoint).toBe("http://127.0.0.1:8000");
+		expect(status.kind).toBe("ready-service");
+		if (status.kind === "ready-service") expect(status.endpoint).toBe("http://127.0.0.1:8000");
 	});
 
 	it("reports error when the Compose mermaid component publishes any host ports", async () => {
@@ -874,7 +901,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 
 		const controller = createKrokiDockerComposeSandboxController(shell);
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Sandbox kroki status failed.",
 			components: [
@@ -1046,7 +1073,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			components: composeComponents(),
 		});
 
-		expect(await controller.start()).toEqual({
+		expect(await controller.start()).toMatchObject({
 			state: "ready",
 			endpoint: "http://localhost:8000",
 			message: "Sandbox kroki is ready.",
@@ -1055,7 +1082,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 				{ id: "mermaid", state: "ready", message: "Container kroki-mermaid is running." },
 			],
 		});
-		expect(await controller.stop()).toEqual({
+		expect(await controller.stop()).toMatchObject({
 			state: "absent",
 			message: "Stopped sandbox kroki.",
 		});
@@ -1069,7 +1096,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			components: [],
 		});
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Sandbox kroki has no configured components.",
 		});
@@ -1087,7 +1114,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			components: composeComponents(),
 		});
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "ready",
 			endpoint: "http://localhost:8000",
 			message: "Sandbox kroki is ready.",
@@ -1111,7 +1138,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		});
 
 		expect(controller.runtime).toBe("docker-compose");
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "partial",
 			message: "Sandbox kroki has 1 of 2 component(s) ready.",
 			components: [
@@ -1132,7 +1159,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			components: composeComponents(),
 		});
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "absent",
 			message: "Sandbox kroki is absent.",
 			components: [
@@ -1153,7 +1180,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			components: composeComponents(),
 		});
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "stopped",
 			message: "Sandbox kroki is stopped.",
 			components: [
@@ -1173,7 +1200,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			components: composeComponents(),
 		});
 
-		expect(await controller.status()).toEqual({
+		expect(await controller.status()).toMatchObject({
 			state: "error",
 			message: "Sandbox kroki status failed.",
 			components: [

@@ -9,7 +9,8 @@
 import { describe, expect, it } from "vitest";
 
 import { createKrokiProcessor, createKrokiSandboxProcessor } from "../../extensions/pi-fence/kroki.ts";
-import type { SandboxController, SandboxStatus } from "../../extensions/pi-fence/sandbox.ts";
+import type { SandboxController } from "../../extensions/pi-fence/sandbox.ts";
+import { sandboxStatus, type TestSandboxStatus } from "../utilities/sandbox-status.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { runFenceProcessorContract } from "./fence-processor.ts";
 
@@ -42,14 +43,14 @@ function makeKroki(): ReturnType<typeof createKrokiProcessor> {
 	return createKrokiProcessor(http);
 }
 
-function serviceController(status: SandboxStatus): SandboxController {
+function serviceController(status: TestSandboxStatus): SandboxController {
 	return {
 		id: "kroki",
 		kind: "service",
 		runtime: "docker-container",
-		status: async () => status,
-		start: async () => status,
-		stop: async () => status,
+		status: async () => sandboxStatus(status),
+		start: async () => sandboxStatus(status),
+		stop: async () => sandboxStatus(status),
 	};
 }
 

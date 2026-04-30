@@ -15,12 +15,60 @@ export interface SandboxComponentStatus {
 	message?: string;
 }
 
-export interface SandboxStatus {
+export type SandboxStatusKind =
+	| "ready-service"
+	| "ready-exec"
+	| "partial"
+	| "stopped"
+	| "absent"
+	| "error";
+
+export interface SandboxStatusBase {
+	kind: SandboxStatusKind;
 	state: SandboxState;
-	endpoint?: string;
 	message: string;
 	components?: readonly SandboxComponentStatus[];
 }
+
+export interface ReadyServiceSandboxStatus extends SandboxStatusBase {
+	kind: "ready-service";
+	state: "ready";
+	endpoint: string;
+}
+
+export interface ReadyExecSandboxStatus extends SandboxStatusBase {
+	kind: "ready-exec";
+	state: "ready";
+	endpoint?: never;
+}
+
+export interface PartialSandboxStatus extends SandboxStatusBase {
+	kind: "partial";
+	state: "partial";
+}
+
+export interface StoppedSandboxStatus extends SandboxStatusBase {
+	kind: "stopped";
+	state: "stopped";
+}
+
+export interface AbsentSandboxStatus extends SandboxStatusBase {
+	kind: "absent";
+	state: "absent";
+}
+
+export interface ErrorSandboxStatus extends SandboxStatusBase {
+	kind: "error";
+	state: "error";
+}
+
+export type SandboxStatus =
+	| ReadyServiceSandboxStatus
+	| ReadyExecSandboxStatus
+	| PartialSandboxStatus
+	| StoppedSandboxStatus
+	| AbsentSandboxStatus
+	| ErrorSandboxStatus;
 
 export type SandboxStartResult = SandboxStatus;
 
@@ -250,14 +298,15 @@ export function createGondolinBundleSandboxController(
 }
 
 function gondolinBundleStatus(state: "ready" | "stopped"): SandboxStatus {
-	return {
-		state,
-		message: `Gondolin VM for sandbox bundle is ${state}.`,
-	};
+	const message = `Gondolin VM for sandbox bundle is ${state}.`;
+	return state === "ready"
+		? { kind: "ready-exec", state, message }
+		: { kind: "stopped", state, message };
 }
 
 function gondolinBundleError(message: string): SandboxStatus {
 	return {
+		kind: "error",
 		state: "error",
 		message: `Gondolin VM for sandbox bundle failed to start: ${message}`,
 	};
@@ -265,6 +314,31 @@ function gondolinBundleError(message: string): SandboxStatus {
 
 function errorText(err: unknown): string {
 	return err instanceof Error ? err.message : String(err);
+}
+
+function readySandboxStatus(
+	kind: SandboxKind,
+	message: string,
+	endpoint: string | undefined,
+	components?: readonly SandboxComponentStatus[],
+): SandboxStatus {
+	if (kind === "service") {
+		return endpoint
+			? { kind: "ready-service", state: "ready", message, endpoint, ...(components ? { components } : {}) }
+			: { kind: "error", state: "error", message: `${message} Missing service endpoint.`, ...(components ? { components } : {}) };
+	}
+	return { kind: "ready-exec", state: "ready", message, ...(components ? { components } : {}) };
+}
+
+function nonReadySandboxStatus(
+	state: Exclude<SandboxState, "ready">,
+	message: string,
+	components?: readonly SandboxComponentStatus[],
+): SandboxStatus {
+	if (state === "partial") return { kind: "partial", state, message, ...(components ? { components } : {}) };
+	if (state === "stopped") return { kind: "stopped", state, message, ...(components ? { components } : {}) };
+	if (state === "absent") return { kind: "absent", state, message, ...(components ? { components } : {}) };
+	return { kind: "error", state, message, ...(components ? { components } : {}) };
 }
 
 export interface DockerExecSandboxEnvironmentOptions {
@@ -413,11 +487,10 @@ export function createDockerContainerSandboxController(
 			expectedLabels: options.expectedLabels,
 			security: options.security,
 		});
-		return {
-			state: component.state,
-			message: component.message ?? "",
-			...(component.state === "ready" && options.endpoint ? { endpoint: options.endpoint } : {}),
-		};
+		const message = component.message ?? "";
+		return component.state === "ready"
+			? readySandboxStatus(options.kind, message, options.endpoint)
+			: nonReadySandboxStatus(component.state, message);
 	}
 
 	return {
@@ -439,7 +512,7 @@ export function createDockerComposeSandboxController(
 		for (const component of options.components) {
 			components.push(await inspectDockerContainer(shell, component));
 		}
-		return summarizeComponents(options.id, components, options.endpoint);
+		return summarizeComponents(options.id, options.kind, components, options.endpoint);
 	}
 
 	return {
@@ -456,7 +529,7 @@ async function unsupportedLifecycle(
 	operation: "Start" | "Stop",
 	id: string,
 ): Promise<SandboxStatus> {
-	return { state: "error", message: `${operation} is not implemented for sandbox ${id}.` };
+	return { kind: "error", state: "error", message: `${operation} is not implemented for sandbox ${id}.` };
 }
 
 function createDockerComposeStart(
@@ -480,7 +553,7 @@ function createDockerComposeStop(
 	return async () => {
 		const result = await runDockerCompose(shell, options, ["down"]);
 		if (result.exitCode !== 0) return composeCommandFailure(options.id, "stop", result);
-		return { state: "absent", message: `Stopped sandbox ${options.id}.` };
+		return { kind: "absent", state: "absent", message: `Stopped sandbox ${options.id}.` };
 	};
 }
 
@@ -505,6 +578,7 @@ function composeCommandFailure(
 ): SandboxStatus {
 	const detail = result.stderr.trim() || result.stdout.trim() || `docker compose ${operation} failed`;
 	return {
+		kind: "error",
 		state: "error",
 		message: `Docker Compose ${operation} failed for sandbox ${id}: ${detail}`,
 	};
@@ -587,17 +661,15 @@ function assertShellSuccess(operation: string, result: ShellResult): void {
 function normalizeKrokiDockerResult(result: KrokiDockerResult): SandboxStatus {
 	if (!result.ok) {
 		return {
+			kind: "error",
 			state: "error",
 			message: result.message,
-			...(result.endpoint ? { endpoint: result.endpoint } : {}),
 		};
 	}
 	const state = result.status === "running" ? "ready" : result.status;
-	return {
-		state,
-		message: result.message,
-		...(result.endpoint ? { endpoint: result.endpoint } : {}),
-	};
+	return state === "ready"
+		? readySandboxStatus("service", result.message, result.endpoint)
+		: nonReadySandboxStatus(state, result.message);
 }
 
 async function inspectDockerContainer(
@@ -950,40 +1022,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function summarizeComponents(
 	id: string,
+	kind: SandboxKind,
 	components: readonly SandboxComponentStatus[],
 	endpoint?: string,
 ): SandboxStatus {
 	if (components.length === 0) {
-		return { state: "error", message: `Sandbox ${id} has no configured components.` };
+		return { kind: "error", state: "error", message: `Sandbox ${id} has no configured components.` };
 	}
 	const readyCount = components.filter((component) => component.state === "ready").length;
 	if (components.some((component) => component.state === "error")) {
-		return { state: "error", message: `Sandbox ${id} status failed.`, components };
+		return nonReadySandboxStatus("error", `Sandbox ${id} status failed.`, components);
 	}
 	if (readyCount === components.length) {
-		return {
-			state: "ready",
-			message: `Sandbox ${id} is ready.`,
-			...(endpoint ? { endpoint } : {}),
-			components,
-		};
+		return readySandboxStatus(kind, `Sandbox ${id} is ready.`, endpoint, components);
 	}
 	if (readyCount > 0) {
-		return {
-			state: "partial",
-			message: `Sandbox ${id} has ${readyCount} of ${components.length} component(s) ready.`,
+		return nonReadySandboxStatus(
+			"partial",
+			`Sandbox ${id} has ${readyCount} of ${components.length} component(s) ready.`,
 			components,
-		};
+		);
 	}
 	if (components.every((component) => component.state === "absent")) {
-		return { state: "absent", message: `Sandbox ${id} is absent.`, components };
+		return nonReadySandboxStatus("absent", `Sandbox ${id} is absent.`, components);
 	}
 	if (components.every((component) => component.state === "stopped")) {
-		return { state: "stopped", message: `Sandbox ${id} is stopped.`, components };
+		return nonReadySandboxStatus("stopped", `Sandbox ${id} is stopped.`, components);
 	}
-	return {
-		state: "partial",
-		message: `Sandbox ${id} has ${readyCount} of ${components.length} component(s) ready.`,
+	return nonReadySandboxStatus(
+		"partial",
+		`Sandbox ${id} has ${readyCount} of ${components.length} component(s) ready.`,
 		components,
-	};
+	);
 }

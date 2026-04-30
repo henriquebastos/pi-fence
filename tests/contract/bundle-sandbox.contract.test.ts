@@ -10,6 +10,7 @@ import type {
 	ExecSandboxWorkspace,
 	SandboxController,
 } from "../../extensions/pi-fence/sandbox.ts";
+import { sandboxStatus } from "../utilities/sandbox-status.ts";
 
 const GOOD_DOT = "digraph { A -> B }";
 const BAD_DOT = "digraph { A ->";
@@ -96,9 +97,9 @@ const readyController: SandboxController = {
 	id: "bundle",
 	kind: "exec",
 	runtime: "docker-container",
-	status: async () => ({ state: "ready", message: "ready" }),
-	start: async () => ({ state: "ready", message: "ready" }),
-	stop: async () => ({ state: "stopped", message: "stopped" }),
+	status: async () => sandboxStatus({ state: "ready", message: "ready" }),
+	start: async () => sandboxStatus({ state: "ready", message: "ready" }),
+	stop: async () => sandboxStatus({ state: "stopped", message: "stopped" }),
 };
 
 runFenceProcessorContract(

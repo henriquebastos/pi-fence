@@ -9,8 +9,8 @@ import type {
 	ExecSandboxRunResult,
 	ExecSandboxWorkspace,
 	SandboxController,
-	SandboxStatus,
 } from "../../extensions/pi-fence/sandbox.ts";
+import { sandboxStatus, type TestSandboxStatus } from "../utilities/sandbox-status.ts";
 
 const MANIFEST = JSON.stringify({
 	name: "pi-fence-bundle",
@@ -94,14 +94,14 @@ class FakeExecSandboxEnvironment implements ExecSandboxEnvironment {
 	}
 }
 
-function controllerWithStatus(status: SandboxStatus): SandboxController {
+function controllerWithStatus(status: TestSandboxStatus): SandboxController {
 	return {
 		id: "bundle",
 		kind: "exec",
 		runtime: "docker-container",
-		status: async () => status,
-		start: async () => status,
-		stop: async () => status,
+		status: async () => sandboxStatus(status),
+		start: async () => sandboxStatus(status),
+		stop: async () => sandboxStatus(status),
 	};
 }
 
@@ -113,8 +113,8 @@ function throwingController(message: string): SandboxController {
 		status: async () => {
 			throw new Error(message);
 		},
-		start: async () => ({ state: "error", message }),
-		stop: async () => ({ state: "error", message }),
+		start: async () => sandboxStatus({ state: "error", message }),
+		stop: async () => sandboxStatus({ state: "error", message }),
 	};
 }
 

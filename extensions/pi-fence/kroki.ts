@@ -429,14 +429,11 @@ async function readySandboxEndpoint(
 function sandboxEndpointFromStatus(
 	status: SandboxStatus,
 ): { ok: true; endpoint: string } | { ok: false; reason: string } {
-	if (status.state !== "ready") {
+	if (status.kind !== "ready-service") {
 		return {
 			ok: false,
 			reason: `Kroki sandbox is ${status.state}: ${status.message}${formatSandboxComponents(status)}`,
 		};
-	}
-	if (!status.endpoint) {
-		return { ok: false, reason: "Kroki sandbox is ready but did not report an endpoint." };
 	}
 	return { ok: true, endpoint: status.endpoint.replace(/\/+$/, "") };
 }

@@ -21,7 +21,8 @@ import { describe, expect, it } from "vitest";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { createKrokiProcessor, createKrokiSandboxProcessor, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
-import type { SandboxController, SandboxStatus } from "../../extensions/pi-fence/sandbox.ts";
+import type { SandboxController } from "../../extensions/pi-fence/sandbox.ts";
+import { sandboxStatus, type TestSandboxStatus } from "../utilities/sandbox-status.ts";
 
 function textResponse(status: number, body: string): HttpResponse {
 	return {
@@ -39,14 +40,14 @@ function pngResponse(bytes: Buffer): HttpResponse {
 	};
 }
 
-function serviceController(status: SandboxStatus): SandboxController {
+function serviceController(status: TestSandboxStatus): SandboxController {
 	return {
 		id: "kroki",
 		kind: "service",
 		runtime: "docker-container",
-		status: async () => status,
-		start: async () => status,
-		stop: async () => status,
+		status: async () => sandboxStatus(status),
+		start: async () => sandboxStatus(status),
+		stop: async () => sandboxStatus(status),
 	};
 }
 

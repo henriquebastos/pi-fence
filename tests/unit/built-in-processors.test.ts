@@ -23,6 +23,7 @@ import { createSandboxControllers } from "../../extensions/pi-fence/sandbox-cont
 import { FakeHttpClient } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
+import { sandboxStatus } from "../utilities/sandbox-status.ts";
 
 function makeContext(config: PiFenceConfig = DEFAULT_CONFIG): ProcessorFactoryContext {
 	const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
@@ -124,9 +125,9 @@ describe("built-in processor factory manifest", () => {
 			kind: "exec",
 			runtime: "gondolin-vm",
 			execEnvironment: env,
-			status: async () => ({ state: "ready", message: "ready" }),
-			start: async () => ({ state: "ready", message: "ready" }),
-			stop: async () => ({ state: "stopped", message: "stopped" }),
+			status: async () => sandboxStatus({ state: "ready", message: "ready" }),
+			start: async () => sandboxStatus({ state: "ready", message: "ready" }),
+			stop: async () => sandboxStatus({ state: "stopped", message: "stopped" }),
 		};
 		const context = makeContext({ ...DEFAULT_CONFIG, sandboxes: { bundle: { kind: "exec", runtime: "gondolin-vm" } } });
 		const processor = await bundleSandboxProcessorFactory.create({
