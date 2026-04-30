@@ -85,6 +85,7 @@ interface RenderBlockOptions {
 }
 
 async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Promise<void> {
+	if (options.processorPolicy.blockedTags.has(block.tag)) return;
 	const sourceBytes = block.sourceBytes ?? Buffer.byteLength(block.source, "utf8");
 	if (sourceBytes > options.renderLimits.fenceSourceMaxBytes) {
 		sendSourceLimitError(

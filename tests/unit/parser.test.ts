@@ -25,6 +25,23 @@ describe("extractFencedBlocks", () => {
 		expect(blocks).toEqual([{ tag: "mermaid", source: "flowchart LR\nA --> B" }]);
 	});
 
+	it("can bound a long single-line source without retaining the full line", () => {
+		const blocks = extractFencedBlocks(
+			`\`\`\`mermaid\n${"é".repeat(10)}\n\`\`\``,
+			["mermaid"],
+			{ maxSourceBytes: 4 },
+		);
+
+		expect(blocks).toEqual([
+			{
+				tag: "mermaid",
+				source: "éé",
+				sourceBytes: 20,
+				sourceTruncated: true,
+			},
+		]);
+	});
+
 	it("can bound extracted source while preserving actual source byte count", () => {
 		const blocks = extractFencedBlocks(
 			"```mermaid\nééé\n```",
@@ -40,6 +57,68 @@ describe("extractFencedBlocks", () => {
 				sourceTruncated: true,
 			},
 		]);
+	});
+
+	it("returns no blocks when maxBlocks is zero", () => {
+		expect(extractFencedBlocks(
+			"```mermaid\none\n```",
+			["mermaid"],
+			{ maxBlocks: 0 },
+		)).toEqual([]);
+	});
+
+	it("keeps truncated source as a true UTF-8 prefix across later lines", () => {
+		const blocks = extractFencedBlocks(
+			"```mermaid\néé\na\n```",
+			["mermaid"],
+			{ maxSourceBytes: 3 },
+		);
+
+		expect(blocks).toEqual([
+			{
+				tag: "mermaid",
+				source: "é",
+				sourceBytes: 6,
+				sourceTruncated: true,
+			},
+		]);
+	});
+
+	it("continues scanning after an unclosed ignored fence", () => {
+		const blocks = extractFencedBlocks(
+			"```ignored\nbody\n~~~mermaid\nflowchart LR\n~~~",
+			["mermaid"],
+		);
+
+		expect(blocks).toEqual([{ tag: "mermaid", source: "flowchart LR" }]);
+	});
+
+	it("bounds chunked source while preserving byte count", () => {
+		const blocks = extractFencedBlocksFromChunks(
+			["```mermaid\né", "éé\n```"],
+			["mermaid"],
+			{ maxSourceBytes: 4 },
+		);
+
+		expect(blocks).toEqual([
+			{
+				tag: "mermaid",
+				source: "éé",
+				sourceBytes: 6,
+				sourceTruncated: true,
+			},
+		]);
+	});
+
+	it("stops consuming chunks after maxBlocks is reached", () => {
+		function* chunks(): Generator<string> {
+			yield "```mermaid\none\n```\n";
+			throw new Error("should not consume later chunks");
+		}
+
+		const blocks = extractFencedBlocksFromChunks(chunks(), ["mermaid"], { maxBlocks: 1 });
+
+		expect(blocks).toEqual([{ tag: "mermaid", source: "one" }]);
 	});
 
 	it("can stop after the requested number of matching blocks", () => {

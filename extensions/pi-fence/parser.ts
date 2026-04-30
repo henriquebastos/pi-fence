@@ -34,13 +34,15 @@ export function extractFencedBlocks(
  * concatenated into a full markdown string. CRLF/CR are normalised to LF at
  * line boundaries, matching the historical `extractFencedBlocks()` behaviour.
  */
+const MAX_FENCE_LINE_BYTES = 4096;
+
 export function extractFencedBlocksFromChunks(
 	chunks: Iterable<string>,
 	tags: string[],
 	options: ExtractFencedBlocksOptions = {},
 ): FencedBlock[] {
 	const parser = createBlockParser(tags, options);
-	for (const line of linesFromChunks(chunks)) {
+	for (const line of linesFromChunks(chunks, lineBufferLimit(options.maxSourceBytes))) {
 		parser.consume(line);
 		if (parser.done) break;
 	}
@@ -50,6 +52,18 @@ export function extractFencedBlocksFromChunks(
 // ---------------------------------------------------------------------------
 // internals
 // ---------------------------------------------------------------------------
+
+function lineBufferLimit(maxSourceBytes: number | undefined): number | undefined {
+	if (maxSourceBytes === undefined) return undefined;
+	return Math.max(MAX_FENCE_LINE_BYTES, maxSourceBytes);
+}
+
+
+interface LineRecord {
+	text: string;
+	bytes: number;
+	truncated: boolean;
+}
 
 interface Opener {
 	char: "`" | "~";
@@ -73,7 +87,7 @@ interface BodyCollector {
 
 interface BlockParser {
 	readonly done: boolean;
-	consume(line: string): void;
+	consume(line: LineRecord): void;
 	finish(): FencedBlock[];
 }
 
@@ -81,35 +95,43 @@ function createBlockParser(tags: string[], options: ExtractFencedBlocksOptions):
 	const allowlist = new Set(tags);
 	const blocks: FencedBlock[] = [];
 	let active: ActiveFence | undefined;
-	let done = false;
+	let done = options.maxBlocks !== undefined && options.maxBlocks <= 0;
 
 	return {
 		get done() {
 			return done;
 		},
-		consume(line: string): void {
+		consume(line: LineRecord): void {
 			if (done) return;
 			if (active) {
-				if (isCloser(line, active.opener.char, active.opener.length)) {
+				if (!line.truncated && isCloser(line.text, active.opener.char, active.opener.length)) {
 					if (active.collector) blocks.push(finishCollector(active.collector, options.maxSourceBytes));
 					active = undefined;
 					if (options.maxBlocks !== undefined && blocks.length >= options.maxBlocks) done = true;
 					return;
 				}
-				if (active.collector) collectBodyLine(active.collector, line, options.maxSourceBytes);
+				if (active.collector) {
+					collectBodyLine(active.collector, line, options.maxSourceBytes);
+					return;
+				}
+				const nestedOpener = line.truncated ? null : parseOpener(line.text);
+				if (nestedOpener) active = openFence(nestedOpener, allowlist);
 				return;
 			}
 
-			const opener = parseOpener(line);
-			if (!opener) return;
-			active = {
-				opener,
-				...(allowlist.has(opener.tag) ? { collector: startCollector(opener.tag) } : {}),
-			};
+			const opener = line.truncated ? null : parseOpener(line.text);
+			if (opener) active = openFence(opener, allowlist);
 		},
 		finish(): FencedBlock[] {
 			return blocks;
 		},
+	};
+}
+
+function openFence(opener: Opener, allowlist: ReadonlySet<string>): ActiveFence {
+	return {
+		opener,
+		...(allowlist.has(opener.tag) ? { collector: startCollector(opener.tag) } : {}),
 	};
 }
 
@@ -124,19 +146,23 @@ function startCollector(tag: string): BodyCollector {
 	};
 }
 
-function collectBodyLine(collector: BodyCollector, line: string, maxSourceBytes: number | undefined): void {
-	const segment = `${collector.lineCount === 0 ? "" : "\n"}${line}`;
+function collectBodyLine(collector: BodyCollector, line: LineRecord, maxSourceBytes: number | undefined): void {
+	const separatorBytes = collector.lineCount === 0 ? 0 : 1;
+	const segmentBytes = separatorBytes + line.bytes;
 	collector.lineCount += 1;
-	const segmentBytes = Buffer.byteLength(segment, "utf8");
 	collector.sourceBytes += segmentBytes;
 
 	if (maxSourceBytes === undefined) {
-		collector.source += segment;
+		collector.source += `${separatorBytes === 0 ? "" : "\n"}${line.text}`;
 		collector.retainedBytes += segmentBytes;
 		return;
 	}
+	if (collector.truncated) return;
+
+	const prefix = separatorBytes === 0 ? "" : "\n";
+	const segment = `${prefix}${line.text}`;
 	const remainingBytes = maxSourceBytes - collector.retainedBytes;
-	if (remainingBytes >= segmentBytes) {
+	if (remainingBytes >= Buffer.byteLength(segment, "utf8") && !line.truncated) {
 		collector.source += segment;
 		collector.retainedBytes += segmentBytes;
 		return;
@@ -187,9 +213,13 @@ function isCloser(line: string, char: "`" | "~", minLength: number): boolean {
 	return pattern.test(line);
 }
 
-function* linesFromChunks(chunks: Iterable<string>): Generator<string> {
+function* linesFromChunks(chunks: Iterable<string>, maxLineBytes: number | undefined): Generator<LineRecord> {
 	let line = "";
+	let lineBytes = 0;
+	let retainedBytes = 0;
+	let truncated = false;
 	let pendingCr = false;
+	const limit = maxLineBytes ?? Number.POSITIVE_INFINITY;
 	for (const chunk of chunks) {
 		for (const char of chunk) {
 			if (pendingCr) {
@@ -197,20 +227,33 @@ function* linesFromChunks(chunks: Iterable<string>): Generator<string> {
 				if (char === "\n") continue;
 			}
 			if (char === "\r") {
-				yield line;
+				yield { text: line, bytes: lineBytes, truncated };
 				line = "";
+				lineBytes = 0;
+				retainedBytes = 0;
+				truncated = false;
 				pendingCr = true;
 				continue;
 			}
 			if (char === "\n") {
-				yield line;
+				yield { text: line, bytes: lineBytes, truncated };
 				line = "";
+				lineBytes = 0;
+				retainedBytes = 0;
+				truncated = false;
 				continue;
 			}
-			line += char;
+			const charBytes = Buffer.byteLength(char, "utf8");
+			lineBytes += charBytes;
+			if (retainedBytes + charBytes <= limit) {
+				line += char;
+				retainedBytes += charBytes;
+			} else {
+				truncated = true;
+			}
 		}
 	}
-	if (pendingCr || line.length > 0) yield line;
+	if (pendingCr || line.length > 0 || truncated) yield { text: line, bytes: lineBytes, truncated };
 }
 
 function clipUtf8ToBytes(text: string, maxBytes: number): string {

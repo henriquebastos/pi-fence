@@ -2415,6 +2415,31 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 	);
 
 	it(
+		"emits no limit error for oversized source under a blocked tag",
+		async () => {
+			const home = makeTempDir();
+			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
+			writeFileSync(
+				join(home, ".pi", "agent", "pi-fence.config.json"),
+				JSON.stringify({ blocked: { tags: ["mermaid"], processors: [] } }),
+			);
+			const oversizedSource = "é".repeat(131_073); // 262,146 UTF-8 bytes.
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				`\`\`\`mermaid\n${oversizedSource}\n\`\`\``,
+				undefined,
+				{ home, cwd: makeTempDir() },
+			);
+
+			expect(filterPiFenceOutputs(captured.sentCustomMessages)).toHaveLength(0);
+			expect(captured.sentCustomMessages.filter((message) => message.options?.deliverAs === "followUp"))
+				.toHaveLength(0);
+		},
+		20_000,
+	);
+
+	it(
 		"records metrics and follow-up for oversized source rejection",
 		async () => {
 			const oversizedSource = "é".repeat(131_073); // 262,146 UTF-8 bytes.
