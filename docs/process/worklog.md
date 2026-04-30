@@ -6053,3 +6053,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Test fixtures track real Docker.** Both unit and extension fixtures now program `{"8002/tcp":null}` for the mermaid sidecar instead of bare `null`, matching what the live container reports.
 
 **Carry-forward.** Surface fence kroki status fail-closed signal and align the story spec Verification list with the Compose contract test.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: surface fence kroki status fail-closed signal
+
+**What shipped.** `/fence kroki status` now notifies with severity tied to `result.ok`, matching the existing `/fence kroki start` and `/fence kroki stop` handlers. A broadly-bound managed container surfaces as an `error` notification carrying the trust-boundary diagnostic instead of an `info` notification visually indistinguishable from a healthy status.
+
+**Implementation commit.**
+
+1. `40eae71` — fix CV11.E1.S3: surface fence kroki status fail-closed signal
+
+**Beans.**
+
+1. Closed `bug-c9a7b406` — CV11.E1.S3 inspection: surface fence kroki status fail-closed signal.
+
+**Test count.** Fast suite increased from 936 to 937 with one broad-bind notification severity test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/fence-command.test.ts --testNamePattern 'kroki status'` — failed before the severity toggle, then passed.
+2. `pnpm run feedback` — passed: 937 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Notify severity follows the verifier convention.** `ok:true` keeps `info`; any `ok:false` (ownership or configuration failure) routes to `error`, so users see a fail-closed managed runtime as soon as `/fence kroki status` runs.
+
+**Carry-forward.** Align the story spec Verification list with the Compose contract test, then close CV11.E1.S3.
