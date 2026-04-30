@@ -137,11 +137,15 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 }
 
 function enforceOutputLimit(output: FenceOutput, maxBytes: number): FenceOutput {
-	if (output.kind === "error") return output;
-	const bytes = output.kind === "image" ? output.data.length : Buffer.byteLength(output.text, "utf8");
+	const bytes = outputByteLength(output);
 	return bytes > maxBytes
 		? errorOutput(formatByteLimitError("Processor output", bytes, maxBytes))
 		: output;
+}
+
+function outputByteLength(output: FenceOutput): number {
+	if (output.kind === "image") return output.data.length;
+	return Buffer.byteLength(output.kind === "text" ? output.text : output.error, "utf8");
 }
 
 function sendLimitError(block: FencedBlock, message: string, options: RenderBlockOptions): void {

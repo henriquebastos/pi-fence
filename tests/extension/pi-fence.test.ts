@@ -2373,6 +2373,85 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 	);
 
 	it(
+		"rejects oversized error output before building message content",
+		async () => {
+			const oversizedError = "é".repeat(5_242_881); // 10,485,762 UTF-8 bytes.
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "huge-error",
+					placement: "embedded",
+					tags: ["hugeerror"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => ({ kind: "error", error: oversizedError }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				"```hugeerror\nsmall\n```",
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "hugeerror",
+				processor: "huge-error",
+				kind: "error",
+				outputKind: "error",
+			});
+			expect(outputs[0].content).toEqual([
+				{
+					type: "text",
+					text: "Processor output is too large: 10485762 bytes exceeds limit of 10485760 bytes",
+				},
+			]);
+		},
+		20_000,
+	);
+
+	it(
+		"records metrics and follow-up for oversized source rejection",
+		async () => {
+			const oversizedSource = "é".repeat(131_073); // 262,146 UTF-8 bytes.
+			const { session, sentCustomMessages, model } = await buildSessionWithExtension(new FakeHttpClient());
+			session.agent.streamFn = cannedAssistantStream(model, `\`\`\`mermaid\n${oversizedSource}\n\`\`\``);
+			try {
+				await session.prompt("render it");
+				await new Promise((r) => setTimeout(r, 50));
+				await session.prompt("/fence stats");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
+
+			const outputs = filterPiFenceOutputs(sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "mermaid",
+				processor: "pi-fence",
+				kind: "error",
+				outputKind: "error",
+			});
+			const followUps = sentCustomMessages.filter((message) => message.options?.deliverAs === "followUp");
+			expect(followUps).toHaveLength(1);
+			expect((followUps[0].content as Array<{ text?: string }>)[0].text)
+				.toContain("Fence source is too large: 262146 bytes exceeds limit of 262144 bytes");
+			const stats = sentCustomMessages.find(
+				(message) => message.customType === "pi-fence:list" &&
+					(message.details as { lines?: string[] }).lines?.includes("Session metrics"),
+			)?.details as { lines: string[] };
+			expect(stats.lines).toContain("Total renders: 1 (0 ok, 1 errors)");
+			expect(stats.lines).toContain("  pi-fence: 1 (0 ok, 1 errors)");
+		},
+		20_000,
+	);
+
+	it(
 		"rejects oversized image output before base64 encoding",
 		async () => {
 			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {

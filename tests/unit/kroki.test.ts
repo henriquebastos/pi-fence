@@ -109,6 +109,7 @@ describe("createKrokiSandboxProcessor", () => {
 		expect(http.requests).toHaveLength(1);
 		expect(http.requests[0].url).toBe("http://localhost:8000/mermaid/png");
 		expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
+		expect(http.requests[0].maxResponseBytes).toBe(10_485_760);
 		expect(logger.bySubsystem("kroki-sandbox").length).toBeGreaterThan(0);
 	});
 
