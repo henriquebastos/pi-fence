@@ -6382,3 +6382,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Full policy remains a coordinator.** `ResolvedPiFencePolicy` now groups focused policy sub-objects instead of also duplicating their fields.
 
 **Carry-forward.** Narrow listing and registration option passing, then re-run inspection.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection refactor: narrow listing and registration policy seams
+
+**What shipped.** `/fence` list options and third-party registration policy now receive exact field objects instead of broad processor-resolution policy objects. This keeps resolver-only data such as bindings out of seams that only need blocked processor/tag sets and placement precedence.
+
+**Implementation commit.**
+
+1. `90cdb9a` — refactor CV11.E3.S1: narrow policy option seams
+
+**Beans.**
+
+1. Closed `task-abb9e8e1` — CV11.E3.S1 inspection: keep listing and registration policy seams narrow.
+
+**Test count.** Fast non-live suite unchanged at 940 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/list.test.ts tests/unit/register.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'register|list|blocked|precedence'` — passed before and after the refactor.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the refactor.**
+
+1. **Exact option objects at seams.** Listing and registration no longer rely on structural typing to ignore unrelated policy fields.
+2. **Policy remains grouped at the composition root.** `index.ts` builds narrow downstream option objects from `processorResolution`.
+
+**Carry-forward.** Re-run S1 inspection. If no new findings remain, close CV11.E3.S1.
