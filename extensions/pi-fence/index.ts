@@ -138,23 +138,25 @@ export async function createPiFenceExtension(
 	// Listen for third-party processor registrations via the event bus (D5).
 	if (pi.events) {
 		pi.events.on("pi-fence:register", async (data: unknown) => {
-			const validated = validateProcessor(data);
-			if (!validated.ok) {
-				deps.logger.warn("pi-fence", "register rejected", { error: validated.error });
-				pi.events.emit("pi-fence:register-error", { error: validated.error });
-				return;
+			try {
+				const validated = validateProcessor(data);
+				if (!validated.ok) {
+					emitRegisterError(pi, deps.logger, validated.error);
+					return;
+				}
+				const result = await registerProcessor(registry, validated.processor, registrationPolicy);
+				if (!result.ok) {
+					emitRegisterError(pi, deps.logger, result.error);
+					return;
+				}
+				deps.logger.info("pi-fence", "third-party processor registered", {
+					id: result.id,
+					tags: [...result.tags],
+				});
+				pi.events.emit("pi-fence:registered", { id: result.id, tags: [...result.tags] });
+			} catch (err) {
+				emitRegisterError(pi, deps.logger, registrationErrorMessage(err));
 			}
-			const result = await registerProcessor(registry, validated.processor, registrationPolicy);
-			if (!result.ok) {
-				deps.logger.warn("pi-fence", "register rejected", { error: result.error });
-				pi.events.emit("pi-fence:register-error", { error: result.error });
-				return;
-			}
-			deps.logger.info("pi-fence", "third-party processor registered", {
-				id: result.id,
-				tags: [...result.tags],
-			});
-			pi.events.emit("pi-fence:registered", { id: result.id, tags: [...result.tags] });
 		});
 	}
 
@@ -189,6 +191,15 @@ export async function createPiFenceExtension(
 		maxBlocksPerTurn: policy.renderLimits.maxBlocksPerTurn,
 		metrics,
 	});
+}
+
+function emitRegisterError(pi: ExtensionAPI, logger: Logger, error: string): void {
+	logger.warn("pi-fence", "register rejected", { error });
+	pi.events.emit("pi-fence:register-error", { error });
+}
+
+function registrationErrorMessage(err: unknown): string {
+	return err instanceof Error ? err.message : String(err);
 }
 
 function filterProcessorsForAvailabilityProbe(
