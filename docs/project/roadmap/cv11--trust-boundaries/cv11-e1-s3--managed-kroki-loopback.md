@@ -55,7 +55,7 @@ Bind pi-fence-managed Kroki services to `127.0.0.1` instead of Docker's default 
 ## Verification
 
 ```bash
-pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/package-scripts.test.ts
+pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/kroki-compose.test.ts
 pnpm run feedback
 ```
 
@@ -70,4 +70,4 @@ pnpm test:live
 - `extensions/pi-fence/kroki-docker.ts`
 - `docker/kroki/compose.yaml`
 - `tests/unit/kroki-docker.test.ts`
-- `tests/unit/package-scripts.test.ts`
+- `tests/unit/kroki-compose.test.ts`
