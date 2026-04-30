@@ -41,7 +41,7 @@ import { loadPiFenceConfig } from "../../extensions/pi-fence/io/config-loader.ts
 import { NodeHttpClient } from "../../extensions/pi-fence/io/http-client.ts";
 import { NULL_LOGGER } from "../../extensions/pi-fence/io/logger.ts";
 import { NodeShellRunner } from "../../extensions/pi-fence/io/shell-runner.ts";
-import { DEFAULT_KROKI_ENDPOINT, resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
+import { resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
 import type { FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
 import { probeAvailability, resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
 import { createSandboxControllers } from "../../extensions/pi-fence/sandbox-context.ts";
