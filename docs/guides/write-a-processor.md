@@ -57,7 +57,7 @@ type FenceOutput =
   | { kind: "error"; error: string };
 ```
 
-The older `{ ok: true, text }`, `{ ok: true, png }`, and `{ ok: false, error }` result shapes are still normalized for compatibility, but new processors should return `FenceOutput`.
+New processors should return `FenceOutput` directly.
 
 ## Minimal example — an `uppercase` processor
 
