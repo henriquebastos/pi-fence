@@ -4,7 +4,12 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { Logger } from "./io/logger.ts";
 import { formatByteLimitError } from "./limits.ts";
-import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
+import {
+	buildBoundedSourcePreview,
+	buildPiFenceOutputMessage,
+	buildPiFenceOutputMessageWithPreview,
+	type TextContent,
+} from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import type { ProcessorResolutionPolicy, RenderLimitsPolicy, SourceRetentionPolicy } from "./policy.ts";
@@ -92,8 +97,9 @@ interface RenderBlockOptions {
 async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Promise<void> {
 	const sourceBytes = Buffer.byteLength(block.source, "utf8");
 	if (sourceBytes > options.renderLimits.fenceSourceMaxBytes) {
-		sendLimitError(
+		sendSourceLimitError(
 			block,
+			sourceBytes,
 			formatByteLimitError("Fence source", sourceBytes, options.renderLimits.fenceSourceMaxBytes),
 			options,
 		);
@@ -148,17 +154,22 @@ function outputByteLength(output: FenceOutput): number {
 	return Buffer.byteLength(output.kind === "text" ? output.text : output.error, "utf8");
 }
 
-function sendLimitError(block: FencedBlock, message: string, options: RenderBlockOptions): void {
+function sendSourceLimitError(
+	block: FencedBlock,
+	sourceBytes: number,
+	message: string,
+	options: RenderBlockOptions,
+): void {
+	const sourcePreview = buildBoundedSourcePreview(block.source, sourceBytes, options.sourceRetention);
 	options.logger.warn("pi-fence", "block render rejected by limit", {
 		tag: block.tag,
 		error: message,
 	});
-	options.pi.sendMessage(buildPiFenceOutputMessage(
+	options.pi.sendMessage(buildPiFenceOutputMessageWithPreview(
 		block.tag,
-		block.source,
+		sourcePreview,
 		"pi-fence",
 		errorOutput(message),
-		options.sourceRetention,
 	));
 	options.metrics?.recordRender("pi-fence", block.tag, false);
 	sendErrorFollowup(block, "pi-fence", message, options);

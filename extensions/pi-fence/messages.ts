@@ -103,19 +103,48 @@ export function buildPiFenceOutputMessage(
 		maxLines: DEFAULT_SOURCE_PREVIEW_MAX_LINES,
 	},
 ): Parameters<ExtensionAPI["sendMessage"]>[0] {
+	return buildPiFenceOutputMessageWithPreview(
+		tag,
+		buildSourcePreview(source, previewPolicy),
+		processorId,
+		result,
+	);
+}
+
+export function buildPiFenceOutputMessageWithPreview(
+	tag: string,
+	sourcePreview: SourcePreviewDetails,
+	processorId: string,
+	result: FenceResult | FenceOutput,
+): Parameters<ExtensionAPI["sendMessage"]>[0] {
 	const output = normalizeFenceOutput(result);
 	const details: PiFenceOutputDetails = {
 		tag,
 		processor: processorId,
 		kind: output.kind === "error" ? "error" : "ok",
 		outputKind: output.kind,
-		sourcePreview: buildSourcePreview(source, previewPolicy),
+		sourcePreview,
 	};
 	return {
 		customType: PI_FENCE_OUTPUT_MESSAGE_TYPE,
 		content: outputContent(output),
 		details,
 		display: true,
+	};
+}
+
+export function buildBoundedSourcePreview(
+	source: string,
+	originalBytes: number,
+	policy: SourcePreviewPolicy,
+): SourcePreviewDetails {
+	const text = previewPrefix(source, policy);
+	const retainedBytes = Buffer.byteLength(text, "utf8");
+	return {
+		text,
+		truncated: true,
+		omittedBytes: Math.max(0, originalBytes - retainedBytes),
+		omittedLines: 0,
 	};
 }
 
@@ -143,14 +172,21 @@ function buildSourcePreview(source: string, policy: SourcePreviewPolicy): Source
 	};
 }
 
-function clipUtf8ToBytes(text: string, maxBytes: number): string {
+function previewPrefix(source: string, policy: SourcePreviewPolicy): string {
 	let out = "";
 	let bytes = 0;
-	for (const char of text) {
+	let lines = 1;
+	for (const char of source) {
+		if (char === "\n" && lines >= policy.maxLines) break;
 		const charBytes = Buffer.byteLength(char, "utf8");
-		if (bytes + charBytes > maxBytes) break;
+		if (bytes + charBytes > policy.maxBytes) break;
 		out += char;
 		bytes += charBytes;
+		if (char === "\n") lines += 1;
 	}
 	return out;
+}
+
+function clipUtf8ToBytes(text: string, maxBytes: number): string {
+	return previewPrefix(text, { maxBytes, maxLines: Number.POSITIVE_INFINITY });
 }
