@@ -38,12 +38,21 @@ export type ConfigFileStatus =
 	| "malformed-json"
 	| "invalid-shape";
 
+export type KrokiEndpointSource = "global" | "project" | "explicit";
+
+export interface KrokiEndpointProvenance {
+	source: KrokiEndpointSource;
+	endpoint: string;
+	path: string;
+}
+
 export interface ConfigLoadResult {
 	config: PiFenceConfig;
 	globalStatus: ConfigFileStatus;
 	globalPath: string;
 	projectStatus: ConfigFileStatus;
 	projectPath: string;
+	krokiEndpoint?: KrokiEndpointProvenance;
 }
 
 /**
@@ -78,6 +87,10 @@ export async function loadPiFenceConfig(
 		globalPath,
 		projectStatus,
 		projectPath,
+		...krokiEndpointProvenance([
+			{ source: "global", path: globalPath, status: globalStatus, config: globalConfig },
+			{ source: "project", path: projectPath, status: projectStatus, config: projectConfig },
+		]),
 	};
 }
 
@@ -95,7 +108,29 @@ async function loadExplicitConfig(
 		globalPath: path,
 		projectStatus: "not-found",
 		projectPath: `(disabled by ${PI_FENCE_CONFIG_ENV})`,
+		...krokiEndpointProvenance([
+			{ source: "explicit", path, status, config },
+		]),
 	};
+}
+
+interface EndpointLayer {
+	source: KrokiEndpointSource;
+	path: string;
+	status: ConfigFileStatus;
+	config: PiFenceConfig;
+}
+
+function krokiEndpointProvenance(
+	layers: readonly EndpointLayer[],
+): { krokiEndpoint?: KrokiEndpointProvenance } {
+	for (const layer of layers) {
+		const endpoint = layer.status === "loaded" ? layer.config.kroki?.endpoint : undefined;
+		if (endpoint !== undefined) {
+			return { krokiEndpoint: { source: layer.source, endpoint, path: layer.path } };
+		}
+	}
+	return {};
 }
 
 function explicitConfigPath(opts: LoadConfigOptions): string | undefined {

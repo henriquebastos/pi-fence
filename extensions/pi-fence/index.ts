@@ -185,6 +185,7 @@ export async function createPiFenceExtension(
 			globalStatus: configResult.globalStatus,
 			projectPath: configResult.projectPath,
 			projectStatus: configResult.projectStatus,
+			krokiEndpoint: configResult.krokiEndpoint,
 		},
 		shell: deps.shell,
 		metrics,

@@ -6,7 +6,7 @@
  * and issues. No pi-SDK, no I/O, no pi-tui — trivially unit-testable.
  */
 
-import type { ConfigFileStatus } from "./io/config-loader.ts";
+import type { ConfigFileStatus, KrokiEndpointProvenance } from "./io/config-loader.ts";
 import type { ProcessorListing } from "./list.ts";
 import type { BindingResolution } from "./resolve.ts";
 
@@ -20,6 +20,7 @@ export interface DoctorInput {
 	blockedTags: readonly string[];
 	/** All tags any registered processor claims (canonical + aliases). */
 	allTags: readonly string[];
+	krokiEndpoint?: KrokiEndpointProvenance;
 }
 
 export interface DoctorIssue {
@@ -50,7 +51,17 @@ function computeConfigIssues(input: DoctorInput): DoctorIssue[] {
 	return [
 		...configStatusIssue("global", input.globalStatus, input.globalPath),
 		...configStatusIssue("project", input.projectStatus, input.projectPath),
+		...projectKrokiEndpointIssue(input.krokiEndpoint),
 	];
+}
+
+function projectKrokiEndpointIssue(
+	endpoint: KrokiEndpointProvenance | undefined,
+): DoctorIssue[] {
+	if (endpoint?.source !== "project") return [];
+	return [{
+		message: `project config sets kroki.endpoint to ${endpoint.endpoint}; diagram source may be sent to that endpoint (${endpoint.path})`,
+	}];
 }
 
 function configStatusIssue(

@@ -2529,6 +2529,35 @@ describe("pi-fence extension — Kroki endpoint config (CV1.E1.S2)", () => {
 		},
 		20_000,
 	);
+
+	it(
+		"doctor warns when the active Kroki endpoint comes from project config",
+		async () => {
+			const home = makeTempDir();
+			const cwd = makeTempDir();
+			mkdirSync(join(cwd, ".pi"), { recursive: true });
+			writeFileSync(
+				join(cwd, ".pi", "pi-fence.config.json"),
+				JSON.stringify({ kroki: { endpoint: "http://project-kroki.local:8000" } }),
+			);
+
+			const captured = await runExtensionWithCommand(
+				new FakeHttpClient(),
+				"/fence doctor",
+				new FakeShellRunner(),
+				{ home, cwd },
+			);
+
+			const doctorMessages = captured.sentCustomMessages.filter(
+				(message) => message.customType === "pi-fence:list",
+			);
+			expect(doctorMessages).toHaveLength(1);
+			const details = doctorMessages[0].details as { lines: string[] };
+			expect(details.lines.some((line) => line.includes("project config sets kroki.endpoint"))).toBe(true);
+			expect(details.lines.some((line) => line.includes("http://project-kroki.local:8000"))).toBe(true);
+		},
+		20_000,
+	);
 });
 
 describe("pi-fence extension — user-level per-tag bindings (CV0.E2.S2)", () => {

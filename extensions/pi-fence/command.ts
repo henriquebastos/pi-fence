@@ -4,7 +4,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import type { TagBinding } from "./config.ts";
 import { formatDoctorLines, type DoctorInput } from "./doctor.ts";
-import type { ConfigFileStatus } from "./io/config-loader.ts";
+import type { ConfigFileStatus, KrokiEndpointProvenance } from "./io/config-loader.ts";
 import type { Logger } from "./io/logger.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { formatProcessorLines, listProcessors, type ListProcessorsOptions } from "./list.ts";
@@ -22,6 +22,7 @@ interface ConfigStatus {
 	globalStatus: ConfigFileStatus;
 	projectPath: string;
 	projectStatus: ConfigFileStatus;
+	krokiEndpoint?: KrokiEndpointProvenance;
 }
 
 interface RegisterFenceCommandOptions {
@@ -89,6 +90,7 @@ export function registerFenceCommand({
 					bindingRows,
 					blockedTags: [...blockedTags],
 					allTags: collectSupportedTags(processors),
+					krokiEndpoint: configStatus?.krokiEndpoint,
 				};
 				const doctorLines = formatDoctorLines(input, processorLines);
 				sendPiFenceDoctorMessage(pi, doctorLines);
