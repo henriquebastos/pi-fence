@@ -65,6 +65,14 @@ function setPortBinding(shell: FakeShellRunner, hostIp = "127.0.0.1"): void {
 	});
 }
 
+function setPortsRaw(shell: FakeShellRunner, raw: string): void {
+	shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, CONTAINER], {
+		stdout: `${raw}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
 describe("kroki-docker — status()", () => {
 	it("reports running when docker inspect returns true for the managed container", async () => {
 		const shell = makeShell();
@@ -117,6 +125,54 @@ describe("kroki-docker — status()", () => {
 		expect(result.ok).toBe(false);
 		expect(result.status).toBe("running");
 		expect(result.message).toBe("Container pi-fence-kroki publishes 8000/tcp on 0.0.0.0:8000; expected 127.0.0.1:8000.");
+	});
+
+	it("reports error when the managed container publishes Kroki on the wrong host port", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortsRaw(shell, JSON.stringify({ "8000/tcp": [{ HostIp: "127.0.0.1", HostPort: "18000" }] }));
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki publishes 8000/tcp on 127.0.0.1:18000; expected 127.0.0.1:8000.");
+	});
+
+	it("reports error when the managed container does not publish 8000/tcp", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortsRaw(shell, "{}");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki does not publish 8000/tcp; expected 127.0.0.1:8000.");
+	});
+
+	it("reports error when the managed container has null port bindings", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortsRaw(shell, "null");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki has invalid port bindings; expected 127.0.0.1:8000.");
+	});
+
+	it("reports error when the managed container returns malformed port JSON", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortsRaw(shell, "not-json");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki has invalid port bindings; expected 127.0.0.1:8000.");
 	});
 
 	it("reports stopped when docker inspect returns false for the managed image", async () => {
@@ -348,6 +404,17 @@ describe("kroki-docker — stop()", () => {
 		const result = await mgr.stop();
 		expect(result.ok).toBe(false);
 		expect(result.message).toContain("image mismatch");
+		expect(shell.calls.some((call) => call.args[0] === "stop")).toBe(false);
+	});
+
+	it("does not stop a running wrong-label container", async () => {
+		const shell = makeShell();
+		setRunning(shell, IMAGE, "other");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.stop();
+		expect(result.ok).toBe(false);
+		expect(result.message).toContain("label mismatch");
 		expect(shell.calls.some((call) => call.args[0] === "stop")).toBe(false);
 	});
 

@@ -83,6 +83,14 @@ function setPortBinding(shell: FakeShellRunner, containerName: string, hostIp = 
 	});
 }
 
+function setPortsRaw(shell: FakeShellRunner, containerName: string, raw: string): void {
+	shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, containerName], {
+		stdout: `${raw}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
 function setAbsent(shell: FakeShellRunner, containerName: string): void {
 	shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", containerName], {
 		stdout: "",
@@ -760,6 +768,70 @@ describe("sandbox controller contract — Docker Compose status", () => {
 				},
 				{ id: "mermaid", state: "ready", message: "Container pi-fence-kroki-mermaid is running." },
 			],
+		});
+	});
+
+	it("reports error when the Compose core publishes Kroki on the wrong host port", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-core", JSON.stringify({ "8000/tcp": [{ HostIp: "127.0.0.1", HostPort: "18000" }] }));
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core publishes 8000/tcp on 127.0.0.1:18000; expected 127.0.0.1:8000.",
+		});
+	});
+
+	it("reports error when the Compose core does not publish 8000/tcp", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-core", "{}");
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core does not publish 8000/tcp; expected 127.0.0.1:8000.",
+		});
+	});
+
+	it("reports error when the Compose core has null port bindings", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-core", "null");
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core has invalid port bindings; expected 127.0.0.1:8000.",
+		});
+	});
+
+	it("reports error when the Compose core returns malformed port JSON", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-core", "not-json");
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core has invalid port bindings; expected 127.0.0.1:8000.",
 		});
 	});
 
