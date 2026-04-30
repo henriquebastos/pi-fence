@@ -7286,3 +7286,29 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 1. **Limits are policy defaults before enforcement.** Runtime code can now read one bounded policy object instead of inventing local caps.
 
 **Carry-forward.** Enforce the policy in `agent_end`, output message construction, and Kroki response handling.
+
+### 2026-04-30 — CV11.E5.S1 oversized fence sources stop before render
+
+**What shipped.** `agent_end` now enforces the resolved fence-source byte limit before processor resolution or `render()`. Oversized source produces a normal pi-fence error message, records a failed render metric under `pi-fence`, and sends the same controlled error as a follow-up.
+
+**Implementation commit.**
+
+1. `55bcc9a` — step 7: reject oversized fence sources
+
+**Beans.**
+
+1. Closed `task-016c25a5` — CV11.E5.S1 reject oversized source before render.
+
+**Test count.** Fast non-live suite increased from 983 to 984 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'limit|oversize|large'` — passed: 1 focused test.
+2. `pnpm run feedback` — passed: 984 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the slice.**
+
+1. **Input limits sit before trust-boundary work.** Oversized source never reaches `resolveProcessor()` or third-party `render()`.
+2. **Limit failures use the ordinary error pipeline.** The user and LLM see the same controlled pi-fence diagnostic shape as processor errors.
+
+**Carry-forward.** Enforce processor output caps and Kroki response caps.
