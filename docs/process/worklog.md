@@ -7190,3 +7190,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature, fix
 1. **Every bad-result path remains an ordinary diagnostic path.** Thrown availability, malformed availability, thrown render, and malformed render all have user-visible assertions.
 
 **Carry-forward.** Re-run CV11.E4.S2 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S2 inspection fix: thrown render details stay local
+
+**What shipped.** Closed the second-round security finding that raw thrown render messages crossed the user/LLM follow-up boundary. Thrown third-party renders now produce the generic error output `render() threw`, while malformed return diagnostics remain explicit.
+
+**Implementation commit.**
+
+1. `a8fcf9d` — fix CV11.E4.S2: hide thrown render details
+
+**Beans.**
+
+1. Closed `bug-cd0ce938` — CV11.E4.S2 inspection: avoid leaking thrown render messages.
+
+**Test count.** Fast non-live suite increased from 982 to 983 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/processor.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'thrown render|thrown third-party render|generic error'` — passed: 2 focused tests.
+2. `pnpm run feedback` — passed: 983 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Thrown render details are not user/LLM output.** A processor can intentionally return an error string, but an accidental throw does not leak its message.
+
+**Carry-forward.** Re-run CV11.E4.S2 inspection and close the story if no findings remain.
