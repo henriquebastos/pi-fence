@@ -5751,3 +5751,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Stop-ownership behavior is locked in tests.** A wrong-label managed container is now provably non-stoppable through `/fence kroki stop` even after the broad-bind change loosened `stop()` to accept ok:false running statuses.
 
 **Carry-forward.** Cover sandbox-controller broad-bind rejection at the adapter layer.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: sandbox-adapter broad-bind rejection
+
+**What shipped.** A coverage-only test pins down `createKrokiDockerSandboxController(createKrokiDockerManager(shell))` so a labelled but broad-bound managed container surfaces as `state: "error"` through the sandbox adapter, not just at the bare manager.
+
+**Implementation commit.**
+
+1. `aa118e3` — test CV11.E1.S3: cover sandbox-layer broad-bind rejection
+
+**Beans.**
+
+1. Closed `task-43f1256d` — CV11.E1.S3 inspection: cover sandbox-layer broad-bind rejection.
+
+**Test count.** Fast suite increased from 921 to 922 with one sandbox-adapter rejection test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'sandbox adapter when the managed container publishes Kroki on all interfaces'` — green on the existing logic, recorded as coverage-only remediation.
+2. `pnpm run feedback` — passed: 922 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Adapter-layer trust boundary is locked.** A future regression in `normalizeKrokiDockerResult` that swallowed manager `ok:false` runtimes into `state:"ready"` now fails the suite.
+
+**Carry-forward.** Rerun S3 inspection. If it produces no further required findings, run completion checks and close CV11.E1.S3.
