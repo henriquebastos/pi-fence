@@ -10,7 +10,7 @@ CV11 — Trust Boundaries is in progress. CV11.E1.S2 is active.
 
 ## Next
 
-Next bean: `task-c21c13f0` — CV11.E1.S2 step 2, Kroki request URL builder.
+Next bean: `task-53c0659d` — CV11.E1.S2 step 3, project endpoint diagnostic.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5252,3 +5252,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Endpoint validation is a privacy control.** Invalid endpoint strings trigger the existing fail-closed path, restricting rendering to `embedded` processors.
 
 **Carry-forward.** Replace Kroki request URL concatenation with a URL-based builder under `task-c21c13f0`, then add project-endpoint provenance diagnostics under `task-53c0659d`.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 step 2: Kroki request URL builder
+
+**What shipped.** Kroki request URLs now use a URL-based builder for `{endpoint}/{tag}/{format}` plus `theme=dark`, preserving endpoint path prefixes without relying on raw string concatenation. A unit test characterizes custom endpoint path-prefix behavior with dark-theme query construction.
+
+**Implementation commit.**
+
+1. `03df144` — step 2: compose Kroki request URLs safely
+
+**Beans.**
+
+1. Closed `task-c21c13f0` — CV11.E1.S2 step 2 Kroki request URL builder.
+2. Next ready bean: `task-53c0659d` — project endpoint diagnostic.
+
+**Test count.** Fast suite increased from 888 to 889 with one Kroki endpoint path-prefix request test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki.test.ts --testNamePattern endpoint` — passed; the new behavior test was coverage-only because existing trailing-slash trimming already preserved this public behavior.
+2. `pnpm vitest run tests/unit/kroki.test.ts` — passed: 40 tests.
+3. `pnpm run feedback` — passed: 889 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Refactor under characterization.** No broken behavior was found for the normal path-prefix case, so the change stayed a green refactor after adding the preservation test.
+2. **URL helper stays private.** The helper is local to `kroki.ts`; endpoint normalization remains in `config.ts`, and sandbox endpoint readiness remains in the sandbox path.
+
+**Carry-forward.** Add the project-local endpoint diagnostic under `task-53c0659d`, then run S2 inspection.

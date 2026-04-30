@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed (CV11.E1.S2 — Kroki endpoint normalization)
 
 - `kroki.endpoint` now fails closed unless it is a credential-free `http:` or `https:` URL; endpoint paths are preserved, trailing slashes are normalized, and query strings, hash fragments, credentials, unsupported schemes, and malformed strings are rejected.
+- Kroki request URLs are now built with URL helpers so endpoint path prefixes, output formats, and `theme=dark` compose predictably.
 
 ### Changed (CV11.E1.S1 — Package runtime assets)
 
