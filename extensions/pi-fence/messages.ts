@@ -2,12 +2,11 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-import { formatProcessorLines, listProcessors, type ProcessorListing } from "./list.ts";
+import { formatProcessorLines, listProcessors, type ListProcessorsOptions, type ProcessorListing } from "./list.ts";
 import type {
 	Availability,
 	FenceProcessor,
 	FenceResult,
-	ProcessorPlacement,
 } from "./processor.ts";
 import {
 	type PiFenceListDetails,
@@ -35,10 +34,7 @@ export interface PiFenceListMessageOptions {
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
 	bindingRows: readonly BindingResolution[];
-	blockedProcessors?: ReadonlySet<string>;
-	blockedTags?: ReadonlySet<string>;
-	endpoints?: Readonly<Record<string, string>>;
-	processorPrecedence?: readonly ProcessorPlacement[];
+	listOptions?: ListProcessorsOptions;
 }
 
 export function sendPiFenceListMessage(
@@ -47,18 +43,15 @@ export function sendPiFenceListMessage(
 		processors,
 		availability,
 		bindingRows,
-		blockedProcessors,
-		blockedTags,
-		endpoints,
-		processorPrecedence,
+		listOptions,
 	}: PiFenceListMessageOptions,
 ): void {
 	const listings: ProcessorListing[] = listProcessors(
 		processors,
 		availability,
-		{ blockedProcessors, blockedTags, endpoints, processorPrecedence },
+		listOptions,
 	);
-	const lines = formatProcessorLines(listings, bindingRows, [...(blockedTags ?? [])]);
+	const lines = formatProcessorLines(listings, bindingRows, [...(listOptions?.blockedTags ?? [])]);
 	const details: PiFenceListDetails & {
 		listings: ProcessorListing[];
 		bindings: readonly BindingResolution[];
@@ -67,7 +60,7 @@ export function sendPiFenceListMessage(
 		lines,
 		listings,
 		bindings: bindingRows,
-		blockedTags: [...(blockedTags ?? [])],
+		blockedTags: [...(listOptions?.blockedTags ?? [])],
 	};
 	const content: TextContent[] = [{ type: "text", text: lines.join("\n") }];
 	pi.sendMessage<typeof details>({

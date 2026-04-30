@@ -76,10 +76,7 @@ export function registerFenceCommand({
 					processors,
 					availability,
 					bindingRows,
-					blockedProcessors: processorPolicy.blockedProcessors,
-					blockedTags: processorPolicy.blockedTags,
-					endpoints,
-					processorPrecedence: processorPolicy.processorPrecedence,
+					listOptions: listOpts,
 				});
 				return;
 			}
