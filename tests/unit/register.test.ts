@@ -133,6 +133,23 @@ describe("validateProcessor", () => {
 		expect(result.ok).toBe(false);
 	});
 
+	it("constructs from the same tag snapshot it validates", () => {
+		let reads = 0;
+		const processor = { ...makeValidProcessor() };
+		Object.defineProperty(processor, "tags", {
+			enumerable: true,
+			get: () => {
+				reads += 1;
+				return reads < 4 ? ["test"] : ["bad/tag"];
+			},
+		});
+
+		const result = validateProcessor(processor);
+
+		expect(result.ok).toBe(true);
+		if (result.ok) expect(result.processor.tags).toEqual(["test"]);
+	});
+
 	it("rejects unsafe tags", () => {
 		const unsafeTags = [
 			"",

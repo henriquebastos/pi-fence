@@ -53,34 +53,44 @@ export function validateProcessor(value: unknown): ValidationResult {
 	}
 
 	const id = obj.id;
+	const placement = obj.placement;
+	const tagsValue = obj.tags;
+	const aliasesValue = Object.hasOwn(obj, "aliases") ? obj.aliases : undefined;
+	const available = obj.available;
+	const render = obj.render;
+
 	if (typeof id !== "string" || !isSafeProcessorName(id)) {
 		return { ok: false, error: "processor.id must be a safe non-empty string" };
 	}
 
-	if (!PROCESSOR_PLACEMENTS.includes(obj.placement as ProcessorPlacement)) {
+	if (!PROCESSOR_PLACEMENTS.includes(placement as ProcessorPlacement)) {
 		return { ok: false, error: `processor.placement must be one of ${PROCESSOR_PLACEMENTS.join(", ")}` };
 	}
 
-	if (!Array.isArray(obj.tags) || obj.tags.length === 0) {
+	if (!Array.isArray(tagsValue)) {
+		return { ok: false, error: "processor.tags must be a non-empty array of strings" };
+	}
+	const tagSnapshot = [...tagsValue];
+	if (tagSnapshot.length === 0) {
 		return { ok: false, error: "processor.tags must be a non-empty array of strings" };
 	}
 
-	for (const tag of obj.tags) {
+	for (const tag of tagSnapshot) {
 		if (typeof tag !== "string" || !isSafeProcessorName(tag)) {
 			return { ok: false, error: "processor.tags must contain only safe non-empty strings" };
 		}
 	}
 
-	if (typeof obj.available !== "function") {
+	if (typeof available !== "function") {
 		return { ok: false, error: "processor.available must be a function" };
 	}
 
-	if (typeof obj.render !== "function") {
+	if (typeof render !== "function") {
 		return { ok: false, error: "processor.render must be a function" };
 	}
 
-	const tags = Object.freeze([...(obj.tags as string[])]);
-	const aliases = validateAliases(Object.hasOwn(obj, "aliases") ? obj.aliases : undefined, tags);
+	const tags = Object.freeze(tagSnapshot);
+	const aliases = validateAliases(aliasesValue, tags);
 	if (!aliases.ok) {
 		return { ok: false, error: aliases.error };
 	}
@@ -89,11 +99,11 @@ export function validateProcessor(value: unknown): ValidationResult {
 		ok: true,
 		processor: Object.freeze({
 			id,
-			placement: obj.placement as ProcessorPlacement,
+			placement: placement as ProcessorPlacement,
 			tags,
 			aliases: aliases.aliases,
-			available: obj.available as FenceProcessor["available"],
-			render: obj.render as FenceProcessor["render"],
+			available: available as FenceProcessor["available"],
+			render: render as FenceProcessor["render"],
 		}),
 	};
 }
