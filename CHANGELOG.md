@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E5.S1 — Fence source and output limits)
+
+- Render policy now has finite internal defaults: fence source is capped at 262,144 bytes, and processor output / Kroki responses are capped at 10,485,760 bytes.
+- Oversized fence sources now fail before processor invocation, while oversized processor outputs and Kroki responses become controlled pi-fence error output before message content, base64 image content, error-body decoding, or SVG rasterization is built.
+
 ### Changed (CV11.E4.S2 — Third-party processor result normalization)
 
 - Third-party `available()` throws and malformed returns now become unavailable diagnostics instead of corrupting `/fence list` or `/fence doctor` state.

@@ -7364,3 +7364,33 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 2. **SVG-only Kroki responses are capped before rasterization.** Large SVG bodies do not enter `@resvg/resvg-js` through the Kroki path.
 
 **Carry-forward.** Run CV11.E5.S1 completion inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: HTTP buffering obeys response caps
+
+**What shipped.** Closed first-round CV11.E5.S1 inspection findings. Kroki now passes `maxResponseBytes` into the HTTP seam; `NodeHttpClient` rejects oversized `content-length` and streaming bodies before full buffering; Kroki applies the cap before status-specific response handling, so oversized 4xx/5xx bodies are not decoded. Tests now use multi-byte payloads for byte-limit assertions and prove oversized source details retain only the bounded preview.
+
+**Implementation commit.**
+
+1. `a21ace7` — fix CV11.E5.S1: cap HTTP response buffering
+
+**Beans.**
+
+1. Closed `bug-331cf386` — CV11.E5.S1 inspection: cap Kroki before HTTP buffering.
+2. Closed `bug-09c2440c` — CV11.E5.S1 inspection: cap Kroki error bodies before decoding.
+3. Closed `task-2a71827b` — CV11.E5.S1 inspection: prove byte-based limits and bounded preview.
+4. Closed `task-3fc4e89e` — CV11.E5.S1 inspection: deduplicate byte-limit error formatting.
+
+**Test count.** Fast non-live suite increased from 987 to 991 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/utilities/http-client.test.ts tests/unit/kroki.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'NodeHttpClient|response|output limit|posts the source|render resource limits'` — passed: 16 focused tests.
+2. `pnpm run feedback` — passed: 991 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **The HTTP seam owns real buffering caps.** Kroki still has a local post-response guard, but production fetch never needs to buffer unbounded bodies first.
+2. **Byte limits are UTF-8 byte limits.** Tests now fail if implementation regresses to character counting.
+3. **Limit error phrasing is shared outside I/O.** `agent_end` and Kroki use the same helper; `io/http-client.ts` keeps its local string to avoid reversing dependency layering.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
