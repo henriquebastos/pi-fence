@@ -30,6 +30,9 @@
   ],
   "files": [
     "extensions",
+    "docker/bundle",
+    "docker/kroki",
+    "gondolin/bundle",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

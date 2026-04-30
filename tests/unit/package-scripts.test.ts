@@ -1,8 +1,25 @@
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
+
+const execFileAsync = promisify(execFile);
+
+const REQUIRED_RUNTIME_PACKAGE_ASSETS = [
+	"docker/bundle/Dockerfile",
+	"docker/bundle/manifest.json",
+	"docker/bundle/puppeteer-config.json",
+	"docker/kroki/compose.yaml",
+	"gondolin/bundle/init-extra.sh",
+	"gondolin/bundle/pi-fence-bundle.json",
+] as const;
 
 type PackageJson = {
 	scripts?: Record<string, string>;
+};
+
+type NpmPackEntry = {
+	files?: Array<{ path?: string }>;
 };
 
 async function readScripts(): Promise<Record<string, string>> {
@@ -11,6 +28,25 @@ async function readScripts(): Promise<Record<string, string>> {
 
 	return packageJson.scripts ?? {};
 }
+
+async function packedFilePaths(): Promise<Set<string>> {
+	const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], {
+		cwd: new URL("../..", import.meta.url),
+		maxBuffer: 1024 * 1024,
+	});
+	const entries = JSON.parse(stdout) as NpmPackEntry[];
+	return new Set(entries.flatMap((entry) => entry.files?.map((file) => file.path ?? "") ?? []));
+}
+
+describe("npm package contents", () => {
+	it("includes runtime assets needed by installed workflows", async () => {
+		const files = await packedFilePaths();
+
+		for (const asset of REQUIRED_RUNTIME_PACKAGE_ASSETS) {
+			expect(files.has(asset), `${asset} should be present in npm pack output`).toBe(true);
+		}
+	});
+});
 
 describe("package.json scripts", () => {
 	it("exposes the canonical feedback, lint, and inspect families", async () => {
