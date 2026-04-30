@@ -259,7 +259,7 @@ Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. 
 **Quick local Kroki via Docker:**
 
 ```bash
-docker run -d -p 8000:8000 yuzutech/kroki
+docker run -d -p 127.0.0.1:8000:8000 yuzutech/kroki
 ```
 
 That manual command is enough when you only want to point `kroki.endpoint` at a local service. pi-fence's lifecycle commands manage their own named, labelled container; use `/fence kroki start` when you want pi-fence to own start/stop/status.
@@ -271,7 +271,7 @@ Instead of sending diagram source to `kroki.io`, you can let pi-fence select a m
 The legacy slash commands still manage the trusted single-container Docker runtime:
 
 ```text
-/fence kroki start    → pulls and starts a local Kroki container on port 8000
+/fence kroki start    → pulls and starts a local Kroki container on 127.0.0.1:8000
 /fence kroki status   → reports running / stopped / absent
 /fence kroki stop     → stops and removes the container
 ```
@@ -316,7 +316,7 @@ To render through the managed container, allow `sandbox` placement:
 
 `sandboxes` maps replace by layer, so include any default sandbox entries you still want active when overriding this section. Existing configs that use `kroki.docker.autoStart: true` still work as a single-container compatibility alias.
 
-For the Compose-backed Kroki stack, start it manually from a source checkout:
+For the Compose-backed Kroki stack, start it manually from a source checkout. The packaged Compose file also publishes only `127.0.0.1:8000:8000`:
 
 ```bash
 docker compose -f docker/kroki/compose.yaml -p pi-fence-kroki up -d

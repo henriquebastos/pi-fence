@@ -5548,3 +5548,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Only managed runtime changed.** The unmanaged `kroki.endpoint` path and endpoint validation from S2 are untouched.
 
 **Carry-forward.** Implement `task-b7f2be6c`: bind the managed Kroki Compose stack to loopback.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 step 2: Compose Kroki binds to loopback
+
+**What shipped.** The managed Kroki Compose stack now publishes `127.0.0.1:8000:8000` from `docker/kroki/compose.yaml`. Compose-backed `kroki-sandbox` still reports `http://localhost:8000`, matching the single-container managed runtime.
+
+**Implementation commit.**
+
+1. `ddab45f` — step 2: bind Compose Kroki to loopback
+
+**Beans.**
+
+1. Closed `task-b7f2be6c` — CV11.E1.S3 step 2, Compose loopback bind.
+
+**Test count.** Fast suite remained at 909 tests; this step tightened the existing Compose asset contract.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-compose.test.ts tests/unit/sandbox.test.ts --testNamePattern Compose` — failed before the Compose file changed, then passed after the loopback port mapping landed.
+2. `pnpm run feedback` — passed: 909 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Compose matches single-container trust boundary.** Both managed Kroki runtimes bind host port 8000 on loopback only.
+2. **Endpoint remains stable.** The processor and sandbox controller continue to hand pi-fence `http://localhost:8000`.
+
+**Carry-forward.** Run S3 inspection on the implementation diff, then close any findings through beans before closing CV11.E1.S3.
