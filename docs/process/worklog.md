@@ -5996,3 +5996,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Coverage where the contract already holds.** The `start()` paths inherit fail-closed behavior from `status()`; the new tests prove the user-facing entry points respect it.
 
 **Carry-forward.** Harden the find-falsy idiom in the port-binding parsers, then rerun S3 inspection.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: harden port-binding find against falsy entries
+
+**What shipped.** `krokiPortBindingIssue` and `loopbackPortBindingIssue` now use `findIndex` plus an explicit `=== -1` check, so a `null` (or any falsy) binding entry inside `8000/tcp` surfaces as a port-verifier error instead of being silently accepted by the previous `find` plus `!unexpected` idiom.
+
+**Implementation commit.**
+
+1. `0bbf35c` — fix CV11.E1.S3: harden port-binding find against falsy entries
+
+**Beans.**
+
+1. Closed `bug-132388d2` — CV11.E1.S3 inspection: harden port-binding find against falsy entries.
+
+**Test count.** Fast suite increased from 933 to 935 with one manager and one Compose null-entry case.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'port bindings include a null entry'` — failed before the `findIndex` switch, then passed.
+2. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'Compose core port bindings include a null entry'` — passed.
+3. `pnpm run feedback` — passed: 935 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Explicit not-found discriminator.** `findIndex` plus `=== -1` separates `not found` from `matched a falsy entry`, so the verifier can never collapse the two outcomes again.
+
+**Carry-forward.** Rerun S3 inspection (round 5). If clean or only deferable lows, run completion checks and close CV11.E1.S3.
