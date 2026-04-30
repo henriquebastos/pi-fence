@@ -6867,3 +6867,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **Coverage proves independent hazards independently.** `__proto__`, unsafe alias keys, unsafe alias targets, and boundary hyphens each have their own assertions.
 
 **Carry-forward.** Remove the premature legacy-output compatibility note from the processor guide.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection docs: processor output contract is not ahead of runtime
+
+**What shipped.** Closed the inspection docs finding. The processor author guide no longer promises legacy `{ ok, text/png/error }` render-result compatibility before CV11.E4.S2 implements full runtime normalization. It now states only that new processors should return `FenceOutput` directly.
+
+**Implementation commit.**
+
+1. `7fa0e7c` — docs CV11.E4.S1: narrow processor output contract
+
+**Beans.**
+
+1. Closed `task-0f252362` — CV11.E4.S1 inspection: remove premature legacy output docs.
+
+**Test count.** Fast non-live suite stayed at 964 tests.
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+2. `pnpm run feedback` — passed: 964 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Docs do not predict S2.** Legacy result compatibility will be documented only after the runtime fully normalizes those results.
+
+**Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
