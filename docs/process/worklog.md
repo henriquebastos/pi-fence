@@ -7105,3 +7105,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature, fix
 2. **Malformed means unavailable, not rejected registration.** A processor with a valid declared shape can register but lists as unavailable when its probe result is malformed.
 
 **Carry-forward.** Normalize third-party render outputs and thrown render errors.
+
+---
+
+### 2026-04-30 — CV11.E4.S2 step 2: render outputs are normalized
+
+**What shipped.** Third-party `render()` calls are now wrapped at registration. Throws become explicit `{ kind: "error" }` output with `render() threw: ...`; malformed returns become `render() returned malformed result`; explicit `FenceOutput` and legacy `{ ok, text/png/error }` results normalize through the same helper before `agent_end` logging, message building, follow-up, and metrics. The processor author guide now documents compatibility and runtime containment accurately.
+
+**Implementation commit.**
+
+1. `85c441a` — step 5: normalize processor render outputs
+
+**Beans.**
+
+1. Closed `task-a2e4335a` — CV11.E4.S2 step 2: render output normalization.
+
+**Test count.** Fast non-live suite increased from 974 to 980 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/processor.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'render|malformed|third-party'` — passed: 38 focused tests.
+2. `pnpm run feedback` — passed: 980 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Render containment lives at the third-party boundary.** `validateProcessor()` returns a render wrapper for registered processors.
+2. **Message normalization stays as a compatibility seam.** `buildPiFenceOutputMessage()` can still normalize legacy persisted/session values, but live third-party renders now reach `agent_end` as explicit `FenceOutput`.
+3. **Bad output is a normal render failure.** Error output still records failed metrics and sends the LLM follow-up.
+
+**Carry-forward.** Run CV11.E4.S2 inspection and close the story if no findings remain.
