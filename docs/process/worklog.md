@@ -6623,3 +6623,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 3. **Runtime metrics still receive a boolean.** `agent-end.ts` derives success from `result.kind !== "error"` before recording metrics, keeping existing metric storage unchanged.
 
 **Carry-forward.** Model sandbox status as explicit ready-service/ready-exec variants and update Kroki endpoint extraction accordingly.
+
+---
+
+### 2026-04-30 — CV11.E3.S2 step 3: sandbox readiness is explicit
+
+**What shipped.** Replaced optional ready-state endpoint semantics with explicit `SandboxStatus.kind` variants. Ready service sandboxes now use `kind: "ready-service"` and require an endpoint; ready exec sandboxes use `kind: "ready-exec"` and cannot carry an endpoint. Non-ready statuses are explicitly tagged as `partial`, `stopped`, `absent`, or `error`. Kroki sandbox endpoint extraction now narrows on `ready-service` instead of accepting a generic `ready` state and checking an optional endpoint.
+
+**Implementation commit.**
+
+1. `8e3ab52` — step 3: distinguish sandbox readiness variants
+
+**Beans.**
+
+1. Closed `task-e6b509bd` — CV11.E3.S2 step 3: explicit sandbox status variants.
+
+**Test count.** Fast non-live suite increased from 945 to 947 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'sandbox status variants'` — failed red before implementation, then passed after adding status variants.
+2. `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/kroki.test.ts tests/unit/bundle-sandbox.test.ts tests/contract/kroki.contract.test.ts tests/contract/bundle-sandbox.contract.test.ts` — passed: 156 tests.
+3. `pnpm run feedback` — passed: 947 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Ready state is split by capability.** `ready-service` means a service endpoint exists; `ready-exec` means command execution is available but no endpoint is exposed.
+2. **Kroki endpoint extraction is type-narrowed.** `sandboxEndpointFromStatus()` only accepts `ready-service`; no ready-without-endpoint branch remains.
+3. **Non-ready states remain state-compatible.** Existing status summaries still expose `state` and `message`, with `kind` added as the discriminant for exhaustive handling.
+
+**Carry-forward.** Close CV11.E3.S2, then run the completion inspection for CV11.E3.
