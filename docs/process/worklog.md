@@ -5941,3 +5941,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Generic invariant test for security-less components.** The post-refactor invariant 'components without a port security policy skip the ports inspect' is locked through `createDockerComposeSandboxController` directly, since the fixed Kroki controller now sets policies on every component.
 
 **Carry-forward.** Continue round-4 remediation: centralize the host port, add lifecycle start broad-bind coverage, and harden the find-falsy idiom.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: centralize managed Kroki host port
+
+**What shipped.** `KROKI_HOST_PORT` is now exported from `kroki-docker.ts` and reused as the source of truth for the managed endpoint, the Compose controller's `requiredLoopbackPorts`, and the Compose YAML contract test. A future change to the host port no longer drifts the verifier away from the advertised endpoint.
+
+**Implementation commit.**
+
+1. `4882c99` — refactor CV11.E1.S3: centralize managed Kroki host port
+
+**Beans.**
+
+1. Closed `task-bbcc01d8` — CV11.E1.S3 inspection: centralize managed Kroki host port.
+
+**Test count.** Fast suite unchanged (931); refactor only.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-compose.test.ts tests/unit/kroki-docker.test.ts tests/unit/sandbox.test.ts --testNamePattern 'Compose|kroki|port|adapter'` — stayed green before and after the refactor.
+2. `pnpm run feedback` — passed: 931 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **One canonical host-port constant.** Sandbox-level wiring imports `KROKI_HOST_PORT` instead of repeating the literal; the Compose YAML contract test asserts the parsed mapping matches that constant.
+2. **Compose YAML stays explicit.** The YAML still names the literal `127.0.0.1:8000:8000` because it is parsed by Docker, not by the extension; the contract test is what binds it back to the constant.
+
+**Carry-forward.** Cover lifecycle start fail-closed paths and harden the find-falsy idiom in the port-binding parsers.
