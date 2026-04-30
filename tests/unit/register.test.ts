@@ -317,6 +317,31 @@ describe("registerProcessor", () => {
 		});
 	});
 
+	it("keeps default aliases frozen when available mutates this", async () => {
+		const registry = makeRegistry();
+		const validation = validateProcessor({
+			id: "test-proc",
+			placement: "embedded",
+			tags: ["test"],
+			available: async function (this: FenceProcessor) {
+				(this.aliases as Record<string, string>)["bad/alias"] = "test";
+				return { ok: true };
+			},
+			render: async () => ({ kind: "text", text: "ok" }),
+		});
+		expect(validation.ok).toBe(true);
+		if (!validation.ok) return;
+
+		const result = await registerProcessor(registry, validation.processor);
+
+		expect(result.ok).toBe(true);
+		expect(Object.entries(registry.processors[0].aliases)).toEqual([]);
+		expect(registry.availability.get("test-proc")).toMatchObject({
+			ok: false,
+			reason: expect.stringContaining("available() threw"),
+		});
+	});
+
 	it("rejects duplicate processor id", async () => {
 		const registry = makeRegistry();
 		registry.processors.push(makeValidProcessor());

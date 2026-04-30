@@ -104,7 +104,7 @@ type AliasValidationResult =
 
 function validateAliases(value: unknown, tags: readonly string[]): AliasValidationResult {
 	const aliases = Object.create(null) as Record<string, string>;
-	if (value === undefined) return { ok: true, aliases };
+	if (value === undefined) return { ok: true, aliases: Object.freeze(aliases) };
 	if (!isAliasObject(value)) {
 		return { ok: false, error: "processor.aliases must be an own object" };
 	}
