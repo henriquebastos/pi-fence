@@ -84,13 +84,13 @@ describe("extractFencedBlocks", () => {
 		]);
 	});
 
-	it("continues scanning after an unclosed ignored fence", () => {
+	it("treats supported fences inside ignored fenced blocks as opaque body text", () => {
 		const blocks = extractFencedBlocks(
-			"```ignored\nbody\n~~~mermaid\nflowchart LR\n~~~",
+			["```ignored", "~~~mermaid", "flowchart LR", "~~~", "```"].join("\n"),
 			["mermaid"],
 		);
 
-		expect(blocks).toEqual([{ tag: "mermaid", source: "flowchart LR" }]);
+		expect(blocks).toEqual([]);
 	});
 
 	it("bounds chunked source while preserving byte count", () => {

@@ -114,8 +114,6 @@ function createBlockParser(tags: string[], options: ExtractFencedBlocksOptions):
 					collectBodyLine(active.collector, line, options.maxSourceBytes);
 					return;
 				}
-				const nestedOpener = line.truncated ? null : parseOpener(line.text);
-				if (nestedOpener) active = openFence(nestedOpener, allowlist);
 				return;
 			}
 
