@@ -18,6 +18,7 @@ const LABEL_VALUE = "kroki";
 const HOST_BIND_ADDRESS = "127.0.0.1";
 const HOST_PORT = 8000;
 const CONTAINER_PORT = 8000;
+const PORT_BINDINGS_FORMAT = "{{json .NetworkSettings.Ports}}";
 
 export type KrokiDockerStatus = "running" | "stopped" | "absent";
 
@@ -52,6 +53,10 @@ export function createKrokiDockerManager(
 			const running = result.stdout.trim() === "true";
 			const identityStatus = await verifyKrokiContainerIdentity(shell, image);
 			if (identityStatus) return identityStatus;
+			if (running) {
+				const portStatus = await verifyKrokiPortBinding(shell);
+				if (portStatus) return portStatus;
+			}
 			return {
 				ok: true,
 				status: running ? "running" : "stopped",
@@ -114,7 +119,7 @@ export function createKrokiDockerManager(
 
 	async function stop(): Promise<KrokiDockerResult> {
 		const current = await status();
-		if (!current.ok || current.status === "absent") return current;
+		if (current.status === "absent") return current;
 		let failureStatus = current.status;
 		try {
 			const stopResult = await shell.run("docker", ["stop", CONTAINER_NAME]);
@@ -167,6 +172,55 @@ async function verifyKrokiContainerIdentity(
 	const imageStatus = await verifyKrokiContainerImage(shell, expectedImage);
 	if (imageStatus) return imageStatus;
 	return verifyKrokiContainerLabel(shell);
+}
+
+async function verifyKrokiPortBinding(shell: ShellRunner): Promise<KrokiDockerResult | undefined> {
+	const result = await shell.run("docker", ["inspect", "--format", PORT_BINDINGS_FORMAT, CONTAINER_NAME]);
+	if (result.exitCode !== 0) return inspectFailureResult(result.stderr);
+	const issue = krokiPortBindingIssue(result.stdout);
+	if (!issue) return undefined;
+	return {
+		ok: false,
+		status: "running",
+		message: `Container ${CONTAINER_NAME} ${issue}`,
+	};
+}
+
+function krokiPortBindingIssue(rawPorts: string): string | undefined {
+	const parsed = parseJson(rawPorts);
+	if (!isRecord(parsed)) {
+		return `has invalid port bindings; expected ${HOST_BIND_ADDRESS}:${HOST_PORT}.`;
+	}
+	const bindings = parsed[`${CONTAINER_PORT}/tcp`];
+	if (!Array.isArray(bindings) || bindings.length === 0) {
+		return `does not publish ${CONTAINER_PORT}/tcp; expected ${HOST_BIND_ADDRESS}:${HOST_PORT}.`;
+	}
+	const unexpected = bindings.find((binding) => !isExpectedKrokiPortBinding(binding));
+	if (!unexpected) return undefined;
+	return `publishes ${CONTAINER_PORT}/tcp on ${formatPortBinding(unexpected)}; expected ${HOST_BIND_ADDRESS}:${HOST_PORT}.`;
+}
+
+function isExpectedKrokiPortBinding(binding: unknown): boolean {
+	return isRecord(binding) && binding.HostIp === HOST_BIND_ADDRESS && binding.HostPort === String(HOST_PORT);
+}
+
+function formatPortBinding(binding: unknown): string {
+	if (!isRecord(binding)) return "<invalid>";
+	const hostIp = typeof binding.HostIp === "string" && binding.HostIp.length > 0 ? binding.HostIp : "<all interfaces>";
+	const hostPort = typeof binding.HostPort === "string" && binding.HostPort.length > 0 ? binding.HostPort : "<unknown>";
+	return `${hostIp}:${hostPort}`;
+}
+
+function parseJson(raw: string): unknown {
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return undefined;
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function verifyKrokiContainerImage(

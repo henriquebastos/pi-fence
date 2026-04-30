@@ -53,6 +53,14 @@ function asExtensionAPI(api: FakeExtensionAPI): ExtensionAPI {
 	return api as unknown as ExtensionAPI;
 }
 
+function setKrokiLoopbackPort(shell: FakeShellRunner): void {
+	shell.setResponse(
+		"docker",
+		["inspect", "--format", "{{json .NetworkSettings.Ports}}", "pi-fence-kroki"],
+		{ stdout: JSON.stringify({ "8000/tcp": [{ HostIp: "127.0.0.1", HostPort: "8000" }] }) + "\n", stderr: "", exitCode: 0 },
+	);
+}
+
 async function setupExtension(
 	processor: FenceProcessor,
 ): Promise<{ api: FakeExtensionAPI; logger: FakeLogger }> {
@@ -164,6 +172,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-kroki"],
 			{ stdout: "kroki\n", stderr: "", exitCode: 0 },
 		);
+		setKrokiLoopbackPort(shell);
 		await createPiFenceExtension(asExtensionAPI(api), {
 			http: new FakeHttpClient(),
 			shell,
@@ -231,6 +240,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 			stderr: "",
 			exitCode: 0,
 		});
+		setKrokiLoopbackPort(shell);
 		shell.setResponse("docker", ["stop", "pi-fence-kroki"], {
 			stdout: "pi-fence-kroki\n",
 			stderr: "",

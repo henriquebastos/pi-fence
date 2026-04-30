@@ -20,6 +20,7 @@ const KROKI_IMAGE = "yuzutech/kroki";
 const MERMAID_IMAGE = "yuzutech/mermaid";
 const SANDBOX_LABEL = "pi-fence.sandbox";
 const KROKI_LABELS = { [SANDBOX_LABEL]: "kroki" };
+const PORTS_FORMAT = "{{json .NetworkSettings.Ports}}";
 
 function setRunning(
 	shell: FakeShellRunner,
@@ -38,6 +39,7 @@ function setRunning(
 		exitCode: 0,
 	});
 	setLabels(shell, containerName, labels);
+	setPortBinding(shell, containerName);
 }
 
 function setStopped(
@@ -71,6 +73,14 @@ function setLabels(
 			exitCode: 0,
 		});
 	}
+}
+
+function setPortBinding(shell: FakeShellRunner, containerName: string, hostIp = "127.0.0.1"): void {
+	shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, containerName], {
+		stdout: JSON.stringify({ "8000/tcp": [{ HostIp: hostIp, HostPort: "8000" }] }) + "\n",
+		stderr: "",
+		exitCode: 0,
+	});
 }
 
 function setAbsent(shell: FakeShellRunner, containerName: string): void {

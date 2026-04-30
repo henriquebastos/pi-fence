@@ -11,6 +11,7 @@ const CONTAINER = "pi-fence-kroki";
 const IMAGE = "yuzutech/kroki";
 const LABEL_NAME = "pi-fence.sandbox";
 const LABEL_VALUE = "kroki";
+const PORTS_FORMAT = "{{json .NetworkSettings.Ports}}";
 
 function makeShell() {
 	return new FakeShellRunner();
@@ -23,6 +24,7 @@ function setRunning(shell: FakeShellRunner, image = IMAGE, label = LABEL_VALUE):
 		exitCode: 0,
 	});
 	setIdentity(shell, image, label);
+	setPortBinding(shell);
 }
 
 function setStopped(shell: FakeShellRunner, image = IMAGE, label = LABEL_VALUE): void {
@@ -50,6 +52,14 @@ function setIdentity(shell: FakeShellRunner, image = IMAGE, label = LABEL_VALUE)
 	});
 	shell.setResponse("docker", ["inspect", "--format", `{{ index .Config.Labels "${LABEL_NAME}" }}`, CONTAINER], {
 		stdout: `${label}\n`,
+		stderr: "",
+		exitCode: 0,
+	});
+}
+
+function setPortBinding(shell: FakeShellRunner, hostIp = "127.0.0.1"): void {
+	shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, CONTAINER], {
+		stdout: JSON.stringify({ "8000/tcp": [{ HostIp: hostIp, HostPort: "8000" }] }) + "\n",
 		stderr: "",
 		exitCode: 0,
 	});
@@ -95,6 +105,18 @@ describe("kroki-docker — status()", () => {
 		const result = await mgr.status();
 		expect(result.ok).toBe(false);
 		expect(result.message).toBe("Container pi-fence-kroki label mismatch: expected pi-fence.sandbox=kroki, got other.");
+	});
+
+	it("reports error when the managed container publishes Kroki on all interfaces", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortBinding(shell, "0.0.0.0");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki publishes 8000/tcp on 0.0.0.0:8000; expected 127.0.0.1:8000.");
 	});
 
 	it("reports stopped when docker inspect returns false for the managed image", async () => {
@@ -206,6 +228,28 @@ describe("kroki-docker — stop()", () => {
 	it("stops and removes the managed container", async () => {
 		const shell = makeShell();
 		setRunning(shell);
+		shell.setResponse("docker", ["stop", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["rm", CONTAINER], {
+			stdout: `${CONTAINER}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.stop();
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("absent");
+		expect(result.message).toContain("Stopped");
+	});
+
+	it("stops a managed container even when its port binding is too broad", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortBinding(shell, "0.0.0.0");
 		shell.setResponse("docker", ["stop", CONTAINER], {
 			stdout: `${CONTAINER}\n`,
 			stderr: "",
