@@ -7002,3 +7002,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **Snapshot then validate.** Semi-trusted getters cannot provide one value for validation and another value for registry state.
 
 **Carry-forward.** Guard Error message getter access, then re-run CV11.E4.S1 inspection.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: Error message access is guarded
+
+**What shipped.** Closed the fourth-round inspection finding that an `Error` with a throwing `message` getter could still make registration exception reporting throw. `registrationErrorMessage()` now guards both `Error.message` access and generic stringification, falling back to `non-stringifiable registration error` for either failure.
+
+**Implementation commit.**
+
+1. `2eb48b4` — fix CV11.E4.S1: guard error message access
+
+**Beans.**
+
+1. Closed `bug-412b0f10` — CV11.E4.S1 inspection: guard Error message access.
+
+**Test count.** Fast non-live suite increased from 968 to 969 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'message getter|registration|unstringifiable'` — passed: 4 focused extension tests.
+2. `pnpm run feedback` — passed: 969 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **The register-error channel does not trust exception objects.** Both normal and malicious thrown values use the same safe message fallback.
+
+**Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
