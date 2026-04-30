@@ -3013,8 +3013,11 @@ function programReadyKrokiContainer(shell: FakeShellRunner, containerName: strin
 		["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, containerName],
 		{ stdout: "kroki\n", stderr: "", exitCode: 0 },
 	);
+	const portsResponse = image === "yuzutech/mermaid"
+		? "null"
+		: JSON.stringify({ "8000/tcp": [{ HostIp: "127.0.0.1", HostPort: "8000" }] });
 	shell.setResponse("docker", ["inspect", "--format", "{{json .NetworkSettings.Ports}}", containerName], {
-		stdout: JSON.stringify({ "8000/tcp": [{ HostIp: "127.0.0.1", HostPort: "8000" }] }) + "\n",
+		stdout: `${portsResponse}\n`,
 		stderr: "",
 		exitCode: 0,
 	});

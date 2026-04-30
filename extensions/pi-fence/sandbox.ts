@@ -355,6 +355,7 @@ export function createKrokiDockerComposeSandboxController(
 				containerName: "pi-fence-kroki-mermaid",
 				expectedImage: KROKI_MERMAID_IMAGE,
 				expectedLabels: KROKI_SANDBOX_LABELS,
+				security: { noPublishedPorts: true },
 			},
 		],
 	});

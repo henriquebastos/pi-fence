@@ -39,7 +39,12 @@ function setRunning(
 		exitCode: 0,
 	});
 	setLabels(shell, containerName, labels);
-	setPortBinding(shell, containerName);
+	if (image === MERMAID_IMAGE) {
+		// Mermaid sidecar exposes 8002 internally but publishes no host ports.
+		setPortsRaw(shell, containerName, "null");
+	} else {
+		setPortBinding(shell, containerName);
+	}
 }
 
 function setStopped(
@@ -777,18 +782,53 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		});
 	});
 
-	it("does not query port bindings on Compose components without a loopback requirement", async () => {
+	it("does not query port bindings on Compose components without a port security policy", async () => {
 		const shell = new FakeShellRunner();
-		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
-		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+		setRunning(shell, "kroki-core", KROKI_IMAGE);
+		setRunning(shell, "kroki-mermaid", MERMAID_IMAGE);
 
-		const controller = createKrokiDockerComposeSandboxController(shell);
+		const controller = createDockerComposeSandboxController(shell, {
+			id: "kroki",
+			kind: "service",
+			endpoint: "http://127.0.0.1:8000",
+			components: [
+				{
+					id: "core",
+					containerName: "kroki-core",
+					expectedImage: KROKI_IMAGE,
+					expectedLabels: KROKI_LABELS,
+					security: { requiredLoopbackPorts: [8000] },
+				},
+				{
+					id: "mermaid",
+					containerName: "kroki-mermaid",
+					expectedImage: MERMAID_IMAGE,
+					expectedLabels: KROKI_LABELS,
+				},
+			],
+		});
 		await controller.status();
 
 		const portsInspectTargets = shell.calls
 			.filter((call) => call.cmd === "docker" && call.args[0] === "inspect" && call.args[2] === PORTS_FORMAT)
 			.map((call) => call.args[3]);
-		expect(portsInspectTargets).toEqual(["pi-fence-kroki-core"]);
+		expect(portsInspectTargets).toEqual(["kroki-core"]);
+	});
+
+	it("reports error when the Compose mermaid component publishes any host ports", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-mermaid", JSON.stringify({ "8002/tcp": [{ HostIp: "0.0.0.0", HostPort: "8002" }] }));
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[1]).toMatchObject({
+			id: "mermaid",
+			state: "error",
+			message: "Container pi-fence-kroki-mermaid exposes ports; expected no published or exposed ports.",
+		});
 	});
 
 	it("reports error when the Compose core publishes Kroki on all interfaces", async () => {
