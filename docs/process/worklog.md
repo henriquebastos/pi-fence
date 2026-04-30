@@ -6502,7 +6502,7 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 
 **Beans.**
 
-1. Closing now: `task-1b3394ff` — CV11.E3.S1 inspection: record live gate for Kroki factory wiring.
+1. Closed `task-1b3394ff` — CV11.E3.S1 inspection: record live gate for Kroki factory wiring.
 
 **Test count.** Live suite stayed at 30 passed, 28 skipped.
 
@@ -6512,3 +6512,53 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. `pnpm run lint:markdown` — passed for this docs record.
 
 **Carry-forward.** Re-run S1 inspection. If no new findings remain, close CV11.E3.S1.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 closed: resolved runtime policy object
+
+**What shipped.** Closed CV11.E3.S1. pi-fence now resolves raw `PiFenceConfig` into `ResolvedPiFencePolicy` once at extension composition time. Runtime processor resolution, `/fence` list/doctor output, registration policy, sandbox controller selection, Kroki endpoint construction, and agent-end rendering now receive focused policy sub-objects instead of re-deriving optional config fields. The policy includes default and merged behavior coverage, explicit source-retention and render-limit placeholders for later CV11 stories, effective sandbox auto-start summaries, and separate runtime binding and processor-factory policy types.
+
+**Implementation commits (story-driven).**
+
+1. `692e20d` — step 1: resolve runtime policy defaults
+2. `979a785` — step 2: preserve merged runtime policy controls
+3. `e7f0e9d` — step 3: thread resolved policy through runtime
+4. `38af24a` — fix CV11.E3.S1: preserve explicit Kroki auto-start opt-out
+5. `1ffae12` — refactor CV11.E3.S1: narrow processor factory policy
+6. `113d983` — refactor CV11.E3.S1: keep processor policy focused
+7. `90cdb9a` — refactor CV11.E3.S1: narrow policy option seams
+8. `d1fd070` — refactor CV11.E3.S1: separate runtime binding policy
+9. `3ac75b9` — refactor CV11.E3.S1: pass focused list policy
+10. `07806ef` — refactor CV11.E3.S1: drop unused live endpoint import
+
+Adjacent docs catch-up commits were recorded immediately after each feature/refactor commit; `b792909` recorded the required live gate.
+
+**Beans.**
+
+1. Closed implementation beans: `task-131750fe`, `task-49d282cd`, `task-babb407d`.
+2. Closed inspection beans: `bug-79693900`, `task-98803d69`, `task-a698639c`, `task-abb9e8e1`, `task-86acc922`, `task-85b96270`, `task-e756bb1d`, `task-1b3394ff`.
+3. Closing now: `task-07fc5126` (S1 story bean).
+
+**Test count.** Fast non-live suite increased from 937 to 940 tests. Net additions cover default policy resolution, merged policy controls and defensive binding copies, and explicit Kroki sandbox `autoStart:false` overriding inherited legacy auto-start. Live suite stayed at 30 passed, 28 skipped.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts` — passed.
+2. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'blocked|precedence|endpoint|doctor'` — passed.
+3. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+4. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: non-live CRAP completion inspection; Sonar skipped as unconfigured.
+5. `pnpm test:live` — passed: 30 live tests passed, 28 skipped.
+6. `inspect5p` rounds 1–4 — produced Kroki auto-start, policy seam, binding policy, list policy, live-gate, and unused-import beans; final round found no issues.
+
+**Design decisions that survived the story.**
+
+1. **Policy resolution is the runtime boundary.** Config validation/merge remains in `config.ts`; `policy.ts` converts the merged config into operational policy values.
+2. **Focused policy sub-objects cross seams.** Agent-end and command wiring receive `ProcessorResolutionPolicy`; processor factories receive `ProcessorFactoryPolicy`; list messages receive `ListProcessorsOptions`.
+3. **Explicit false remains control.** `sandboxes.kroki.autoStart:false` suppresses inherited legacy `kroki.docker.autoStart:true`; absent auto-start still preserves compatibility.
+4. **Runtime binding selectors are operational.** Raw config `TagBinding` is copied into `ProcessorBindingPolicy` before resolution.
+5. **Endpoint behavior is unchanged.** Kroki uses the effective policy endpoint, while `/fence list` only displays intentionally configured endpoint overrides.
+
+**Known deviations.** The S1 story spec originally said no live tests were required. Inspection identified that Kroki factory/live runtime wiring touched a processor/I/O seam, so the spec's Tests/Verification sections were clarified at close and `pnpm test:live` was run before closing.
+
+**Carry-forward.** CV11.E3.S2 — Explicit fence output and sandbox status variants — is next.

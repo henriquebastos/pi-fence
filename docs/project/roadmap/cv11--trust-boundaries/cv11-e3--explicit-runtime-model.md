@@ -1,7 +1,7 @@
 # CV11.E3 — Explicit Runtime Model
 
 **CV:** [CV11 — Trust Boundaries](README.md)
-**Last updated:** 2026-04-29 — planned
+**Last updated:** 2026-04-30 — S1 done
 
 ## Summary
 
@@ -13,7 +13,7 @@ This epic prepares later trust-boundary work. A resolved policy object makes ren
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv11-e3-s1--resolved-runtime-policy.md) | **Resolved runtime policy object** | Ready |
+| [S1](cv11-e3-s1--resolved-runtime-policy.md) | **Resolved runtime policy object** | Done |
 | [S2](cv11-e3-s2--explicit-fence-output-and-sandbox-status.md) | **Explicit fence output and sandbox status variants** | Ready |
 
 ## Done criterion (epic-level)

@@ -1,6 +1,6 @@
 # CV11.E3.S1 — Resolved runtime policy object
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E3 — Explicit Runtime Model](cv11-e3--explicit-runtime-model.md)
 **Depends on:** [CV11.E2.S1 — Custom-message source retention spike](cv11-e2-s1--custom-message-source-retention-spike.md)
@@ -48,7 +48,7 @@ Resolve raw `PiFenceConfig` into an operational policy object before runtime han
 1. **Layers touched:** unit and extension tests.
 2. **Events / interactions covered:** config-to-runtime policy derivation and existing render/list/doctor behavior under policy.
 3. **Fakes added:** none.
-4. **Live tests:** none required.
+4. **Live tests:** required when this story changes processor factory or I/O-seam wiring; run for the Kroki factory/live-runtime policy wiring.
 5. **Deferred:** stricter optional-property compiler flag until CV11.E7.
 
 ## Verification
@@ -57,14 +57,17 @@ Resolve raw `PiFenceConfig` into an operational policy object before runtime han
 pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts
 pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern "blocked|precedence|endpoint|doctor"
 pnpm run feedback
+pnpm test:live
 ```
 
 ## Key files
 
 - `extensions/pi-fence/config.ts`
+- `extensions/pi-fence/policy.ts`
 - `extensions/pi-fence/index.ts`
 - `extensions/pi-fence/agent-end.ts`
 - `extensions/pi-fence/command.ts`
 - `extensions/pi-fence/messages.ts`
+- `extensions/pi-fence/processor-factory.ts`
 - `tests/unit/config.test.ts`
 - `tests/extension/pi-fence.test.ts`
