@@ -18,6 +18,7 @@ const LABEL_VALUE = "kroki";
 const HOST_BIND_ADDRESS = "127.0.0.1";
 const HOST_PORT = 8000;
 const CONTAINER_PORT = 8000;
+export const KROKI_DOCKER_ENDPOINT = `http://${HOST_BIND_ADDRESS}:${HOST_PORT}`;
 const PORT_BINDINGS_FORMAT = "{{json .NetworkSettings.Ports}}";
 
 export type KrokiDockerStatus = "running" | "stopped" | "absent";
@@ -63,7 +64,7 @@ export function createKrokiDockerManager(
 				message: running
 					? `Container ${CONTAINER_NAME} is running on port ${HOST_PORT}.`
 					: `Container ${CONTAINER_NAME} exists but is stopped.`,
-				...(running ? { endpoint: `http://localhost:${HOST_PORT}` } : {}),
+				...(running ? { endpoint: KROKI_DOCKER_ENDPOINT } : {}),
 			};
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);
@@ -81,7 +82,7 @@ export function createKrokiDockerManager(
 				ok: true,
 				status: "running",
 				message: `Container ${CONTAINER_NAME} is already running.`,
-				endpoint: `http://localhost:${HOST_PORT}`,
+				endpoint: KROKI_DOCKER_ENDPOINT,
 			};
 		}
 
@@ -108,7 +109,7 @@ export function createKrokiDockerManager(
 				ok: true,
 				status: "running",
 				message: `Started ${CONTAINER_NAME} on port ${HOST_PORT}.`,
-				endpoint: `http://localhost:${HOST_PORT}`,
+				endpoint: KROKI_DOCKER_ENDPOINT,
 			};
 		} catch (err) {
 			const message = err instanceof Error ? err.message : String(err);

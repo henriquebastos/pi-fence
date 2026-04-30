@@ -764,7 +764,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			const shell = new FakeShellRunner();
 			programReadyKrokiSandbox(shell);
 			const http = makeKrokiHttp({
-				"http://localhost:8000/graphviz/png?theme=dark": TINY_PNG,
+				"http://127.0.0.1:8000/graphviz/png?theme=dark": TINY_PNG,
 			});
 
 			const home = makeTempDir();
@@ -795,7 +795,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			});
 			expectImageBytes(outputs[0].content, TINY_PNG);
 			expect(http.requests).toHaveLength(1);
-			expect(http.requests[0].url).toBe("http://localhost:8000/graphviz/png?theme=dark");
+			expect(http.requests[0].url).toBe("http://127.0.0.1:8000/graphviz/png?theme=dark");
 			expect(shell.calls.some((call) => call.cmd === "dot")).toBe(false);
 			expect(shell.calls.some((call) => call.args.includes("pi-fence-bundle"))).toBe(false);
 		},
@@ -808,7 +808,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			const shell = new FakeShellRunner();
 			programReadyKrokiComposeSandbox(shell);
 			const http = makeKrokiHttp({
-				"http://localhost:8000/graphviz/png?theme=dark": TINY_PNG,
+				"http://127.0.0.1:8000/graphviz/png?theme=dark": TINY_PNG,
 			});
 
 			const home = makeTempDir();
@@ -838,7 +838,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				kind: "ok",
 			});
 			expectImageBytes(outputs[0].content, TINY_PNG);
-			expect(http.requests[0].url).toBe("http://localhost:8000/graphviz/png?theme=dark");
+			expect(http.requests[0].url).toBe("http://127.0.0.1:8000/graphviz/png?theme=dark");
 			expect(shell.calls.some((call) => call.args.includes("pi-fence-kroki-core"))).toBe(true);
 			expect(shell.calls.some((call) => call.args.includes("pi-fence-kroki-mermaid"))).toBe(true);
 		},
@@ -929,7 +929,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			programReadyBundleSandbox(shell, { dotPng: Buffer.from([0x89, 0x50, 0x00]) });
 			programReadyKrokiSandbox(shell);
 			const http = makeKrokiHttp({
-				"http://localhost:8000/graphviz/png?theme=dark": TINY_PNG,
+				"http://127.0.0.1:8000/graphviz/png?theme=dark": TINY_PNG,
 			});
 			const home = makeTempDir();
 			mkdirSync(join(home, ".pi", "agent"), { recursive: true });
@@ -956,7 +956,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({ processor: "kroki-sandbox", kind: "ok" });
 			expectImageBytes(outputs[0].content, TINY_PNG);
-			expect(http.requests[0].url).toBe("http://localhost:8000/graphviz/png?theme=dark");
+			expect(http.requests[0].url).toBe("http://127.0.0.1:8000/graphviz/png?theme=dark");
 		},
 		20_000,
 	);

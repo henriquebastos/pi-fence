@@ -73,7 +73,7 @@ describe("kroki-docker — status()", () => {
 
 		const result = await mgr.status();
 		expect(result.status).toBe("running");
-		expect(result.endpoint).toBe("http://localhost:8000");
+		expect(result.endpoint).toBe("http://127.0.0.1:8000");
 	});
 
 	it("checks container identity against the configured image", async () => {
@@ -83,7 +83,7 @@ describe("kroki-docker — status()", () => {
 
 		const result = await mgr.status();
 		expect(result.status).toBe("running");
-		expect(result.endpoint).toBe("http://localhost:8000");
+		expect(result.endpoint).toBe("http://127.0.0.1:8000");
 	});
 
 	it("reports error when the running container image is not the managed Kroki image", async () => {
@@ -181,7 +181,7 @@ describe("kroki-docker — start()", () => {
 		expect(result.ok).toBe(true);
 		expect(result.status).toBe("running");
 		expect(result.message).toContain("already running");
-		expect(result.endpoint).toBe("http://localhost:8000");
+		expect(result.endpoint).toBe("http://127.0.0.1:8000");
 	});
 
 	it("does not start over a running wrong-image container", async () => {
@@ -220,7 +220,7 @@ describe("kroki-docker — start()", () => {
 		const result = await mgr.start();
 		expect(result.ok).toBe(true);
 		expect(result.status).toBe("running");
-		expect(result.endpoint).toBe("http://localhost:8000");
+		expect(result.endpoint).toBe("http://127.0.0.1:8000");
 	});
 });
 

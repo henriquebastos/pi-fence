@@ -644,7 +644,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 		expect(controller.runtime).toBe("docker-container");
 		expect(await controller.status()).toEqual({
 			state: "ready",
-			endpoint: "http://localhost:8000",
+			endpoint: "http://127.0.0.1:8000",
 			message: "Container pi-fence-kroki is running on port 8000.",
 		});
 	});
@@ -667,7 +667,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 
 		expect(await controller.start()).toEqual({
 			state: "ready",
-			endpoint: "http://localhost:8000",
+			endpoint: "http://127.0.0.1:8000",
 			message: "Started pi-fence-kroki on port 8000.",
 		});
 	});
@@ -710,7 +710,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		expect(isAbsolute(composeFile)).toBe(true);
 		expect(await controller.start()).toEqual({
 			state: "ready",
-			endpoint: "http://localhost:8000",
+			endpoint: "http://127.0.0.1:8000",
 			message: "Sandbox kroki is ready.",
 			components: [
 				{ id: "core", state: "ready", message: "Container pi-fence-kroki-core is running." },
@@ -732,7 +732,7 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		expect(controller.runtime).toBe("docker-compose");
 		expect(await controller.status()).toEqual({
 			state: "ready",
-			endpoint: "http://localhost:8000",
+			endpoint: "http://127.0.0.1:8000",
 			message: "Sandbox kroki is ready.",
 			components: [
 				{ id: "core", state: "ready", message: "Container pi-fence-kroki-core is running." },
