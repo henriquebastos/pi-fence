@@ -5399,3 +5399,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Reject raw backslashes.** Endpoint config stays URL-shaped, not browser-tolerant path syntax.
 
 **Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 inspection fix: repaired authority and path forms
+
+**What shipped.** Hardened `kroki.endpoint` validation against the third inspection round's remaining WHATWG repair cases. Endpoint strings now require an explicit non-empty authority after `http://` or `https://`, reject raw spaces anywhere in the value, and reject extra-slash authority forms such as `https:///example.com/kroki`, `https:////example.com/kroki`, and `http:///kroki` before URL parsing.
+
+**Implementation commit.**
+
+1. `a26a896` — fix CV11.E1.S2: reject repaired endpoint syntax
+
+**Beans.**
+
+1. Closed `bug-074ffb84` — CV11.E1.S2 inspection: reject repaired authority and path forms.
+
+**Test count.** Fast suite increased from 902 to 906 with four endpoint hardening cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern kroki.endpoint` — passed after RED failures for extra-slash authority and raw-space path endpoints.
+2. `pnpm vitest run tests/unit/config.test.ts` — passed: 112 tests.
+3. `pnpm run feedback` — passed: 906 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Raw authority check before parsing.** `new URL()` only runs after pi-fence verifies a non-empty authority segment exists in the original string.
+2. **No implicit encoding of endpoint config.** Raw spaces are invalid; users must provide an already URL-encoded endpoint path if they truly need one.
+
+**Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
