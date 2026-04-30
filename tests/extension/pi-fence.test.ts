@@ -2381,6 +2381,54 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
+		"rejects invalid third-party registration without mutating the registry",
+		async () => {
+			const registrationErrors: unknown[] = [];
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.on("pi-fence:register-error", (data) => {
+					registrationErrors.push(data);
+				});
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: { "bad/alias": "upper" },
+					available: async () => ({ ok: true }),
+					render: async () => ({ ok: true, text: "" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const { session, sentCustomMessages, logger } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+			try {
+				await session.prompt("/fence list");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
+
+			expect(registrationErrors).toHaveLength(1);
+			expect(registrationErrors[0]).toMatchObject({
+				error: expect.stringContaining("processor.aliases"),
+			});
+			const details = sentCustomMessages.find((m) => m.customType === "pi-fence:list")
+				?.details as { listings: Array<{ id: string }> };
+			expect(details.listings.map((listing) => listing.id)).not.toContain("custom-upper");
+			expect(
+				logger.bySubsystem("pi-fence").some(
+					(entry) => entry.level === "warn" && entry.message === "register rejected",
+				),
+			).toBe(true);
+		},
+		20_000,
+	);
+
+	it(
 		"does not probe a third-party processor whose tag family is blocked",
 		async () => {
 			const home = makeTempDir();

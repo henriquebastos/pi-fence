@@ -10,36 +10,54 @@ A processor is a plain object with six fields:
 
 ```typescript
 interface FenceProcessor {
-  /** Stable id for logs, settings, and registry lookups. */
+  /** Stable safe id for logs, settings, and registry lookups. */
   readonly id: string;
 
   /** Trust/control boundary used by policy-driven resolution. */
   readonly placement: "embedded" | "host" | "sandbox" | "remote";
 
-  /** Tags this processor handles (e.g. ["csv", "jsonl"]). Non-empty. */
+  /** Safe tags this processor handles (e.g. ["csv", "jsonl"]). Non-empty. */
   readonly tags: readonly string[];
 
-  /** Alias → canonical tag map. Empty object if no aliases. */
+  /** Safe alias → canonical tag map. Empty object if no aliases. */
   readonly aliases: Readonly<Record<string, string>>;
 
   /** One-shot capability probe. Never throw — return { ok: false, reason }. */
   available(): Promise<{ ok: true } | { ok: false; reason: string; installHint?: string }>;
 
   /** Render the source. Return data on both success and failure paths. */
-  render(tag: string, source: string, signal?: AbortSignal): Promise<FenceResult>;
+  render(tag: string, source: string, signal?: AbortSignal): Promise<FenceOutput>;
 }
 ```
 
-## The FenceResult type
+## Registration validation
 
-A render can return image or text output:
+pi-fence treats third-party processor objects as semi-trusted. Invalid registration data is rejected before it enters registry, resolver, list, or render state. Rejections emit `pi-fence:register-error` and leave the registry unchanged.
+
+Processor ids, tags, and alias keys use the same safe string grammar:
+
+1. Lowercase ASCII letters, digits, and hyphens only.
+2. Start and end with a letter or digit.
+3. Maximum length: 64 characters.
+4. No whitespace, control characters, `/`, `\\`, `.`, `..`, or path-like names.
+5. `__proto__`, `constructor`, and `prototype` are reserved.
+
+Aliases must be an own plain object or null-prototype object. Every alias key must be safe, every alias value must be a safe string, and every alias value must exist in the processor's canonical `tags` array. Do not use inherited alias keys.
+
+Processors must not declare precedence metadata such as `order`, `priority`, or `processorPrecedence`; user policy owns resolution order.
+
+## The FenceOutput type
+
+A render can return image, text, or error output:
 
 ```typescript
-type FenceResult =
-  | { ok: true; png: Buffer }     // image output (PNG bytes)
-  | { ok: true; text: string }    // text output (plain or ANSI)
-  | { ok: false; error: string }; // error
+type FenceOutput =
+  | { kind: "image"; data: Buffer; mimeType: "image/png" }
+  | { kind: "text"; text: string }
+  | { kind: "error"; error: string };
 ```
+
+The older `{ ok: true, text }`, `{ ok: true, png }`, and `{ ok: false, error }` result shapes are still normalized for compatibility, but new processors should return `FenceOutput`.
 
 ## Minimal example — an `uppercase` processor
 
@@ -63,13 +81,13 @@ export default function activate(pi: ExtensionAPI): void {
 
     async render(_tag, source, signal) {
       if (signal?.aborted) {
-        return { ok: false, error: "Aborted" };
+        return { kind: "error", error: "Aborted" };
       }
       const trimmed = source.trim();
       if (trimmed.length === 0) {
-        return { ok: false, error: "empty input" };
+        return { kind: "error", error: "empty input" };
       }
-      return { ok: true, text: trimmed.toUpperCase() };
+      return { kind: "text", text: trimmed.toUpperCase() };
     },
   });
 }
@@ -152,9 +170,9 @@ If two processors in different placements claim the same tag, `processorPreceden
 
 ## What happens on errors
 
-If `render()` returns `{ ok: false, error }`:
+If `render()` returns `{ kind: "error", error }`:
 
 1. pi-fence shows an error panel to the user.
 2. The error is sent as a follow-up message to the LLM so it can self-correct.
 
-Never throw from `render()` or `available()` — return the error variant instead.
+Never throw from `render()` or `available()` — return the error/unavailable variant instead.
