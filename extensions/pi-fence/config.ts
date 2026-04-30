@@ -530,14 +530,18 @@ type KrokiEndpointValidation =
 	| { ok: false; reason: string };
 
 function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
-	if (value.trim() !== value || /[\u0000-\u001F\u007F]/.test(value)) {
-		return { ok: false, reason: "surrounding whitespace or control characters are not allowed" };
+	if (value.trim() !== value || /[\u0000-\u001F\u007F]/.test(value) || /\s/.test(value)) {
+		return { ok: false, reason: "whitespace or control characters are not allowed" };
 	}
 	if (value.includes("\\")) {
 		return { ok: false, reason: "backslashes are not allowed" };
 	}
 	if (!/^https?:\/\//i.test(value)) {
 		return { ok: false, reason: "endpoint must start with http:// or https://" };
+	}
+	const authority = endpointAuthority(value);
+	if (authority === undefined) {
+		return { ok: false, reason: "URL authority is required" };
 	}
 	if (value.includes("?")) {
 		return { ok: false, reason: "query strings are not allowed" };
@@ -555,19 +559,19 @@ function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
 	if (url.protocol !== "http:" && url.protocol !== "https:") {
 		return { ok: false, reason: "unsupported URL scheme" };
 	}
-	if (url.username !== "" || url.password !== "" || hasCredentialDelimiter(value)) {
+	if (url.username !== "" || url.password !== "" || authority.includes("@")) {
 		return { ok: false, reason: "credentials are not allowed" };
 	}
 	const path = url.pathname.replace(/\/+$/, "");
 	return { ok: true, value: `${url.origin}${path}` };
 }
 
-function hasCredentialDelimiter(value: string): boolean {
+function endpointAuthority(value: string): string | undefined {
 	const authorityStart = value.indexOf("://") + 3;
-	if (authorityStart < 3) return false;
+	if (authorityStart < 3) return undefined;
 	const pathStart = value.indexOf("/", authorityStart);
 	const authority = pathStart === -1 ? value.slice(authorityStart) : value.slice(authorityStart, pathStart);
-	return authority.includes("@");
+	return authority === "" ? undefined : authority;
 }
 
 function validateKrokiDocker(

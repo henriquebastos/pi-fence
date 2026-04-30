@@ -732,6 +732,10 @@ describe("config core", () => {
 		"https:@example.com/kroki",
 		"https:example.com/kroki",
 		String.raw`https:\example.com\kroki`,
+		"https:///example.com/kroki",
+		"https:////example.com/kroki",
+		"http:///kroki",
+		"https://example.com/kroki path",
 	])("validates kroki.endpoint: rejects unsafe endpoint %s", (endpoint) => {
 		const logger = new FakeLogger();
 		const result = validatePiFenceConfig(
