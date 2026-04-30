@@ -6354,3 +6354,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Composition root keeps the full view.** `index.ts` still owns the full resolved policy and hands narrower slices to each downstream seam.
 
 **Carry-forward.** Remove duplicate processor-resolution policy paths, then narrow listing/registration option passing.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection refactor: processor resolution has one policy path
+
+**What shipped.** Removed duplicate top-level processor-resolution fields from `ResolvedPiFencePolicy`. Callers now reach bindings, blocked sets, and precedence through the focused `processorResolution` object only, avoiding the previous `policy.bindings` versus `policy.processorResolution.bindings` split.
+
+**Implementation commit.**
+
+1. `113d983` — refactor CV11.E3.S1: keep processor policy focused
+
+**Beans.**
+
+1. Closed `task-a698639c` — CV11.E3.S1 inspection: remove duplicate processor policy paths.
+
+**Test count.** Fast non-live suite unchanged at 940 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'blocked|precedence|endpoint|doctor'` — passed before and after the refactor.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the refactor.**
+
+1. **Focused sub-object is authoritative.** `processorResolution` is the only public processor-resolution policy surface.
+2. **Full policy remains a coordinator.** `ResolvedPiFencePolicy` now groups focused policy sub-objects instead of also duplicating their fields.
+
+**Carry-forward.** Narrow listing and registration option passing, then re-run inspection.
