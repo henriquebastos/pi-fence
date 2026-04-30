@@ -114,6 +114,22 @@ describe("extractFencedBlocks", () => {
 		]);
 	});
 
+	it("rejects truncated opener prefixes with visible backticks in info strings", () => {
+		const blocks = extractFencedBlocks(
+			["```ignored ` " + "x".repeat(300_000), "```mermaid", "flowchart LR", "```"].join("\n"),
+			["mermaid"],
+			{ maxSourceBytes: 262_144 },
+		);
+
+		expect(blocks).toEqual([
+			{
+				tag: "mermaid",
+				source: "flowchart LR",
+				sourceBytes: 12,
+			},
+		]);
+	});
+
 	it("does not render overlong supported openers with hidden backticks", () => {
 		const blocks = extractFencedBlocks(
 			["```mermaid " + "x".repeat(300_000) + "`", "flowchart LR", "```"].join("\n"),

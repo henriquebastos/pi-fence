@@ -201,6 +201,7 @@ function parseTruncatedOpener(line: string): Opener | null {
 	if (!match) return null;
 	const fence = match[2];
 	const rest = match[3];
+	if (fence[0] === "`" && rest.includes("`")) return null;
 	return {
 		char: fence[0] as "`" | "~",
 		length: rest.length === 0 ? Number.MAX_SAFE_INTEGER : fence.length,
