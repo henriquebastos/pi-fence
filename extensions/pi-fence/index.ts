@@ -188,7 +188,8 @@ export async function createPiFenceExtension(
 		processorPolicy,
 		supportedTags: () => collectSupportedTags(processors),
 		themeState,
-		maxBlocksPerTurn: policy.renderLimits.maxBlocksPerTurn,
+		sourceRetention: policy.sourceRetention,
+		renderLimits: policy.renderLimits,
 		metrics,
 	});
 }

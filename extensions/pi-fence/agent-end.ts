@@ -6,8 +6,8 @@ import type { Logger } from "./io/logger.ts";
 import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
-import type { ProcessorResolutionPolicy } from "./policy.ts";
-import type { Availability, FenceProcessor } from "./processor.ts";
+import type { ProcessorResolutionPolicy, RenderLimitsPolicy, SourceRetentionPolicy } from "./policy.ts";
+import { errorOutput, type Availability, type FenceProcessor } from "./processor.ts";
 import { resolveBindings, resolveProcessor, type BindingResolution } from "./resolve.ts";
 
 export interface ThemeState {
@@ -22,7 +22,8 @@ interface RegisterAgentEndHandlerOptions {
 	processorPolicy: ProcessorResolutionPolicy;
 	supportedTags: string[] | (() => string[]);
 	themeState: ThemeState;
-	maxBlocksPerTurn: number;
+	sourceRetention: SourceRetentionPolicy;
+	renderLimits: RenderLimitsPolicy;
 	metrics?: MetricsCollector;
 }
 
@@ -34,7 +35,8 @@ export function registerPiFenceAgentEndHandler({
 	processorPolicy,
 	supportedTags,
 	themeState,
-	maxBlocksPerTurn,
+	sourceRetention,
+	renderLimits,
 	metrics,
 }: RegisterAgentEndHandlerOptions): void {
 	pi.on("agent_end", async (event, ctx) => {
@@ -51,6 +53,7 @@ export function registerPiFenceAgentEndHandler({
 		});
 		if (blocks.length === 0) return;
 
+		const maxBlocksPerTurn = renderLimits.maxBlocksPerTurn;
 		const toRender = blocks.slice(0, maxBlocksPerTurn);
 		if (blocks.length > maxBlocksPerTurn) {
 			logger.warn(
@@ -66,6 +69,8 @@ export function registerPiFenceAgentEndHandler({
 				processors,
 				availability,
 				processorPolicy,
+				sourceRetention,
+				renderLimits,
 				metrics,
 			});
 		}
@@ -78,10 +83,18 @@ interface RenderBlockOptions {
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
 	processorPolicy: ProcessorResolutionPolicy;
+	sourceRetention: SourceRetentionPolicy;
+	renderLimits: RenderLimitsPolicy;
 	metrics?: MetricsCollector;
 }
 
 async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Promise<void> {
+	const sourceBytes = Buffer.byteLength(block.source, "utf8");
+	if (sourceBytes > options.renderLimits.fenceSourceMaxBytes) {
+		sendLimitError(block, limitError("Fence source", sourceBytes, options.renderLimits.fenceSourceMaxBytes), options);
+		return;
+	}
+
 	const { processor, steps, ambiguity } = resolveProcessor(
 		options.processors,
 		options.availability,
@@ -107,14 +120,34 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 	options.logger.debug("pi-fence", "rendering block", {
 		tag: block.tag,
 		processor: processor.id,
-		sourceBytes: block.source.length,
+		sourceBytes,
 	});
 	const result = await processor.render(block.tag, block.source);
 	logRenderResult(block, processor, result, options.logger);
-	options.pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
+	options.pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result, options.sourceRetention));
 	const succeeded = result.kind !== "error";
 	options.metrics?.recordRender(processor.id, block.tag, succeeded);
 	if (!succeeded) sendErrorFollowup(block, processor.id, result.error, options);
+}
+
+function sendLimitError(block: FencedBlock, message: string, options: RenderBlockOptions): void {
+	options.logger.warn("pi-fence", "block render rejected by limit", {
+		tag: block.tag,
+		error: message,
+	});
+	options.pi.sendMessage(buildPiFenceOutputMessage(
+		block.tag,
+		block.source,
+		"pi-fence",
+		errorOutput(message),
+		options.sourceRetention,
+	));
+	options.metrics?.recordRender("pi-fence", block.tag, false);
+	sendErrorFollowup(block, "pi-fence", message, options);
+}
+
+function limitError(label: string, actualBytes: number, maxBytes: number): string {
+	return `${label} is too large: ${actualBytes} bytes exceeds limit of ${maxBytes} bytes`;
 }
 
 function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions): boolean {

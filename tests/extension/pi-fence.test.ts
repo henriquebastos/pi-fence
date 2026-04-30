@@ -2325,6 +2325,59 @@ describe("pi-fence extension — error follow-up to LLM (CV1.E2.S2)", () => {
 	);
 });
 
+describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
+	afterEach(() => {
+		cleanupTempDirs();
+	});
+
+	it(
+		"rejects oversized fence source before invoking a processor",
+		async () => {
+			let renderCalls = 0;
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "limit-probe",
+					placement: "embedded",
+					tags: ["limitprobe"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => {
+						renderCalls += 1;
+						return { kind: "text", text: "should not render" };
+					},
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+			const oversizedSource = "x".repeat(262_145);
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				`\`\`\`limitprobe\n${oversizedSource}\n\`\`\``,
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+
+			expect(renderCalls).toBe(0);
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "limitprobe",
+				processor: "pi-fence",
+				kind: "error",
+				outputKind: "error",
+			});
+			expect(outputs[0].content).toEqual([
+				{
+					type: "text",
+					text: "Fence source is too large: 262145 bytes exceeds limit of 262144 bytes",
+				},
+			]);
+		},
+		20_000,
+	);
+});
+
 describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)", () => {
 	afterEach(() => {
 		cleanupTempDirs();
