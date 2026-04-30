@@ -1,4 +1,5 @@
 import { posix as pathPosix } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { VMOptions } from "@earendil-works/gondolin";
 
@@ -327,6 +328,10 @@ const KROKI_MERMAID_IMAGE = "yuzutech/mermaid";
 export const KROKI_COMPOSE_FILE = "docker/kroki/compose.yaml";
 export const KROKI_COMPOSE_PROJECT_NAME = "pi-fence-kroki";
 
+function resolvePackageAssetPath(relativePath: string): string {
+	return fileURLToPath(new URL(`../../${relativePath}`, import.meta.url));
+}
+
 export function createKrokiDockerComposeSandboxController(
 	shell: ShellRunner,
 ): SandboxController {
@@ -334,7 +339,7 @@ export function createKrokiDockerComposeSandboxController(
 		id: "kroki",
 		kind: "service",
 		endpoint: "http://localhost:8000",
-		composeFile: KROKI_COMPOSE_FILE,
+		composeFile: resolvePackageAssetPath(KROKI_COMPOSE_FILE),
 		projectName: KROKI_COMPOSE_PROJECT_NAME,
 		components: [
 			{

@@ -1,3 +1,6 @@
+import { isAbsolute } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vitest";
 
 import { createKrokiDockerManager } from "../../extensions/pi-fence/kroki-docker.ts";
@@ -200,6 +203,10 @@ function composeComponents() {
 		{ id: "core", containerName: "kroki-core", expectedImage: KROKI_IMAGE, expectedLabels: KROKI_LABELS },
 		{ id: "mermaid", containerName: "kroki-mermaid", expectedImage: MERMAID_IMAGE, expectedLabels: KROKI_LABELS },
 	];
+}
+
+function expectedKrokiComposeFilePath(): string {
+	return fileURLToPath(new URL("../../docker/kroki/compose.yaml", import.meta.url));
 }
 
 describe("sandbox controller contract — Gondolin bundle VM status", () => {
@@ -678,6 +685,31 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 });
 
 describe("sandbox controller contract — Docker Compose status", () => {
+	it("starts the fixed Kroki Compose service with a package-resolved compose file", async () => {
+		const shell = new FakeShellRunner();
+		const composeFile = expectedKrokiComposeFilePath();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+		shell.setResponse(
+			"docker",
+			["compose", "-f", composeFile, "-p", "pi-fence-kroki", "up", "-d"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		const controller = createKrokiDockerComposeSandboxController(shell);
+
+		expect(isAbsolute(composeFile)).toBe(true);
+		expect(await controller.start()).toEqual({
+			state: "ready",
+			endpoint: "http://localhost:8000",
+			message: "Sandbox kroki is ready.",
+			components: [
+				{ id: "core", state: "ready", message: "Container pi-fence-kroki-core is running." },
+				{ id: "mermaid", state: "ready", message: "Container pi-fence-kroki-mermaid is running." },
+			],
+		});
+		expect(shell.calls.some((call) => call.args.join(" ") === `compose -f ${composeFile} -p pi-fence-kroki up -d`)).toBe(true);
+	});
+
 	it("builds the fixed Kroki Compose service controller", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);

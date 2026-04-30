@@ -38,7 +38,7 @@ import { KROKI_ALIASES, KROKI_CANONICAL_TAGS } from "../../extensions/pi-fence/k
 import { formatProcessorLines } from "../../extensions/pi-fence/list.ts";
 
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
-import type { GondolinVMFactory, GondolinVMHandle } from "../../extensions/pi-fence/sandbox.ts";
+import { KROKI_COMPOSE_FILE, type GondolinVMFactory, type GondolinVMHandle } from "../../extensions/pi-fence/sandbox.ts";
 import { forceCapabilities } from "../utilities/force-capabilities.ts";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
@@ -47,6 +47,7 @@ import { FakeShellRunner } from "../utilities/shell-runner.ts";
 // Node std imports for the bindings fixtures (temp-dir config files).
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { paintComponent } from "../utilities/render.ts";
 import { cleanupTempDirs, makeTempDir } from "../utilities/temp-dir.ts";
 import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
@@ -54,6 +55,10 @@ import { LoggingVirtualTerminal } from "../utilities/virtual-terminal.ts";
 const TINY_PNG = Buffer.from([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad, 0xbe, 0xef,
 ]);
+
+function expectedKrokiComposeFilePath(): string {
+	return fileURLToPath(new URL(`../../${KROKI_COMPOSE_FILE}`, import.meta.url));
+}
 
 class FakeGondolinVM implements GondolinVMHandle {
 	readonly fs = {
@@ -1739,9 +1744,10 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				}),
 			);
 			const shell = new FakeShellRunner();
+			const composeFile = expectedKrokiComposeFilePath();
 			shell.setResponse(
 				"docker",
-				["compose", "-f", "docker/kroki/compose.yaml", "-p", "pi-fence-kroki", "up", "-d"],
+				["compose", "-f", composeFile, "-p", "pi-fence-kroki", "up", "-d"],
 				{ stdout: "", stderr: "", exitCode: 0 },
 			);
 
@@ -1753,7 +1759,7 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 			);
 
 			expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
-			expect(shell.calls.some((call) => call.args.join(" ") === "compose -f docker/kroki/compose.yaml -p pi-fence-kroki up -d")).toBe(true);
+			expect(shell.calls.some((call) => call.args.join(" ") === `compose -f ${composeFile} -p pi-fence-kroki up -d`)).toBe(true);
 		},
 		20_000,
 	);
