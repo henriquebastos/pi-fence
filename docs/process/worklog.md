@@ -6438,3 +6438,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Selector semantics intentionally match.** The operational selector still has processor and placement variants, preserving existing resolution behavior.
 
 **Carry-forward.** Re-run S1 inspection. If no new findings remain, close CV11.E3.S1.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection refactor: list messages receive focused list options
+
+**What shipped.** `sendPiFenceListMessage()` now receives one focused `listOptions` object instead of parallel blocked/endpoints/precedence fields. `/fence list` and `/fence doctor` share the same list-policy shape, reducing drift across command and message helper seams.
+
+**Implementation commit.**
+
+1. `3ac75b9` — refactor CV11.E3.S1: pass focused list policy
+
+**Beans.**
+
+1. Closed `task-85b96270` — CV11.E3.S1 inspection: pass focused list policy into messages.
+
+**Test count.** Fast non-live suite unchanged at 940 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/messages.test.ts tests/unit/list.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'list|blocked|precedence'` — passed before and after the refactor.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the refactor.**
+
+1. **List policy has one shape.** The command builds `ListProcessorsOptions` once and passes it through the list message helper.
+2. **Details payload stays unchanged.** `/fence list` still records listings, binding rows, blocked tags, and formatted lines for renderers/tests.
+
+**Carry-forward.** Remove the unused live-test Kroki endpoint import, run the live gate, then re-run S1 inspection.
