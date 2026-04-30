@@ -7,7 +7,7 @@ import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import type { ProcessorResolutionPolicy, RenderLimitsPolicy, SourceRetentionPolicy } from "./policy.ts";
-import { errorOutput, type Availability, type FenceProcessor } from "./processor.ts";
+import { errorOutput, type Availability, type FenceOutput, type FenceProcessor } from "./processor.ts";
 import { resolveBindings, resolveProcessor, type BindingResolution } from "./resolve.ts";
 
 export interface ThemeState {
@@ -122,12 +122,21 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 		processor: processor.id,
 		sourceBytes,
 	});
-	const result = await processor.render(block.tag, block.source);
+	const rendered = await processor.render(block.tag, block.source);
+	const result = enforceOutputLimit(rendered, options.renderLimits.processorOutputMaxBytes);
 	logRenderResult(block, processor, result, options.logger);
 	options.pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result, options.sourceRetention));
 	const succeeded = result.kind !== "error";
 	options.metrics?.recordRender(processor.id, block.tag, succeeded);
 	if (!succeeded) sendErrorFollowup(block, processor.id, result.error, options);
+}
+
+function enforceOutputLimit(output: FenceOutput, maxBytes: number): FenceOutput {
+	if (output.kind === "error") return output;
+	const bytes = output.kind === "image" ? output.data.length : Buffer.byteLength(output.text, "utf8");
+	return bytes > maxBytes
+		? errorOutput(limitError("Processor output", bytes, maxBytes))
+		: output;
 }
 
 function sendLimitError(block: FencedBlock, message: string, options: RenderBlockOptions): void {

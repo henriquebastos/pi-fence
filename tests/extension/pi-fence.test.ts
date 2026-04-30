@@ -2331,6 +2331,88 @@ describe("pi-fence extension — render resource limits (CV11.E5.S1)", () => {
 	});
 
 	it(
+		"rejects oversized text output before building message content",
+		async () => {
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "huge-text",
+					placement: "embedded",
+					tags: ["hugetext"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => ({ kind: "text", text: "x".repeat(10_485_761) }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				"```hugetext\nsmall\n```",
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "hugetext",
+				processor: "huge-text",
+				kind: "error",
+				outputKind: "error",
+			});
+			expect(outputs[0].content).toEqual([
+				{
+					type: "text",
+					text: "Processor output is too large: 10485761 bytes exceeds limit of 10485760 bytes",
+				},
+			]);
+		},
+		20_000,
+	);
+
+	it(
+		"rejects oversized image output before base64 encoding",
+		async () => {
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "huge-image",
+					placement: "embedded",
+					tags: ["hugeimage"],
+					aliases: {},
+					available: async () => ({ ok: true }),
+					render: async () => ({ kind: "image", data: Buffer.alloc(10_485_761), mimeType: "image/png" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const captured = await runExtensionWithAssistantText(
+				new FakeHttpClient(),
+				"```hugeimage\nsmall\n```",
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+
+			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			expect(outputs).toHaveLength(1);
+			expect(outputs[0].details).toMatchObject({
+				tag: "hugeimage",
+				processor: "huge-image",
+				kind: "error",
+				outputKind: "error",
+			});
+			expect(outputs[0].content).toEqual([
+				{
+					type: "text",
+					text: "Processor output is too large: 10485761 bytes exceeds limit of 10485760 bytes",
+				},
+			]);
+		},
+		20_000,
+	);
+
+	it(
 		"rejects oversized fence source before invoking a processor",
 		async () => {
 			let renderCalls = 0;
