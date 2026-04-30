@@ -264,6 +264,35 @@ describe("createPiFenceMessageRenderer — rendered into a VirtualTerminal", () 
 		expect(terminal.getWrites()).not.toContain("\x1b_G");
 	});
 
+	it("paints the retained source preview when expanded", async () => {
+		const renderer = createPiFenceMessageRenderer(TUI_PRIMITIVES);
+		const component = renderer(
+			{
+				content: [{ type: "image", data: TINY_PNG_BASE64, mimeType: "image/png" }],
+				details: {
+					tag: "mermaid",
+					processor: "kroki-remote",
+					kind: "ok",
+					sourcePreview: {
+						text: "flowchart LR\nA --> B",
+						truncated: true,
+						omittedLines: 12,
+						omittedBytes: 200,
+					},
+				},
+			},
+			{ expanded: true },
+			IDENTITY_THEME,
+		);
+
+		const terminal = await paintComponent(component);
+		const viewport = terminal.getViewport();
+		expect(viewport.some((line) => line.includes("```mermaid"))).toBe(true);
+		expect(viewport.some((line) => line.includes("flowchart LR"))).toBe(true);
+		expect(viewport.some((line) => line.includes("A --> B"))).toBe(true);
+		expect(viewport.some((line) => line.includes("preview truncated"))).toBe(true);
+	});
+
 	it("paints the source fenced block when expanded", async () => {
 		const renderer = createPiFenceMessageRenderer(TUI_PRIMITIVES);
 		const component = renderer(

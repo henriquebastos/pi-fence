@@ -3,6 +3,8 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { formatProcessorLines, listProcessors, type ListProcessorsOptions, type ProcessorListing } from "./list.ts";
+import { DEFAULT_SOURCE_PREVIEW_MAX_BYTES, DEFAULT_SOURCE_PREVIEW_MAX_LINES } from "./policy.ts";
+import { normalizeFenceOutput, type FenceOutput } from "./processor.ts";
 import type {
 	Availability,
 	FenceProcessor,
@@ -11,6 +13,7 @@ import type {
 import {
 	type PiFenceListDetails,
 	type PiFenceOutputDetails,
+	type SourcePreviewDetails,
 } from "./renderer.ts";
 import type { BindingResolution } from "./resolve.ts";
 
@@ -85,49 +88,69 @@ export function sendPiFenceDoctorMessage(
 	});
 }
 
+export interface SourcePreviewPolicy {
+	maxBytes: number;
+	maxLines: number;
+}
+
 export function buildPiFenceOutputMessage(
 	tag: string,
 	source: string,
 	processorId: string,
-	result: FenceResult,
+	result: FenceResult | FenceOutput,
+	previewPolicy: SourcePreviewPolicy = {
+		maxBytes: DEFAULT_SOURCE_PREVIEW_MAX_BYTES,
+		maxLines: DEFAULT_SOURCE_PREVIEW_MAX_LINES,
+	},
 ): Parameters<ExtensionAPI["sendMessage"]>[0] {
+	const output = normalizeFenceOutput(result);
 	const details: PiFenceOutputDetails = {
 		tag,
 		processor: processorId,
-		kind: result.ok ? "ok" : "error",
-		source,
+		kind: output.kind === "error" ? "error" : "ok",
+		outputKind: output.kind,
+		sourcePreview: buildSourcePreview(source, previewPolicy),
 	};
-
-	if (result.ok) {
-		const content: MessageContent[] =
-			"png" in result
-				? [
-						{
-							type: "image",
-							data: result.png.toString("base64"),
-							mimeType: "image/png",
-						},
-					]
-				: [{ type: "text", text: result.text }];
-
-		return {
-			customType: PI_FENCE_OUTPUT_MESSAGE_TYPE,
-			content,
-			details,
-			display: true,
-		};
-	}
-
-	const content: TextContent[] = [
-		{
-			type: "text",
-			text: result.error,
-		},
-	];
 	return {
 		customType: PI_FENCE_OUTPUT_MESSAGE_TYPE,
-		content,
+		content: outputContent(output),
 		details,
 		display: true,
 	};
+}
+
+function outputContent(output: FenceOutput): MessageContent[] {
+	if (output.kind === "image") {
+		return [{ type: "image", data: output.data.toString("base64"), mimeType: output.mimeType }];
+	}
+	if (output.kind === "text") return [{ type: "text", text: output.text }];
+	return [{ type: "text", text: output.error }];
+}
+
+function buildSourcePreview(source: string, policy: SourcePreviewPolicy): SourcePreviewDetails {
+	const sourceLines = source.split(/\r?\n/);
+	const retainedLines = sourceLines.slice(0, policy.maxLines);
+	const lineClipped = retainedLines.length < sourceLines.length;
+	const linePreview = retainedLines.join("\n");
+	const text = clipUtf8ToBytes(linePreview, policy.maxBytes);
+	const originalBytes = Buffer.byteLength(source, "utf8");
+	const retainedBytes = Buffer.byteLength(text, "utf8");
+	return {
+		text,
+		truncated: lineClipped || retainedBytes < Buffer.byteLength(linePreview, "utf8"),
+		omittedBytes: Math.max(0, originalBytes - retainedBytes),
+		omittedLines: Math.max(0, sourceLines.length - retainedLines.length),
+	};
+}
+
+function clipUtf8ToBytes(text: string, maxBytes: number): string {
+	let out = "";
+	let bytes = 0;
+	for (const char of text) {
+		const charBytes = Buffer.byteLength(char, "utf8");
+		if (bytes + charBytes > maxBytes) break;
+		out += char;
+		bytes += charBytes;
+	}
+	return out;
 }

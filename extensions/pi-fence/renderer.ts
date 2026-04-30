@@ -84,11 +84,21 @@ export function clipSourceLines(lines: string[], lineBudget: number): ClipResult
  * Metadata the renderer needs from the custom message's `details` payload.
  * pi-fence populates this when it calls `pi.sendMessage`.
  */
+export interface SourcePreviewDetails {
+	text: string;
+	truncated: boolean;
+	omittedBytes?: number;
+	omittedLines?: number;
+}
+
 export interface PiFenceOutputDetails {
 	tag: string;
 	processor: string;
 	kind: "ok" | "error";
-	source: string;
+	outputKind?: "image" | "text" | "error";
+	sourcePreview?: SourcePreviewDetails;
+	/** Legacy sessions before CV11.E3.S2 stored the full source here. */
+	source?: string;
 }
 
 /**
@@ -143,7 +153,8 @@ export function createPiFenceMessageRenderer(tui: TuiPrimitives) {
 		const tag = details.tag ?? "unknown";
 		const processor = details.processor ?? "unknown";
 		const kind = details.kind ?? "ok";
-		const source = details.source ?? "";
+		const sourcePreview = details.sourcePreview;
+		const source = sourcePreview?.text ?? details.source ?? "";
 
 		const label = formatLabel({ kind, tag, processor });
 		const labelLine = theme.fg(kind === "ok" ? "customMessageLabel" : "error", theme.bold(label));
@@ -212,6 +223,9 @@ export function createPiFenceMessageRenderer(tui: TuiPrimitives) {
 				box.addChild(
 					new tui.Text(theme.fg("muted", `... (${remaining} more lines)`), 0, 0),
 				);
+			}
+			if (sourcePreview?.truncated) {
+				box.addChild(new tui.Text(theme.fg("muted", "... (source preview truncated)"), 0, 0));
 			}
 			box.addChild(new tui.Text(fence, 0, 0));
 		}

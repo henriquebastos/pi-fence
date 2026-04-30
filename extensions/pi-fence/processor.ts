@@ -18,10 +18,22 @@ export const PROCESSOR_PLACEMENTS = ["embedded", "host", "sandbox", "remote"] as
 
 export type ProcessorPlacement = typeof PROCESSOR_PLACEMENTS[number];
 
+export type FenceOutput =
+	| { kind: "image"; data: Buffer; mimeType: "image/png" }
+	| { kind: "text"; text: string }
+	| { kind: "error"; error: string };
+
 export type FenceResult =
 	| { ok: true; png: Buffer }
 	| { ok: true; text: string }
 	| { ok: false; error: string };
+
+export function normalizeFenceOutput(result: FenceResult | FenceOutput): FenceOutput {
+	if ("kind" in result) return result;
+	if (!result.ok) return { kind: "error", error: result.error };
+	if ("png" in result) return { kind: "image", data: result.png, mimeType: "image/png" };
+	return { kind: "text", text: result.text };
+}
 
 export const DEFAULT_RENDER_TIMEOUT_MS = 15_000;
 
