@@ -5,7 +5,7 @@
  * No pi-SDK, no pi-tui — trivially unit-testable with FakeShellRunner.
  *
  * Container name: `pi-fence-kroki`. Image: `yuzutech/kroki`.
- * Port: 8000 host → 8000 container.
+ * Port: 127.0.0.1:8000 host → 8000 container.
  */
 
 import type { ShellResult, ShellRunner } from "./io/shell-runner.ts";
@@ -15,6 +15,7 @@ const CONTAINER_NAME = "pi-fence-kroki";
 export const KROKI_DOCKER_IMAGE = "yuzutech/kroki";
 const LABEL_NAME = "pi-fence.sandbox";
 const LABEL_VALUE = "kroki";
+const HOST_BIND_ADDRESS = "127.0.0.1";
 const HOST_PORT = 8000;
 const CONTAINER_PORT = 8000;
 
@@ -89,7 +90,7 @@ export function createKrokiDockerManager(
 				"run", "-d",
 				"--name", CONTAINER_NAME,
 				"--label", `${LABEL_NAME}=${LABEL_VALUE}`,
-				"-p", `${HOST_PORT}:${CONTAINER_PORT}`,
+				"-p", `${HOST_BIND_ADDRESS}:${HOST_PORT}:${CONTAINER_PORT}`,
 				image,
 			]);
 			if (result.exitCode !== 0) {

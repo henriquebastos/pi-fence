@@ -194,7 +194,7 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 				"run", "-d",
 				"--name", "pi-fence-kroki",
 				"--label", "pi-fence.sandbox=kroki",
-				"-p", "8000:8000",
+				"-p", "127.0.0.1:8000:8000",
 				"yuzutech/kroki",
 			],
 			{ stdout: "abc123\n", stderr: "", exitCode: 0 },

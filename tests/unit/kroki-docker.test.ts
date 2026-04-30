@@ -190,7 +190,7 @@ describe("kroki-docker — start()", () => {
 		setAbsent(shell);
 		shell.setResponse(
 			"docker",
-			["run", "-d", "--name", CONTAINER, "--label", `${LABEL_NAME}=${LABEL_VALUE}`, "-p", "8000:8000", IMAGE],
+			["run", "-d", "--name", CONTAINER, "--label", `${LABEL_NAME}=${LABEL_VALUE}`, "-p", "127.0.0.1:8000:8000", IMAGE],
 			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
 		);
 		const mgr = createKrokiDockerManager(shell);

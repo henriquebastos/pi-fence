@@ -648,7 +648,7 @@ describe("sandbox controller contract — Kroki Docker adapter", () => {
 				"run", "-d",
 				"--name", "pi-fence-kroki",
 				"--label", "pi-fence.sandbox=kroki",
-				"-p", "8000:8000",
+				"-p", "127.0.0.1:8000:8000",
 				KROKI_IMAGE,
 			],
 			{ stdout: "abc123\n", stderr: "", exitCode: 0 },
