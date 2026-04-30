@@ -135,6 +135,7 @@ describe("validateProcessor", () => {
 
 	it("rejects unsafe tags", () => {
 		const unsafeTags = [
+			"",
 			" custom",
 			"custom ",
 			"custom/tag",
@@ -234,11 +235,20 @@ describe("validateProcessor", () => {
 	});
 
 	it("rejects unsafe alias keys", () => {
-		for (const aliasKey of ["bad/alias", "bad alias", "-bad-alias", "bad-alias-", "prototype"]) {
+		for (const aliasKey of ["", "bad/alias", "bad alias", "-bad-alias", "bad-alias-", "prototype"]) {
 			const aliases = { [aliasKey]: "test" };
 			const result = validateProcessor({ ...makeValidProcessor(), aliases });
 			expect(result, aliasKey).toMatchObject({ ok: false });
 		}
+	});
+
+	it("rejects symbol alias keys", () => {
+		const aliases: Record<PropertyKey, string> = { "test-alias": "test" };
+		aliases[Symbol("alias")] = "test";
+
+		const result = validateProcessor({ ...makeValidProcessor(), aliases });
+
+		expect(result).toMatchObject({ ok: false });
 	});
 
 	it("rejects aliases with non-string targets", () => {
@@ -251,7 +261,7 @@ describe("validateProcessor", () => {
 	});
 
 	it("rejects aliases with unsafe string targets", () => {
-		for (const target of ["bad/target", "bad target", "-bad-target", "bad-target-", "__proto__", "constructor"]) {
+		for (const target of ["", "bad/target", "bad target", "-bad-target", "bad-target-", "__proto__", "constructor"]) {
 			const result = validateProcessor(makeValidProcessor({
 				aliases: { "test-alias": target },
 			}));

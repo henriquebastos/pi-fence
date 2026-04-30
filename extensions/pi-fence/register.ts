@@ -109,6 +109,10 @@ function validateAliases(value: unknown, tags: readonly string[]): AliasValidati
 		return { ok: false, error: "processor.aliases must be an own object" };
 	}
 
+	if (Object.getOwnPropertySymbols(value).length > 0) {
+		return { ok: false, error: "processor.aliases keys must be safe strings" };
+	}
+
 	const canonicalTags = new Set(tags);
 	for (const [alias, target] of Object.entries(value)) {
 		if (!isSafeProcessorName(alias)) {
