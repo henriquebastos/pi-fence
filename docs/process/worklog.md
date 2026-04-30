@@ -6298,3 +6298,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Sandbox construction uses the policy summary.** `createSandboxControllers()` now consumes resolved sandbox policy entries, keeping optional raw sandbox config out of controller selection.
 
 **Carry-forward.** Run S1 inspection, close any findings through beans, then close CV11.E3.S1 before starting S2.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection fix: explicit Kroki sandbox auto-start opt-out wins
+
+**What shipped.** Fixed a policy-equivalence regression found by inspection: `sandboxes.kroki.autoStart:false` now suppresses inherited legacy `kroki.docker.autoStart:true` for Docker-container Kroki, matching the pre-policy `autoStart ?? legacyAutoStart` behavior. The extension test now programs the Docker run path so an accidental auto-start would be observable.
+
+**Implementation commit.**
+
+1. `38af24a` — fix CV11.E3.S1: preserve explicit Kroki auto-start opt-out
+
+**Beans.**
+
+1. Closed `bug-79693900` — CV11.E3.S1 inspection: preserve explicit Kroki sandbox autoStart false.
+
+**Test count.** Fast non-live suite increased from 939 to 940 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'autoStart|auto-start|legacy Kroki'` — passed.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Explicit false is a user control.** Resolved policy keeps `false` distinct from an absent `autoStart` field before applying legacy compatibility.
+2. **Compatibility remains scoped.** Legacy `kroki.docker.autoStart:true` still works only when the Docker-container Kroki sandbox does not state its own auto-start preference.
+
+**Carry-forward.** Continue inspection remediation with the processor-factory context and processor-resolution policy shape findings.
