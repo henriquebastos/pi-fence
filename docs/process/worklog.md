@@ -5664,3 +5664,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **No new parser dependency.** The Compose asset shape is simple enough for a tiny test helper, avoiding another package for one contract assertion.
 
 **Carry-forward.** Resolve the managed endpoint alignment finding.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: managed endpoints use IPv4 loopback
+
+**What shipped.** Managed Kroki runtimes now report `http://127.0.0.1:8000` instead of `http://localhost:8000`. This matches the Docker and Compose bind address and avoids sending sandbox renders to an IPv6 localhost listener or failing on hosts that resolve `localhost` to `::1` first. Unmanaged `kroki.endpoint` behavior is unchanged.
+
+**Implementation commit.**
+
+1. `52c4029` — fix CV11.E1.S3: pin managed Kroki endpoint to loopback
+
+**Beans.**
+
+1. Closed `bug-cb687a2b` — CV11.E1.S3 inspection: align managed endpoints with IPv4 loopback bind.
+
+**Test count.** Fast suite remained at 912 tests; this remediation updated endpoint expectations across existing unit and extension coverage.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'endpoint|already-running|docker run'` — failed before the single-container managed endpoint changed, then passed.
+2. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'Kroki Docker adapter|fixed Kroki Compose|package-resolved compose'` — failed before the fixed Compose managed endpoint changed, then passed.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'kroki-sandbox|Compose service is ready|single-container service is ready|binding selects'` — passed after sandbox HTTP fixtures used `http://127.0.0.1:8000`.
+4. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/sandbox.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'endpoint|Kroki|Compose|kroki-sandbox'` — passed for the broader managed endpoint surface.
+5. `pnpm run feedback` — passed: 912 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Managed endpoint follows managed bind.** The S3 spec allowed a stronger reason to choose `127.0.0.1`; inspection provided that reason through IPv6 localhost ambiguity.
+2. **Unmanaged endpoint control stays untouched.** Users can still configure `kroki.endpoint` to any S2-valid HTTP(S) URL, including `localhost`, but managed sandbox endpoints are pinned to the verified bind address.
+
+**Carry-forward.** Rerun S3 inspection after all round-1 findings are closed.

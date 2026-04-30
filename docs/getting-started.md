@@ -232,7 +232,7 @@ If you don't see an image, check:
 - For `dot` tags selected by `graphviz-host`: `graphviz` is on your PATH (`dot -V` should print a version).
 - For `dot` or `mermaid` tags selected by Docker-backed `bundle-sandbox`: the `pi-fence-bundle` Docker container is running, labelled, and built from the trusted bundle image.
 - For `dot` or `mermaid` tags selected by Gondolin-backed `bundle-sandbox`: `sandboxes.bundle.runtime` is `gondolin-vm`, the configured image selector or asset path is available to Gondolin, and `autoStart` has started the VM.
-- For tags selected by `kroki-sandbox`: the configured `sandboxes.kroki` service runtime is ready and reports `http://localhost:8000`.
+- For tags selected by `kroki-sandbox`: the configured `sandboxes.kroki` service runtime is ready and reports `http://127.0.0.1:8000`.
 
 ## Configuring the Kroki endpoint
 
@@ -241,7 +241,7 @@ By default, diagram tags that resolve to `kroki-remote` post sources to the publ
 ```json
 {
   "kroki": {
-    "endpoint": "http://localhost:8000"
+    "endpoint": "http://127.0.0.1:8000"
   }
 }
 ```
@@ -249,12 +249,12 @@ By default, diagram tags that resolve to `kroki-remote` post sources to the publ
 After `/reload`, every Kroki-rendered tag that resolves to `kroki-remote` hits your local instance. `/fence list` shows the effective endpoint next to the processor:
 
 ```text
-kroki-remote [registered] (http://localhost:8000) — mermaid, graphviz (dot), …
+kroki-remote [registered] (http://127.0.0.1:8000) — mermaid, graphviz (dot), …
 ```
 
 Removing the `kroki` key (or omitting `endpoint`) restores the public endpoint. A global `kroki.endpoint` is treated as a privacy setting and cannot be replaced by project config. If no global endpoint is set, a project can point its own sessions at a local Docker Kroki.
 
-`kroki.endpoint` is always unmanaged `kroki-remote` configuration. A localhost URL alone does not make the processor sandbox-owned; use `sandboxes.kroki` to select `kroki-sandbox`.
+`kroki.endpoint` is always unmanaged `kroki-remote` configuration. A loopback URL alone does not make the processor sandbox-owned; use `sandboxes.kroki` to select `kroki-sandbox`.
 
 **Quick local Kroki via Docker:**
 
