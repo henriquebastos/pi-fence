@@ -7503,3 +7503,30 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 2. **The string parser remains a compatibility wrapper.** Unit and external callers can keep using `extractFencedBlocks(markdown, ...)`; internally it delegates to the chunk parser.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: streaming parser line buffers are bounded
+
+**What shipped.** Closed the post-fix parser inspection findings. The streaming parser now bounds per-line buffering while still counting full source bytes, so single-line oversized fence bodies do not bypass the source-retention cap. It also restores edge semantics covered by tests: `maxBlocks: 0` returns no blocks, truncated multi-byte source remains a true UTF-8 prefix across later lines, ignored unclosed fences do not swallow later supported fences, and blocked oversized tags still produce no pi-fence output or follow-up.
+
+**Implementation commit.**
+
+1. `e62a190` — fix CV11.E5.S1: bound streaming parser lines
+
+**Beans.**
+
+1. Closed `bug-6d4b7c92` — CV11.E5.S1 inspection: streaming parser still buffers long lines.
+2. Closed `bug-92f3423a` — CV11.E5.S1 inspection: restore parser edge semantics.
+
+**Test count.** Fast non-live suite increased from 996 to 1003 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'long single-line|maxBlocks is zero|true UTF-8|unclosed ignored|bounds chunked|stops consuming|blocked tag|render resource limits'` — passed: 17 focused tests.
+2. `pnpm run feedback` — passed: 1003 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Line buffering is bounded independently from source byte counting.** The parser can discard unretained line text while still reporting the full source byte count for limit errors.
+2. **Blocked tags remain silent even when oversized.** The source-limit path does not bypass user policy.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
