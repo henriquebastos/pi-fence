@@ -40,8 +40,9 @@ function setRunning(
 	});
 	setLabels(shell, containerName, labels);
 	if (image === MERMAID_IMAGE) {
-		// Mermaid sidecar exposes 8002 internally but publishes no host ports.
-		setPortsRaw(shell, containerName, "null");
+		// Mermaid sidecar EXPOSEs 8002 internally but publishes no host ports;
+		// real Docker reports this as {"8002/tcp": null}.
+		setPortsRaw(shell, containerName, JSON.stringify({ "8002/tcp": null }));
 	} else {
 		setPortBinding(shell, containerName);
 	}
@@ -835,6 +836,18 @@ describe("sandbox controller contract — Docker Compose status", () => {
 			.filter((call) => call.cmd === "docker" && call.args[0] === "inspect" && call.args[2] === PORTS_FORMAT)
 			.map((call) => call.args[3]);
 		expect(portsInspectTargets).toEqual(["kroki-core"]);
+	});
+
+	it("accepts the EXPOSE-only Ports shape for the Compose mermaid component", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-mermaid", JSON.stringify({ "8002/tcp": null }));
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("ready");
+		expect(status.endpoint).toBe("http://127.0.0.1:8000");
 	});
 
 	it("reports error when the Compose mermaid component publishes any host ports", async () => {

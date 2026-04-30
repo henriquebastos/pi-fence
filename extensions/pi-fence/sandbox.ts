@@ -908,7 +908,12 @@ function formatDockerPortBinding(binding: unknown): string {
 
 function isEmptyDockerJsonObject(raw: string): boolean {
 	const trimmed = raw.trim();
-	return trimmed === "" || trimmed === "null" || trimmed === "{}";
+	if (trimmed === "" || trimmed === "null" || trimmed === "{}") return true;
+	const parsed = parseJson(trimmed);
+	if (!isRecord(parsed)) return false;
+	// Docker reports EXPOSE-only ports as {"<port>/tcp": null} or with [];
+	// neither form is a host-published binding.
+	return Object.values(parsed).every((value) => value === null || (Array.isArray(value) && value.length === 0));
 }
 
 function dockerMounts(raw: string): unknown[] {
