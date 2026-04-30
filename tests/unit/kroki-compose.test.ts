@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
+import { KROKI_HOST_PORT } from "../../extensions/pi-fence/kroki-docker.ts";
 import {
 	KROKI_COMPOSE_FILE,
 	KROKI_COMPOSE_PROJECT_NAME,
@@ -44,6 +45,6 @@ describe("Kroki Compose sandbox stack contract", () => {
 		expect(compose).toContain("image: yuzutech/kroki");
 		expect(compose).toContain("image: yuzutech/mermaid");
 		expect(compose).toContain("pi-fence.sandbox: kroki");
-		expect(coreServicePorts(compose)).toEqual(["127.0.0.1:8000:8000"]);
+		expect(coreServicePorts(compose)).toEqual([`127.0.0.1:${KROKI_HOST_PORT}:8000`]);
 	});
 });

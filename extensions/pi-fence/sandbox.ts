@@ -5,7 +5,7 @@ import type { VMOptions } from "@earendil-works/gondolin";
 
 import type { ShellRunner, ShellResult, ShellRunOptions } from "./io/shell-runner.ts";
 import type { SandboxKind, SandboxRuntime } from "./config.ts";
-import { KROKI_DOCKER_ENDPOINT, KROKI_DOCKER_IMAGE, type KrokiDockerResult } from "./kroki-docker.ts";
+import { KROKI_DOCKER_ENDPOINT, KROKI_DOCKER_IMAGE, KROKI_HOST_PORT, type KrokiDockerResult } from "./kroki-docker.ts";
 
 export type SandboxState = "ready" | "partial" | "stopped" | "absent" | "error";
 
@@ -348,7 +348,7 @@ export function createKrokiDockerComposeSandboxController(
 				containerName: "pi-fence-kroki-core",
 				expectedImage: KROKI_DOCKER_IMAGE,
 				expectedLabels: KROKI_SANDBOX_LABELS,
-				security: { requiredLoopbackPorts: [8000] },
+				security: { requiredLoopbackPorts: [KROKI_HOST_PORT] },
 			},
 			{
 				id: "mermaid",

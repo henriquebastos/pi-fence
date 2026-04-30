@@ -16,9 +16,9 @@ export const KROKI_DOCKER_IMAGE = "yuzutech/kroki";
 const LABEL_NAME = "pi-fence.sandbox";
 const LABEL_VALUE = "kroki";
 const HOST_BIND_ADDRESS = "127.0.0.1";
-const HOST_PORT = 8000;
+export const KROKI_HOST_PORT = 8000;
 const CONTAINER_PORT = 8000;
-export const KROKI_DOCKER_ENDPOINT = `http://${HOST_BIND_ADDRESS}:${HOST_PORT}`;
+export const KROKI_DOCKER_ENDPOINT = `http://${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}`;
 const PORT_BINDINGS_FORMAT = "{{json .NetworkSettings.Ports}}";
 
 export type KrokiDockerStatus = "running" | "stopped" | "absent";
@@ -81,7 +81,7 @@ export function createKrokiDockerManager(
 				ok: true,
 				status: running ? "running" : "stopped",
 				message: running
-					? `Container ${CONTAINER_NAME} is running on port ${HOST_PORT}.`
+					? `Container ${CONTAINER_NAME} is running on port ${KROKI_HOST_PORT}.`
 					: `Container ${CONTAINER_NAME} exists but is stopped.`,
 				...(running ? { endpoint: KROKI_DOCKER_ENDPOINT } : {}),
 			};
@@ -115,7 +115,7 @@ export function createKrokiDockerManager(
 				"run", "-d",
 				"--name", CONTAINER_NAME,
 				"--label", `${LABEL_NAME}=${LABEL_VALUE}`,
-				"-p", `${HOST_BIND_ADDRESS}:${HOST_PORT}:${CONTAINER_PORT}`,
+				"-p", `${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}:${CONTAINER_PORT}`,
 				image,
 			]);
 			if (result.exitCode !== 0) {
@@ -127,7 +127,7 @@ export function createKrokiDockerManager(
 			return {
 				ok: true,
 				status: "running",
-				message: `Started ${CONTAINER_NAME} on port ${HOST_PORT}.`,
+				message: `Started ${CONTAINER_NAME} on port ${KROKI_HOST_PORT}.`,
 				endpoint: KROKI_DOCKER_ENDPOINT,
 			};
 		} catch (err) {
@@ -214,19 +214,19 @@ async function verifyKrokiPortBinding(shell: ShellRunner): Promise<KrokiDockerRe
 function krokiPortBindingIssue(rawPorts: string): string | undefined {
 	const parsed = parseJson(rawPorts);
 	if (!isRecord(parsed)) {
-		return `has invalid port bindings; expected ${HOST_BIND_ADDRESS}:${HOST_PORT}.`;
+		return `has invalid port bindings; expected ${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}.`;
 	}
 	const bindings = parsed[`${CONTAINER_PORT}/tcp`];
 	if (!Array.isArray(bindings) || bindings.length === 0) {
-		return `does not publish ${CONTAINER_PORT}/tcp; expected ${HOST_BIND_ADDRESS}:${HOST_PORT}.`;
+		return `does not publish ${CONTAINER_PORT}/tcp; expected ${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}.`;
 	}
 	const unexpected = bindings.find((binding) => !isExpectedKrokiPortBinding(binding));
 	if (!unexpected) return undefined;
-	return `publishes ${CONTAINER_PORT}/tcp on ${formatPortBinding(unexpected)}; expected ${HOST_BIND_ADDRESS}:${HOST_PORT}.`;
+	return `publishes ${CONTAINER_PORT}/tcp on ${formatPortBinding(unexpected)}; expected ${HOST_BIND_ADDRESS}:${KROKI_HOST_PORT}.`;
 }
 
 function isExpectedKrokiPortBinding(binding: unknown): boolean {
-	return isRecord(binding) && binding.HostIp === HOST_BIND_ADDRESS && binding.HostPort === String(HOST_PORT);
+	return isRecord(binding) && binding.HostIp === HOST_BIND_ADDRESS && binding.HostPort === String(KROKI_HOST_PORT);
 }
 
 function formatPortBinding(binding: unknown): string {
