@@ -6725,3 +6725,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 3. **Processor metadata cannot steer precedence.** Third-party registration rejects `order`, `priority`, and `processorPrecedence` fields.
 
 **Carry-forward.** Validate alias maps and preserve prototype-safe aliases.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 step 2: aliases are prototype-safe
+
+**What shipped.** Third-party alias maps now fail closed unless they are own plain or null-prototype objects whose alias keys are safe strings and whose targets are safe canonical tags declared by the same processor. Accepted aliases are copied into a null-prototype object before entering resolver/list state.
+
+**Implementation commit.**
+
+1. `5b9458f` — step 2: harden processor aliases
+
+**Beans.**
+
+1. Closed `task-7771c3de` — CV11.E4.S1 step 2: safe alias maps.
+
+**Test count.** Fast non-live suite increased from 952 to 958 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'alias|aliases|__proto__|prototype'` — passed.
+2. `pnpm vitest run tests/unit/register.test.ts` — passed: 32 tests.
+3. `pnpm run feedback` — passed: 958 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Aliases are copied, not trusted by reference.** `validateProcessor()` returns a fresh null-prototype alias object.
+2. **Alias targets are local canonical tags.** An alias value must exist in the processor's `tags` array.
+3. **Custom-prototype alias maps fail closed.** Plain objects from JSON and null-prototype maps are accepted; inherited alias keys are not.
+
+**Carry-forward.** Add event-bus rejection coverage and update the processor author guide.
