@@ -117,7 +117,7 @@ function createBlockParser(tags: string[], options: ExtractFencedBlocksOptions):
 				return;
 			}
 
-			const opener = line.truncated ? null : parseOpener(line.text);
+			const opener = parseOpener(line.text);
 			if (opener) active = openFence(opener, allowlist);
 		},
 		finish(): FencedBlock[] {

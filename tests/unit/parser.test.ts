@@ -84,6 +84,16 @@ describe("extractFencedBlocks", () => {
 		]);
 	});
 
+	it("treats supported fences inside ignored fenced blocks with overlong openers as opaque body text", () => {
+		const blocks = extractFencedBlocks(
+			["```ignored " + "x".repeat(300_000), "```mermaid", "flowchart LR", "```", "```"].join("\n"),
+			["mermaid"],
+			{ maxSourceBytes: 262_144 },
+		);
+
+		expect(blocks).toEqual([]);
+	});
+
 	it("treats supported fences inside ignored fenced blocks as opaque body text", () => {
 		const blocks = extractFencedBlocks(
 			["```ignored", "~~~mermaid", "flowchart LR", "~~~", "```"].join("\n"),
