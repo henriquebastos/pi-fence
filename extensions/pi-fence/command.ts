@@ -48,7 +48,12 @@ export function registerFenceCommand({
 	shell,
 	metrics,
 }: RegisterFenceCommandOptions): void {
-	const listOpts: ListProcessorsOptions = { ...processorPolicy, endpoints };
+	const listOpts: ListProcessorsOptions = {
+		blockedProcessors: processorPolicy.blockedProcessors,
+		blockedTags: processorPolicy.blockedTags,
+		endpoints,
+		processorPrecedence: processorPolicy.processorPrecedence,
+	};
 	const dockerMgr = createKrokiDockerManager(shell, logger);
 	const currentBindingRows = () =>
 		resolveBindings(

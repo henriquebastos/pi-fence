@@ -129,6 +129,11 @@ export async function createPiFenceExtension(
 
 	// Build the shared mutable registry for dynamic processor registration.
 	const registry: ProcessorRegistry = { processors, availability };
+	const registrationPolicy = {
+		blockedProcessors: processorPolicy.blockedProcessors,
+		blockedTags: processorPolicy.blockedTags,
+		processorPrecedence: processorPolicy.processorPrecedence,
+	};
 
 	// Listen for third-party processor registrations via the event bus (D5).
 	if (pi.events) {
@@ -139,7 +144,7 @@ export async function createPiFenceExtension(
 				pi.events.emit("pi-fence:register-error", { error: validated.error });
 				return;
 			}
-			const result = await registerProcessor(registry, validated.processor, processorPolicy);
+			const result = await registerProcessor(registry, validated.processor, registrationPolicy);
 			if (!result.ok) {
 				deps.logger.warn("pi-fence", "register rejected", { error: result.error });
 				pi.events.emit("pi-fence:register-error", { error: result.error });
