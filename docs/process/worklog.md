@@ -6784,3 +6784,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 3. **The author guide leads with the current contract.** New processors should return `FenceOutput`; legacy result shapes remain a compatibility note for later normalization.
 
 **Carry-forward.** Run CV11.E4.S1 inspection, then close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: validated processor shape is frozen
+
+**What shipped.** Closed the inspection finding that validated third-party processor shape stayed caller-mutable. `validateProcessor()` now copies and freezes accepted tags, freezes the safe alias map, and returns a frozen processor wrapper before `registerProcessor()` can call `available()`. Mutating the original arrays/objects or mutating `this.tags` inside `available()` no longer changes registered shape.
+
+**Implementation commit.**
+
+1. `46218dc` — fix CV11.E4.S1: freeze validated processor shape
+
+**Beans.**
+
+1. Closed `bug-01f65983` — CV11.E4.S1 inspection: freeze validated processor shape.
+
+**Test count.** Fast non-live suite increased from 959 to 961 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'mutat|alias|tag'` — passed: 14 focused tests.
+2. `pnpm run feedback` — passed: 961 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Validation returns a boundary snapshot.** The registry receives a copied wrapper, not the caller's mutable object graph.
+2. **Probe callbacks see the snapshot as `this`.** If a callback tries to mutate the frozen shape, the probe becomes an unavailable diagnostic instead of changing registry state.
+
+**Carry-forward.** Close the remaining CV11.E4.S1 inspection findings.
