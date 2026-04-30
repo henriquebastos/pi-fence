@@ -6755,3 +6755,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 3. **Custom-prototype alias maps fail closed.** Plain objects from JSON and null-prototype maps are accepted; inherited alias keys are not.
 
 **Carry-forward.** Add event-bus rejection coverage and update the processor author guide.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 step 3: registration rejection is observable
+
+**What shipped.** Added extension coverage proving malformed third-party registration emits `pi-fence:register-error`, logs a rejection, and leaves the processor out of `/fence list`. The processor author guide now documents the semi-trusted registration boundary, safe id/tag/alias grammar, alias target constraints, rejected precedence metadata, and the explicit `FenceOutput` result shape for new processors.
+
+**Implementation commit.**
+
+1. `53581d8` — step 3: document semi-trusted registration
+
+**Beans.**
+
+1. Closed `task-c3d2bd4e` — CV11.E4.S1 step 3: event-bus rejection and docs.
+
+**Test count.** Fast non-live suite increased from 958 to 959 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'register|third-party'` — passed: 5 focused extension tests.
+2. `pnpm run feedback` — passed: 959 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Registration rejection is observable through the existing event.** No new event-bus channel was needed; invalid shapes use `pi-fence:register-error`.
+2. **Registry mutation is all-or-nothing.** A malformed processor object does not appear in `/fence list`.
+3. **The author guide leads with the current contract.** New processors should return `FenceOutput`; legacy result shapes remain a compatibility note for later normalization.
+
+**Carry-forward.** Run CV11.E4.S1 inspection, then close the story if no findings remain.
