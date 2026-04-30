@@ -21,6 +21,6 @@ describe("Kroki Compose sandbox stack contract", () => {
 		expect(compose).toContain("image: yuzutech/kroki");
 		expect(compose).toContain("image: yuzutech/mermaid");
 		expect(compose).toContain("pi-fence.sandbox: kroki");
-		expect(compose).toContain('"8000:8000"');
+		expect(compose).toContain('"127.0.0.1:8000:8000"');
 	});
 });

@@ -7,7 +7,7 @@ services:
     labels:
       pi-fence.sandbox: kroki
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       KROKI_MERMAID_HOST: mermaid
       KROKI_MERMAID_PORT: "8002"
