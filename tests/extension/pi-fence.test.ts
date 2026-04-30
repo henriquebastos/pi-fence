@@ -2603,6 +2603,44 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
+		"lists a third-party processor whose availability throws as unavailable",
+		async () => {
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => { throw new Error("probe boom"); },
+					render: async () => ({ kind: "text", text: "" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const { session, sentCustomMessages } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+			try {
+				await session.prompt("/fence list");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
+
+			const details = sentCustomMessages.find((m) => m.customType === "pi-fence:list")
+				?.details as { listings: Array<{ id: string; status: string; unavailableReason?: string }> };
+			expect(details.listings.find((listing) => listing.id === "custom-upper")).toMatchObject({
+				status: "unavailable",
+				unavailableReason: expect.stringContaining("available() threw: probe boom"),
+			});
+		},
+		20_000,
+	);
+
+	it(
 		"turns thrown third-party render into error output, follow-up, and error metrics",
 		async () => {
 			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
@@ -2654,7 +2692,7 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
-		"turns malformed third-party render output into an error message",
+		"turns malformed third-party render output into error output, follow-up, and error metrics",
 		async () => {
 			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
 				pi.events.emit("pi-fence:register", {
@@ -2668,15 +2706,23 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 				await new Promise((r) => setTimeout(r, 50));
 			};
 
-			const captured = await runExtensionWithAssistantText(
+			const { session, sentCustomMessages, model } = await buildSessionWithExtension(
 				new FakeHttpClient(),
-				"```upper\nhello\n```",
 				undefined,
 				undefined,
 				[thirdPartyFactory],
 			);
+			session.agent.streamFn = cannedAssistantStream(model, "```upper\nhello\n```");
+			try {
+				await session.prompt("render it");
+				await new Promise((r) => setTimeout(r, 50));
+				await session.prompt("/fence stats");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
 
-			const outputs = filterPiFenceOutputs(captured.sentCustomMessages);
+			const outputs = filterPiFenceOutputs(sentCustomMessages);
 			expect(outputs).toHaveLength(1);
 			expect(outputs[0].details).toMatchObject({
 				processor: "custom-upper",
@@ -2685,6 +2731,14 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 			});
 			expect((outputs[0].content as Array<{ text?: string }>)[0].text)
 				.toContain("render() returned malformed result");
+			expect(sentCustomMessages.filter((message) => message.options?.deliverAs === "followUp"))
+				.toHaveLength(1);
+			const stats = sentCustomMessages.find(
+				(message) => message.customType === "pi-fence:list" &&
+					(message.details as { lines?: string[] }).lines?.includes("Session metrics"),
+			)?.details as { lines: string[] };
+			expect(stats.lines).toContain("Total renders: 1 (0 ok, 1 errors)");
+			expect(stats.lines).toContain("  custom-upper: 1 (0 ok, 1 errors)");
 		},
 		20_000,
 	);

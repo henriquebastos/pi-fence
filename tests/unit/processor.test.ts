@@ -20,7 +20,16 @@ describe("processor availability normalization", () => {
 	});
 
 	it("rejects malformed availability results", () => {
-		for (const result of [undefined, null, "ok", { ok: false }, { ok: true, reason: "extra" }, { ok: false, reason: "" }]) {
+		for (const result of [
+			undefined,
+			null,
+			"ok",
+			{ ok: false },
+			{ ok: true, reason: "extra" },
+			{ ok: true, installHint: "extra" },
+			{ ok: false, reason: "" },
+			{ ok: false, reason: "missing", installHint: 42 },
+		]) {
 			expect(normalizeAvailabilityResult(result), String(result)).toMatchObject({
 				ok: false,
 				reason: expect.stringContaining("malformed"),
@@ -61,8 +70,11 @@ describe("processor output normalization", () => {
 			null,
 			{ kind: "text" },
 			{ kind: "image", data: "not-buffer", mimeType: "image/png" },
+			{ kind: "image", data: png, mimeType: "image/svg+xml" },
 			{ kind: "error", error: "" },
 			{ ok: true },
+			{ ok: true, png: "not-buffer" },
+			{ ok: true, text: 42 },
 			{ ok: true, text: "ok", png },
 			{ ok: false },
 		]) {
