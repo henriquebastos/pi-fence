@@ -152,3 +152,35 @@ Defaults cover the first-install experience: Kroki endpoint at `https://kroki.io
 - Future story specs without a `Tests` section are incomplete and get sent back before approval.
 - The Docker image is a separate deliverable tracked under CV0.E1.S0. It is **not** a dependency of `pnpm test` — that would re-couple what the layer split was meant to separate.
 - This entry supersedes nothing; it extends the framework. No earlier decision is retired.
+
+### 2026-04-30 — Store only a bounded source preview in pi-fence custom-message details
+
+**Context.** CV11.E2.S1 inspected pi source from `~/me/oss/pi-mono` at `upstream/main` commit `156a9052bc08a5ed08b7f2b82a27796253c4760d`.
+
+Evidence from `packages/coding-agent/src/core/messages.ts`, `session-manager.ts`, `agent-session.ts`, `sdk.ts`, `modes/interactive/components/custom-message.ts`, `modes/interactive/components/tree-selector.ts`, `modes/interactive/interactive-mode.ts`, `core/export-html/index.ts`, and `core/export-html/template.js`:
+
+1. `CustomMessage.details` is persisted on `custom_message` session entries. `SessionManager.appendCustomMessageEntry()` writes `details`, and the JSONL session file serializes the whole entry.
+2. `details` does not reach the model by default. `buildSessionContext()` reconstructs custom messages with details for runtime/rendering, but `convertToLlm()` converts custom messages to user messages from `content` only.
+3. Compaction summarizes LLM-visible message content; it does not need `details`. Old JSONL entries remain append-only history, while active context after compaction only includes the compaction summary plus kept entries.
+4. Custom renderers receive only their `CustomMessage`. A pi-fence renderer cannot reliably recover the original assistant fenced block unless pi-fence carries source-derived data in its custom message.
+5. Export/share surfaces include `details`: HTML export base64-embeds `JSON.stringify(sessionData)` with all entries, the HTML viewer can download those entries as JSONL, `/share` uploads that HTML to a secret gist, and the TUI debug log serializes agent messages.
+
+**Rule.** pi-fence custom output details must not retain full raw fence source. They may retain a bounded source preview needed by the expanded render UI, plus metadata such as tag, processor, and render kind. The preview is clipped before `pi.sendMessage()` so JSONL persistence, HTML export, share gists, and debug logs never receive an unbounded second copy from pi-fence.
+
+When CV11.E3/CV11.E5 touch message and output types, replace the current `details.source` full-source field with an explicit preview shape such as `sourcePreview` (name to be finalized in code) and tolerate legacy `details.source` only for reading old sessions if needed.
+
+**Options considered.**
+
+1. **Full source.** Keeps today's richest expanded view, but duplicates the assistant fenced block in persisted `details` and every export/share/debug surface.
+2. **Clipped preview.** Chosen. Preserves the bounded expanded UI while bounding duplicate retention.
+3. **Hash/reference.** Avoids duplication, but pi has no built-in source lookup for custom renderers, so it would remove copyable expanded content unless pi-fence builds a new artifact index.
+4. **No source.** Minimizes retention, but removes a useful expanded-source view even though a bounded preview is enough for the current UI.
+
+**Why.** The original assistant message already contains the fenced source. Duplicating the full source in custom-message details increases retention and export/share exposure without improving LLM context: pi excludes details from provider-bound messages. A bounded preview keeps pi-fence's visible debugging affordance while making the trust boundary explicit and compatible with upcoming render limits.
+
+**Consequences.**
+
+- CV11.E3.S2 should model pi-fence output details as explicit metadata plus a retained preview, not an arbitrary full-source bag.
+- CV11.E5.S1 should enforce source/output limits before custom message construction, including the persisted preview bytes.
+- A future full-source copy action should be explicit, for example via an artifact/reference flow, not automatic retention in `details`.
+- Existing sessions that already contain `details.source` are historical data; this decision does not require rewriting session JSONL files.
