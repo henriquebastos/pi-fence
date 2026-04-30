@@ -26,6 +26,7 @@ import {
 	mergePiFenceConfigs,
 	validatePiFenceConfig,
 } from "../../extensions/pi-fence/config.ts";
+import { resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
 import {
 	loadPiFenceConfig,
 	PI_FENCE_CONFIG_ENV,
@@ -104,6 +105,41 @@ describe("config core", () => {
 		expect(DEFAULT_CONFIG.sandboxes).toEqual({
 			bundle: { kind: "exec", runtime: "docker-container" },
 			kroki: { kind: "service", runtime: "docker-container" },
+		});
+	});
+
+	it("resolved policy: default config becomes non-optional runtime values", () => {
+		const policy = resolvePiFencePolicy(DEFAULT_CONFIG);
+
+		expect(policy.bindings).toEqual({});
+		expect(policy.blockedProcessors).toEqual(new Set());
+		expect(policy.blockedTags).toEqual(new Set());
+		expect(policy.processorPrecedence).toEqual(["embedded", "host", "sandbox", "remote"]);
+		expect(policy.kroki.endpoint).toBe("https://kroki.io");
+		expect(policy.endpointsByProcessor).toEqual({});
+		expect(policy.sandboxes.get("bundle")).toEqual({
+			kind: "exec",
+			runtime: "docker-container",
+			autoStart: false,
+		});
+		expect(policy.sandboxes.get("kroki")).toEqual({
+			kind: "service",
+			runtime: "docker-container",
+			autoStart: false,
+		});
+		expect(policy.autoStart).toEqual({
+			bundleSandbox: false,
+			krokiSandbox: false,
+		});
+		expect(policy.sourceRetention).toEqual({
+			mode: "bounded-preview",
+			maxBytes: 8192,
+			maxLines: 40,
+		});
+		expect(policy.renderLimits).toEqual({
+			maxBlocksPerTurn: 5,
+			fenceSourceMaxBytes: Number.POSITIVE_INFINITY,
+			processorOutputMaxBytes: Number.POSITIVE_INFINITY,
 		});
 	});
 
