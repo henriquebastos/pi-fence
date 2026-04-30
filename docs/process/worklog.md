@@ -7476,3 +7476,30 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 2. **The parser remains backward-compatible by default.** Existing callers that do not request caps receive the same `{ tag, source }` shape.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and then live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: fence parsing streams assistant chunks
+
+**What shipped.** Closed the fifth-round CV11.E5.S1 security findings after user approval to continue. The parser now exposes a chunk-streaming entrypoint consumed directly by `agent_end`, so assistant messages no longer need to be concatenated into one full string before fence extraction. The parser no longer uses full-string `replaceAll().split()` for the `agent_end` path, stops after the configured block count, retains only the configured source bytes per block, and tracks retained byte count incrementally instead of repeatedly measuring the retained source.
+
+**Implementation commit.**
+
+1. `cdba6e9` — fix CV11.E5.S1: stream fence parsing
+
+**Beans.**
+
+1. Closed `bug-30ff7db6` — CV11.E5.S1 inspection: parser retained-byte counting is quadratic.
+2. Closed `bug-b25bf1f3` — CV11.E5.S1 inspection: pre-parse assistant text remains unbounded.
+
+**Test count.** Fast non-live suite increased from 995 to 996 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'incrementally|bound extracted|stop after|render resource limits'` — passed: 8 focused tests.
+2. `pnpm run feedback` — passed: 996 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Parsing is the first resource boundary.** `agent_end` now streams assistant text chunks into the parser and applies max block/source retention during extraction.
+2. **The string parser remains a compatibility wrapper.** Unit and external callers can keep using `extractFencedBlocks(markdown, ...)`; internally it delegates to the chunk parser.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
