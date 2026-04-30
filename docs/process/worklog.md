@@ -7425,3 +7425,28 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 **Known deviations.** The CHANGELOG entry for the user-visible CV11.E5.S1 behavior was added with the first inspection docs catch-up rather than immediately after the earlier source/output/Kroki feature commits; subsequent docs commits stayed adjacent.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and then live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: rejected source previews are prebounded
+
+**What shipped.** Closed the third-round CV11.E5.S1 design finding. Oversized-source rejection now builds its custom message from a prebounded source preview instead of passing the full rejected source through normal message construction. Normal render messages still use the existing preview builder for bounded sources.
+
+**Implementation commit.**
+
+1. `9c2459f` — fix CV11.E5.S1: bound rejected source previews
+
+**Beans.**
+
+1. Closed `bug-56fab30c` — CV11.E5.S1 inspection: avoid full preview work on oversized source.
+
+**Test count.** Fast non-live suite stayed at 993 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/messages.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'bounded source preview|render resource limits'` — passed: 6 focused tests.
+2. `pnpm run feedback` — passed: 993 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Rejected-source message construction is bounded too.** The source limit path clips preview content before calling `pi.sendMessage()` instead of relying on the normal full-source preview builder.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and then live verification.
