@@ -7134,3 +7134,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature, fix
 3. **Bad output is a normal render failure.** Error output still records failed metrics and sends the LLM follow-up.
 
 **Carry-forward.** Run CV11.E4.S2 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S2 inspection fix: render wrappers preserve receiver
+
+**What shipped.** Closed the inspection finding that the render wrapper changed method-style `this` semantics. `wrapRender()` now returns a normal async function and calls the original render with the processor receiver, so valid processors can still read `this.id`, `this.tags`, or other snapshot fields while the wrapper normalizes throws and bad results.
+
+**Implementation commit.**
+
+1. `70cc96e` — fix CV11.E4.S2: preserve render receiver
+
+**Beans.**
+
+1. Closed `bug-b2bc8b2d` — CV11.E4.S2 inspection: preserve render this binding.
+
+**Test count.** Fast non-live suite increased from 980 to 981 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'this|third-party render'` — passed: 5 focused tests.
+2. `pnpm run feedback` — passed: 981 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Wrapping should not narrow valid processor methods.** The boundary adds normalization while preserving method receiver semantics.
+
+**Carry-forward.** Close remaining CV11.E4.S2 inspection coverage findings.
