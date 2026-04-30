@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV10 — VM Sandboxes is in progress. CV10.E1.S1 is ready.
+CV11 — Trust Boundaries is in progress. CV11.E1.S1 is active.
 
 ## Next
 
-Next story: CV10.E1.S1 — Gondolin VM runtime for bundle-sandbox.
+Next bean: `task-d089d596` — CV11.E1.S1 step 2, package-resolved Compose path.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5115,3 +5115,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Writable throwaway rootfs is required.** `cow` is the correct image default because guest init must create mount points such as `/data`; writes remain isolated in a disposable qcow2 overlay.
 
 **Carry-forward.** Publish/pin a hosted `pi-fence-bundle` Gondolin image when release packaging exists; until then, users build/tag it locally with `pnpm run gondolin:bundle:build`.
+
+---
+
+### 2026-04-29 — CV11.E1.S1 step 1: npm runtime assets
+
+**What shipped.** The npm package now includes runtime assets needed by installed workflows: `docker/bundle/`, `docker/kroki/`, and `gondolin/bundle/`. The package-content test now exercises `npm pack --dry-run --json` directly and fails if required Compose, Docker bundle, or Gondolin bundle assets fall out of the packed artifact.
+
+**Implementation commit.**
+
+1. `343fddc` — step 1: ship runtime assets in npm package
+
+**Beans.**
+
+1. Closed `task-c94acac9` — CV11.E1.S1 step 1 package runtime assets.
+2. Active epic/story: `epic-5d8ac485` / `task-ff77cf5e`.
+3. Next ready bean: `task-d089d596` — package-resolved Compose path.
+
+**Test count.** Fast suite increased from 879 to 880 with one npm-pack package-content test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/package-scripts.test.ts` — passed after the RED failure proved required runtime assets were absent from pack output.
+2. `pnpm exec npm pack --dry-run --json` — required runtime assets present.
+3. `pnpm run feedback` — passed: 880 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Pack output is the proof.** The test checks actual `npm pack --dry-run --json` output rather than only inspecting `package.json.files`.
+2. **Runtime directories, not individual source files.** `package.json.files` includes `docker/bundle`, `docker/kroki`, and `gondolin/bundle`, keeping related assets together while still excluding live-test-only `docker/Dockerfile`.
+
+**Carry-forward.** Compose lifecycle still passes `docker/kroki/compose.yaml` as a relative path. Fix under `task-d089d596`.
