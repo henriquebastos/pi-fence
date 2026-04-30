@@ -10,7 +10,7 @@ CV11 — Trust Boundaries is in progress. CV11.E1.S2 is active.
 
 ## Next
 
-Next bean: `task-06b7fca5` — CV11.E1.S2 inspection, cover endpoint provenance semantics.
+Next step: rerun CV11.E1.S2 inspection and close the story if no new findings remain.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5341,3 +5341,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Keep rejection explicit.** Raw `?`, `#`, and credential delimiters are invalid even if their parsed URL fields would be empty.
 
 **Carry-forward.** Close the remaining inspection coverage finding under `task-06b7fca5`, then rerun S2 inspection.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 inspection fix: endpoint provenance coverage
+
+**What shipped.** Added focused config-loader tests for active Kroki endpoint provenance: project endpoint active, global endpoint winning over project endpoint, explicit config endpoint provenance, and invalid endpoint exclusion.
+
+**Implementation commit.**
+
+1. `168a80d` — test CV11.E1.S2: cover endpoint provenance semantics
+
+**Beans.**
+
+1. Closed `task-06b7fca5` — CV11.E1.S2 inspection: cover endpoint provenance semantics.
+
+**Test count.** Fast suite increased from 895 to 899 with four endpoint provenance tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern 'provenance|invalid endpoints'` — passed; this was coverage-only remediation because the tests were already green.
+2. `pnpm vitest run tests/unit/config.test.ts` — passed: 105 tests.
+3. `pnpm run feedback` — passed: 899 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Existing merge semantics stay locked.** Global `kroki.endpoint` remains the active endpoint when both global and project endpoints are present.
+2. **Invalid endpoints have no provenance.** A rejected endpoint cannot produce a `/fence doctor` endpoint-source warning.
+
+**Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
