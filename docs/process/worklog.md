@@ -7655,3 +7655,55 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 1. **Visible invalid syntax remains invalid under bounded parsing.** The fail-closed truncated opener path only applies after the retained prefix passes the same visible syntax checks as a normal opener.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — Closed CV11.E5.S1
+
+**What closed.** Marked CV11.E5.S1 done. pi-fence now has finite render limits in resolved policy, rejects oversized fence source before processor invocation, caps processor outputs before message content/base64 construction, caps Kroki/HTTP response buffering, stores bounded source previews for rejected input, and streams assistant text into bounded fence parsing without full-message concatenation.
+
+**S1 implementation commits.**
+
+1. `cd5f556` — step 6: bound render limit defaults
+2. `55bcc9a` — step 7: reject oversized fence sources
+3. `3e52f2b` — step 8: reject oversized processor outputs
+4. `b789572` — step 9: cap Kroki response bodies
+5. `a21ace7` — fix CV11.E5.S1: cap HTTP response buffering
+6. `f8f4415` — fix CV11.E5.S1: cap processor error outputs
+7. `9c2459f` — fix CV11.E5.S1: bound rejected source previews
+8. `9461220` — fix CV11.E5.S1: cap parser extraction work
+9. `cdba6e9` — fix CV11.E5.S1: stream fence parsing
+10. `e62a190` — fix CV11.E5.S1: bound streaming parser lines
+11. `7eaf987` — fix CV11.E5.S1: keep ignored fences opaque
+12. `a1bd413` — fix CV11.E5.S1: parse overlong ignored openers
+13. `d7c98f8` — fix CV11.E5.S1: fail closed on truncated openers
+14. `55ca0fb` — fix CV11.E5.S1: close truncated ignored fences
+15. `8f93f3a` — fix CV11.E5.S1: reject visible invalid truncated openers
+
+Adjacent docs catch-up commits were recorded immediately after each S1 feature or fix commit.
+
+**Beans.**
+
+1. Closed implementation beans: `task-f662775e`, `task-016c25a5`, `task-b51aa614`, `task-ba24b93c`.
+2. Closed inspection beans: `bug-331cf386`, `bug-09c2440c`, `task-2a71827b`, `task-3fc4e89e`, `bug-c3844c83`, `task-291a5118`, `task-d1cc04e0`, `bug-56fab30c`, `bug-c2cfeda6`, `bug-30ff7db6`, `bug-b25bf1f3`, `bug-6d4b7c92`, `bug-92f3423a`, `bug-ec625811`, `bug-bd5df86b`, `bug-54b84a21`, `bug-a2f75f4b`, `bug-60d8da83`.
+3. Closing now: `task-ca5569c4` — CV11.E5.S1 story bean.
+
+**Test count.** Fast non-live suite increased from 983 to 1009 tests during S1.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed after each S1 implementation/fix step; final pass reported 1009 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: 1009 non-live tests in the inspection coverage pass, CRAP report generated, Sonar skipped because credentials were unset.
+3. `pnpm test:live` — passed: 30 live tests passed, 28 skipped; the script started and stopped the managed `pi-fence-kroki` container.
+4. `inspect5p` rounds — drove HTTP buffering caps, error-output caps, bounded rejected previews, parser streaming, bounded line buffers, ignored-fence opacity, and truncated-opener fail-closed semantics; final round found no code issues.
+
+**Design decisions that survived the story.**
+
+1. **Limits live in resolved policy.** Source, output, and block count limits are non-optional runtime values.
+2. **Parsing is the first render resource boundary.** `agent_end` streams assistant chunks into the parser, which stops after the configured block count and retains only bounded source bytes while still counting actual source bytes.
+3. **Blocked tags stay silent.** Oversized input does not bypass user policy.
+4. **All output variants are bounded.** Image, text, and explicit error outputs are measured before display/persistence content is built.
+5. **HTTP owns real response buffering caps.** `NodeHttpClient` enforces content-length and streaming byte caps; Kroki still checks response size before status-specific handling.
+6. **Truncated opener parsing is conservative.** Overlong opener-like lines are ignored or fail closed rather than causing hidden nested renders.
+
+**Known deviations.** Inspection expanded S1 beyond the initial generic source/output/Kroki caps into parser streaming and opaque ignored-fence edge cases. The CHANGELOG entry for the user-visible CV11.E5.S1 behavior was added with the first inspection docs catch-up rather than immediately after the first user-visible feature commit.
+
+**Carry-forward.** CV11.E5.S2 — Processor-specific expansion limits — is next.

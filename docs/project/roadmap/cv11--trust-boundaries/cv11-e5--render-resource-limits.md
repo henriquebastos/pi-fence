@@ -1,7 +1,7 @@
 # CV11.E5 — Render Resource Limits
 
 **CV:** [CV11 — Trust Boundaries](README.md)
-**Last updated:** 2026-04-29 — planned
+**Last updated:** 2026-04-30 — S1 done
 
 ## Summary
 
@@ -13,7 +13,7 @@ Add source and output limits so a hostile or accidental large fenced block canno
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv11-e5-s1--fence-source-and-output-limits.md) | **Fence source and output limits** | Ready |
+| [S1](cv11-e5-s1--fence-source-and-output-limits.md) | **Fence source and output limits** | Done |
 | [S2](cv11-e5-s2--processor-specific-expansion-limits.md) | **Processor-specific expansion limits** | Ready |
 
 ## Done criterion (epic-level)

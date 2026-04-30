@@ -1,6 +1,6 @@
 # CV11.E5.S1 — Fence source and output limits
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E5 — Render Resource Limits](cv11-e5--render-resource-limits.md)
 **Depends on:** [CV11.E3.S1 — Resolved runtime policy object](cv11-e3-s1--resolved-runtime-policy.md), [CV11.E3.S2 — Explicit fence output and sandbox status variants](cv11-e3-s2--explicit-fence-output-and-sandbox-status.md)
