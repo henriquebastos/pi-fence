@@ -5778,3 +5778,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Adapter-layer trust boundary is locked.** A future regression in `normalizeKrokiDockerResult` that swallowed manager `ok:false` runtimes into `state:"ready"` now fails the suite.
 
 **Carry-forward.** Rerun S3 inspection. If it produces no further required findings, run completion checks and close CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: consolidate Kroki sandbox port policy under security options
+
+**What shipped.** `requiredLoopbackPorts` now lives on `DockerSandboxSecurityOptions` instead of being a sibling of `security` on `DockerSandboxComponentOptions`. The fixed Compose Kroki controller wires it through `security: { requiredLoopbackPorts: [8000] }` on core. Port-binding verification dispatches from `inspectContainerSecurity`, so components without a security block still skip the ports inspect entirely.
+
+**Implementation commit.**
+
+1. `264a836` — refactor CV11.E1.S3: consolidate Kroki sandbox port policy under security
+
+**Beans.**
+
+1. Closed `task-e74d535a` — CV11.E1.S3 inspection: consolidate Kroki sandbox port policy under security options.
+2. Unblocked `bug-fd70c2a8` — reject contradictory Kroki sandbox port policy.
+
+**Test count.** Fast suite increased from 922 to 923 with one assertion that mermaid never triggers `{{json .NetworkSettings.Ports}}` inspection during fixed Compose status.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'Compose|port binding|sandbox adapter when the managed container'` — stayed green before and after the refactor.
+2. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'does not query port bindings on Compose components without a loopback requirement'` — green; locks the no-call assertion.
+3. `pnpm run feedback` — passed: 923 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **One policy surface for container ports.** `noPublishedPorts` and `requiredLoopbackPorts` now share `DockerSandboxSecurityOptions`, so future readers find both rules in one place.
+2. **Security guard owns running-only checks.** The runtime port verifier no longer needs its own `if (running)` clause; it is dispatched from the existing security block that already handles state-dependent checks.
+
+**Carry-forward.** Reject contradictory `noPublishedPorts` + `requiredLoopbackPorts` configurations under `bug-fd70c2a8`.
