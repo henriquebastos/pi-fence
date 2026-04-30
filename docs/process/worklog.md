@@ -6683,6 +6683,8 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 
 1. `pnpm run feedback` — passed after each implementation step; final pass reported 947 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
 2. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: 947 non-live tests in the inspection coverage pass, CRAP report generated, Sonar skipped because credentials were unset.
+3. `pnpm test:live` — passed: 30 live tests passed, 28 skipped; the script started and stopped the managed `pi-fence-kroki` container.
+4. `pnpm run render:verify` — passed: rendered 5 headless UI scenarios and wrote the verification gallery.
 
 **Design decisions that survived the story.**
 
