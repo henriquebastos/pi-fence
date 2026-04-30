@@ -6592,3 +6592,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 3. **Legacy sessions still render.** The renderer can still read old `details.source` payloads but new messages no longer write that field.
 
 **Carry-forward.** Migrate built-in processors and contracts to return explicit output variants directly.
+
+---
+
+### 2026-04-30 — CV11.E3.S2 step 2: processors return explicit fence outputs
+
+**What shipped.** Migrated `FenceProcessor.render()` from legacy `{ ok, png|text|error }` results to the explicit `FenceOutput` union. Embedded, host, sandbox, and remote built-ins now return image/text/error variants directly; `agent-end.ts` logs and records metrics from `result.kind`; processor contracts assert the new shape.
+
+**Implementation commit.**
+
+1. `3281e88` — step 2: return explicit fence output variants
+
+**Beans.**
+
+1. Closed `task-d005bfbe` — CV11.E3.S2 step 2: migrate processors and contracts to explicit output.
+
+**Test count.** Fast non-live suite remains 945 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/contract/*.test.ts` — failed red before processor migration, then passed after the built-ins returned explicit variants.
+2. `pnpm vitest run tests/unit/processor.test.ts tests/unit/table.test.ts tests/unit/color.test.ts tests/unit/highlight.test.ts tests/unit/qr.test.ts tests/unit/kroki.test.ts tests/unit/graphviz-local.test.ts tests/unit/mermaid-local.test.ts tests/unit/bundle-sandbox.test.ts tests/unit/fixture-replay.test.ts tests/contract/*.test.ts` — passed: 348 tests.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts tests/unit/register.test.ts tests/unit/list.test.ts tests/unit/fence-command.test.ts tests/unit/processor-factory.test.ts tests/unit/resolve.test.ts tests/unit/built-in-processors.test.ts` — passed: 212 tests.
+4. `pnpm run feedback` — passed: 945 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **The processor contract is explicit.** `FenceProcessor.render()` returns `FenceOutput`; legacy `FenceResult` remains only as a message-seam compatibility type for older sessions and staged third-party normalization.
+2. **Output construction is centralized.** Built-ins use `imageOutput()`, `textOutput()`, and `errorOutput()` helpers to avoid reintroducing `{ ok, ... }` result literals.
+3. **Runtime metrics still receive a boolean.** `agent-end.ts` derives success from `result.kind !== "error"` before recording metrics, keeping existing metric storage unchanged.
+
+**Carry-forward.** Model sandbox status as explicit ready-service/ready-exec variants and update Kroki endpoint extraction accordingly.
