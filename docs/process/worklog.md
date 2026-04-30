@@ -6695,3 +6695,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 **Known deviations.** Live tests were not required by the story spec because this was a type/domain refactor over existing seams; the live gates remain available for later acceptance.
 
 **Carry-forward.** CV11.E4 — Semi-trusted Processors — is next.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 step 1: processor names fail closed
+
+**What shipped.** `validateProcessor()` now rejects unsafe third-party processor ids and tags before they enter registry state. Accepted names are bounded lowercase ASCII identifiers with optional hyphens; whitespace, control characters, path separators, dot segments, reserved prototype keys, and processor-controlled precedence metadata are rejected.
+
+**Implementation commit.**
+
+1. `df0cab8` — step 1: reject unsafe processor names
+
+**Beans.**
+
+1. Closed `task-5a56d500` — CV11.E4.S1 step 1: safe processor ids and tags.
+
+**Test count.** Fast non-live suite increased from 947 to 952 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts --testNamePattern 'id|tag|metadata|placement'` — passed.
+2. `pnpm vitest run tests/unit/register.test.ts` — passed: 26 tests.
+3. `pnpm run feedback` — passed: 952 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Registration names are conservative.** Processor ids and tags use the same safe grammar: lowercase letters, digits, hyphens, first/last alphanumeric, maximum 64 characters.
+2. **Prototype-sensitive names are reserved.** `__proto__`, `constructor`, and `prototype` are invalid even if they otherwise look like strings.
+3. **Processor metadata cannot steer precedence.** Third-party registration rejects `order`, `priority`, and `processorPrecedence` fields.
+
+**Carry-forward.** Validate alias maps and preserve prototype-safe aliases.
