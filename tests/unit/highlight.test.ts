@@ -43,8 +43,8 @@ describe("highlight processor — SQL", () => {
 			"SELECT name FROM users WHERE age > 30",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 		// Keywords should be present (possibly wrapped in ANSI).
 		expect(result.text).toContain("SELECT");
@@ -61,8 +61,8 @@ describe("highlight processor — SQL", () => {
 			"SELECT * FROM t WHERE name = 'Alice'",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("Alice");
 		expect(result.text).toContain(ESC);
 	});
@@ -73,8 +73,8 @@ describe("highlight processor — SQL", () => {
 			"SELECT 1 -- a comment",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("a comment");
 	});
 
@@ -84,8 +84,8 @@ describe("highlight processor — SQL", () => {
 			"SELECT /* inline */ 1",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("inline");
 	});
 
@@ -95,8 +95,8 @@ describe("highlight processor — SQL", () => {
 			"SELECT 42, 3.14 FROM dual",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("42");
 		expect(result.text).toContain("3.14");
 	});
@@ -107,8 +107,8 @@ describe("highlight processor — SQL", () => {
 			"select name from users",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		// Should still contain ANSI codes for the keywords.
 		expect(result.text).toContain(ESC);
 		expect(result.text).toContain("select");
@@ -122,8 +122,8 @@ describe("highlight processor — regex", () => {
 			"[a-z]+",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 		expect(result.text).toContain("a-z");
 	});
@@ -134,8 +134,8 @@ describe("highlight processor — regex", () => {
 			"(foo|bar){2,3}",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("foo");
 		expect(result.text).toContain("bar");
 		expect(result.text).toContain(ESC);
@@ -147,8 +147,8 @@ describe("highlight processor — regex", () => {
 			"^\\d+\\.\\d+$",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 });
@@ -160,8 +160,8 @@ describe("highlight processor — jq", () => {
 			'.[] | select(.age > 30) | .name',
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 		expect(result.text).toContain("select");
 	});
@@ -172,8 +172,8 @@ describe("highlight processor — jq", () => {
 			'. + {"key": "value"}',
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("key");
 		expect(result.text).toContain("value");
 	});
@@ -184,8 +184,8 @@ describe("highlight processor — jq", () => {
 			".x + 42",
 		);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("42");
 	});
 });
@@ -196,8 +196,8 @@ describe("highlight processor — SQL edge cases", () => {
 			"sql",
 			"SELECT 1 -- trailing",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("trailing");
 	});
 
@@ -206,8 +206,8 @@ describe("highlight processor — SQL edge cases", () => {
 			"sql",
 			"SELECT /* unclosed",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("unclosed");
 	});
 
@@ -216,8 +216,8 @@ describe("highlight processor — SQL edge cases", () => {
 			"sql",
 			"SELECT 'it''s'",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("it");
 	});
 });
@@ -228,8 +228,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			".x | length # count items",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("count items");
 		expect(result.text).toContain(ESC);
 	});
@@ -239,16 +239,16 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			'.name // "default"',
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("//");
 		expect(result.text).toContain("default");
 	});
 
 	it("highlights bare dot identity", async () => {
 		const result = await createHighlightProcessor().render("jq", ".");
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 
@@ -257,8 +257,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			'.x | "hello\\nworld"',
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("hello");
 	});
 
@@ -267,8 +267,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			".x | limit(5; .[])",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("5");
 		expect(result.text).toContain("limit");
 	});
@@ -278,8 +278,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			'.x | "unterminated',
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("unterminated");
 	});
 
@@ -288,8 +288,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			".[0] | .name",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 
@@ -298,8 +298,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			".x # trailing",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("trailing");
 	});
 
@@ -308,8 +308,8 @@ describe("highlight processor — jq edge cases", () => {
 			"jq",
 			"myFunc | select(.x)",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("myFunc");
 		// myFunc should NOT be highlighted as a builtin.
 		// select should be highlighted.
@@ -323,8 +323,8 @@ describe("highlight processor — regex edge cases", () => {
 			"regex",
 			"[^abc]+",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 
@@ -333,8 +333,8 @@ describe("highlight processor — regex edge cases", () => {
 			"regex",
 			"[\\d\\w]+",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 
@@ -343,8 +343,8 @@ describe("highlight processor — regex edge cases", () => {
 			"regex",
 			"[]abc]",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 
@@ -353,8 +353,8 @@ describe("highlight processor — regex edge cases", () => {
 			"regex",
 			"[abc",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 
@@ -363,8 +363,8 @@ describe("highlight processor — regex edge cases", () => {
 			"regex",
 			"a{2",
 		);
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain(ESC);
 	});
 });
@@ -372,8 +372,8 @@ describe("highlight processor — regex edge cases", () => {
 describe("highlight processor — errors and abort", () => {
 	it("returns error for empty input", async () => {
 		const result = await createHighlightProcessor().render("sql", "");
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("empty");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("empty");
 	});
 
 	it("returns ok:false for a pre-aborted signal", async () => {
@@ -384,12 +384,12 @@ describe("highlight processor — errors and abort", () => {
 			"SELECT 1",
 			controller.signal,
 		);
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("Aborted");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Aborted");
 	});
 
 	it("passes through whitespace-only input as error", async () => {
 		const result = await createHighlightProcessor().render("jq", "   \n\n  ");
-		expect(result.ok).toBe(false);
+		expect(result.kind).toBe("error");
 	});
 });

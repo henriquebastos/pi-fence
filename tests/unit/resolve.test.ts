@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import type {
 	Availability,
 	FenceProcessor,
-	FenceResult,
+	FenceOutput,
 	ProcessorPlacement,
 } from "../../extensions/pi-fence/processor.ts";
 import {
@@ -44,8 +44,8 @@ function makeFakeProcessor(opts: FakeProcessorOptions): FenceProcessor {
 			}
 			return opts.availability ?? { ok: true };
 		},
-		async render(): Promise<FenceResult> {
-			return { ok: true, png: Buffer.alloc(0) };
+		async render(): Promise<FenceOutput> {
+			return { kind: "image", data: Buffer.alloc(0), mimeType: "image/png" };
 		},
 	};
 }

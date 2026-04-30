@@ -25,11 +25,13 @@ import type { ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
+	errorOutput,
+	imageOutput,
 	mergeSignals,
 	withSignalGuard,
 	type Availability,
+	type FenceOutput,
 	type FenceProcessor,
-	type FenceResult,
 } from "./processor.ts";
 
 const ERROR_BODY_MAX_CHARS = 500;
@@ -77,7 +79,7 @@ export function createMermaidLocalProcessor(
 			}
 		},
 
-		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceOutput> => {
 			const combinedSignal = mergeSignals([
 				signal,
 				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
@@ -109,16 +111,16 @@ export function createMermaidLocalProcessor(
 						tag,
 						exitCode: result.exitCode,
 					});
-					return { ok: false, error };
+					return errorOutput(error);
 				}
 
 				const png = await fs.readFile(outPath);
 				logger.info("mermaid-host", "mmdc ok", { tag, bytes: png.length });
-				return { ok: true, png };
+				return imageOutput(png);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				logger.error("mermaid-host", message, { tag });
-				return { ok: false, error: message };
+				return errorOutput(message);
 			} finally {
 				// Best-effort cleanup.
 				await fs.unlink(inPath).catch(() => {});

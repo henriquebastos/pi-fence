@@ -16,13 +16,12 @@
  *     throws — a crashing probe would propagate out of the extension's
  *     wire-time `available()` loop and take the whole extension down.
  *   - `render(tag, source, signal)`: shells out `dot -Tpng` with
- *     `source` on stdin. Exit 0 → { ok: true, png: Buffer } where
- *     `png` reads from `ShellResult.stdoutBuffer` (binary-safe;
- *     `stdout` is the UTF-8 decoded variant, lossy for PNGs). Non-zero
- *     exit → { ok: false, error: stderr (or `dot exited N`) truncated
- *     to 500 chars }. Shell-runner throw → { ok: false, error:
- *     exception message }. Pre-aborted signal → early
- *     { ok: false, error: "Aborted before render" } with no spawn.
+ *     `source` on stdin. Exit 0 → image output where `data` reads from
+ *     `ShellResult.stdoutBuffer` (binary-safe; `stdout` is the UTF-8 decoded
+ *     variant, lossy for PNGs). Non-zero exit → error output with stderr (or
+ *     `dot exited N`) truncated to 500 chars. Shell-runner throw → error
+ *     output with exception message. Pre-aborted signal → early error output
+ *     with no spawn.
  *   - Aliases: the processor advertises `dot → graphviz`. Alias
  *     resolution to the canonical tag is not meaningful internally
  *     (the shell command is the same regardless of how the tag was
@@ -38,11 +37,13 @@ import type { ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
+	errorOutput,
+	imageOutput,
 	mergeSignals,
 	withSignalGuard,
 	type Availability,
+	type FenceOutput,
 	type FenceProcessor,
-	type FenceResult,
 } from "./processor.ts";
 
 const ERROR_BODY_MAX_CHARS = 500;
@@ -117,7 +118,7 @@ export function createGraphvizLocalProcessor(
 			}
 		},
 
-		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceOutput> => {
 			const combinedSignal = mergeSignals([
 				signal,
 				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
@@ -134,7 +135,7 @@ export function createGraphvizLocalProcessor(
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				logger.error("graphviz-host", message, { tag });
-				return { ok: false, error: message };
+				return errorOutput(message);
 			}
 
 			if (result.exitCode === 0) {
@@ -146,7 +147,7 @@ export function createGraphvizLocalProcessor(
 				// assertion-style tests that never touch bytes.
 				const png = result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
 				logger.info("graphviz-host", "dot ok", { tag, bytes: png.length });
-				return { ok: true, png };
+				return imageOutput(png);
 			}
 
 			const error = (result.stderr || `dot exited ${result.exitCode}`).slice(
@@ -157,7 +158,7 @@ export function createGraphvizLocalProcessor(
 				tag,
 				exitCode: result.exitCode,
 			});
-			return { ok: false, error };
+			return errorOutput(error);
 		}),
 	};
 }

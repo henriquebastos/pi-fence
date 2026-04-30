@@ -1,10 +1,12 @@
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
+	errorOutput,
+	imageOutput,
 	mergeSignals,
 	withSignalGuard,
 	type Availability,
+	type FenceOutput,
 	type FenceProcessor,
-	type FenceResult,
 } from "./processor.ts";
 import type { ExecSandboxEnvironment, ExecSandboxWorkspace, SandboxController } from "./sandbox.ts";
 
@@ -26,7 +28,7 @@ interface BundleToolHandler {
 	id: BundleToolId;
 	canonicalTag: string;
 	aliases: readonly string[];
-	render(env: ExecSandboxEnvironment, source: string, signal?: AbortSignal): Promise<FenceResult>;
+	render(env: ExecSandboxEnvironment, source: string, signal?: AbortSignal): Promise<FenceOutput>;
 }
 
 const BUNDLE_TOOL_HANDLERS: readonly BundleToolHandler[] = [
@@ -66,7 +68,7 @@ export function createBundleSandboxProcessor(
 		tags: BUNDLE_TAGS,
 		aliases: BUNDLE_ALIASES,
 		available: async () => bundleAvailable(controller, env),
-		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> =>
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceOutput> =>
 			renderBundle(env, tag, source, signal),
 		),
 	};
@@ -77,13 +79,10 @@ async function renderBundle(
 	tag: string,
 	source: string,
 	signal?: AbortSignal,
-): Promise<FenceResult> {
+): Promise<FenceOutput> {
 	const handler = bundleHandlerForTag(tag);
 	if (!handler) {
-		return {
-			ok: false,
-			error: `${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`,
-		};
+		return errorOutput(`${BUNDLE_SANDBOX_PROCESSOR_ID} render for ${tag} is not implemented yet`);
 	}
 	return handler.render(env, source, signal);
 }
@@ -98,16 +97,16 @@ async function renderGraphviz(
 	env: ExecSandboxEnvironment,
 	source: string,
 	signal?: AbortSignal,
-): Promise<FenceResult> {
+): Promise<FenceOutput> {
 	try {
 		const result = await env.run("dot", ["-Tpng"], { input: source, signal: bundleRenderSignal(signal) });
 		if (result.exitCode === 0) {
-			return { ok: true, png: result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8") };
+			return imageOutput(result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8"));
 		}
-		return { ok: false, error: result.stderr.trim() || `dot exited ${result.exitCode}` };
+		return errorOutput(result.stderr.trim() || `dot exited ${result.exitCode}`);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		return { ok: false, error: message };
+		return errorOutput(message);
 	}
 }
 
@@ -115,7 +114,7 @@ async function renderMermaid(
 	env: ExecSandboxEnvironment,
 	source: string,
 	signal?: AbortSignal,
-): Promise<FenceResult> {
+): Promise<FenceOutput> {
 	let workspace: ExecSandboxWorkspace | undefined;
 	const renderSignal = bundleRenderSignal(signal);
 	try {
@@ -138,12 +137,12 @@ async function renderMermaid(
 			{ signal: renderSignal },
 		);
 		if (result.exitCode !== 0) {
-			return { ok: false, error: result.stderr.trim() || `mmdc exited ${result.exitCode}` };
+			return errorOutput(result.stderr.trim() || `mmdc exited ${result.exitCode}`);
 		}
-		return { ok: true, png: await workspace.readBuffer(outputName, { signal: renderSignal }) };
+		return imageOutput(await workspace.readBuffer(outputName, { signal: renderSignal }));
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
-		return { ok: false, error: message };
+		return errorOutput(message);
 	} finally {
 		await workspace?.dispose({ signal: AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS) }).catch(() => {});
 	}

@@ -94,9 +94,9 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 				const krokiRemote = createKrokiProcessor(http, undefined, new FakeLogger());
 				const result = await krokiRemote.render(entry.tag, spec!.source);
 
-				expect(result.ok).toBe(true);
-				if (!result.ok || !("png" in result)) return;
-				expect(Buffer.compare(result.png, pngBytes)).toBe(0);
+				expect(result.kind).toBe("image");
+				if (result.kind !== "image") return;
+				expect(Buffer.compare(result.data, pngBytes)).toBe(0);
 			});
 		}
 
@@ -128,9 +128,9 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 				const krokiRemote = createKrokiProcessor(http, undefined, new FakeLogger());
 				const result = await krokiRemote.render(entry.tag, spec!.source);
 
-				expect(result.ok).toBe(true);
-				if (!result.ok || !("png" in result)) return;
-				expect(Buffer.compare(result.png.subarray(0, 8), PNG_MAGIC)).toBe(0);
+				expect(result.kind).toBe("image");
+				if (result.kind !== "image") return;
+				expect(Buffer.compare(result.data.subarray(0, 8), PNG_MAGIC)).toBe(0);
 				// Verify fixture is also a valid PNG (manifest integrity covers bytes/sha)
 				expect(Buffer.compare(expectedPng.subarray(0, 8), PNG_MAGIC)).toBe(0);
 			});
@@ -165,9 +165,9 @@ describe.skipIf(!manifestExists)("fixture replay — live-derived fixtures", () 
 				const gv = createGraphvizLocalProcessor(shell);
 				const result = await gv.render("graphviz", "digraph { A -> B -> C }");
 
-				expect(result.ok).toBe(true);
-				if (!result.ok || !("png" in result)) return;
-				expect(Buffer.compare(result.png, pngBytes)).toBe(0);
+				expect(result.kind).toBe("image");
+				if (result.kind !== "image") return;
+				expect(Buffer.compare(result.data, pngBytes)).toBe(0);
 			});
 		}
 	});

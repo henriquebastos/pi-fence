@@ -56,16 +56,16 @@ describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 	it("renders a good DOT source into a real PNG", async () => {
 		const result = await graphvizLocal.render("graphviz", GOOD_SOURCE);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
 
 		// Magic bytes: the response is a real PNG, not HTML, not an
 		// error text, not a zero-length buffer.
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
 
 		// Size floor: catches the "tiny error PNG" regression without
 		// being sensitive to graphviz version drift.
-		expect(result.png.length).toBeGreaterThan(HAPPY_SIZE_FLOOR_BYTES);
+		expect(result.data.length).toBeGreaterThan(HAPPY_SIZE_FLOOR_BYTES);
 	}, 15_000);
 
 	it("renders via the `dot` alias the same way as the canonical tag", async () => {
@@ -76,16 +76,16 @@ describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 		// round-trip end-to-end.
 		const result = await graphvizLocal.render("dot", GOOD_SOURCE);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
 	}, 15_000);
 
 	it("returns ok:false with a non-empty error body for malformed DOT", async () => {
 		const result = await graphvizLocal.render("graphviz", BAD_SOURCE);
 
-		expect(result.ok).toBe(false);
-		if (result.ok) return;
+		expect(result.kind).toBe("error");
+		if (result.kind !== "error") return;
 		expect(result.error.length).toBeGreaterThan(0);
 		// graphviz's parser emits its diagnostic on stderr. The message
 		// content is version-dependent; asserting non-empty is enough.
@@ -99,8 +99,8 @@ describe.skipIf(!containerRunning)("graphviz-local — live", () => {
 
 		const result = await graphvizLocal.render("graphviz", GOOD_SOURCE, controller.signal);
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toMatch(/abort/i);
 		}
 	}, 5000);

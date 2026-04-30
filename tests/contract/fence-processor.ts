@@ -131,26 +131,26 @@ export function runFenceProcessorContract(
 			return promise.catch(() => {});
 		});
 
-		it("returns a successful result for a good source", async () => {
+		it("returns a successful explicit output for a good source", async () => {
 			const processor = factory();
 			const result = await processor.render(cases.tag, cases.goodSource);
-			expect(result.ok).toBe(true);
-			if (result.ok) {
-				if ((cases.outputKind ?? "image") === "image") {
-					expect("png" in result).toBe(true);
-					if ("png" in result) expect(Buffer.isBuffer(result.png)).toBe(true);
-				} else {
-					expect("text" in result).toBe(true);
-					if ("text" in result) expect(typeof result.text).toBe("string");
+			if ((cases.outputKind ?? "image") === "image") {
+				expect(result.kind).toBe("image");
+				if (result.kind === "image") {
+					expect(Buffer.isBuffer(result.data)).toBe(true);
+					expect(result.mimeType).toBe("image/png");
 				}
+			} else {
+				expect(result.kind).toBe("text");
+				if (result.kind === "text") expect(typeof result.text).toBe("string");
 			}
 		});
 
-		it("returns { ok: false, error } for a bad source — does not throw", async () => {
+		it("returns an explicit error output for a bad source — does not throw", async () => {
 			const processor = factory();
 			const result = await processor.render(cases.tag, cases.badSource);
-			expect(result.ok).toBe(false);
-			if (!result.ok) {
+			expect(result.kind).toBe("error");
+			if (result.kind === "error") {
 				expect(typeof result.error).toBe("string");
 				expect(result.error.length).toBeGreaterThan(0);
 			}
@@ -161,7 +161,7 @@ export function runFenceProcessorContract(
 			const controller = new AbortController();
 			controller.abort();
 			const result = await processor.render(cases.tag, cases.goodSource, controller.signal);
-			expect(result.ok).toBe(false);
+			expect(result.kind).toBe("error");
 		});
 	});
 }

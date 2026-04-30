@@ -178,9 +178,9 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "digraph {}");
 
-		expect(result.ok).toBe(true);
-		if (result.ok && "png" in result) {
-			expect(Buffer.compare(result.png, TINY_PNG)).toBe(0);
+		expect(result.kind).toBe("image");
+		if (result.kind === "image") {
+			expect(Buffer.compare(result.data, TINY_PNG)).toBe(0);
 		}
 	});
 
@@ -188,7 +188,7 @@ describe("createGraphvizLocalProcessor — render()", () => {
 		// Tests that don't care about PNG fidelity — most of the
 		// extension-layer cases — pass only `stdout` in their fake
 		// ShellResults. graphviz-local's fallback encodes stdout via
-		// UTF-8 so `result.png` is defined (lossy for binary, fine for
+		// UTF-8 so `result.data` is defined (lossy for binary, fine for
 		// assertions that never inspect bytes).
 		const shell = new FakeShellRunner({
 			stdout: "ascii only",
@@ -199,9 +199,9 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "digraph {}");
 
-		expect(result.ok).toBe(true);
-		if (result.ok && "png" in result) {
-			expect(result.png.toString("utf8")).toBe("ascii only");
+		expect(result.kind).toBe("image");
+		if (result.kind === "image") {
+			expect(result.data.toString("utf8")).toBe("ascii only");
 		}
 	});
 
@@ -215,8 +215,8 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "digraph { A -> }");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toContain("syntax error");
 		}
 	});
@@ -231,8 +231,8 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "digraph {}");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toContain("5");
 		}
 	});
@@ -248,8 +248,8 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "oops");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error.length).toBeLessThanOrEqual(500);
 		}
 	});
@@ -264,8 +264,8 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "digraph {}");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error.length).toBeGreaterThan(0);
 		}
 	});
@@ -283,8 +283,8 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 		const result = await processor.render("graphviz", "digraph {}", controller.signal);
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toMatch(/abort/i);
 		}
 		expect(shell.calls).toHaveLength(0);
@@ -322,8 +322,8 @@ describe("createGraphvizLocalProcessor — render()", () => {
 
 			expect(result).not.toBe("pending");
 			if (result !== "pending") {
-				expect(result.ok).toBe(false);
-				if (!result.ok) expect(result.error).toMatch(/timed out|abort/i);
+				expect(result.kind).toBe("error");
+				if (result.kind === "error") expect(result.error).toMatch(/timed out|abort/i);
 			}
 			expect(shell.calls).toBe(1);
 		} finally {
@@ -387,6 +387,6 @@ describe("createGraphvizLocalProcessor — logging", () => {
 
 		const result = await processor.render("graphviz", "digraph {}");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 	});
 });

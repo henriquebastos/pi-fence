@@ -18,7 +18,7 @@ function makeProcessor(id: string): FenceProcessor {
 		tags: [id],
 		aliases: {},
 		available: async () => ({ ok: true }),
-		render: async () => ({ ok: true, text: id }),
+		render: async () => ({ kind: "text", text: id }),
 	};
 }
 

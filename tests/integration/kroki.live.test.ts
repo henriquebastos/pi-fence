@@ -42,7 +42,7 @@ import { NodeHttpClient } from "../../extensions/pi-fence/io/http-client.ts";
 import { NULL_LOGGER } from "../../extensions/pi-fence/io/logger.ts";
 import { NodeShellRunner } from "../../extensions/pi-fence/io/shell-runner.ts";
 import { resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
-import type { FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
+import type { FenceOutput, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 import { probeAvailability, resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
 import { createSandboxControllers } from "../../extensions/pi-fence/sandbox-context.ts";
 import { KROKI_TEXT_LANGUAGES } from "../fixtures/kroki/canonical-sources.ts";
@@ -72,19 +72,19 @@ describe("kroki renderer — live", () => {
 				async () => {
 					const result = await runtime.render(spec.tag, spec.source);
 
-					expect(result.ok).toBe(true);
-					if (!result.ok || !("png" in result)) return;
+					expect(result.kind).toBe("image");
+					if (result.kind !== "image") return;
 
 					// Magic byte check: the response is a real PNG, not HTML,
 					// not JSON, not a redirect body.
 					expect(
-						result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),
+						result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),
 					).toBe(true);
 
 					// Per-language size floor. Guards against Kroki regressing
 					// to ~300-byte "error PNG" responses on otherwise 200 status.
 					// Calibrated in the fixture from the research pass.
-					expect(result.png.length).toBeGreaterThan(spec.sizeFloorBytes);
+					expect(result.data.length).toBeGreaterThan(spec.sizeFloorBytes);
 				},
 				PER_LANGUAGE_TIMEOUT_MS,
 			);
@@ -104,13 +104,13 @@ describe("kroki renderer — live", () => {
 						// processor.
 						const result = await runtime.render(alias, spec.source);
 
-						expect(result.ok).toBe(true);
-						if (!result.ok || !("png" in result)) return;
+						expect(result.kind).toBe("image");
+						if (result.kind !== "image") return;
 
 						expect(
-							result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),
+							result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC),
 						).toBe(true);
-						expect(result.png.length).toBeGreaterThan(spec.sizeFloorBytes);
+						expect(result.data.length).toBeGreaterThan(spec.sizeFloorBytes);
 					},
 					PER_LANGUAGE_TIMEOUT_MS,
 				);
@@ -123,8 +123,8 @@ describe("kroki renderer — live", () => {
 		async () => {
 			const result = await runtime.render("mermaid", BROKEN_MERMAID);
 
-			expect(result.ok).toBe(false);
-			if (result.ok) return;
+			expect(result.kind).toBe("error");
+			if (result.kind !== "error") return;
 
 			// Kroki's error bodies are prose; we only assert non-empty.
 			// Specific wording drifts across kroki versions.
@@ -146,9 +146,9 @@ describe("kroki renderer — live", () => {
 				controller.signal,
 			);
 
-			expect(result.ok).toBe(false);
+			expect(result.kind).toBe("error");
 			// The error message content depends on where in the round-trip
-			// the abort took effect. All paths must produce ok:false without
+			// the abort took effect. All paths must produce error output without
 			// throwing.
 		},
 		PER_LANGUAGE_TIMEOUT_MS,
@@ -157,7 +157,7 @@ describe("kroki renderer — live", () => {
 
 interface ConfiguredKrokiRuntime {
 	canRender(tag: string): boolean;
-	render(tag: string, source: string, signal?: AbortSignal): Promise<FenceResult>;
+	render(tag: string, source: string, signal?: AbortSignal): Promise<FenceOutput>;
 }
 
 async function createConfiguredKrokiRuntime(): Promise<ConfiguredKrokiRuntime> {
@@ -203,7 +203,7 @@ async function createConfiguredKrokiRuntime(): Promise<ConfiguredKrokiRuntime> {
 		render: async (tag, source, signal) => {
 			const processor = processorFor(tag);
 			if (!processor) {
-				return { ok: false, error: `No configured Kroki processor available for ${tag}` };
+				return { kind: "error", error: `No configured Kroki processor available for ${tag}` };
 			}
 			return processor.render(tag, source, signal);
 		},

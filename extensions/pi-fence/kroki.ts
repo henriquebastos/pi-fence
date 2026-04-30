@@ -14,13 +14,12 @@
  *     the raw JSON source — no wrapping or content-type dispatch needed.
  *   - 15-second timeout by default (AbortSignal.timeout). Merged with the
  *     caller's signal when provided.
- *   - 2xx: return { ok: true, png: Buffer }. Response body passed through
- *     unchanged.
- *   - 4xx/5xx: return { ok: false, error: <truncated body, up to 500 chars> }.
- *   - HttpClient throw (network failure, DNS, abort): return
- *     { ok: false, error: <error message> }.
- *   - Pre-aborted caller signal: early return { ok: false, error: "..." }
- *     without hitting HttpClient.
+ *   - 2xx: return image output. Response body passed through unchanged.
+ *   - 4xx/5xx: return error output with truncated body, up to 500 chars.
+ *   - HttpClient throw (network failure, DNS, abort): return error output with
+ *     the error message.
+ *   - Pre-aborted caller signal: early return error output without hitting
+ *     HttpClient.
  *   - Endpoint is configurable at construction; defaults to https://kroki.io.
  */
 
@@ -29,11 +28,13 @@ import { NULL_LOGGER, type Logger } from "./io/logger.ts";
 import type { SandboxController, SandboxStatus } from "./sandbox.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
+	errorOutput,
+	imageOutput,
 	mergeSignals,
 	withSignalGuard,
 	type Availability,
+	type FenceOutput,
 	type FenceProcessor,
-	type FenceResult,
 } from "./processor.ts";
 import { svgToPng } from "./svg-to-png.ts";
 
@@ -186,7 +187,7 @@ interface SuccessfulKrokiRequest {
 
 interface FailedKrokiRequest {
 	ok: false;
-	result: FenceResult;
+	result: FenceOutput;
 }
 
 type KrokiRequestResult = SuccessfulKrokiRequest | FailedKrokiRequest;
@@ -256,7 +257,7 @@ async function requestKroki(
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		logger.error(processorId, message, { url: context.url, tag: context.tag });
-		return { ok: false, result: { ok: false, error: message } };
+		return { ok: false, result: errorOutput(message) };
 	}
 }
 
@@ -265,7 +266,7 @@ async function renderKrokiResponse(
 	context: KrokiRequestContext,
 	logger: Logger,
 	processorId: string,
-): Promise<FenceResult> {
+): Promise<FenceOutput> {
 	return response.status >= 200 && response.status < 300
 		? renderSuccessfulKrokiResponse(response, context, logger, processorId)
 		: renderFailedKrokiResponse(response, context, logger, processorId);
@@ -276,16 +277,16 @@ async function renderSuccessfulKrokiResponse(
 	context: KrokiRequestContext,
 	logger: Logger,
 	processorId: string,
-): Promise<FenceResult> {
+): Promise<FenceOutput> {
 	const rendered = await responseBodyToPng(response.body, context, logger, processorId);
-	if (!rendered.ok) return rendered;
+	if (rendered.kind !== "image") return rendered;
 
 	logger.debug(processorId, "response ok", {
 		status: response.status,
 		tag: context.tag,
-		bytes: rendered.png.length,
+		bytes: rendered.data.length,
 	});
-	return { ok: true, png: rendered.png };
+	return rendered;
 }
 
 async function responseBodyToPng(
@@ -293,8 +294,8 @@ async function responseBodyToPng(
 	context: KrokiRequestContext,
 	logger: Logger,
 	processorId: string,
-): Promise<{ ok: true; png: Buffer } | { ok: false; error: string }> {
-	if (!context.isSvgOnly) return { ok: true, png: body };
+): Promise<FenceOutput> {
+	if (!context.isSvgOnly) return imageOutput(body);
 
 	try {
 		const png = await svgToPng(body);
@@ -303,11 +304,11 @@ async function responseBodyToPng(
 			svgBytes: body.length,
 			pngBytes: png.length,
 		});
-		return { ok: true, png };
+		return imageOutput(png);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		logger.error(processorId, `svg→png failed: ${message}`, { tag: context.tag });
-		return { ok: false, error: `SVG rasterization failed: ${message}` };
+		return errorOutput(`SVG rasterization failed: ${message}`);
 	}
 }
 
@@ -316,7 +317,7 @@ function renderFailedKrokiResponse(
 	context: KrokiRequestContext,
 	logger: Logger,
 	processorId: string,
-): FenceResult {
+): FenceOutput {
 	const text = response.body.toString("utf8");
 	const truncated = text.length > ERROR_BODY_MAX_CHARS
 		? text.slice(0, ERROR_BODY_MAX_CHARS)
@@ -326,7 +327,7 @@ function renderFailedKrokiResponse(
 		tag: context.tag,
 		bodyBytes: response.body.length,
 	});
-	return { ok: false, error: truncated };
+	return errorOutput(truncated);
 }
 
 export function createKrokiProcessor(
@@ -371,9 +372,9 @@ export function createKrokiSandboxProcessor(
 		tags: KROKI_CANONICAL_TAGS,
 		aliases: KROKI_ALIASES,
 		available: async () => sandboxEndpointAvailability(controller),
-		render: withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+		render: withSignalGuard(async (tag, source, signal): Promise<FenceOutput> => {
 			const endpoint = await readySandboxEndpoint(controller);
-			if (!endpoint.ok) return { ok: false, error: endpoint.reason };
+			if (!endpoint.ok) return errorOutput(endpoint.reason);
 			return renderKrokiWithEndpoint(
 				http,
 				logger,
@@ -392,7 +393,7 @@ function renderKrokiWithEndpoint(
 	endpoint: () => string,
 	appearance?: KrokiAppearanceResolver,
 ): FenceProcessor["render"] {
-	return withSignalGuard(async (tag, source, signal): Promise<FenceResult> => {
+	return withSignalGuard(async (tag, source, signal): Promise<FenceOutput> => {
 		const combinedSignal = mergeSignals([
 			signal,
 			AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),

@@ -56,19 +56,19 @@ describe.skipIf(!containerRunning)("bundle-sandbox — live", () => {
 	it("renders Graphviz through dot inside the bundle container", async () => {
 		const result = await processor.render("dot", GOOD_DOT);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
-		expect(result.png.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.data.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
 	}, 15_000);
 
 	it("renders Mermaid through mmdc inside the bundle container", async () => {
 		const result = await processor.render("mermaid", GOOD_MERMAID);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
-		expect(result.png.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.data.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
 	}, 20_000);
 });
 
@@ -98,19 +98,19 @@ describe.skipIf(!gondolinBundleReady)("bundle-sandbox — Gondolin live", () => 
 	it("renders Graphviz through dot inside the Gondolin bundle VM", async () => {
 		const result = await processor.render("dot", GOOD_DOT);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
-		expect(result.png.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.data.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
 	}, 30_000);
 
 	it("renders Mermaid through mmdc inside the Gondolin bundle VM", async () => {
 		const result = await processor.render("mermaid", GOOD_MERMAID);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
-		expect(result.png.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.data.length).toBeGreaterThan(SIZE_FLOOR_BYTES);
 	}, 45_000);
 });
 

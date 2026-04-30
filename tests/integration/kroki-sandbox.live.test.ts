@@ -44,9 +44,9 @@ describe.skipIf(!singleContainerRunning)("kroki-sandbox single-container — liv
 	it("renders Graphviz through the managed single Kroki container", async () => {
 		const result = await processor.render("dot", GOOD_DOT);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expectRealPng(result.png);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expectRealPng(result.data);
 	}, 20_000);
 });
 
@@ -64,8 +64,8 @@ describe.skipIf(!composeStackRunning)("kroki-sandbox Compose stack — live", ()
 	it("renders Mermaid through the managed Compose Kroki stack", async () => {
 		const result = await processor.render("mermaid", GOOD_MERMAID);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expectRealPng(result.png);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expectRealPng(result.data);
 	}, 30_000);
 });

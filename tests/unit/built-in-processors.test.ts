@@ -136,7 +136,7 @@ describe("built-in processor factory manifest", () => {
 
 		const result = await processor.render("dot", "digraph { A -> B }");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 		expect(env.runs).toEqual([
 			{
 				command: "dot",

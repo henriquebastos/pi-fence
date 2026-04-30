@@ -42,11 +42,11 @@ function makeMermaidLocal(): ReturnType<typeof createMermaidLocalProcessor> {
 	return {
 		...proc,
 		async render(tag: string, source: string, signal?: AbortSignal) {
-			if (signal?.aborted) return { ok: false, error: "Aborted" };
+			if (signal?.aborted) return { kind: "error", error: "Aborted" } as const;
 			if (source.includes("not actually mermaid")) {
-				return { ok: false, error: "Parse error" };
+				return { kind: "error", error: "Parse error" } as const;
 			}
-			return { ok: true, png: TINY_PNG };
+			return { kind: "image", data: TINY_PNG, mimeType: "image/png" } as const;
 		},
 	};
 }

@@ -8,10 +8,10 @@
  * at `tests/contract/fence-processor.ts` imports this interface and
  * asserts every processor satisfies the shape with a small live call.
  *
- * Output is a `FenceResult` — the same shape Kroki returns. Future
- * processors whose output isn't a PNG (text-based renderings, components,
- * errors with structured parse issues) will motivate an expanded
- * `FenceOutput` variant; today all we ship is image output.
+ * Output is a `FenceOutput`: an explicit image/text/error discriminated
+ * union. Legacy `{ ok, png|text|error }` results are still accepted at the
+ * message seam for older tests and session compatibility, but processor
+ * implementations return explicit variants directly.
  */
 
 export const PROCESSOR_PLACEMENTS = ["embedded", "host", "sandbox", "remote"] as const;
@@ -27,6 +27,18 @@ export type FenceResult =
 	| { ok: true; png: Buffer }
 	| { ok: true; text: string }
 	| { ok: false; error: string };
+
+export function imageOutput(data: Buffer): FenceOutput {
+	return { kind: "image", data, mimeType: "image/png" };
+}
+
+export function textOutput(text: string): FenceOutput {
+	return { kind: "text", text };
+}
+
+export function errorOutput(error: string): FenceOutput {
+	return { kind: "error", error };
+}
 
 export function normalizeFenceOutput(result: FenceResult | FenceOutput): FenceOutput {
 	if ("kind" in result) return result;
@@ -48,12 +60,12 @@ export type RenderFunction = (
 	tag: string,
 	source: string,
 	signal?: AbortSignal,
-) => Promise<FenceResult>;
+) => Promise<FenceOutput>;
 
 export function withSignalGuard(render: RenderFunction): RenderFunction {
 	return async (tag, source, signal) => {
 		if (signal?.aborted) {
-			return { ok: false, error: "Aborted before render" };
+			return errorOutput("Aborted before render");
 		}
 		return render(tag, source, signal);
 	};
@@ -63,7 +75,7 @@ export function withRenderGuards(render: RenderFunction): RenderFunction {
 	return withSignalGuard(async (tag, source, signal) => {
 		const trimmed = source.trim();
 		if (trimmed.length === 0) {
-			return { ok: false, error: `${tag}: empty input` };
+			return errorOutput(`${tag}: empty input`);
 		}
 		return render(tag, trimmed, signal);
 	});
@@ -122,5 +134,5 @@ export interface FenceProcessor {
 	available(): Promise<Availability>;
 
 	/** Render the source for the given tag. Returns data on both success and failure paths. */
-	render(tag: string, source: string, signal?: AbortSignal): Promise<FenceResult>;
+	render(tag: string, source: string, signal?: AbortSignal): Promise<FenceOutput>;
 }

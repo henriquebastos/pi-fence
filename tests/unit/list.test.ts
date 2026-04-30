@@ -48,7 +48,7 @@ function stubProcessor(
 			return { ok: true };
 		},
 		async render() {
-			return { ok: false, error: "stub processor — render() is not exercised in list tests" };
+			return { kind: "error", error: "stub processor — render() is not exercised in list tests" } as const;
 		},
 	};
 }

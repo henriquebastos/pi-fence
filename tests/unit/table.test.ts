@@ -44,8 +44,8 @@ describe("table processor — render CSV", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "name,age\nAlice,30\nBob,25");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 
 		// Should contain box-drawing characters and data.
 		expect(result.text).toContain("name");
@@ -62,8 +62,8 @@ describe("table processor — render CSV", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", 'city,pop\n"New York",8336817\nTokyo,13960000');
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("New York");
 	});
 
@@ -71,8 +71,8 @@ describe("table processor — render CSV", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", 'name,note\nAlice,"said ""hi"""\nBob,ok');
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain('said "hi"');
 	});
 
@@ -80,8 +80,8 @@ describe("table processor — render CSV", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "a,b,c\n1,,3\n,,");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("a");
 		// Table should render without crashing on empty cells.
 		const lines = result.text.split("\n");
@@ -92,8 +92,8 @@ describe("table processor — render CSV", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "name,age\r\nAlice,30\r\nBob,25");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("Alice");
 		expect(result.text).toContain("Bob");
 	});
@@ -102,24 +102,24 @@ describe("table processor — render CSV", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("empty");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("empty");
 	});
 
 	it("returns error for header-only CSV (no data rows)", async () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "a,b,c");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("no data");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("no data");
 	});
 
 	it("aligns columns to the widest cell in each column", async () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("csv", "x,long_header\n1,2");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 
 		// Each row line should have the same length (padded columns).
 		const contentLines = result.text
@@ -134,8 +134,8 @@ describe("table processor — render CSV", () => {
 		const longValue = "A".repeat(60);
 		const result = await processor.render("csv", `col\n${longValue}`);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("…");
 		expect(result.text).not.toContain(longValue);
 	});
@@ -147,8 +147,8 @@ describe("table processor — render JSONL", () => {
 		const source = '{"name":"Alice","age":30}\n{"name":"Bob","age":25}';
 		const result = await processor.render("jsonl", source);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("name");
 		expect(result.text).toContain("age");
 		expect(result.text).toContain("Alice");
@@ -160,8 +160,8 @@ describe("table processor — render JSONL", () => {
 		const source = '{"a":1,"b":2}\n{"a":3}';
 		const result = await processor.render("jsonl", source);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("a");
 		expect(result.text).toContain("b");
 	});
@@ -171,8 +171,8 @@ describe("table processor — render JSONL", () => {
 		const source = '{"id":1,"meta":{"nested":true}}';
 		const result = await processor.render("jsonl", source);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("meta");
 		// Nested object should appear as JSON string.
 		expect(result.text).toContain("{");
@@ -182,15 +182,15 @@ describe("table processor — render JSONL", () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("jsonl", "not json\nalso not json");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error.length).toBeGreaterThan(0);
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error.length).toBeGreaterThan(0);
 	});
 
 	it("returns error for empty JSONL input", async () => {
 		const processor = createTableProcessor();
 		const result = await processor.render("jsonl", "");
 
-		expect(result.ok).toBe(false);
+		expect(result.kind).toBe("error");
 	});
 
 	it("unions all keys from all rows as headers", async () => {
@@ -198,8 +198,8 @@ describe("table processor — render JSONL", () => {
 		const source = '{"a":1}\n{"b":2}\n{"a":3,"c":4}';
 		const result = await processor.render("jsonl", source);
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("text" in result)) return;
+		expect(result.kind).toBe("text");
+		if (result.kind !== "text") return;
 		expect(result.text).toContain("a");
 		expect(result.text).toContain("b");
 		expect(result.text).toContain("c");
@@ -213,7 +213,7 @@ describe("table processor — abort", () => {
 		controller.abort();
 		const result = await processor.render("csv", "a,b\n1,2", controller.signal);
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("Aborted");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Aborted");
 	});
 });

@@ -125,7 +125,7 @@ function fakeSandboxProcessor(id: string): FenceProcessor {
 		tags: ["graphviz"],
 		aliases: {},
 		available: async () => ({ ok: true }),
-		render: async () => ({ ok: false, error: "not used" }),
+		render: async () => ({ kind: "error", error: "not used" }),
 	};
 }
 
@@ -170,8 +170,9 @@ describe("bundle-sandbox processor", () => {
 		);
 
 		await expect(processor.render("graphviz", "digraph{}" as string)).resolves.toEqual({
-			ok: true,
-			png: Buffer.from([0x89]),
+			kind: "image",
+			data: Buffer.from([0x89]),
+			mimeType: "image/png",
 		});
 
 		expect(env.calls[0]?.options?.signal).toBeDefined();
@@ -194,7 +195,7 @@ describe("bundle-sandbox processor", () => {
 
 		const result = await processor.render("dot", "digraph { A -> B }");
 
-		expect(result).toEqual({ ok: true, png });
+		expect(result).toEqual({ kind: "image", data: png, mimeType: "image/png" });
 		expect(env.calls).toEqual([
 			{
 				command: "dot",
@@ -229,8 +230,9 @@ describe("bundle-sandbox processor", () => {
 		);
 
 		await expect(processor.render("mermaid", "flowchart LR", caller.signal)).resolves.toEqual({
-			ok: true,
-			png,
+			kind: "image",
+			data: png,
+			mimeType: "image/png",
 		});
 
 		expect(env.createWorkspaceOptions?.signal).toBeDefined();
@@ -274,8 +276,9 @@ describe("bundle-sandbox processor", () => {
 		);
 
 		await expect(processor.render("mermaid", "flowchart LR", caller.signal)).resolves.toEqual({
-			ok: true,
-			png,
+			kind: "image",
+			data: png,
+			mimeType: "image/png",
 		});
 
 		expect(env.calls[0]?.options?.signal).toBeDefined();
@@ -308,7 +311,7 @@ describe("bundle-sandbox processor", () => {
 
 		const result = await processor.render("mermaid", "flowchart LR\nA --> B");
 
-		expect(result).toEqual({ ok: true, png });
+		expect(result).toEqual({ kind: "image", data: png, mimeType: "image/png" });
 		expect(env.calls).toEqual([
 			{
 				command: "mmdc",
@@ -349,7 +352,7 @@ describe("bundle-sandbox processor", () => {
 		);
 
 		await expect(processor.render("mermaid", "flowchart LR")).resolves.toEqual({
-			ok: false,
+			kind: "error",
 			error: "workspace not configured",
 		});
 	});
@@ -377,7 +380,7 @@ describe("bundle-sandbox processor", () => {
 		);
 
 		await expect(processor.render("mermaid", "flowchart LR")).resolves.toEqual({
-			ok: false,
+			kind: "error",
 			error: "Parse error",
 		});
 		expect(env.workspace.calls).toEqual([

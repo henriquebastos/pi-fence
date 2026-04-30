@@ -104,7 +104,7 @@ describe("createKrokiSandboxProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 		expect(http.requests).toHaveLength(1);
 		expect(http.requests[0].url).toBe("http://localhost:8000/mermaid/png");
 		expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
@@ -147,7 +147,7 @@ describe("createKrokiSandboxProcessor", () => {
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
 		expect(result).toEqual({
-			ok: false,
+			kind: "error",
 			error: "Kroki sandbox is partial: Sandbox kroki has 1 of 2 component(s) ready.",
 		});
 		expect(http.requests).toHaveLength(0);
@@ -232,7 +232,7 @@ describe("createKrokiProcessor — logging", () => {
 
 		const result = await kroki.render("mermaid", "x");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 	});
 });
 
@@ -291,7 +291,7 @@ describe("createKrokiProcessor — appearance/theme", () => {
 
 		const result = await kroki.render("mermaid", "x");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 		expect(http.requests[0].url).toBe("https://kroki.io/mermaid/png?theme=dark");
 	});
 
@@ -374,9 +374,9 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
-		expect(result.ok).toBe(true);
-		if (result.ok && "png" in result) {
-			expect(Buffer.compare(result.png, pngBytes)).toBe(0);
+		expect(result.kind).toBe("image");
+		if (result.kind === "image") {
+			expect(Buffer.compare(result.data, pngBytes)).toBe(0);
 		}
 	});
 
@@ -387,8 +387,8 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "not valid mermaid");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toContain("bad mermaid syntax");
 		}
 	});
@@ -400,8 +400,8 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toContain("internal kroki error");
 		}
 	});
@@ -414,8 +414,8 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "irrelevant");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error.length).toBeLessThanOrEqual(500);
 		}
 	});
@@ -430,8 +430,8 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toContain("ECONNREFUSED");
 		}
 	});
@@ -443,7 +443,7 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 		expect(http.requests[0].url).toBe("http://localhost:8000/mermaid/png");
 	});
 
@@ -454,7 +454,7 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR");
 
-		expect(result.ok).toBe(true);
+		expect(result.kind).toBe("image");
 		expect(http.requests[0].url).toBe("https://example.com/kroki/mermaid/png?theme=dark");
 	});
 
@@ -468,8 +468,8 @@ describe("createKrokiProcessor", () => {
 
 		const result = await kroki.render("mermaid", "flowchart LR", controller.signal);
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toMatch(/abort/i);
 		}
 	});
@@ -494,7 +494,7 @@ describe("createKrokiProcessor", () => {
 
 			const result = await kroki.render("dot", "digraph { A -> B }");
 
-			expect(result.ok).toBe(true);
+			expect(result.kind).toBe("image");
 			expect(http.requests).toHaveLength(1);
 			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png");
 		});
@@ -506,7 +506,7 @@ describe("createKrokiProcessor", () => {
 
 			const result = await kroki.render("puml", "@startuml\nA -> B\n@enduml");
 
-			expect(result.ok).toBe(true);
+			expect(result.kind).toBe("image");
 			expect(http.requests[0].url).toBe("https://kroki.io/plantuml/png");
 		});
 
@@ -528,7 +528,7 @@ describe("createKrokiProcessor", () => {
 
 			const result = await kroki.render("blockdiag", "{ A -> B }");
 
-			expect(result.ok).toBe(true);
+			expect(result.kind).toBe("image");
 			expect(http.requests[0].url).toBe("https://kroki.io/blockdiag/png");
 		});
 
@@ -543,7 +543,7 @@ describe("createKrokiProcessor", () => {
 
 			const result = await kroki.render("vega-lite", '{"data":{}}');
 
-			expect(result.ok).toBe(true);
+			expect(result.kind).toBe("image");
 			expect(http.requests[0].url).toBe("https://kroki.io/vegalite/png");
 			expect(http.requests[0].headers?.["content-type"]).toBe("text/plain");
 		});
@@ -557,7 +557,7 @@ describe("createKrokiProcessor", () => {
 
 			const result = await kroki.render("graphviz", "digraph { A -> B }");
 
-			expect(result.ok).toBe(true);
+			expect(result.kind).toBe("image");
 			expect(http.requests[0].url).toBe("https://kroki.io/graphviz/png");
 		});
 	});
@@ -581,9 +581,9 @@ describe("createKrokiProcessor — SVG-only tags", () => {
 
 		const result = await kroki.render("d2", "x -> y: hello");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(Buffer.compare(result.png.subarray(0, 8), PNG_MAGIC)).toBe(0);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(Buffer.compare(result.data.subarray(0, 8), PNG_MAGIC)).toBe(0);
 		expect(http.requests[0].url).toBe("https://kroki.io/d2/svg");
 	});
 
@@ -612,8 +612,8 @@ describe("createKrokiProcessor — SVG-only tags", () => {
 
 		const result = await kroki.render("d2", "x -> y");
 
-		expect(result.ok).toBe(false);
-		if (result.ok) return;
+		expect(result.kind).toBe("error");
+		if (result.kind !== "error") return;
 		expect(result.error).toContain("SVG rasterization failed");
 	});
 });

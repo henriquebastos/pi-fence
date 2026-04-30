@@ -40,46 +40,46 @@ describe("qr processor — render", () => {
 		const processor = createQrProcessor();
 		const result = await processor.render("qr", "https://example.com");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
 
 		// Output is a valid PNG.
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
 		// Non-trivial size (a QR code for a URL is at least a few hundred bytes).
-		expect(result.png.length).toBeGreaterThan(100);
+		expect(result.data.length).toBeGreaterThan(100);
 	});
 
 	it("renders a short string", async () => {
 		const processor = createQrProcessor();
 		const result = await processor.render("qr", "hello");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
 	});
 
 	it("renders a multi-line string", async () => {
 		const processor = createQrProcessor();
 		const result = await processor.render("qr", "line1\nline2\nline3");
 
-		expect(result.ok).toBe(true);
-		if (!result.ok || !("png" in result)) return;
-		expect(result.png.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
+		expect(result.kind).toBe("image");
+		if (result.kind !== "image") return;
+		expect(result.data.subarray(0, PNG_MAGIC.length).equals(PNG_MAGIC)).toBe(true);
 	});
 
 	it("returns error for empty input", async () => {
 		const processor = createQrProcessor();
 		const result = await processor.render("qr", "");
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("empty");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("empty");
 	});
 
 	it("returns error for whitespace-only input", async () => {
 		const processor = createQrProcessor();
 		const result = await processor.render("qr", "   \n\n  ");
 
-		expect(result.ok).toBe(false);
+		expect(result.kind).toBe("error");
 	});
 
 	it("returns ok:false for a pre-aborted signal", async () => {
@@ -88,7 +88,7 @@ describe("qr processor — render", () => {
 		controller.abort();
 		const result = await processor.render("qr", "test", controller.signal);
 
-		expect(result.ok).toBe(false);
-		if (!result.ok) expect(result.error).toContain("Aborted");
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Aborted");
 	});
 });

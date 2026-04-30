@@ -17,7 +17,7 @@
  * cell values truncated at MAX_CELL_WIDTH.
  */
 
-import { withRenderGuards, type Availability, type FenceProcessor, type FenceResult } from "./processor.ts";
+import { errorOutput, textOutput, withRenderGuards, type Availability, type FenceOutput, type FenceProcessor } from "./processor.ts";
 
 const MAX_CELL_WIDTH = 40;
 
@@ -43,21 +43,21 @@ export function createTableProcessor(): FenceProcessor {
 			return { ok: true };
 		},
 
-		render: withRenderGuards(async (tag, source): Promise<FenceResult> => {
+		render: withRenderGuards(async (tag, source): Promise<FenceOutput> => {
 			try {
 				const { headers, rows } = tag === "jsonl"
 					? parseJsonl(source)
 					: parseCsv(source);
 
 				if (rows.length === 0) {
-					return { ok: false, error: `${tag}: no data rows` };
+					return errorOutput(`${tag}: no data rows`);
 				}
 
 				const text = formatTable(headers, rows);
-				return { ok: true, text };
+				return textOutput(text);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				return { ok: false, error: message };
+				return errorOutput(message);
 			}
 		}),
 	};

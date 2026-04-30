@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { createPiFenceExtension } from "../../extensions/pi-fence/index.ts";
-import type { Availability, FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
+import type { Availability, FenceOutput, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 import { FakeHttpClient } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import type { LogEntry } from "../utilities/logger.ts";
@@ -43,8 +43,8 @@ function stubProcessor(
 		async available(): Promise<Availability> {
 			return availability;
 		},
-		async render(): Promise<FenceResult> {
-			return { ok: false, error: "stub processor — render() is not exercised in command tests" };
+		async render(): Promise<FenceOutput> {
+			return { kind: "error", error: "stub processor — render() is not exercised in command tests" };
 		},
 	};
 }

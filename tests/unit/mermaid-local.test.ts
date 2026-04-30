@@ -65,8 +65,8 @@ describe("mermaid-local — render()", () => {
 		controller.abort();
 
 		const result = await proc.render("mermaid", "flowchart LR\nA --> B", controller.signal);
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toMatch(/abort/i);
 		}
 	});
@@ -87,8 +87,8 @@ describe("mermaid-local — render()", () => {
 		const proc = createMermaidLocalProcessor(shell);
 
 		const result = await proc.render("mermaid", "bad syntax");
-		expect(result.ok).toBe(false);
-		if (!result.ok) {
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
 			expect(result.error).toContain("Parse error");
 		}
 	});
@@ -126,8 +126,8 @@ describe("mermaid-local — render()", () => {
 
 			expect(result).not.toBe("pending");
 			if (result !== "pending") {
-				expect(result.ok).toBe(false);
-				if (!result.ok) expect(result.error).toMatch(/timed out|abort/i);
+				expect(result.kind).toBe("error");
+				if (result.kind === "error") expect(result.error).toMatch(/timed out|abort/i);
 			}
 			expect(shell.calls).toBe(1);
 		} finally {

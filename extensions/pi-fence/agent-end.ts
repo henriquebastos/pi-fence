@@ -112,8 +112,9 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 	const result = await processor.render(block.tag, block.source);
 	logRenderResult(block, processor, result, options.logger);
 	options.pi.sendMessage(buildPiFenceOutputMessage(block.tag, block.source, processor.id, result));
-	options.metrics?.recordRender(processor.id, block.tag, result.ok);
-	if (!result.ok) sendErrorFollowup(block, processor.id, result.error, options);
+	const succeeded = result.kind !== "error";
+	options.metrics?.recordRender(processor.id, block.tag, succeeded);
+	if (!succeeded) sendErrorFollowup(block, processor.id, result.error, options);
 }
 
 function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions): boolean {
@@ -170,19 +171,19 @@ function logRenderResult(
 	result: Awaited<ReturnType<FenceProcessor["render"]>>,
 	logger: Logger,
 ): void {
-	if (result.ok) {
-		const bytes = "png" in result ? result.png.length : Buffer.byteLength(result.text, "utf8");
-		logger.info("pi-fence", "block rendered", {
+	if (result.kind === "error") {
+		logger.warn("pi-fence", "block render failed", {
 			tag: block.tag,
 			processor: processor.id,
-			bytes,
+			error: result.error.slice(0, 200),
 		});
 		return;
 	}
-	logger.warn("pi-fence", "block render failed", {
+	const bytes = result.kind === "image" ? result.data.length : Buffer.byteLength(result.text, "utf8");
+	logger.info("pi-fence", "block rendered", {
 		tag: block.tag,
 		processor: processor.id,
-		error: result.error.slice(0, 200),
+		bytes,
 	});
 }
 
