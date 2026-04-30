@@ -6,5 +6,6 @@ export const processorFactory: ProcessorFactoryRegistration = {
 	create: ({ http, logger, themeState, policy }) =>
 		createKrokiProcessor(http, policy.kroki.endpoint, logger, () =>
 			isDarkThemeName(themeState.currentName) ? "dark" : "light",
+		policy.renderLimits.processorOutputMaxBytes,
 		),
 };

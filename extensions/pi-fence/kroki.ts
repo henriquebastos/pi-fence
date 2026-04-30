@@ -25,6 +25,7 @@
 
 import type { HttpClient, HttpResponse } from "./io/http-client.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
+import { DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES } from "./policy.ts";
 import type { SandboxController, SandboxStatus } from "./sandbox.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
@@ -178,6 +179,7 @@ interface KrokiRequestContext {
 	url: string;
 	isSvgOnly: boolean;
 	appearance: "light" | "dark" | undefined;
+	maxResponseBytes: number;
 }
 
 interface SuccessfulKrokiRequest {
@@ -195,7 +197,8 @@ type KrokiRequestResult = SuccessfulKrokiRequest | FailedKrokiRequest;
 function createKrokiRequestContext(
 	base: string,
 	tag: string,
-	appearance?: KrokiAppearanceResolver,
+	appearance: KrokiAppearanceResolver | undefined,
+	maxResponseBytes: number,
 ): KrokiRequestContext {
 	const krokiTag = KROKI_ALIASES[tag] ?? tag;
 	const appearanceMode = appearance?.();
@@ -208,6 +211,7 @@ function createKrokiRequestContext(
 		url: buildKrokiRequestUrl(base, krokiTag, format, appearanceMode),
 		isSvgOnly,
 		appearance: appearanceMode,
+		maxResponseBytes,
 	};
 }
 
@@ -278,6 +282,9 @@ async function renderSuccessfulKrokiResponse(
 	logger: Logger,
 	processorId: string,
 ): Promise<FenceOutput> {
+	if (response.body.length > context.maxResponseBytes) {
+		return errorOutput(limitError("Kroki response", response.body.length, context.maxResponseBytes));
+	}
 	const rendered = await responseBodyToPng(response.body, context, logger, processorId);
 	if (rendered.kind !== "image") return rendered;
 
@@ -312,6 +319,10 @@ async function responseBodyToPng(
 	}
 }
 
+function limitError(label: string, actualBytes: number, maxBytes: number): string {
+	return `${label} is too large: ${actualBytes} bytes exceeds limit of ${maxBytes} bytes`;
+}
+
 function renderFailedKrokiResponse(
 	response: HttpResponse,
 	context: KrokiRequestContext,
@@ -335,6 +346,7 @@ export function createKrokiProcessor(
 	endpoint: string = DEFAULT_ENDPOINT,
 	logger: Logger = NULL_LOGGER,
 	appearance?: KrokiAppearanceResolver,
+	maxResponseBytes: number = DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
 ): FenceProcessor {
 	const base = endpoint.replace(/\/+$/, "");
 
@@ -356,7 +368,7 @@ export function createKrokiProcessor(
 			return { ok: true };
 		},
 
-		render: renderKrokiWithEndpoint(http, logger, "kroki-remote", () => base, appearance),
+		render: renderKrokiWithEndpoint(http, logger, "kroki-remote", () => base, appearance, maxResponseBytes),
 	};
 }
 
@@ -365,6 +377,7 @@ export function createKrokiSandboxProcessor(
 	controller: SandboxController,
 	logger: Logger = NULL_LOGGER,
 	appearance?: KrokiAppearanceResolver,
+	maxResponseBytes: number = DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
 ): FenceProcessor {
 	return {
 		id: "kroki-sandbox",
@@ -381,6 +394,7 @@ export function createKrokiSandboxProcessor(
 				"kroki-sandbox",
 				() => endpoint.endpoint,
 				appearance,
+				maxResponseBytes,
 			)(tag, source, signal);
 		}),
 	};
@@ -391,14 +405,15 @@ function renderKrokiWithEndpoint(
 	logger: Logger,
 	processorId: string,
 	endpoint: () => string,
-	appearance?: KrokiAppearanceResolver,
+	appearance: KrokiAppearanceResolver | undefined,
+	maxResponseBytes: number,
 ): FenceProcessor["render"] {
 	return withSignalGuard(async (tag, source, signal): Promise<FenceOutput> => {
 		const combinedSignal = mergeSignals([
 			signal,
 			AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
 		]);
-		const context = createKrokiRequestContext(endpoint(), tag, appearance);
+		const context = createKrokiRequestContext(endpoint(), tag, appearance, maxResponseBytes);
 
 		logKrokiRequest(logger, processorId, context, source);
 		const requested = await requestKroki(http, logger, processorId, context, source, combinedSignal);

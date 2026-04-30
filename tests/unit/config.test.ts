@@ -141,6 +141,7 @@ describe("config core", () => {
 			fenceSourceMaxBytes: 262_144,
 			processorOutputMaxBytes: 10_485_760,
 		});
+		expect(policy.processorFactories.renderLimits).toEqual(policy.renderLimits);
 		expect(policy.processorResolution).toEqual({
 			bindings: {},
 			blockedProcessors: new Set(),

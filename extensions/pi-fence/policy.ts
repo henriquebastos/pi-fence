@@ -52,6 +52,7 @@ export interface KrokiEndpointPolicy {
 
 export interface ProcessorFactoryPolicy {
 	kroki: KrokiEndpointPolicy;
+	renderLimits: RenderLimitsPolicy;
 }
 
 export interface ResolvedPiFencePolicy {
@@ -70,6 +71,7 @@ export interface ResolvedPiFencePolicy {
 
 export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePolicy {
 	const sandboxes = resolveSandboxes(config);
+	const renderLimits = defaultRenderLimits();
 	const krokiEndpoint = config.kroki?.endpoint ?? DEFAULT_KROKI_ENDPOINT;
 	const customKrokiEndpoint = config.kroki?.endpoint !== undefined;
 	const processorResolution: ProcessorResolutionPolicy = {
@@ -84,7 +86,7 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 	};
 	return {
 		processorResolution,
-		processorFactories: { kroki },
+		processorFactories: { kroki, renderLimits },
 		kroki,
 		endpointsByProcessor: customKrokiEndpoint ? { "kroki-remote": krokiEndpoint } : {},
 		sandboxes,
@@ -97,11 +99,15 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 			maxBytes: DEFAULT_SOURCE_PREVIEW_MAX_BYTES,
 			maxLines: DEFAULT_SOURCE_PREVIEW_MAX_LINES,
 		},
-		renderLimits: {
-			maxBlocksPerTurn: DEFAULT_MAX_BLOCKS_PER_TURN,
-			fenceSourceMaxBytes: DEFAULT_FENCE_SOURCE_MAX_BYTES,
-			processorOutputMaxBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
-		},
+		renderLimits,
+	};
+}
+
+function defaultRenderLimits(): RenderLimitsPolicy {
+	return {
+		maxBlocksPerTurn: DEFAULT_MAX_BLOCKS_PER_TURN,
+		fenceSourceMaxBytes: DEFAULT_FENCE_SOURCE_MAX_BYTES,
+		processorOutputMaxBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
 	};
 }
 

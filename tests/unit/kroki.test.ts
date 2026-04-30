@@ -367,6 +367,20 @@ describe("createKrokiProcessor", () => {
 		expect(http.requests[0].body).toBe("flowchart LR\nA --> B");
 	});
 
+	it("returns an error when a 2xx response body exceeds the output limit", async () => {
+		const oversizedPng = Buffer.alloc(10_485_761);
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(oversizedPng));
+		const kroki = createKrokiProcessor(http);
+
+		const result = await kroki.render("mermaid", "flowchart LR\nA --> B");
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") {
+			expect(result.error).toBe("Kroki response is too large: 10485761 bytes exceeds limit of 10485760 bytes");
+		}
+	});
+
 	it("returns the response body as a Buffer on 2xx", async () => {
 		const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0xde, 0xad]);
 		const http = new FakeHttpClient();
