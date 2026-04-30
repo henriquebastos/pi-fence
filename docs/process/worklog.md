@@ -7630,3 +7630,28 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 1. **Truncated opener handling has two safe modes.** Complete retained delimiters can close normally while remaining ignored; truncated delimiters fail closed and suppress nested renders.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: truncated openers reject visible invalid info strings
+
+**What shipped.** Closed the visible-backtick truncated-opener finding. Truncated backtick-fence opener prefixes now apply the same visible info-string backtick rejection as normal opener parsing, so visibly invalid ignored openers do not suppress later valid supported fences.
+
+**Implementation commit.**
+
+1. `8f93f3a` — fix CV11.E5.S1: reject visible invalid truncated openers
+
+**Beans.**
+
+1. Closed `bug-60d8da83` — CV11.E5.S1 inspection: truncated opener visible backtick check.
+
+**Test count.** Fast non-live suite increased from 1008 to 1009 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts --testNamePattern 'visible backticks|hidden backticks|overlong|ignored fenced|opaque'` — passed: 6 focused tests.
+2. `pnpm run feedback` — passed: 1009 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Visible invalid syntax remains invalid under bounded parsing.** The fail-closed truncated opener path only applies after the retained prefix passes the same visible syntax checks as a normal opener.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
