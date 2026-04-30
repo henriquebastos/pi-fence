@@ -712,6 +712,8 @@ async function inspectContainerSecurity(
 ): Promise<SandboxComponentStatus | undefined> {
 	const security = component.security;
 	if (!security) return undefined;
+	const contradictionStatus = checkSecurityContradictions(component, security);
+	if (contradictionStatus) return contradictionStatus;
 	for (const check of [
 		inspectNetworkMode,
 		inspectPublishedPorts,
@@ -724,6 +726,20 @@ async function inspectContainerSecurity(
 	]) {
 		const status = await check(shell, component, security);
 		if (status) return status;
+	}
+	return undefined;
+}
+
+function checkSecurityContradictions(
+	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
+): SandboxComponentStatus | undefined {
+	const hasLoopbackRequirement = (security.requiredLoopbackPorts?.length ?? 0) > 0;
+	if (security.noPublishedPorts && hasLoopbackRequirement) {
+		return securityError(
+			component,
+			"configures both noPublishedPorts and requiredLoopbackPorts; expected one or the other.",
+		);
 	}
 	return undefined;
 }

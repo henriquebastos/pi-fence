@@ -626,6 +626,21 @@ describe("sandbox controller contract — Docker container status", () => {
 		});
 	});
 
+	it("reports error when sandbox config combines noPublishedPorts with requiredLoopbackPorts", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki", KROKI_IMAGE);
+
+		const controller = createDockerContainerSandboxController(shell, {
+			...krokiContainerOptions(),
+			security: { noPublishedPorts: true, requiredLoopbackPorts: [8000] },
+		});
+
+		expect(await controller.status()).toEqual({
+			state: "error",
+			message: "Container pi-fence-kroki configures both noPublishedPorts and requiredLoopbackPorts; expected one or the other.",
+		});
+	});
+
 	it("reports unsupported lifecycle operations explicitly", async () => {
 		const controller = createDockerContainerSandboxController(new FakeShellRunner(), krokiContainerOptions());
 
