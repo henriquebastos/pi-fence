@@ -182,6 +182,25 @@ describe("validateProcessor", () => {
 		}
 	});
 
+	it("copies accepted tags and aliases away from caller-owned objects", () => {
+		const tags = ["test"];
+		const aliases: Record<string, string> = { "test-alias": "test" };
+		const result = validateProcessor(makeValidProcessor({ tags, aliases }));
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		tags.push("bad/tag");
+		aliases["test-alias"] = "missing";
+		aliases["other-alias"] = "test";
+
+		expect(result.processor.tags).toEqual(["test"]);
+		expect(Object.entries(result.processor.aliases)).toEqual([["test-alias", "test"]]);
+		expect(Object.isFrozen(result.processor)).toBe(true);
+		expect(Object.isFrozen(result.processor.tags)).toBe(true);
+		expect(Object.isFrozen(result.processor.aliases)).toBe(true);
+	});
+
 	it("rejects invalid alias maps", () => {
 		for (const aliases of [[], "dot"] as const) {
 			const result = validateProcessor({ ...makeValidProcessor(), aliases });
@@ -255,6 +274,29 @@ describe("registerProcessor", () => {
 		expect(registry.processors).toHaveLength(1);
 		expect(registry.processors[0].id).toBe("test-proc");
 		expect(registry.availability.get("test-proc")).toEqual({ ok: true });
+	});
+
+	it("keeps sanitized shape when available mutates this", async () => {
+		const registry = makeRegistry();
+		const validation = validateProcessor({
+			...makeValidProcessor(),
+			tags: ["test"],
+			available: async function (this: FenceProcessor) {
+				(this.tags as string[]).push("bad/tag");
+				return { ok: true };
+			},
+		});
+		expect(validation.ok).toBe(true);
+		if (!validation.ok) return;
+
+		const result = await registerProcessor(registry, validation.processor);
+
+		expect(result.ok).toBe(true);
+		expect(registry.processors[0].tags).toEqual(["test"]);
+		expect(registry.availability.get("test-proc")).toMatchObject({
+			ok: false,
+			reason: expect.stringContaining("available() threw"),
+		});
 	});
 
 	it("rejects duplicate processor id", async () => {

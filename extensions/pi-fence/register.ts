@@ -79,7 +79,7 @@ export function validateProcessor(value: unknown): ValidationResult {
 		return { ok: false, error: "processor.render must be a function" };
 	}
 
-	const tags = obj.tags as readonly string[];
+	const tags = Object.freeze([...(obj.tags as string[])]);
 	const aliases = validateAliases(Object.hasOwn(obj, "aliases") ? obj.aliases : undefined, tags);
 	if (!aliases.ok) {
 		return { ok: false, error: aliases.error };
@@ -87,14 +87,14 @@ export function validateProcessor(value: unknown): ValidationResult {
 
 	return {
 		ok: true,
-		processor: {
+		processor: Object.freeze({
 			id,
 			placement: obj.placement as ProcessorPlacement,
 			tags,
 			aliases: aliases.aliases,
 			available: obj.available as FenceProcessor["available"],
 			render: obj.render as FenceProcessor["render"],
-		},
+		}),
 	};
 }
 
@@ -122,7 +122,7 @@ function validateAliases(value: unknown, tags: readonly string[]): AliasValidati
 		}
 		aliases[alias] = target;
 	}
-	return { ok: true, aliases };
+	return { ok: true, aliases: Object.freeze(aliases) };
 }
 
 function isAliasObject(value: unknown): value is Record<string, unknown> {
