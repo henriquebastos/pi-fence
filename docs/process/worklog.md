@@ -5808,3 +5808,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Security guard owns running-only checks.** The runtime port verifier no longer needs its own `if (running)` clause; it is dispatched from the existing security block that already handles state-dependent checks.
 
 **Carry-forward.** Reject contradictory `noPublishedPorts` + `requiredLoopbackPorts` configurations under `bug-fd70c2a8`.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: reject contradictory Kroki sandbox port policy
+
+**What shipped.** Sandbox security inspection now fails closed with an explicit message when a component requests both `noPublishedPorts` and `requiredLoopbackPorts`, instead of letting one inspector silently override the other.
+
+**Implementation commit.**
+
+1. `4dac759` — fix CV11.E1.S3: reject contradictory Kroki sandbox port policy
+
+**Beans.**
+
+1. Closed `bug-fd70c2a8` — CV11.E1.S3 inspection: reject contradictory Kroki sandbox port policy.
+
+**Test count.** Fast suite increased from 923 to 924 with one config-rejection test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'noPublishedPorts with requiredLoopbackPorts'` — failed before the contradiction check, then passed.
+2. `pnpm run feedback` — passed: 924 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Single contradiction check at security entry.** `inspectContainerSecurity` rejects the impossible combination once, so neither inspector has to reason about the other.
+2. **Clear diagnostic instead of silent precedence.** The error names both flags so a misconfigured sandbox is obvious from `/fence doctor` and the test message.
+
+**Carry-forward.** Continue round-3 remediation with port-verifier diagnostic edges, the stop-ownership convention comment, and the worklog phrasing fix.
