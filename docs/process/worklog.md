@@ -6209,3 +6209,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. Implement CV11.E3.S2's explicit retained-preview shape while tolerating legacy sessions if needed.
 2. Implement CV11.E5.S1's source/output limits before custom message construction, including persisted preview bytes.
 3. CV11.E2 is now Done. The next CV11 epic is [CV11.E3 — Explicit Runtime Model](../project/roadmap/cv11--trust-boundaries/cv11-e3--explicit-runtime-model.md).
+
+---
+
+### 2026-04-30 — CV11.E3.S1 step 1: resolved runtime policy defaults
+
+**What shipped.** Added a pure `resolvePiFencePolicy()` surface that turns the default `PiFenceConfig` into non-optional runtime policy values: bindings, blocked processor/tag sets, processor precedence, Kroki endpoint settings, processor endpoint display map, sandbox auto-start summaries, source-retention policy, and render-limit placeholders.
+
+**Implementation commit.**
+
+1. `692e20d` — step 1: resolve runtime policy defaults
+
+**Beans.**
+
+1. Closed `task-131750fe` — CV11.E3.S1 step 1: policy defaults resolver.
+
+**Test count.** Fast non-live suite increased from 937 to 938 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern 'resolved policy|resolvePiFencePolicy'` — passed.
+2. `pnpm run feedback` — passed: 938 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Policy is a pure adapter.** Raw config validation and layered merge stay in `config.ts`; `policy.ts` expresses operational defaults for runtime callers.
+2. **Default endpoint is operational, display endpoint is intentional.** Policy records Kroki's effective default endpoint while keeping `endpointsByProcessor` empty unless config selected a custom endpoint, preserving `/fence list` behavior.
+3. **Source retention becomes explicit before message migration.** The policy now names bounded preview retention; CV11.E3.S2 still owns replacing persisted full-source details.
+
+**Carry-forward.** Continue CV11.E3.S1 with merged-policy coverage and runtime handler wiring.
