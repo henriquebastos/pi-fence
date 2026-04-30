@@ -199,7 +199,12 @@ function emitRegisterError(pi: ExtensionAPI, logger: Logger, error: string): voi
 }
 
 function registrationErrorMessage(err: unknown): string {
-	return err instanceof Error ? err.message : String(err);
+	if (err instanceof Error) return err.message;
+	try {
+		return String(err);
+	} catch {
+		return "non-stringifiable registration error";
+	}
 }
 
 function filterProcessorsForAvailabilityProbe(
