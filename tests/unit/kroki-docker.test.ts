@@ -175,6 +175,50 @@ describe("kroki-docker — status()", () => {
 		expect(result.message).toBe("Container pi-fence-kroki has invalid port bindings; expected 127.0.0.1:8000.");
 	});
 
+	it("reports the all-interfaces diagnostic when HostIp is empty", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortsRaw(shell, JSON.stringify({ "8000/tcp": [{ HostIp: "", HostPort: "8000" }] }));
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toBe("Container pi-fence-kroki publishes 8000/tcp on <all interfaces>:8000; expected 127.0.0.1:8000.");
+	});
+
+	it("reports absent when docker inspect on port bindings reports no such container", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, CONTAINER], {
+			stdout: "",
+			stderr: "Error: No such object: pi-fence-kroki",
+			exitCode: 1,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("absent");
+		expect(result.message).toBe("Container pi-fence-kroki not found.");
+	});
+
+	it("reports error when docker inspect on port bindings fails for daemon reasons", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, CONTAINER], {
+			stdout: "",
+			stderr: "permission denied while trying to connect to the Docker daemon socket",
+			exitCode: 1,
+		});
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.status();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("absent");
+		expect(result.message).toContain("permission denied");
+	});
+
 	it("reports stopped when docker inspect returns false for the managed image", async () => {
 		const shell = makeShell();
 		setStopped(shell);

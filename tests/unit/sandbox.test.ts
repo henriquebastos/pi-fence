@@ -877,6 +877,61 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		});
 	});
 
+	it("reports the all-interfaces diagnostic when the Compose core HostIp is empty", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortsRaw(shell, "pi-fence-kroki-core", JSON.stringify({ "8000/tcp": [{ HostIp: "", HostPort: "8000" }] }));
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core publishes 8000/tcp on <all interfaces>:8000; expected 127.0.0.1:8000.",
+		});
+	});
+
+	it("reports absent when docker inspect on Compose core ports reports no such container", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, "pi-fence-kroki-core"], {
+			stdout: "",
+			stderr: "No such object",
+			exitCode: 1,
+		});
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "absent",
+			message: "Container pi-fence-kroki-core not found.",
+		});
+	});
+
+	it("reports error when docker inspect on Compose core ports fails for daemon reasons", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		shell.setResponse("docker", ["inspect", "--format", PORTS_FORMAT, "pi-fence-kroki-core"], {
+			stdout: "",
+			stderr: "Error response from daemon: connection refused",
+			exitCode: 1,
+		});
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.status();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Docker inspect failed for pi-fence-kroki-core: Error response from daemon: connection refused",
+		});
+	});
+
 	it("starts and stops a configured Compose stack", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "kroki-core", KROKI_IMAGE);
