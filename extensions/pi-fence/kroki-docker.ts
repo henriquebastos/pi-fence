@@ -23,6 +23,25 @@ const PORT_BINDINGS_FORMAT = "{{json .NetworkSettings.Ports}}";
 
 export type KrokiDockerStatus = "running" | "stopped" | "absent";
 
+/**
+ * Result of a Kroki Docker lifecycle call.
+ *
+ * Verifier convention used by `stop()`:
+ *
+ * - `ok: true` always means the call succeeded against the managed container.
+ * - `ok: false, status: "absent"` means a verifier rejected ownership (image
+ *   mismatch, label mismatch, or `docker inspect` could not run). `stop()`
+ *   short-circuits on these results so an unowned same-named container is
+ *   never stopped or removed.
+ * - `ok: false, status: "running"` means the container is owned but its
+ *   runtime configuration is wrong (today: a non-loopback `8000/tcp` host
+ *   binding). `stop()` lets these results fall through so the user can clean
+ *   up an owned-but-misconfigured managed container through `/fence kroki
+ *   stop`.
+ *
+ * New verifiers must keep this contract: ownership-failure → `absent`,
+ * configuration-failure on an owned container → `running`.
+ */
 export interface KrokiDockerResult {
 	ok: boolean;
 	status: KrokiDockerStatus;
@@ -120,6 +139,11 @@ export function createKrokiDockerManager(
 
 	async function stop(): Promise<KrokiDockerResult> {
 		const current = await status();
+		// Per the KrokiDockerResult convention: ok:false with status "absent"
+		// means an ownership-verifier rejected the container. Bail out without
+		// stopping. ok:false with status "running" means the container is owned
+		// but misconfigured (e.g. broad port binding); fall through so the
+		// lifecycle can clean it up.
 		if (current.status === "absent") return current;
 		let failureStatus = current.status;
 		try {
