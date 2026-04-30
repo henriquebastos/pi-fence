@@ -533,6 +533,12 @@ function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
 	if (value.trim() !== value || /[\u0000-\u001F\u007F]/.test(value)) {
 		return { ok: false, reason: "surrounding whitespace or control characters are not allowed" };
 	}
+	if (value.includes("\\")) {
+		return { ok: false, reason: "backslashes are not allowed" };
+	}
+	if (!/^https?:\/\//i.test(value)) {
+		return { ok: false, reason: "endpoint must start with http:// or https://" };
+	}
 	if (value.includes("?")) {
 		return { ok: false, reason: "query strings are not allowed" };
 	}
