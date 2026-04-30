@@ -32,11 +32,15 @@ export interface RenderLimitsPolicy {
 	processorOutputMaxBytes: number;
 }
 
-export interface ResolvedPiFencePolicy {
+export interface ProcessorResolutionPolicy {
 	bindings: Readonly<Record<string, TagBinding>>;
 	blockedProcessors: ReadonlySet<string>;
 	blockedTags: ReadonlySet<string>;
 	processorPrecedence: readonly ProcessorPlacement[];
+}
+
+export interface ResolvedPiFencePolicy extends ProcessorResolutionPolicy {
+	processorResolution: ProcessorResolutionPolicy;
 	kroki: {
 		endpoint: string;
 		customEndpoint: boolean;
@@ -55,11 +59,15 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 	const sandboxes = resolveSandboxes(config);
 	const krokiEndpoint = config.kroki?.endpoint ?? DEFAULT_KROKI_ENDPOINT;
 	const customKrokiEndpoint = config.kroki?.endpoint !== undefined;
-	return {
+	const processorResolution: ProcessorResolutionPolicy = {
 		bindings: copyBindings(config.bindings),
 		blockedProcessors: new Set(config.blocked?.processors ?? []),
 		blockedTags: new Set(config.blocked?.tags ?? []),
 		processorPrecedence: [...(config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE)],
+	};
+	return {
+		...processorResolution,
+		processorResolution,
 		kroki: {
 			endpoint: krokiEndpoint,
 			customEndpoint: customKrokiEndpoint,

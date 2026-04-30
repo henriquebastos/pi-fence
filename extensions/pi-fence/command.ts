@@ -2,14 +2,14 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-import type { TagBinding } from "./config.ts";
 import { formatDoctorLines, type DoctorInput } from "./doctor.ts";
 import type { ConfigFileStatus, KrokiEndpointProvenance } from "./io/config-loader.ts";
 import type { Logger } from "./io/logger.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
 import { formatProcessorLines, listProcessors, type ListProcessorsOptions } from "./list.ts";
 import { sendPiFenceListMessage, sendPiFenceDoctorMessage } from "./messages.ts";
-import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
+import type { ProcessorResolutionPolicy } from "./policy.ts";
+import type { Availability, FenceProcessor } from "./processor.ts";
 import type { MetricsCollector } from "./metrics.ts";
 import { formatMetricsLines } from "./metrics.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
@@ -30,10 +30,7 @@ interface RegisterFenceCommandOptions {
 	logger: Logger;
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
-	bindings: Readonly<Record<string, TagBinding>>;
-	blockedProcessors: ReadonlySet<string>;
-	blockedTags: ReadonlySet<string>;
-	processorPrecedence: readonly ProcessorPlacement[];
+	processorPolicy: ProcessorResolutionPolicy;
 	endpoints?: Readonly<Record<string, string>>;
 	configStatus?: ConfigStatus;
 	shell: ShellRunner;
@@ -45,19 +42,23 @@ export function registerFenceCommand({
 	logger,
 	processors,
 	availability,
-	bindings,
-	blockedProcessors,
-	blockedTags,
-	processorPrecedence,
+	processorPolicy,
 	endpoints,
 	configStatus,
 	shell,
 	metrics,
 }: RegisterFenceCommandOptions): void {
-	const listOpts: ListProcessorsOptions = { blockedProcessors, blockedTags, endpoints, processorPrecedence };
+	const listOpts: ListProcessorsOptions = { ...processorPolicy, endpoints };
 	const dockerMgr = createKrokiDockerManager(shell, logger);
 	const currentBindingRows = () =>
-		resolveBindings(processors, availability, bindings, blockedProcessors, processorPrecedence, blockedTags);
+		resolveBindings(
+			processors,
+			availability,
+			processorPolicy.bindings,
+			processorPolicy.blockedProcessors,
+			processorPolicy.processorPrecedence,
+			processorPolicy.blockedTags,
+		);
 
 	pi.registerCommand("fence", {
 		description: "List or inspect pi-fence processors (usage: /fence list, /fence doctor)",
@@ -70,17 +71,17 @@ export function registerFenceCommand({
 					processors,
 					availability,
 					bindingRows,
-					blockedProcessors,
-					blockedTags,
+					blockedProcessors: processorPolicy.blockedProcessors,
+					blockedTags: processorPolicy.blockedTags,
 					endpoints,
-					processorPrecedence,
+					processorPrecedence: processorPolicy.processorPrecedence,
 				});
 				return;
 			}
 			if (subcommand === "doctor") {
 				const bindingRows = currentBindingRows();
 				const listings = listProcessors(processors, availability, listOpts);
-				const processorLines = formatProcessorLines(listings, bindingRows, [...blockedTags]);
+				const processorLines = formatProcessorLines(listings, bindingRows, [...processorPolicy.blockedTags]);
 				const input: DoctorInput = {
 					globalPath: configStatus?.globalPath ?? "(unknown)",
 					globalStatus: configStatus?.globalStatus ?? "not-found",
@@ -88,7 +89,7 @@ export function registerFenceCommand({
 					projectStatus: configStatus?.projectStatus ?? "not-found",
 					listings,
 					bindingRows,
-					blockedTags: [...blockedTags],
+					blockedTags: [...processorPolicy.blockedTags],
 					allTags: collectSupportedTags(processors),
 					krokiEndpoint: configStatus?.krokiEndpoint,
 				};

@@ -2,12 +2,12 @@
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-import type { TagBinding } from "./config.ts";
 import type { Logger } from "./io/logger.ts";
 import { buildPiFenceOutputMessage, type TextContent } from "./messages.ts";
 import { extractFencedBlocks, type FencedBlock } from "./parser.ts";
 import type { MetricsCollector } from "./metrics.ts";
-import type { Availability, FenceProcessor, ProcessorPlacement } from "./processor.ts";
+import type { ProcessorResolutionPolicy } from "./policy.ts";
+import type { Availability, FenceProcessor } from "./processor.ts";
 import { resolveBindings, resolveProcessor, type BindingResolution } from "./resolve.ts";
 
 export interface ThemeState {
@@ -19,10 +19,7 @@ interface RegisterAgentEndHandlerOptions {
 	logger: Logger;
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
-	bindings: Readonly<Record<string, TagBinding>>;
-	blockedProcessors: ReadonlySet<string>;
-	blockedTags: ReadonlySet<string>;
-	processorPrecedence: readonly ProcessorPlacement[];
+	processorPolicy: ProcessorResolutionPolicy;
 	supportedTags: string[] | (() => string[]);
 	themeState: ThemeState;
 	maxBlocksPerTurn: number;
@@ -34,10 +31,7 @@ export function registerPiFenceAgentEndHandler({
 	logger,
 	processors,
 	availability,
-	bindings,
-	blockedProcessors,
-	blockedTags,
-	processorPrecedence,
+	processorPolicy,
 	supportedTags,
 	themeState,
 	maxBlocksPerTurn,
@@ -71,10 +65,7 @@ export function registerPiFenceAgentEndHandler({
 				logger,
 				processors,
 				availability,
-				bindings,
-				blockedProcessors,
-				blockedTags,
-				processorPrecedence,
+				processorPolicy,
 				metrics,
 			});
 		}
@@ -86,10 +77,7 @@ interface RenderBlockOptions {
 	logger: Logger;
 	processors: readonly FenceProcessor[];
 	availability: ReadonlyMap<string, Availability>;
-	bindings: Readonly<Record<string, TagBinding>>;
-	blockedProcessors: ReadonlySet<string>;
-	blockedTags: ReadonlySet<string>;
-	processorPrecedence: readonly ProcessorPlacement[];
+	processorPolicy: ProcessorResolutionPolicy;
 	metrics?: MetricsCollector;
 }
 
@@ -98,10 +86,10 @@ async function renderBlock(block: FencedBlock, options: RenderBlockOptions): Pro
 		options.processors,
 		options.availability,
 		block.tag,
-		options.bindings,
-		options.blockedProcessors,
-		options.processorPrecedence,
-		options.blockedTags,
+		options.processorPolicy.bindings,
+		options.processorPolicy.blockedProcessors,
+		options.processorPolicy.processorPrecedence,
+		options.processorPolicy.blockedTags,
 	);
 	options.logger.debug("pi-fence", "processor resolution", {
 		tag: block.tag,
@@ -132,10 +120,10 @@ function logBindingIssueForBlock(block: FencedBlock, options: RenderBlockOptions
 	const issue = resolveBindings(
 		options.processors,
 		options.availability,
-		options.bindings,
-		options.blockedProcessors,
-		options.processorPrecedence,
-		options.blockedTags,
+		options.processorPolicy.bindings,
+		options.processorPolicy.blockedProcessors,
+		options.processorPolicy.processorPrecedence,
+		options.processorPolicy.blockedTags,
 	).find((row): row is Extract<BindingResolution, { status: "issue" }> =>
 		row.tag === block.tag && row.status === "issue",
 	);

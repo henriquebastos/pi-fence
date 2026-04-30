@@ -5,6 +5,7 @@ import {
 	createBuiltInProcessors,
 } from "../../extensions/pi-fence/built-in-processors.ts";
 import { DEFAULT_CONFIG, type PiFenceConfig } from "../../extensions/pi-fence/config.ts";
+import { resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
 import { processorFactory as bundleSandboxProcessorFactory } from "../../extensions/pi-fence/processors/bundle-sandbox.ts";
 import {
 	collectProcessorFactories,
@@ -26,13 +27,14 @@ import { FakeShellRunner } from "../utilities/shell-runner.ts";
 function makeContext(config: PiFenceConfig = DEFAULT_CONFIG): ProcessorFactoryContext {
 	const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
 	const logger = new FakeLogger();
+	const policy = resolvePiFencePolicy(config);
 	return {
 		http: new FakeHttpClient({ status: 200, headers: { "content-type": "image/png" }, body: Buffer.from("png") }),
 		shell,
 		logger,
 		themeState: {},
-		config,
-		sandboxes: createSandboxControllers({ shell, logger }, config),
+		policy,
+		sandboxes: createSandboxControllers({ shell, logger }, policy),
 	};
 }
 
@@ -186,7 +188,7 @@ describe("createSandboxControllers", () => {
 		const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
 		const logger = new FakeLogger();
 
-		const sandboxes = createSandboxControllers({ shell, logger }, DEFAULT_CONFIG);
+		const sandboxes = createSandboxControllers({ shell, logger }, resolvePiFencePolicy(DEFAULT_CONFIG));
 
 		expect([...sandboxes.keys()].sort()).toEqual(["bundle", "kroki"]);
 		expect(sandboxes.get("bundle")).toMatchObject({ id: "bundle", kind: "exec", runtime: "docker-container" });
@@ -203,7 +205,7 @@ describe("createSandboxControllers", () => {
 			},
 		};
 
-		const sandboxes = createSandboxControllers({ shell, logger }, config);
+		const sandboxes = createSandboxControllers({ shell, logger }, resolvePiFencePolicy(config));
 
 		expect([...sandboxes.keys()]).toEqual(["bundle"]);
 		expect(sandboxes.get("bundle")).toMatchObject({ id: "bundle", kind: "exec", runtime: "gondolin-vm" });
@@ -220,7 +222,7 @@ describe("createSandboxControllers", () => {
 			},
 		};
 
-		const sandboxes = createSandboxControllers({ shell, logger }, config);
+		const sandboxes = createSandboxControllers({ shell, logger }, resolvePiFencePolicy(config));
 
 		expect([...sandboxes.keys()]).toEqual(["kroki"]);
 		expect(sandboxes.get("kroki")).toMatchObject({ id: "kroki", kind: "service", runtime: "docker-compose" });

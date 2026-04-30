@@ -1,8 +1,8 @@
 import type { ThemeState } from "./agent-end.ts";
-import type { PiFenceConfig } from "./config.ts";
 import type { HttpClient } from "./io/http-client.ts";
 import type { Logger } from "./io/logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
+import type { ResolvedPiFencePolicy } from "./policy.ts";
 import type { FenceProcessor } from "./processor.ts";
 import { validateProcessor } from "./register.ts";
 import type { SandboxController } from "./sandbox.ts";
@@ -12,7 +12,7 @@ export interface ProcessorFactoryContext {
 	shell: ShellRunner;
 	logger: Logger;
 	themeState: ThemeState;
-	config: PiFenceConfig;
+	policy: ResolvedPiFencePolicy;
 	sandboxes: ReadonlyMap<string, SandboxController>;
 }
 

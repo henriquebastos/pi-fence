@@ -12,7 +12,6 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 import { registerPiFenceAgentEndHandler, type ThemeState } from "./agent-end.ts";
 import { createBuiltInProcessors } from "./built-in-processors.ts";
-import { DEFAULT_PROCESSOR_PRECEDENCE, type PiFenceConfig } from "./config.ts";
 import { registerFenceCommand } from "./command.ts";
 import {
 	loadPiFenceConfig,
@@ -29,7 +28,8 @@ import {
 	PI_FENCE_LIST_MESSAGE_TYPE,
 	PI_FENCE_OUTPUT_MESSAGE_TYPE,
 } from "./messages.ts";
-import type { FenceProcessor } from "./processor.ts";
+import { resolvePiFencePolicy, type ProcessorResolutionPolicy, type ResolvedPiFencePolicy } from "./policy.ts";
+import type { FenceProcessor, ProcessorPlacement } from "./processor.ts";
 import { validateProcessor, registerProcessor, type ProcessorRegistry } from "./register.ts";
 import { collectSupportedTags, isProcessorFullyTagBlocked, probeAvailability, resolveBindings } from "./resolve.ts";
 import {
@@ -38,8 +38,6 @@ import {
 } from "./renderer.ts";
 import type { GondolinVMFactory, SandboxController } from "./sandbox.ts";
 import { createSandboxControllers } from "./sandbox-context.ts";
-
-const MAX_BLOCKS_PER_TURN = 5;
 
 export interface PiFenceRuntimeDeps {
 	http: HttpClient;
@@ -59,23 +57,21 @@ export async function createPiFenceExtension(
 		...deps.configOptions,
 	});
 	const config = configResult.config;
+	const policy = resolvePiFencePolicy(config);
 
 	const themeState: ThemeState = {};
-	const sandboxes = createSandboxControllers(deps, config);
+	const sandboxes = createSandboxControllers(deps, policy);
 	const processors = deps.processors ?? await createDefaultProcessors(
 		deps,
 		themeState,
-		config,
+		policy,
 		sandboxes,
 	);
-	const bindings = config.bindings;
-	const blockedProcessors: ReadonlySet<string> = new Set(config.blocked?.processors ?? []);
-	const blockedTags: ReadonlySet<string> = new Set(config.blocked?.tags ?? []);
-	const processorPrecedence = config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE;
+	const processorPolicy = policy.processorResolution;
 
 	// Auto-start Docker Kroki if configured and policy allows kroki-sandbox.
 	const krokiController = sandboxes.get("kroki");
-	if (krokiController && shouldAutoStartKrokiSandbox(config) && isProcessorAutoStartAllowed(processors, "kroki-sandbox", blockedProcessors, blockedTags, processorPrecedence)) {
+	if (krokiController && policy.autoStart.krokiSandbox && isProcessorAutoStartAllowed(processors, "kroki-sandbox", processorPolicy)) {
 		const controller = krokiController;
 		const status = await controller.status();
 		if (status.state === "ready") {
@@ -97,7 +93,7 @@ export async function createPiFenceExtension(
 	}
 
 	const bundleController = sandboxes.get("bundle");
-	if (bundleController && shouldAutoStartBundleSandbox(config) && isProcessorAutoStartAllowed(processors, "bundle-sandbox", blockedProcessors, blockedTags, processorPrecedence)) {
+	if (bundleController && policy.autoStart.bundleSandbox && isProcessorAutoStartAllowed(processors, "bundle-sandbox", processorPolicy)) {
 		const status = await bundleController.status();
 		if (status.state === "ready") {
 			deps.logger.debug("pi-fence", "Gondolin bundle VM already running");
@@ -113,29 +109,23 @@ export async function createPiFenceExtension(
 		}
 	}
 
-	const probedProcessors = filterProcessorsForAvailabilityProbe(
-		processors,
-		blockedProcessors,
-		blockedTags,
-		processorPrecedence,
-	);
+	const probedProcessors = filterProcessorsForAvailabilityProbe(processors, processorPolicy);
 	const availability = await probeAvailability(probedProcessors);
 	logAvailability(probedProcessors, availability, deps.logger);
 	const bindingRows = resolveBindings(
 		processors,
 		availability,
-		bindings,
-		blockedProcessors,
-		processorPrecedence,
-		blockedTags,
+		processorPolicy.bindings,
+		processorPolicy.blockedProcessors,
+		processorPolicy.processorPrecedence,
+		processorPolicy.blockedTags,
 	);
 	logBindingResolution(bindingRows, deps.logger);
-	logBlockedProcessors(blockedProcessors, deps.logger);
-	logProcessorPrecedence(processorPrecedence, deps.logger);
+	logBlockedProcessors(processorPolicy.blockedProcessors, deps.logger);
+	logProcessorPrecedence(processorPolicy.processorPrecedence, deps.logger);
 
 	// Build the endpoints map for /fence list display.
-	const endpoints: Record<string, string> = {};
-	if (config.kroki?.endpoint) endpoints["kroki-remote"] = config.kroki.endpoint;
+	const endpoints = policy.endpointsByProcessor;
 
 	// Build the shared mutable registry for dynamic processor registration.
 	const registry: ProcessorRegistry = { processors, availability };
@@ -149,11 +139,7 @@ export async function createPiFenceExtension(
 				pi.events.emit("pi-fence:register-error", { error: validated.error });
 				return;
 			}
-			const result = await registerProcessor(registry, validated.processor, {
-				blockedProcessors,
-				blockedTags,
-				processorPrecedence,
-			});
+			const result = await registerProcessor(registry, validated.processor, processorPolicy);
 			if (!result.ok) {
 				deps.logger.warn("pi-fence", "register rejected", { error: result.error });
 				pi.events.emit("pi-fence:register-error", { error: result.error });
@@ -175,10 +161,7 @@ export async function createPiFenceExtension(
 		logger: deps.logger,
 		processors,
 		availability,
-		bindings,
-		blockedProcessors,
-		blockedTags,
-		processorPrecedence,
+		processorPolicy,
 		endpoints: Object.keys(endpoints).length > 0 ? endpoints : undefined,
 		configStatus: {
 			globalPath: configResult.globalPath,
@@ -195,72 +178,47 @@ export async function createPiFenceExtension(
 		logger: deps.logger,
 		processors,
 		availability,
-		bindings,
-		blockedProcessors,
-		blockedTags,
-		processorPrecedence,
+		processorPolicy,
 		supportedTags: () => collectSupportedTags(processors),
 		themeState,
-		maxBlocksPerTurn: MAX_BLOCKS_PER_TURN,
+		maxBlocksPerTurn: policy.renderLimits.maxBlocksPerTurn,
 		metrics,
 	});
 }
 
 function filterProcessorsForAvailabilityProbe(
 	processors: readonly FenceProcessor[],
-	blockedProcessors: ReadonlySet<string>,
-	blockedTags: ReadonlySet<string>,
-	processorPrecedence: readonly string[],
+	policy: ProcessorResolutionPolicy,
 ): FenceProcessor[] {
 	return processors.filter((processor) =>
-		isProcessorAllowed(processor.id, processor.placement, blockedProcessors, processorPrecedence) &&
-		!isProcessorFullyTagBlocked(processor, processors, blockedTags),
+		isProcessorAllowed(processor.id, processor.placement, policy) &&
+		!isProcessorFullyTagBlocked(processor, processors, policy.blockedTags),
 	);
 }
 
 function isProcessorAllowed(
 	processorId: string,
-	placement: string,
-	blockedProcessors: ReadonlySet<string>,
-	processorPrecedence: readonly string[],
+	placement: ProcessorPlacement,
+	policy: ProcessorResolutionPolicy,
 ): boolean {
-	return !blockedProcessors.has(processorId) && processorPrecedence.includes(placement);
-}
-
-function shouldAutoStartKrokiSandbox(config: PiFenceConfig): boolean {
-	const legacyAutoStart = config.kroki?.docker?.autoStart === true;
-	const krokiSandbox = config.sandboxes?.kroki;
-	if (krokiSandbox === undefined) return false;
-	if (krokiSandbox.kind !== "service") return false;
-	if (krokiSandbox.runtime === "docker-container") return krokiSandbox.autoStart ?? legacyAutoStart;
-	if (krokiSandbox.runtime === "docker-compose") return krokiSandbox.autoStart === true;
-	return false;
-}
-
-function shouldAutoStartBundleSandbox(config: PiFenceConfig): boolean {
-	const bundleSandbox = config.sandboxes?.bundle;
-	return bundleSandbox?.kind === "exec" &&
-		bundleSandbox.runtime === "gondolin-vm" &&
-		bundleSandbox.autoStart === true;
+	return !policy.blockedProcessors.has(processorId) && policy.processorPrecedence.includes(placement);
 }
 
 function isProcessorAutoStartAllowed(
 	processors: readonly FenceProcessor[],
 	processorId: string,
-	blockedProcessors: ReadonlySet<string>,
-	blockedTags: ReadonlySet<string>,
-	processorPrecedence: readonly string[],
+	policy: ProcessorResolutionPolicy,
 ): boolean {
 	const processor = processors.find((candidate) => candidate.id === processorId);
 	return processor !== undefined &&
-		isProcessorAllowed(processor.id, processor.placement, blockedProcessors, processorPrecedence) &&
-		!isProcessorFullyTagBlocked(processor, processors, blockedTags);
+		isProcessorAllowed(processor.id, processor.placement, policy) &&
+		!isProcessorFullyTagBlocked(processor, processors, policy.blockedTags);
 }
 
 async function createDefaultProcessors(
 	deps: PiFenceRuntimeDeps,
 	themeState: ThemeState,
-	config: PiFenceConfig,
+	policy: ResolvedPiFencePolicy,
 	sandboxes: ReadonlyMap<string, SandboxController>,
 ): Promise<FenceProcessor[]> {
 	const result = await createBuiltInProcessors({
@@ -268,7 +226,7 @@ async function createDefaultProcessors(
 		shell: deps.shell,
 		logger: deps.logger,
 		themeState,
-		config,
+		policy,
 		sandboxes,
 	});
 	for (const diagnostic of result.diagnostics) {

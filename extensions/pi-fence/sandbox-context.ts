@@ -3,7 +3,7 @@ import {
 	BUNDLE_SANDBOX_IMAGE,
 	BUNDLE_SANDBOX_LABELS,
 } from "./bundle-sandbox.ts";
-import type { PiFenceConfig } from "./config.ts";
+import type { ResolvedPiFencePolicy, ResolvedSandboxPolicy } from "./policy.ts";
 import type { Logger } from "./io/logger.ts";
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { createKrokiDockerManager } from "./kroki-docker.ts";
@@ -25,21 +25,20 @@ export interface SandboxControllerDeps {
 
 export function createSandboxControllers(
 	deps: SandboxControllerDeps,
-	config: PiFenceConfig,
+	policy: Pick<ResolvedPiFencePolicy, "sandboxes">,
 ): ReadonlyMap<string, SandboxController> {
 	const controllers = new Map<string, SandboxController>();
-	const bundle = createBundleSandboxController(deps, config);
+	const bundle = createBundleSandboxController(deps, policy.sandboxes.get("bundle"));
 	if (bundle) controllers.set(bundle.id, bundle);
-	const kroki = createKrokiServiceController(deps, config);
+	const kroki = createKrokiServiceController(deps, policy.sandboxes.get("kroki"));
 	if (kroki) controllers.set(kroki.id, kroki);
 	return controllers;
 }
 
 function createBundleSandboxController(
 	deps: SandboxControllerDeps,
-	config: PiFenceConfig,
+	bundle: ResolvedSandboxPolicy | undefined,
 ): SandboxController | undefined {
-	const bundle = config.sandboxes?.bundle;
 	if (bundle?.kind !== "exec") return undefined;
 	if (bundle.runtime === "gondolin-vm") {
 		return createGondolinBundleSandboxController(deps.gondolin ?? createGondolinVMFactory(), { image: bundle.image });
@@ -67,9 +66,8 @@ function createBundleSandboxController(
 
 function createKrokiServiceController(
 	deps: SandboxControllerDeps,
-	config: PiFenceConfig,
+	kroki: ResolvedSandboxPolicy | undefined,
 ): SandboxController | undefined {
-	const kroki = config.sandboxes?.kroki;
 	if (kroki?.kind !== "service") return undefined;
 	if (kroki.runtime === "docker-container") {
 		return createKrokiDockerSandboxController(

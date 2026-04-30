@@ -141,6 +141,12 @@ describe("config core", () => {
 			fenceSourceMaxBytes: Number.POSITIVE_INFINITY,
 			processorOutputMaxBytes: Number.POSITIVE_INFINITY,
 		});
+		expect(policy.processorResolution).toEqual({
+			bindings: policy.bindings,
+			blockedProcessors: policy.blockedProcessors,
+			blockedTags: policy.blockedTags,
+			processorPrecedence: policy.processorPrecedence,
+		});
 	});
 
 	it("resolved policy: merged config carries user controls without leaking raw binding objects", () => {

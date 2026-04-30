@@ -37,11 +37,11 @@
 import { describe, expect, it } from "vitest";
 
 import { createBuiltInProcessors } from "../../extensions/pi-fence/built-in-processors.ts";
-import { DEFAULT_PROCESSOR_PRECEDENCE } from "../../extensions/pi-fence/config.ts";
 import { loadPiFenceConfig } from "../../extensions/pi-fence/io/config-loader.ts";
 import { NodeHttpClient } from "../../extensions/pi-fence/io/http-client.ts";
 import { NULL_LOGGER } from "../../extensions/pi-fence/io/logger.ts";
 import { NodeShellRunner } from "../../extensions/pi-fence/io/shell-runner.ts";
+import { DEFAULT_KROKI_ENDPOINT, resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
 import type { FenceProcessor, FenceResult } from "../../extensions/pi-fence/processor.ts";
 import { probeAvailability, resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
 import { createSandboxControllers } from "../../extensions/pi-fence/sandbox-context.ts";
@@ -50,8 +50,6 @@ import { hasNetwork } from "../utilities/live-deps.ts";
 
 // Deliberately malformed mermaid; Kroki returns 4xx with a parse error.
 const BROKEN_MERMAID = "flowchart\n  A ->>> B";
-const DEFAULT_KROKI_ENDPOINT = "https://kroki.io";
-
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 // Per-case timeout. c4plantuml's stdlib fetch on Kroki's side has been
@@ -167,13 +165,14 @@ async function createConfiguredKrokiRuntime(): Promise<ConfiguredKrokiRuntime> {
 	const http = new NodeHttpClient();
 	const configResult = await loadPiFenceConfig({ logger: NULL_LOGGER });
 	const config = configResult.config;
-	const sandboxes = createSandboxControllers({ shell, logger: NULL_LOGGER }, config);
+	const policy = resolvePiFencePolicy(config);
+	const sandboxes = createSandboxControllers({ shell, logger: NULL_LOGGER }, policy);
 	const creation = await createBuiltInProcessors({
 		http,
 		shell,
 		logger: NULL_LOGGER,
 		themeState: {},
-		config,
+		policy,
 		sandboxes,
 	});
 	if (creation.diagnostics.length > 0) {
@@ -181,17 +180,17 @@ async function createConfiguredKrokiRuntime(): Promise<ConfiguredKrokiRuntime> {
 	}
 	const processors = creation.processors;
 	const availability = await probeAvailability(processors);
-	const remoteNetworkUp = await hasNetwork(config.kroki?.endpoint ?? DEFAULT_KROKI_ENDPOINT);
+	const remoteNetworkUp = await hasNetwork(policy.kroki.endpoint);
 
 	const processorFor = (tag: string): FenceProcessor | undefined => {
 		const resolved = resolveProcessor(
 			processors,
 			availability,
 			tag,
-			config.bindings,
-			new Set(config.blocked?.processors ?? []),
-			config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE,
-			new Set(config.blocked?.tags ?? []),
+			policy.processorResolution.bindings,
+			policy.processorResolution.blockedProcessors,
+			policy.processorResolution.processorPrecedence,
+			policy.processorResolution.blockedTags,
 		);
 		const processor = resolved.processor ?? undefined;
 		if (!processor?.id.startsWith("kroki-")) return undefined;

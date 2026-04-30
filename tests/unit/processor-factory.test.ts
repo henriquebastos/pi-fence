@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { DEFAULT_CONFIG } from "../../extensions/pi-fence/config.ts";
+import { resolvePiFencePolicy } from "../../extensions/pi-fence/policy.ts";
 import {
 	collectProcessorFactories,
 	createProcessorsFromFactories,
@@ -42,7 +44,7 @@ const context: ProcessorFactoryContext = {
 		error: () => {},
 	},
 	themeState: {},
-	config: { bindings: {} },
+	policy: resolvePiFencePolicy(DEFAULT_CONFIG),
 	sandboxes: new Map(),
 };
 
