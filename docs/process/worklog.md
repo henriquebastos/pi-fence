@@ -5737,7 +5737,7 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 
 1. Closed `task-e02d5d43` — CV11.E1.S3 inspection: harden Kroki port-binding negative coverage.
 
-**Test count.** Fast suite increased from 912 to 921 with five manager-layer and four Compose-layer port-binding cases plus one wrong-label-no-stop guard.
+**Test count.** Fast suite increased from 912 to 921 with nine cases: four manager-layer port-binding rejections, one manager-layer wrong-label-no-stop guard, and four Compose-layer port-binding rejections.
 
 **Verification.**
 
