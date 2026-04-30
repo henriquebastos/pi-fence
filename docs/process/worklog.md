@@ -7261,3 +7261,28 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 **Known deviations.** Inspection broadened S2 beyond the initial helper tests by requiring extension-level thrown-availability coverage, malformed-render metrics/follow-up coverage, method receiver preservation, and thrown-render privacy.
 
 **Carry-forward.** CV11.E5 — Render Resource Limits — is next.
+
+### 2026-04-30 — CV11.E5.S1 render limit defaults are finite
+
+**What shipped.** Resolved runtime policy now carries finite default render limits for fence source bytes and processor output bytes, replacing the prior unbounded placeholders while keeping the limits code-only for this slice.
+
+**Implementation commit.**
+
+1. `cd5f556` — step 6: bound render limit defaults
+
+**Beans.**
+
+1. Closed `task-f662775e` — CV11.E5.S1 default render limits in resolved policy.
+
+**Test count.** Fast non-live suite stayed at 983 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern 'resolved policy'` — passed: 3 focused tests.
+2. `pnpm run feedback` — passed: 983 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the slice.**
+
+1. **Limits are policy defaults before enforcement.** Runtime code can now read one bounded policy object instead of inventing local caps.
+
+**Carry-forward.** Enforce the policy in `agent_end`, output message construction, and Kroki response handling.
