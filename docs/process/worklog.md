@@ -7161,3 +7161,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature, fix
 1. **Wrapping should not narrow valid processor methods.** The boundary adds normalization while preserving method receiver semantics.
 
 **Carry-forward.** Close remaining CV11.E4.S2 inspection coverage findings.
+
+---
+
+### 2026-04-30 — CV11.E4.S2 inspection test: normalization edge coverage is explicit
+
+**What shipped.** Closed the remaining S2 inspection coverage findings. Extension coverage now proves thrown third-party `available()` reaches `/fence list` as unavailable, and malformed render output sends follow-up plus records error metrics. Unit coverage now pins invalid availability `installHint` shapes and additional malformed render variants such as wrong image MIME, non-buffer legacy PNG, and non-string legacy text.
+
+**Implementation commit.**
+
+1. `d0594a9` — test CV11.E4.S2: cover result normalization edges
+
+**Beans.**
+
+1. Closed `task-1598861e` — CV11.E4.S2 inspection: cover thrown availability via event bus.
+2. Closed `task-3cb63d2a` — CV11.E4.S2 inspection: prove malformed render follow-up and metrics.
+3. Closed `task-b40dfba7` — CV11.E4.S2 inspection: cover remaining malformed result variants.
+
+**Test count.** Fast non-live suite increased from 981 to 982 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/processor.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'available|malformed third-party render|render results|stats'` — passed: 10 focused tests.
+2. `pnpm run feedback` — passed: 982 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Every bad-result path remains an ordinary diagnostic path.** Thrown availability, malformed availability, thrown render, and malformed render all have user-visible assertions.
+
+**Carry-forward.** Re-run CV11.E4.S2 inspection and close the story if no findings remain.
