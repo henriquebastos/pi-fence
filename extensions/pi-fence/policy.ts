@@ -75,8 +75,8 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 		endpointsByProcessor: customKrokiEndpoint ? { "kroki-remote": krokiEndpoint } : {},
 		sandboxes,
 		autoStart: {
-			bundleSandbox: shouldAutoStartBundleSandbox(sandboxes.get("bundle")),
-			krokiSandbox: shouldAutoStartKrokiSandbox(config, sandboxes.get("kroki")),
+			bundleSandbox: sandboxes.get("bundle")?.autoStart === true,
+			krokiSandbox: sandboxes.get("kroki")?.autoStart === true,
 		},
 		sourceRetention: {
 			mode: "bounded-preview",
@@ -126,39 +126,24 @@ function effectiveSandboxAutoStart(
 	id: string,
 	sandbox: SandboxConfig,
 ): boolean {
-	if (id === "kroki") {
-		return shouldAutoStartKrokiSandbox(config, resolveSandboxPolicyWithoutAutoStart(sandbox));
-	}
-	if (id === "bundle") {
-		return shouldAutoStartBundleSandbox(resolveSandboxPolicyWithoutAutoStart(sandbox));
-	}
+	if (id === "kroki") return shouldAutoStartKrokiSandbox(config, sandbox);
+	if (id === "bundle") return shouldAutoStartBundleSandbox(sandbox);
 	return sandbox.autoStart === true;
-}
-
-function resolveSandboxPolicyWithoutAutoStart(sandbox: SandboxConfig): ResolvedSandboxPolicy {
-	const resolved: ResolvedSandboxPolicy = {
-		kind: sandbox.kind,
-		runtime: sandbox.runtime,
-		autoStart: sandbox.autoStart === true,
-	};
-	if (sandbox.image !== undefined) resolved.image = sandbox.image;
-	return resolved;
 }
 
 function shouldAutoStartKrokiSandbox(
 	config: PiFenceConfig,
-	sandbox: ResolvedSandboxPolicy | undefined,
+	sandbox: SandboxConfig,
 ): boolean {
 	const legacyAutoStart = config.kroki?.docker?.autoStart === true;
-	if (sandbox === undefined) return false;
 	if (sandbox.kind !== "service") return false;
-	if (sandbox.runtime === "docker-container") return sandbox.autoStart || legacyAutoStart;
-	if (sandbox.runtime === "docker-compose") return sandbox.autoStart;
+	if (sandbox.runtime === "docker-container") return sandbox.autoStart ?? legacyAutoStart;
+	if (sandbox.runtime === "docker-compose") return sandbox.autoStart === true;
 	return false;
 }
 
-function shouldAutoStartBundleSandbox(sandbox: ResolvedSandboxPolicy | undefined): boolean {
-	return sandbox?.kind === "exec" &&
+function shouldAutoStartBundleSandbox(sandbox: SandboxConfig): boolean {
+	return sandbox.kind === "exec" &&
 		sandbox.runtime === "gondolin-vm" &&
 		sandbox.autoStart === true;
 }

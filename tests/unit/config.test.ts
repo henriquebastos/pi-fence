@@ -206,6 +206,29 @@ describe("config core", () => {
 		});
 	});
 
+	it("resolved policy: sandbox autoStart false overrides inherited legacy Kroki autoStart", () => {
+		const policy = resolvePiFencePolicy(
+			mergePiFenceConfigs(
+				{
+					bindings: {},
+					kroki: { docker: { autoStart: true } },
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container" },
+					},
+				},
+				{
+					bindings: {},
+					sandboxes: {
+						kroki: { kind: "service", runtime: "docker-container", autoStart: false },
+					},
+				},
+			),
+		);
+
+		expect(policy.sandboxes.get("kroki")?.autoStart).toBe(false);
+		expect(policy.autoStart.krokiSandbox).toBe(false);
+	});
+
 	it("validates blocked policy: accepts tag and processor string arrays", () => {
 		const result = validatePiFenceConfig(
 			{ blocked: { tags: ["qr", "dot"], processors: ["kroki-remote"] } },

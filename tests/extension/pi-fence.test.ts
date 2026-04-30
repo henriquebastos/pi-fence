@@ -1674,6 +1674,22 @@ describe("pi-fence extension — processorPrecedence tracer bullet (CV9.E1.S1)",
 				}),
 			);
 			const shell = new FakeShellRunner();
+			shell.setResponse("docker", ["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"], {
+				stdout: "",
+				stderr: "No such container",
+				exitCode: 1,
+			});
+			shell.setResponse(
+				"docker",
+				[
+					"run", "-d",
+					"--name", "pi-fence-kroki",
+					"--label", "pi-fence.sandbox=kroki",
+					"-p", "127.0.0.1:8000:8000",
+					"yuzutech/kroki",
+				],
+				{ stdout: "abc123\n", stderr: "", exitCode: 0 },
+			);
 
 			await runExtensionWithCommand(
 				new FakeHttpClient(),
