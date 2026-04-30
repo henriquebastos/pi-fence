@@ -5428,3 +5428,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **No implicit encoding of endpoint config.** Raw spaces are invalid; users must provide an already URL-encoded endpoint path if they truly need one.
 
 **Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S2 inspection fix: endpoint dot-segment paths
+
+**What shipped.** Hardened `kroki.endpoint` validation against dot-segment path rewriting after the fourth inspection round. Raw and encoded `.` / `..` path segments now fail closed before `new URL()` can resolve them, preserving user-specified path prefixes such as `/kroki`.
+
+**Implementation commit.**
+
+1. `7b45361` — fix CV11.E1.S2: preserve endpoint path prefixes
+
+**Beans.**
+
+1. Closed `bug-b4350dca` — CV11.E1.S2 inspection: reject endpoint dot-segment paths.
+
+**Test count.** Fast suite increased from 906 to 909 with three endpoint hardening cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern kroki.endpoint` — passed after RED failures for raw and encoded dot-segment endpoints.
+2. `pnpm vitest run tests/unit/config.test.ts` — passed: 115 tests.
+3. `pnpm run feedback` — passed: 909 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Preserve prefixes by rejecting rewrites.** Endpoint config may include path prefixes, but not relative-navigation segments that change them.
+2. **Encoded dot segments count.** `%2e` / `%2e%2e` are rejected the same as `.` / `..`.
+
+**Carry-forward.** Rerun S2 inspection. If clean, close CV11.E1.S2 and continue to CV11.E1.S3.
