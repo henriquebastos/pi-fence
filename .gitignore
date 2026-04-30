@@ -7,6 +7,7 @@ dist/
 coverage/
 crap-report/
 .scannerwork/
+.gondolin/
 
 # Spike/tooling outputs (PNG screenshots, byte-stream captures, etc.)
 scripts/out/

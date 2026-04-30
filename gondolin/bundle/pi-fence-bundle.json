@@ -1,0 +1,59 @@
+{
+  "imageName": "pi-fence-bundle",
+  "arch": "aarch64",
+  "distro": "alpine",
+  "alpine": {
+    "version": "3.23.0",
+    "kernelPackage": "linux-virt",
+    "kernelImage": "vmlinuz-virt",
+    "rootfsPackages": [
+      "linux-virt",
+      "rng-tools",
+      "bash",
+      "ca-certificates",
+      "curl",
+      "nodejs",
+      "npm",
+      "python3",
+      "graphviz",
+      "chromium",
+      "dbus",
+      "mesa-dri-gallium",
+      "font-noto",
+      "xvfb-run",
+      "gsettings-desktop-schemas"
+    ],
+    "initramfsPackages": [],
+    "krunfwVersion": "v5.2.1"
+  },
+  "rootfs": {
+    "label": "gondolin-root",
+    "sizeMb": 2048
+  },
+  "runtimeDefaults": {
+    "rootfsMode": "cow"
+  },
+  "init": {
+    "rootfsInitExtra": "init-extra.sh"
+  },
+  "postBuild": {
+    "copy": [
+      {
+        "src": "../../docker/bundle/manifest.json",
+        "dest": "/opt/pi-fence-bundle/manifest.json"
+      },
+      {
+        "src": "../../docker/bundle/puppeteer-config.json",
+        "dest": "/opt/pi-fence-bundle/puppeteer-config.json"
+      }
+    ],
+    "commands": [
+      "mkdir -p /opt/pi-fence-bundle",
+      "PUPPETEER_SKIP_DOWNLOAD=true PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium npm install -g @mermaid-js/mermaid-cli",
+      "ln -sf /usr/local/bin/mmdc /usr/bin/mmdc",
+      "dot -c",
+      "dot -V",
+      "mmdc --version"
+    ]
+  }
+}

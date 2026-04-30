@@ -304,7 +304,6 @@ describe("sandbox controller contract — Gondolin bundle VM status", () => {
 
 	it("builds VM options without host mounts or generic networking", () => {
 		expect(createGondolinVMOptions({ image: "pi-fence-bundle:0.1.0" })).toEqual({
-			autoStart: false,
 			env: {},
 			vfs: null,
 			sandbox: {

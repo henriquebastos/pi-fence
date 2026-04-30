@@ -67,6 +67,7 @@
     "live:status": "tsx scripts/live.ts status",
     "live:exec": "tsx scripts/live.ts exec",
     "live:build": "tsx scripts/live.ts build",
+    "gondolin:bundle:build": "gondolin build --config gondolin/bundle/pi-fence-bundle.json --output .gondolin/pi-fence-bundle --tag pi-fence-bundle:0.1.0",
     "refresh-fixtures": "tsx scripts/refresh-fixtures.ts",
     "render:verify": "tsx scripts/render-verify.ts",
     "render:gallery": "tsx scripts/render-gallery.ts"

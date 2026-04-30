@@ -169,7 +169,6 @@ export function createGondolinVMOptions(options: GondolinVMCreateOptions): VMOpt
 		? { imagePath: options.image, netEnabled: false }
 		: { netEnabled: false };
 	return {
-		autoStart: false,
 		env: {},
 		vfs: null,
 		sandbox,
