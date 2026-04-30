@@ -6466,3 +6466,26 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Details payload stays unchanged.** `/fence list` still records listings, binding rows, blocked tags, and formatted lines for renderers/tests.
 
 **Carry-forward.** Remove the unused live-test Kroki endpoint import, run the live gate, then re-run S1 inspection.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection refactor: remove unused live-test endpoint import
+
+**What shipped.** Removed an unused `DEFAULT_KROKI_ENDPOINT` import from `tests/integration/kroki.live.test.ts`; the live runtime now uses the resolved policy endpoint only.
+
+**Implementation commit.**
+
+1. `07806ef` — refactor CV11.E3.S1: drop unused live endpoint import
+
+**Beans.**
+
+1. Closed `task-e756bb1d` — CV11.E3.S1 inspection: remove unused Kroki default import in live test.
+
+**Test count.** Fast non-live suite unchanged at 940 tests.
+
+**Verification.**
+
+1. `pnpm run lint:types` — passed.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Carry-forward.** Run and record the CV11.E3.S1 live gate, then re-run S1 inspection.
