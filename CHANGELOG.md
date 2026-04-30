@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `kroki.endpoint` now fails closed unless it is a credential-free `http:` or `https:` URL; endpoint paths are preserved, trailing slashes are normalized, and query strings, hash fragments, credentials, unsupported schemes, and malformed strings are rejected.
 - Kroki request URLs are now built with URL helpers so endpoint path prefixes, output formats, and `theme=dark` compose predictably.
+- `/fence doctor` now warns when the active `kroki.endpoint` comes from project-local config because diagram source may be sent to that endpoint.
 
 ### Changed (CV11.E1.S1 — Package runtime assets)
 

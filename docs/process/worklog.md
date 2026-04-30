@@ -10,7 +10,7 @@ CV11 — Trust Boundaries is in progress. CV11.E1.S2 is active.
 
 ## Next
 
-Next bean: `task-53c0659d` — CV11.E1.S2 step 3, project endpoint diagnostic.
+Next step: run CV11.E1.S2 inspection and remediate findings as beans.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5282,3 +5282,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **URL helper stays private.** The helper is local to `kroki.ts`; endpoint normalization remains in `config.ts`, and sandbox endpoint readiness remains in the sandbox path.
 
 **Carry-forward.** Add the project-local endpoint diagnostic under `task-53c0659d`, then run S2 inspection.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 step 3: project endpoint diagnostic
+
+**What shipped.** Config loading now records the active `kroki.endpoint` provenance (`global`, `project`, or `explicit`). `/fence doctor` receives that narrow provenance and reports an issue when a project-local config supplies the active endpoint, warning that diagram source may be sent there. Project-local endpoints remain allowed.
+
+**Implementation commit.**
+
+1. `1fbe89d` — step 3: diagnose project Kroki endpoints
+
+**Beans.**
+
+1. Closed `task-53c0659d` — CV11.E1.S2 step 3 project endpoint diagnostic.
+
+**Test count.** Fast suite increased from 889 to 890 with one extension-level `/fence doctor` diagnostic test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'project config|endpoint'` — passed after the RED failure showed no project endpoint diagnostic.
+2. `pnpm vitest run tests/unit/doctor.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'endpoint|doctor'` — passed: 10 tests, 74 skipped by name filter.
+3. `pnpm run feedback` — passed: 890 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Narrow provenance, not full config.** `ConfigLoadResult` exposes only active Kroki endpoint provenance; `/fence doctor` does not depend on the full merged config object.
+2. **Doctor is the user-facing diagnostic.** The endpoint remains valid configuration, but the diagnostic makes the trust boundary visible when it comes from a checkout-local file.
+
+**Carry-forward.** Run CV11.E1.S2 inspection. If it creates no required findings, close S2 and continue to CV11.E1.S3 loopback binding.
