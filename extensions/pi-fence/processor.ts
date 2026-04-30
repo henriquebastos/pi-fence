@@ -70,8 +70,8 @@ export function normalizeFenceOutput(result: unknown): FenceOutput {
 	return malformedFenceOutput();
 }
 
-export function renderOutputFromThrownError(err: unknown): FenceOutput {
-	return errorOutput(`render() threw: ${safeErrorMessage(err)}`);
+export function renderOutputFromThrownError(_err: unknown): FenceOutput {
+	return errorOutput("render() threw");
 }
 
 function malformedFenceOutput(): FenceOutput {

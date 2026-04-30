@@ -4,6 +4,7 @@ import {
 	mergeSignals,
 	normalizeAvailabilityResult,
 	normalizeFenceOutput,
+	renderOutputFromThrownError,
 	withRenderGuards,
 	withSignalGuard,
 	type FenceOutput,
@@ -61,6 +62,13 @@ describe("processor output normalization", () => {
 	it("accepts explicit and legacy error output", () => {
 		expect(normalizeFenceOutput({ kind: "error", error: "bad" })).toEqual({ kind: "error", error: "bad" });
 		expect(normalizeFenceOutput({ ok: false, error: "bad" })).toEqual({ kind: "error", error: "bad" });
+	});
+
+	it("returns generic error output for thrown render errors", () => {
+		expect(renderOutputFromThrownError(new Error("secret token"))).toEqual({
+			kind: "error",
+			error: "render() threw",
+		});
 	});
 
 	it("returns error output for malformed render results", () => {

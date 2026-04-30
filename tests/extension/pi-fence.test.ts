@@ -2678,7 +2678,7 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 				kind: "error",
 				outputKind: "error",
 			});
-			expect((outputs[0].content as Array<{ text?: string }>)[0].text).toContain("render() threw: boom");
+			expect((outputs[0].content as Array<{ text?: string }>)[0].text).toBe("render() threw");
 			expect(sentCustomMessages.filter((message) => message.options?.deliverAs === "followUp"))
 				.toHaveLength(1);
 			const stats = sentCustomMessages.find(
