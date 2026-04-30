@@ -33,7 +33,7 @@ function makeContext(config: PiFenceConfig = DEFAULT_CONFIG): ProcessorFactoryCo
 		shell,
 		logger,
 		themeState: {},
-		policy,
+		policy: policy.processorFactories,
 		sandboxes: createSandboxControllers({ shell, logger }, policy),
 	};
 }

@@ -226,7 +226,7 @@ async function createDefaultProcessors(
 		shell: deps.shell,
 		logger: deps.logger,
 		themeState,
-		policy,
+		policy: policy.processorFactories,
 		sandboxes,
 	});
 	for (const diagnostic of result.diagnostics) {

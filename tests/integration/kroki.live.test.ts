@@ -172,7 +172,7 @@ async function createConfiguredKrokiRuntime(): Promise<ConfiguredKrokiRuntime> {
 		shell,
 		logger: NULL_LOGGER,
 		themeState: {},
-		policy,
+		policy: policy.processorFactories,
 		sandboxes,
 	});
 	if (creation.diagnostics.length > 0) {

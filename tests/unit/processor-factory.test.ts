@@ -44,7 +44,7 @@ const context: ProcessorFactoryContext = {
 		error: () => {},
 	},
 	themeState: {},
-	policy: resolvePiFencePolicy(DEFAULT_CONFIG),
+	policy: resolvePiFencePolicy(DEFAULT_CONFIG).processorFactories,
 	sandboxes: new Map(),
 };
 

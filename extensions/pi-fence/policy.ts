@@ -39,12 +39,19 @@ export interface ProcessorResolutionPolicy {
 	processorPrecedence: readonly ProcessorPlacement[];
 }
 
+export interface KrokiEndpointPolicy {
+	endpoint: string;
+	customEndpoint: boolean;
+}
+
+export interface ProcessorFactoryPolicy {
+	kroki: KrokiEndpointPolicy;
+}
+
 export interface ResolvedPiFencePolicy extends ProcessorResolutionPolicy {
 	processorResolution: ProcessorResolutionPolicy;
-	kroki: {
-		endpoint: string;
-		customEndpoint: boolean;
-	};
+	processorFactories: ProcessorFactoryPolicy;
+	kroki: KrokiEndpointPolicy;
 	endpointsByProcessor: Readonly<Record<string, string>>;
 	sandboxes: ReadonlyMap<string, ResolvedSandboxPolicy>;
 	autoStart: {
@@ -65,13 +72,15 @@ export function resolvePiFencePolicy(config: PiFenceConfig): ResolvedPiFencePoli
 		blockedTags: new Set(config.blocked?.tags ?? []),
 		processorPrecedence: [...(config.processorPrecedence ?? DEFAULT_PROCESSOR_PRECEDENCE)],
 	};
+	const kroki: KrokiEndpointPolicy = {
+		endpoint: krokiEndpoint,
+		customEndpoint: customKrokiEndpoint,
+	};
 	return {
 		...processorResolution,
 		processorResolution,
-		kroki: {
-			endpoint: krokiEndpoint,
-			customEndpoint: customKrokiEndpoint,
-		},
+		processorFactories: { kroki },
+		kroki,
 		endpointsByProcessor: customKrokiEndpoint ? { "kroki-remote": krokiEndpoint } : {},
 		sandboxes,
 		autoStart: {
