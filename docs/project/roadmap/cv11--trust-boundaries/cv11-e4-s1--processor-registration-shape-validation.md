@@ -1,6 +1,6 @@
 # CV11.E4.S1 — Processor registration shape validation
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E4 — Semi-trusted Processors](cv11-e4--semi-trusted-processors.md)
 **Depends on:** [CV11.E3.S2 — Explicit fence output and sandbox status variants](cv11-e3-s2--explicit-fence-output-and-sandbox-status.md)

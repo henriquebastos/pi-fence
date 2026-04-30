@@ -7029,3 +7029,51 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 1. **The register-error channel does not trust exception objects.** Both normal and malicious thrown values use the same safe message fallback.
 
 **Carry-forward.** Re-run CV11.E4.S1 inspection and close the story if no findings remain.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 closed: processor registration is semi-trusted
+
+**What closed.** Marked CV11.E4.S1 done. Third-party `pi-fence:register` payloads now fail closed for unsafe processor ids, tags, placements, aliases, symbol keys, missing alias targets, and precedence metadata; accepted tags/aliases are copied into frozen prototype-safe snapshots; registration exceptions consistently emit `pi-fence:register-error`; and the processor author guide documents the semi-trusted shape boundary.
+
+**Story implementation commits.**
+
+1. `df0cab8` — step 1: reject unsafe processor names
+2. `5b9458f` — step 2: harden processor aliases
+3. `53581d8` — step 3: document semi-trusted registration
+4. `46218dc` — fix CV11.E4.S1: freeze validated processor shape
+5. `64aa5cb` — fix CV11.E4.S1: report registration exceptions
+6. `ebcc23b` — test CV11.E4.S1: cover alias safe strings
+7. `7fa0e7c` — docs CV11.E4.S1: narrow processor output contract
+8. `fbd6912` — fix CV11.E4.S1: freeze default aliases
+9. `71f816b` — fix CV11.E4.S1: stringify registration errors safely
+10. `a22bac8` — fix CV11.E4.S1: reject symbol aliases
+11. `39ac2b1` — fix CV11.E4.S1: snapshot processor fields
+12. `2eb48b4` — fix CV11.E4.S1: guard error message access
+
+Adjacent docs catch-up commits were recorded immediately after each feature, fix, test, or docs-contract commit.
+
+**Beans.**
+
+1. Closed implementation beans: `task-5a56d500`, `task-7771c3de`, `task-c3d2bd4e`.
+2. Closed inspection beans: `bug-01f65983`, `bug-1693e683`, `task-4af7bc5a`, `task-0f252362`, `bug-0e4582dc`, `bug-12e1ea4c`, `bug-da345c07`, `bug-d2146db0`, `bug-412b0f10`.
+3. Closing now: `task-cca76a46` — CV11.E4.S1 story bean.
+
+**Test count.** Fast non-live suite increased from 947 to 969 tests during S1. Net additions cover unsafe names, forbidden metadata, alias target validation, immutable registration snapshots, observable registration rejection, validation exception handling, and edge cases for symbol keys and hostile thrown values.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed after each implementation/fix step; final pass reported 969 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: 969 non-live tests in the inspection coverage pass, CRAP report generated, Sonar skipped because credentials were unset.
+3. `inspect5p` rounds 1–5 — produced mutable-shape, registration-exception, alias-coverage, premature-docs, default-alias, safe-stringification, symbol-alias, snapshot, and error-message guard beans; final round found no issues.
+
+**Design decisions that survived the story.**
+
+1. **Registration is a snapshot boundary.** Accepted third-party processor shape is copied/frozen before availability probes or registry insertion.
+2. **Alias maps are prototype-safe string maps.** Plain and null-prototype maps are accepted only when every own key is a safe string and every value is a declared canonical tag.
+3. **Event-bus rejection is the single failure channel.** Validation errors, duplicate ids, and hostile thrown values all use `pi-fence:register-error`.
+4. **Docs do not promise S2 behavior early.** The guide documents `FenceOutput` for new processors; legacy result normalization waits for CV11.E4.S2.
+
+**Known deviations.** The S1 story spec did not call out freezing accepted snapshots or hostile exception stringification explicitly; inspection identified those as necessary to satisfy the semi-trusted boundary promise.
+
+**Carry-forward.** CV11.E4.S2 — Third-party processor result normalization — is next.

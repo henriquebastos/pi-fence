@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E4.S1 — Processor registration shape validation)
+
+- Third-party processor registration now rejects unsafe ids, tags, placements, aliases, and processor-controlled precedence metadata before those values enter registry, resolver, list, or render state.
+- Accepted third-party processor tags and aliases are copied into frozen, prototype-safe registration snapshots so later mutation or `available()` side effects cannot change the registered shape.
+- `pi-fence:register` now reports shape-validation exceptions through `pi-fence:register-error` instead of letting malformed alias/proxy objects escape the event-bus handler.
+- The processor author guide now documents the semi-trusted registration boundary, safe id/tag/alias grammar, alias target rules, and the current `FenceOutput` result contract.
+
 ### Changed (CV11.E3.S2 — Explicit fence output and sandbox status variants)
 
 - Pi-fence output messages now persist bounded `sourcePreview` details instead of the full fenced source, while expanded rendering remains available from the retained preview and marks truncated previews explicitly.

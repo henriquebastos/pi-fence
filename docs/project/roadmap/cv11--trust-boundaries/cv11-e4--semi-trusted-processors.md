@@ -13,7 +13,7 @@ This epic does not sandbox third-party extension code. It prevents malformed reg
 
 | Code | Story | Status |
 |------|-------|--------|
-| [S1](cv11-e4-s1--processor-registration-shape-validation.md) | **Processor registration shape validation** | Ready |
+| [S1](cv11-e4-s1--processor-registration-shape-validation.md) | **Processor registration shape validation** | Done |
 | [S2](cv11-e4-s2--third-party-processor-result-normalization.md) | **Third-party processor result normalization** | Ready |
 
 ## Done criterion (epic-level)
