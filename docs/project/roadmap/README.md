@@ -22,4 +22,4 @@ A CV is **done** only when every Story in its Epics is done.
 | [CV8 — Internal Quality](cv8--internal-quality/README.md) | `simplification` | Done | Simplify internals that accumulated duplication or unnecessary indirection during feature delivery. |
 | [CV9 — Processor Policy](cv9--processor-policy/README.md) | `control` | Done | Processor selection is governed by explicit user policy, not import order or implicit trust assumptions. |
 | [CV10 — VM Sandboxes](cv10--vm-sandboxes/README.md) | `control` | Done | CLI renderers can run inside a VM-backed sandbox when container isolation is not enough. |
-| [CV11 — Trust Boundaries](cv11--trust-boundaries/README.md) | `control` | Not started | npm-installed pi-fence is safe and predictable across config, plugin, render, artifact, and TypeScript boundaries. |
+| [CV11 — Trust Boundaries](cv11--trust-boundaries/README.md) | `control` | In progress | npm-installed pi-fence is safe and predictable across config, plugin, render, artifact, and TypeScript boundaries. |

@@ -1,6 +1,6 @@
 # CV11.E1.S1 — Package runtime assets resolve from npm installs
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E1 — Installed Runtime Trust](cv11-e1--installed-runtime-trust.md)
 **Date:** 2026-04-29 (spec)

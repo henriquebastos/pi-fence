@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV11 — Trust Boundaries is in progress. CV11.E1.S1 is active.
+CV11 — Trust Boundaries is in progress. CV11.E1.S2 is ready.
 
 ## Next
 
-Next step: run CV11.E1.S1 inspection and remediate findings as beans.
+Next story: CV11.E1.S2 — Kroki endpoint config is normalized and diagnosed.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5177,3 +5177,47 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Keep the relative constant for docs/tests.** `KROKI_COMPOSE_FILE` still names the package asset (`docker/kroki/compose.yaml`), while the fixed controller converts it to an absolute path for Docker.
 
 **Carry-forward.** Run CV11.E1.S1 inspection. If it creates no required findings, close the story and then continue to CV11.E1.S2.
+
+---
+
+### 2026-04-29 — CV11.E1.S1 closed: package runtime assets resolve from npm installs
+
+**What shipped.** Closed CV11.E1.S1. Installed packages now contain the runtime assets needed by exposed workflows (`docker/bundle/`, `docker/kroki/`, and `gondolin/bundle/`), and the fixed Kroki Compose controller resolves its Compose file from pi-fence's package location before invoking Docker.
+
+**Implementation commits.**
+
+1. `343fddc` — step 1: ship runtime assets in npm package
+2. `421ba23` — step 2: resolve Compose assets from package path
+
+**Documentation commits.**
+
+1. `b0249b6` — docs: record CV11.E1.S1 package assets
+2. `8f0bee8` — docs: record CV11.E1.S1 package path
+
+**Beans.**
+
+1. Closed `task-c94acac9` — package runtime assets.
+2. Closed `task-d089d596` — package-resolved Compose path.
+3. Deferred and closed `bug-a55bd501` — packaged Kroki Compose currently binds all interfaces; CV11.E1.S3 is already Ready and explicitly owns loopback binding for Compose and single-container Kroki.
+
+**Test count.** Fast non-live suite finished at 881 tests. This story added 2 net non-live tests: one npm-pack package-content test and one package-resolved Compose lifecycle test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/package-scripts.test.ts tests/unit/sandbox.test.ts` — passed: 44 tests.
+2. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern docker-compose` — passed: 1 test, 69 skipped by name filter.
+3. `pnpm exec npm pack --dry-run --json` — passed; required runtime assets present.
+4. `pnpm run feedback` — passed: 881 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+5. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: non-live CRAP completion inspection; Sonar skipped as unconfigured. A first `pnpm run inspect` attempted the ambient `http://localhost:9000` Sonar config and failed because the server was unavailable.
+6. `inspect5p` round 1 — one medium security finding, deferred to CV11.E1.S3 per S1 scope.
+7. `inspect5p` round 2 — no issues found after ignoring the deferred CV11.E1.S3 loopback finding.
+
+**Design decisions that survived the story.**
+
+1. **Pack output is the package-content contract.** Tests inspect actual `npm pack --dry-run --json` output instead of only `package.json.files`.
+2. **Runtime asset directories ship together.** Publishing `docker/bundle`, `docker/kroki`, and `gondolin/bundle` keeps each exposed runtime workflow self-contained while excluding live-test-only `docker/Dockerfile`.
+3. **Resolution belongs at the fixed adapter boundary.** The Kroki Compose adapter resolves its package asset path; the generic Docker Compose controller still uses caller-supplied paths.
+
+**Known deviation.** Loopback binding is still not fixed in this story. That is intentional: CV11.E1.S1 names Docker port binding as out of scope, and CV11.E1.S3 owns the fix.
+
+**Carry-forward.** Start CV11.E1.S2 with beans under `epic-5d8ac485`, then fix loopback binding in CV11.E1.S3 before closing CV11.E1.

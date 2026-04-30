@@ -3,7 +3,7 @@
 > npm-installed pi-fence is safe and predictable across config, plugin, render, artifact, and TypeScript boundaries.
 
 **Type:** `control`
-**Status:** Not started
+**Status:** In progress
 
 This CV turns the read-only TypeScript architecture review into ordered, implementable work. The theme is trust: users can install pi-fence from npm, configure endpoints intentionally, accept semi-trusted processors without letting malformed plugin objects corrupt runtime state, and rely on the same quality gates for tooling that the extension runtime already has.
 
@@ -27,7 +27,7 @@ The order is deliberate:
 
 | Code | Epic | State |
 |------|------|-------|
-| [CV11.E1](cv11-e1--installed-runtime-trust.md) | **Installed Runtime Trust** | Not started |
+| [CV11.E1](cv11-e1--installed-runtime-trust.md) | **Installed Runtime Trust** | In progress |
 | [CV11.E2](cv11-e2--source-retention-decision.md) | **Source Retention Decision** | Not started |
 | [CV11.E3](cv11-e3--explicit-runtime-model.md) | **Explicit Runtime Model** | Not started |
 | [CV11.E4](cv11-e4--semi-trusted-processors.md) | **Semi-trusted Processors** | Not started |
