@@ -150,9 +150,10 @@ function isAliasObject(value: unknown): value is Record<string, unknown> {
 }
 
 function wrapRender(render: unknown): FenceProcessor["render"] {
-	return async (tag, source, signal) => {
+	const rawRender = render as FenceProcessor["render"];
+	return async function (this: FenceProcessor, tag, source, signal) {
 		try {
-			return normalizeFenceOutput(await (render as FenceProcessor["render"])(tag, source, signal));
+			return normalizeFenceOutput(await rawRender.call(this, tag, source, signal));
 		} catch (err) {
 			return renderOutputFromThrownError(err);
 		}

@@ -294,6 +294,22 @@ describe("validateProcessor", () => {
 		expect(result).toMatchObject({ ok: false });
 	});
 
+	it("calls wrapped render with the processor snapshot as this", async () => {
+		const result = validateProcessor({
+			...makeValidProcessor(),
+			render: async function (this: FenceProcessor) {
+				return { kind: "text", text: this.id };
+			},
+		});
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		await expect(result.processor.render("test", "source")).resolves.toEqual({
+			kind: "text",
+			text: "test-proc",
+		});
+	});
+
 	it("accepts processor without aliases (defaults to {})", () => {
 		const result = validateProcessor({ id: "x", placement: "remote", tags: ["t"], available: async () => ({ ok: true }), render: async () => ({ kind: "text", text: "" }) });
 		expect(result.ok).toBe(true);
