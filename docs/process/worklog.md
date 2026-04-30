@@ -5836,3 +5836,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Clear diagnostic instead of silent precedence.** The error names both flags so a misconfigured sandbox is obvious from `/fence doctor` and the test message.
 
 **Carry-forward.** Continue round-3 remediation with port-verifier diagnostic edges, the stop-ownership convention comment, and the worklog phrasing fix.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: port-verifier diagnostic edges
+
+**What shipped.** Coverage-only tests pin down the empty-`HostIp` `<all interfaces>` diagnostic and the docker-inspect-on-ports failure modes (`No such object` and daemon-error stderr) for both the single-container manager and the Compose core path.
+
+**Implementation commit.**
+
+1. `3bc55b8` — test CV11.E1.S3: cover Kroki port-verifier diagnostic edges
+
+**Beans.**
+
+1. Closed `task-25372107` — CV11.E1.S3 inspection: cover Kroki port-verifier diagnostic edges.
+
+**Test count.** Fast suite increased from 924 to 930 with two manager-layer cases and four Compose-layer cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts tests/unit/sandbox.test.ts --testNamePattern 'all-interfaces diagnostic|port bindings reports no such container|port bindings fails for daemon reasons|Compose core ports reports no such container|Compose core ports fails for daemon reasons'` — all green on the existing logic, recorded as coverage-only remediation.
+2. `pnpm run feedback` — passed: 930 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Real Docker shapes are pinned.** `HostIp: ""` is the dominant `-p 8000:8000` representation, so the trust boundary now has a regression guard for the diagnostic message users will see.
+2. **Race-aware `absent` for ports inspect.** A managed container that vanishes between the `Running` and ports inspects is reported as `absent`, matching the existing inspect-failure behavior for the State.Running call.
+
+**Carry-forward.** Document the Kroki stop-ownership convention and reconcile the round-2 worklog phrasing.
