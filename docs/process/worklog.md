@@ -7530,3 +7530,28 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 2. **Blocked tags remain silent even when oversized.** The source-limit path does not bypass user policy.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: ignored fences stay opaque
+
+**What shipped.** Closed the final parser security finding. Ignored fenced blocks are opaque again: supported-looking fences inside closed unsupported fences remain body text and do not render or trigger remote processors. The earlier unclosed-ignored-fence recovery was removed in favor of preserving the documented no-nested-fence parser contract.
+
+**Implementation commit.**
+
+1. `7eaf987` — fix CV11.E5.S1: keep ignored fences opaque
+
+**Beans.**
+
+1. Closed `bug-ec625811` — CV11.E5.S1 inspection: ignored fenced blocks must stay opaque.
+
+**Test count.** Fast non-live suite stayed at 1003 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/parser.test.ts --testNamePattern 'ignored fenced|nested|opaque|long single-line|maxBlocks|true UTF-8|bounds chunked|stops consuming'` — passed: 6 focused tests.
+2. `pnpm run feedback` — passed: 1003 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Opaque code examples win over unclosed-fence recovery.** pi-fence will not render a supported fence nested inside an ignored fenced block, even if that means an unclosed ignored fence can hide later fences until EOF.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
