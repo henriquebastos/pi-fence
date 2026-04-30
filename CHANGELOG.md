@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E1.S2 — Kroki endpoint normalization)
+
+- `kroki.endpoint` now fails closed unless it is a credential-free `http:` or `https:` URL; endpoint paths are preserved, trailing slashes are normalized, and query strings, hash fragments, credentials, unsupported schemes, and malformed strings are rejected.
+
 ### Changed (CV11.E1.S1 — Package runtime assets)
 
 - npm packages now include `docker/bundle/`, `docker/kroki/`, and `gondolin/bundle/`, so installed users receive the runtime assets for bundle image workflows and the managed Kroki Compose stack.

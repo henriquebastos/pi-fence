@@ -6,11 +6,11 @@ What was done, what's next. Updated each session. Dated entries are chronologica
 
 ## Current focus
 
-CV11 — Trust Boundaries is in progress. CV11.E1.S2 is ready.
+CV11 — Trust Boundaries is in progress. CV11.E1.S2 is active.
 
 ## Next
 
-Next story: CV11.E1.S2 — Kroki endpoint config is normalized and diagnosed.
+Next bean: `task-c21c13f0` — CV11.E1.S2 step 2, Kroki request URL builder.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5221,3 +5221,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviation.** Loopback binding is still not fixed in this story. That is intentional: CV11.E1.S1 names Docker port binding as out of scope, and CV11.E1.S3 owns the fix.
 
 **Carry-forward.** Start CV11.E1.S2 with beans under `epic-5d8ac485`, then fix loopback binding in CV11.E1.S3 before closing CV11.E1.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 step 1: endpoint validation and normalization
+
+**What shipped.** `kroki.endpoint` validation now parses endpoint strings as URLs, accepts only credential-free `http:`/`https:` values, preserves path prefixes, normalizes trailing slashes, and rejects malformed strings, unsupported schemes, credentials, query strings, and hash fragments. Invalid endpoint values fail closed by narrowing processor precedence to `embedded`.
+
+**Implementation commit.**
+
+1. `45d7319` — step 1: fail closed on unsafe Kroki endpoints
+
+**Beans.**
+
+1. Closed `task-c7015390` — CV11.E1.S2 step 1 endpoint validation and normalization.
+2. Active epic/story: `epic-5d8ac485` / `task-d4de94dc`.
+3. Next ready bean: `task-c21c13f0` — Kroki request URL builder.
+
+**Test count.** Fast suite increased from 881 to 888 with seven endpoint validation cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern kroki.endpoint` — passed after RED failures for trailing-slash normalization and unsafe endpoints.
+2. `pnpm vitest run tests/unit/config.test.ts` — passed: 96 tests.
+3. `pnpm run feedback` — passed: 888 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Reject rather than strip query/hash.** Query strings and hash fragments are rejected at the config boundary so credentials or surprising options cannot hide in endpoint display/logging.
+2. **Endpoint validation is a privacy control.** Invalid endpoint strings trigger the existing fail-closed path, restricting rendering to `embedded` processors.
+
+**Carry-forward.** Replace Kroki request URL concatenation with a URL-based builder under `task-c21c13f0`, then add project-endpoint provenance diagnostics under `task-53c0659d`.
