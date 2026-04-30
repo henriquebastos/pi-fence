@@ -762,6 +762,20 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		});
 	});
 
+	it("does not query port bindings on Compose components without a loopback requirement", async () => {
+		const shell = new FakeShellRunner();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		await controller.status();
+
+		const portsInspectTargets = shell.calls
+			.filter((call) => call.cmd === "docker" && call.args[0] === "inspect" && call.args[2] === PORTS_FORMAT)
+			.map((call) => call.args[3]);
+		expect(portsInspectTargets).toEqual(["pi-fence-kroki-core"]);
+	});
+
 	it("reports error when the Compose core publishes Kroki on all interfaces", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);

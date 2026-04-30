@@ -348,7 +348,7 @@ export function createKrokiDockerComposeSandboxController(
 				containerName: "pi-fence-kroki-core",
 				expectedImage: KROKI_DOCKER_IMAGE,
 				expectedLabels: KROKI_SANDBOX_LABELS,
-				requiredLoopbackPorts: [8000],
+				security: { requiredLoopbackPorts: [8000] },
 			},
 			{
 				id: "mermaid",
@@ -363,6 +363,7 @@ export function createKrokiDockerComposeSandboxController(
 export interface DockerSandboxSecurityOptions {
 	networkMode?: string;
 	noPublishedPorts?: boolean;
+	requiredLoopbackPorts?: readonly number[];
 	allowOnlyTmpfsMounts?: boolean;
 	requiredTmpfsMounts?: readonly string[];
 	capDropAll?: boolean;
@@ -378,7 +379,6 @@ export interface DockerSandboxComponentOptions {
 	expectedImage: string;
 	expectedLabels: Readonly<Record<string, string>>;
 	security?: DockerSandboxSecurityOptions;
-	requiredLoopbackPorts?: readonly number[];
 }
 
 export interface DockerContainerSandboxOptions {
@@ -618,10 +618,6 @@ async function inspectDockerContainer(
 		if (imageStatus) return imageStatus;
 		const labelStatus = await inspectContainerLabels(shell, component);
 		if (labelStatus) return labelStatus;
-		if (running) {
-			const portStatus = await inspectRequiredLoopbackPorts(shell, component);
-			if (portStatus) return portStatus;
-		}
 		if (running && component.security) {
 			const securityStatus = await inspectContainerSecurity(shell, component);
 			if (securityStatus) return securityStatus;
@@ -719,6 +715,7 @@ async function inspectContainerSecurity(
 	for (const check of [
 		inspectNetworkMode,
 		inspectPublishedPorts,
+		inspectRequiredLoopbackPorts,
 		inspectMounts,
 		inspectDroppedCapabilities,
 		inspectAddedCapabilities,
@@ -734,8 +731,9 @@ async function inspectContainerSecurity(
 async function inspectRequiredLoopbackPorts(
 	shell: ShellRunner,
 	component: DockerSandboxComponentOptions,
+	security: DockerSandboxSecurityOptions,
 ): Promise<SandboxComponentStatus | undefined> {
-	const requiredPorts = component.requiredLoopbackPorts ?? [];
+	const requiredPorts = security.requiredLoopbackPorts ?? [];
 	if (requiredPorts.length === 0) return undefined;
 	const rawPorts = await inspectFormat(shell, component, "{{json .NetworkSettings.Ports}}");
 	if (isInspectStatus(rawPorts)) return rawPorts;
