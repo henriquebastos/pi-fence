@@ -296,7 +296,7 @@ function hasInvalidKrokiEndpoint(rawKroki: unknown): boolean {
 	if (rawKroki === undefined) return false;
 	if (!isRecordLike(rawKroki)) return true;
 	const endpoint = ownField(rawKroki, "endpoint");
-	return endpoint !== undefined && typeof endpoint !== "string";
+	return endpoint !== undefined && (typeof endpoint !== "string" || !normalizeKrokiEndpoint(endpoint).ok);
 }
 
 function validateBindings(
@@ -510,12 +510,46 @@ function validateKrokiEndpoint(
 	logger?: Logger,
 ): string | undefined {
 	if (rawEndpoint === undefined) return undefined;
-	if (typeof rawEndpoint === "string") return rawEndpoint;
+	if (typeof rawEndpoint !== "string") {
+		logger?.warn("config", `${label} config 'kroki.endpoint' is not a string`, {
+			got: typeof rawEndpoint,
+		});
+		return undefined;
+	}
 
-	logger?.warn("config", `${label} config 'kroki.endpoint' is not a string`, {
-		got: typeof rawEndpoint,
+	const endpoint = normalizeKrokiEndpoint(rawEndpoint);
+	if (endpoint.ok) return endpoint.value;
+	logger?.warn("config", `invalid kroki.endpoint in ${label} config`, {
+		reason: endpoint.reason,
 	});
 	return undefined;
+}
+
+type KrokiEndpointValidation =
+	| { ok: true; value: string }
+	| { ok: false; reason: string };
+
+function normalizeKrokiEndpoint(value: string): KrokiEndpointValidation {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch {
+		return { ok: false, reason: "malformed URL" };
+	}
+	if (url.protocol !== "http:" && url.protocol !== "https:") {
+		return { ok: false, reason: "unsupported URL scheme" };
+	}
+	if (url.username !== "" || url.password !== "") {
+		return { ok: false, reason: "credentials are not allowed" };
+	}
+	if (url.search !== "") {
+		return { ok: false, reason: "query strings are not allowed" };
+	}
+	if (url.hash !== "") {
+		return { ok: false, reason: "hash fragments are not allowed" };
+	}
+	const path = url.pathname.replace(/\/+$/, "");
+	return { ok: true, value: `${url.origin}${path}` };
 }
 
 function validateKrokiDocker(

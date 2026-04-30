@@ -706,12 +706,35 @@ describe("config core", () => {
 		expect(result.kroki).toBeUndefined();
 	});
 
-	it("validates kroki.endpoint: accepts a string", () => {
+	it.each([
+		["http://localhost:8000", "http://localhost:8000"],
+		["https://example.com/kroki/", "https://example.com/kroki"],
+	])("validates kroki.endpoint: accepts and normalizes %s", (input, expected) => {
 		const result = validatePiFenceConfig(
-			{ kroki: { endpoint: "http://localhost:8000" } },
+			{ kroki: { endpoint: input } },
 			"test",
 		);
-		expect(result.kroki?.endpoint).toBe("http://localhost:8000");
+		expect(result.kroki?.endpoint).toBe(expected);
+	});
+
+	it.each([
+		"not a url",
+		"file:///tmp/kroki",
+		"ftp://example.com/kroki",
+		"https://user@example.com/kroki",
+		"https://example.com/kroki?token=secret",
+		"https://example.com/kroki#fragment",
+	])("validates kroki.endpoint: rejects unsafe endpoint %s", (endpoint) => {
+		const logger = new FakeLogger();
+		const result = validatePiFenceConfig(
+			{ kroki: { endpoint } },
+			"test",
+			logger,
+		);
+
+		expect(result.kroki?.endpoint).toBeUndefined();
+		expect(result.processorPrecedence).toEqual(["embedded"]);
+		expect(logger.byLevel("warn").some((entry) => entry.message.includes("invalid kroki.endpoint"))).toBe(true);
 	});
 
 	it("validates kroki.endpoint: absent kroki section yields undefined", () => {
