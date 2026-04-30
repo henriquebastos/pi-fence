@@ -6238,3 +6238,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 3. **Source retention becomes explicit before message migration.** The policy now names bounded preview retention; CV11.E3.S2 still owns replacing persisted full-source details.
 
 **Carry-forward.** Continue CV11.E3.S1 with merged-policy coverage and runtime handler wiring.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 step 2: merged config controls resolve into policy
+
+**What shipped.** Added merged-policy coverage for user controls: project bindings, blocked tag/processor policy, placement precedence intersection, global Kroki endpoint precedence over project endpoint, endpoint display metadata, sandbox summaries, and effective sandbox auto-start. `resolvePiFencePolicy()` now deep-copies binding selector objects so raw merged config objects do not leak into runtime policy state.
+
+**Implementation commit.**
+
+1. `979a785` — step 2: preserve merged runtime policy controls
+
+**Beans.**
+
+1. Closed `task-49d282cd` — CV11.E3.S1 step 2: policy from merged config.
+
+**Test count.** Fast non-live suite increased from 938 to 939 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern 'resolved policy|merge'` — passed.
+2. `pnpm run feedback` — passed: 939 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Merged config remains the boundary input.** Policy resolution does not change existing validation/merge semantics; it consumes the already-merged `PiFenceConfig`.
+2. **Global endpoint precedence is policy-visible.** A global Kroki endpoint still wins over a project endpoint and becomes the effective policy endpoint.
+3. **Binding selectors are copied.** Runtime policy owns its binding objects instead of holding mutable references from raw config layers.
+
+**Carry-forward.** Thread resolved policy through `index.ts`, `/fence` command wiring, and `agent_end` rendering without changing user-visible behavior.
