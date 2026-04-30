@@ -7077,3 +7077,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature, fix
 **Known deviations.** The S1 story spec did not call out freezing accepted snapshots or hostile exception stringification explicitly; inspection identified those as necessary to satisfy the semi-trusted boundary promise.
 
 **Carry-forward.** CV11.E4.S2 — Third-party processor result normalization — is next.
+
+---
+
+### 2026-04-30 — CV11.E4.S2 step 1: availability results are normalized
+
+**What shipped.** Third-party `available()` results now pass through a strict availability normalizer before entering registry or startup availability maps. Throws still become unavailable diagnostics, and malformed returns such as `undefined`, `{ ok: false }`, `{ ok: true, reason }`, empty reasons, and non-objects become `{ ok: false, reason: "available() returned malformed result" }`. `/fence list` now shows malformed third-party availability as unavailable instead of letting bad shape corrupt list state.
+
+**Implementation commit.**
+
+1. `1a4f792` — step 4: normalize processor availability
+
+**Beans.**
+
+1. Closed `task-25eaddb0` — CV11.E4.S2 step 1: availability normalization.
+
+**Test count.** Fast non-live suite increased from 969 to 974 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/register.test.ts tests/unit/processor.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'availability|available|malformed'` — passed: 17 focused tests.
+2. `pnpm run feedback` — passed: 974 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Availability parsing is shared.** Registration-time probes and startup availability probing both use `normalizeAvailabilityResult()`.
+2. **Malformed means unavailable, not rejected registration.** A processor with a valid declared shape can register but lists as unavailable when its probe result is malformed.
+
+**Carry-forward.** Normalize third-party render outputs and thrown render errors.
