@@ -7394,3 +7394,34 @@ Adjacent docs catch-up commits were recorded immediately after each S2 feature, 
 3. **Limit error phrasing is shared outside I/O.** `agent_end` and Kroki use the same helper; `io/http-client.ts` keeps its local string to avoid reversing dependency layering.
 
 **Carry-forward.** Re-run CV11.E5.S1 inspection and live verification.
+
+### 2026-04-30 — CV11.E5.S1 inspection fix: processor error outputs are capped
+
+**What shipped.** Closed second-round CV11.E5.S1 inspection findings. Processor `error` outputs now pass through the same output byte cap as text and image outputs before message construction. Extension coverage now proves limit failures send follow-up messages and record `/fence stats` failures, and Kroki sandbox coverage asserts the HTTP response cap is forwarded to the request seam.
+
+**Implementation commit.**
+
+1. `f8f4415` — fix CV11.E5.S1: cap processor error outputs
+
+**Beans.**
+
+1. Closed `bug-c3844c83` — CV11.E5.S1 inspection: cap oversized processor error output.
+2. Closed `task-291a5118` — CV11.E5.S1 inspection: assert limit metrics and follow-up.
+3. Closed `task-d1cc04e0` — CV11.E5.S1 inspection: assert sandbox Kroki response cap request.
+
+**Test count.** Fast non-live suite increased from 991 to 993 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'render resource limits'` — passed: 5 focused tests.
+2. `pnpm vitest run tests/unit/kroki.test.ts --testNamePattern 'sandbox|posts the source|response|output limit'` — passed: 5 focused tests.
+3. `pnpm run feedback` — passed: 993 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **All output variants are bounded at the same boundary.** Image, text, and explicit processor error output are measured before display or persistence content is built.
+2. **Limit failures remain ordinary render failures.** They emit visible error output, hidden follow-up, and failed render metrics.
+
+**Known deviations.** The CHANGELOG entry for the user-visible CV11.E5.S1 behavior was added with the first inspection docs catch-up rather than immediately after the earlier source/output/Kroki feature commits; subsequent docs commits stayed adjacent.
+
+**Carry-forward.** Re-run CV11.E5.S1 inspection and then live verification.
