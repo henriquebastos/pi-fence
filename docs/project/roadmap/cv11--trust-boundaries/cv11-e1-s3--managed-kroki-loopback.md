@@ -14,10 +14,12 @@ Bind pi-fence-managed Kroki services to `127.0.0.1` instead of Docker's default 
 
 1. Single-container Kroki startup uses `-p 127.0.0.1:8000:8000` or equivalent.
 2. `docker/kroki/compose.yaml` publishes `127.0.0.1:8000:8000`.
-3. Existing endpoint returned to pi-fence remains `http://localhost:8000` unless a stronger reason chooses `http://127.0.0.1:8000`.
-4. Unit tests prove the Docker command and Compose file bind to loopback.
-5. Docs mentioning quick local Kroki or managed sandbox behavior stay accurate.
-6. `pnpm run feedback` passes.
+3. Managed Kroki runtimes (single-container and Compose) report `http://127.0.0.1:8000` to pi-fence so the advertised endpoint matches the verified IPv4 loopback bind.
+4. Existing managed Kroki runtimes that publish `8000/tcp` outside `127.0.0.1:8000` fail closed instead of being treated as ready.
+5. Unmanaged `kroki.endpoint` behavior is unchanged.
+6. Tests prove the Docker command, Compose file, runtime port verification, and managed endpoint pinning.
+7. Docs mentioning quick local Kroki or managed sandbox behavior stay accurate.
+8. `pnpm run feedback` passes.
 
 ## Scope
 
@@ -44,11 +46,11 @@ Bind pi-fence-managed Kroki services to `127.0.0.1` instead of Docker's default 
 
 ## Tests
 
-1. **Layers touched:** unit tests only.
-2. **Events / interactions covered:** Docker run args and Compose YAML port binding.
+1. **Layers touched:** unit tests for Docker run args, Compose YAML, runtime port binding, and managed endpoint pinning; extension-layer fixtures updated to program the same Docker port-binding inspection and the IPv4 loopback endpoint.
+2. **Events / interactions covered:** Docker run args, Compose YAML port binding, Docker `NetworkSettings.Ports` verification on the managed single-container and Compose core services, and the managed endpoint pi-fence advertises through `kroki-sandbox`.
 3. **Fakes added:** none.
 4. **Live tests:** optional; existing `pnpm test:live` can be run if Docker is available.
-5. **Deferred:** broader container resource limits.
+5. **Deferred:** broader container resource limits, deduplication of the Docker port-binding helper between `kroki-docker.ts` and `sandbox.ts`.
 
 ## Verification
 
