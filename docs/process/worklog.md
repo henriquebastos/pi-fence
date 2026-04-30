@@ -6080,3 +6080,25 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 1. **Notify severity follows the verifier convention.** `ok:true` keeps `info`; any `ok:false` (ownership or configuration failure) routes to `error`, so users see a fail-closed managed runtime as soon as `/fence kroki status` runs.
 
 **Carry-forward.** Align the story spec Verification list with the Compose contract test, then close CV11.E1.S3.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: align story spec Verification with kroki-compose test
+
+**What shipped.** The S3 spec's `Verification` command and `Key files` block now reference `tests/unit/kroki-compose.test.ts` (the Compose port contract) instead of `tests/unit/package-scripts.test.ts` (which only checks the asset path is shipped in the npm package).
+
+**Implementation commit.**
+
+1. `0499883` — docs CV11.E1.S3: align verification with kroki-compose test
+
+**Beans.**
+
+1. Closed `task-9d811a99` — CV11.E1.S3 inspection: align story spec Verification with kroki-compose test.
+
+**Test count.** Fast suite unchanged (937); docs-only correction.
+
+**Verification.**
+
+1. `pnpm run lint:markdown` — passed.
+
+**Carry-forward.** Run the completion gate and close CV11.E1.S3 (and CV11.E1, since S3 is the last story in the epic).
