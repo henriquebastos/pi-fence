@@ -2565,6 +2565,44 @@ describe("pi-fence extension — third-party processor via event bus (CV4.E1.S1)
 	);
 
 	it(
+		"lists a third-party processor with malformed availability as unavailable",
+		async () => {
+			const thirdPartyFactory = async (pi: ExtensionAPI): Promise<void> => {
+				pi.events.emit("pi-fence:register", {
+					id: "custom-upper",
+					placement: "embedded",
+					tags: ["upper"],
+					aliases: {},
+					available: async () => ({ ok: false }),
+					render: async () => ({ kind: "text", text: "" }),
+				});
+				await new Promise((r) => setTimeout(r, 50));
+			};
+
+			const { session, sentCustomMessages } = await buildSessionWithExtension(
+				new FakeHttpClient(),
+				undefined,
+				undefined,
+				[thirdPartyFactory],
+			);
+			try {
+				await session.prompt("/fence list");
+			} finally {
+				session.dispose();
+			}
+			await new Promise((r) => setTimeout(r, 50));
+
+			const details = sentCustomMessages.find((m) => m.customType === "pi-fence:list")
+				?.details as { listings: Array<{ id: string; status: string; unavailableReason?: string }> };
+			expect(details.listings.find((listing) => listing.id === "custom-upper")).toMatchObject({
+				status: "unavailable",
+				unavailableReason: expect.stringContaining("malformed"),
+			});
+		},
+		20_000,
+	);
+
+	it(
 		"does not probe a third-party processor whose tag family is blocked",
 		async () => {
 			const home = makeTempDir();

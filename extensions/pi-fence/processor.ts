@@ -98,6 +98,51 @@ export type Availability =
 	| { ok: true }
 	| { ok: false; reason: string; installHint?: string };
 
+export function normalizeAvailabilityResult(result: unknown): Availability {
+	if (!isRecord(result)) return malformedAvailability();
+	if (result.ok === true) {
+		if (Object.hasOwn(result, "reason") || Object.hasOwn(result, "installHint")) {
+			return malformedAvailability();
+		}
+		return { ok: true };
+	}
+	if (result.ok === false) {
+		if (typeof result.reason !== "string" || result.reason.length === 0) {
+			return malformedAvailability();
+		}
+		if (Object.hasOwn(result, "installHint") && typeof result.installHint !== "string") {
+			return malformedAvailability();
+		}
+		return {
+			ok: false,
+			reason: result.reason,
+			...(typeof result.installHint === "string" ? { installHint: result.installHint } : {}),
+		};
+	}
+	return malformedAvailability();
+}
+
+export function availabilityFromThrownError(err: unknown): Availability {
+	return { ok: false, reason: `available() threw: ${safeErrorMessage(err)}` };
+}
+
+function malformedAvailability(): Availability {
+	return { ok: false, reason: "available() returned malformed result" };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function safeErrorMessage(err: unknown): string {
+	try {
+		if (err instanceof Error) return String(err.message);
+		return String(err);
+	} catch {
+		return "non-stringifiable error";
+	}
+}
+
 export interface FenceProcessor {
 	/** Stable id used for logs, settings, and future registry lookups. */
 	readonly id: string;

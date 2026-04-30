@@ -25,10 +25,12 @@
 
 import { DEFAULT_PROCESSOR_PRECEDENCE } from "./config.ts";
 import type { ProcessorBindingPolicy } from "./policy.ts";
-import type {
-	Availability,
-	FenceProcessor,
-	ProcessorPlacement,
+import {
+	availabilityFromThrownError,
+	normalizeAvailabilityResult,
+	type Availability,
+	type FenceProcessor,
+	type ProcessorPlacement,
 } from "./processor.ts";
 
 export type StepOutcome =
@@ -648,13 +650,9 @@ export async function probeAvailability(
 	const out = new Map<string, Availability>();
 	for (const processor of processors) {
 		try {
-			out.set(processor.id, await processor.available());
+			out.set(processor.id, normalizeAvailabilityResult(await processor.available()));
 		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			out.set(processor.id, {
-				ok: false,
-				reason: `available() threw: ${message}`,
-			});
+			out.set(processor.id, availabilityFromThrownError(err));
 		}
 	}
 	return out;

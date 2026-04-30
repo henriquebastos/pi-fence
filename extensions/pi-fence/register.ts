@@ -10,6 +10,8 @@
 
 import {
 	PROCESSOR_PLACEMENTS,
+	availabilityFromThrownError,
+	normalizeAvailabilityResult,
 	type Availability,
 	type FenceProcessor,
 	type ProcessorPlacement,
@@ -204,10 +206,9 @@ async function probeRegistrationAvailability(
 	const blocked = registrationBlocked(processor, registeredProcessors, options);
 	if (blocked) return blocked;
 	try {
-		return await processor.available();
+		return normalizeAvailabilityResult(await processor.available());
 	} catch (err) {
-		const msg = err instanceof Error ? err.message : String(err);
-		return { ok: false, reason: `available() threw: ${msg}` };
+		return availabilityFromThrownError(err);
 	}
 }
 

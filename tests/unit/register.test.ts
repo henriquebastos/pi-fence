@@ -391,6 +391,24 @@ describe("registerProcessor", () => {
 		expect(registry.availability.get("test-proc")?.ok).toBe(false);
 	});
 
+	it("stores malformed availability probe results as unavailable diagnostics", async () => {
+		const registry = makeRegistry();
+		const validation = validateProcessor({
+			...makeValidProcessor(),
+			available: async () => undefined,
+		});
+		expect(validation.ok).toBe(true);
+		if (!validation.ok) return;
+
+		const result = await registerProcessor(registry, validation.processor);
+
+		expect(result.ok).toBe(true);
+		expect(registry.availability.get("test-proc")).toMatchObject({
+			ok: false,
+			reason: expect.stringContaining("malformed"),
+		});
+	});
+
 	it("does not probe a processor whose placement is disabled by policy", async () => {
 		const registry = makeRegistry();
 		let probes = 0;

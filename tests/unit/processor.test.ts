@@ -2,10 +2,31 @@ import { describe, expect, it } from "vitest";
 
 import {
 	mergeSignals,
+	normalizeAvailabilityResult,
 	withRenderGuards,
 	withSignalGuard,
 	type FenceOutput,
 } from "../../extensions/pi-fence/processor.ts";
+
+describe("processor availability normalization", () => {
+	it("accepts ok availability", () => {
+		expect(normalizeAvailabilityResult({ ok: true })).toEqual({ ok: true });
+	});
+
+	it("accepts unavailable availability with optional install hint", () => {
+		expect(normalizeAvailabilityResult({ ok: false, reason: "missing", installHint: "install it" }))
+			.toEqual({ ok: false, reason: "missing", installHint: "install it" });
+	});
+
+	it("rejects malformed availability results", () => {
+		for (const result of [undefined, null, "ok", { ok: false }, { ok: true, reason: "extra" }, { ok: false, reason: "" }]) {
+			expect(normalizeAvailabilityResult(result), String(result)).toMatchObject({
+				ok: false,
+				reason: expect.stringContaining("malformed"),
+			});
+		}
+	});
+});
 
 describe("processor signal helpers", () => {
 	it("mergeSignals returns undefined when there are no real signals", () => {
