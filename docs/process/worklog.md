@@ -5864,3 +5864,30 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Race-aware `absent` for ports inspect.** A managed container that vanishes between the `Running` and ports inspects is reported as `absent`, matching the existing inspect-failure behavior for the State.Running call.
 
 **Carry-forward.** Document the Kroki stop-ownership convention and reconcile the round-2 worklog phrasing.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: document Kroki stop ownership convention
+
+**What shipped.** A doc comment on `KrokiDockerResult` and an inline comment at the `stop()` guard now name the verifier contract: ownership-failure verifiers return `status: "absent"` and short-circuit `stop()`; configuration-failure verifiers on an owned container return `status: "running"` so the lifecycle command can clean it up.
+
+**Implementation commit.**
+
+1. `e944787` — refactor CV11.E1.S3: document Kroki stop ownership convention
+
+**Beans.**
+
+1. Closed `task-0e6c84c5` — CV11.E1.S3 inspection: document Kroki stop ownership convention.
+
+**Test count.** Fast suite unchanged (930); comment-only refactor.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'stop|wrong-image|wrong-label|broad'` — stayed green before and after the comments were added.
+2. `pnpm run feedback` — passed: 930 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Convention written, not encoded in a flag.** A `cleanupSafe?: boolean` field would add a parallel surface; documenting the existing two-status convention keeps the result type small while protecting future verifiers from breaking the contract silently.
+
+**Carry-forward.** Reconcile the round-2 worklog test-count phrasing.
