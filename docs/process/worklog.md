@@ -6410,3 +6410,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Policy remains grouped at the composition root.** `index.ts` builds narrow downstream option objects from `processorResolution`.
 
 **Carry-forward.** Re-run S1 inspection. If no new findings remain, close CV11.E3.S1.
+
+---
+
+### 2026-04-30 — CV11.E3.S1 inspection refactor: runtime binding policy has its own type
+
+**What shipped.** Added `ProcessorBindingPolicy` as the operational binding selector type and updated `resolve.ts` to depend on it instead of the raw config `TagBinding` type. Config still validates and merges `TagBinding`; policy resolution copies it into the runtime binding policy surface.
+
+**Implementation commit.**
+
+1. `d1fd070` — refactor CV11.E3.S1: separate runtime binding policy
+
+**Beans.**
+
+1. Closed `task-86acc922` — CV11.E3.S1 inspection: decouple runtime binding policy type.
+
+**Test count.** Fast non-live suite unchanged at 940 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts tests/unit/resolve.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'binding|blocked|precedence'` — passed before and after the refactor.
+2. `pnpm run feedback` — passed: 940 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the refactor.**
+
+1. **Config shape is copied at the policy boundary.** Raw `TagBinding` remains a config type; runtime resolution receives `ProcessorBindingPolicy`.
+2. **Selector semantics intentionally match.** The operational selector still has processor and placement variants, preserving existing resolution behavior.
+
+**Carry-forward.** Re-run S1 inspection. If no new findings remain, close CV11.E3.S1.
