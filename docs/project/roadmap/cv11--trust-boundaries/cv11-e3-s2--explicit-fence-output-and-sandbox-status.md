@@ -1,6 +1,6 @@
 # CV11.E3.S2 — Explicit fence output and sandbox status variants
 
-**Status:** Ready
+**Status:** Done
 
 **Epic:** [CV11.E3 — Explicit Runtime Model](cv11-e3--explicit-runtime-model.md)
 **Depends on:** [CV11.E3.S1 — Resolved runtime policy object](cv11-e3-s1--resolved-runtime-policy.md)

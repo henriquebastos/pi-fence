@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E3.S2 — Explicit fence output and sandbox status variants)
+
+- Pi-fence output messages now persist bounded `sourcePreview` details instead of the full fenced source, while expanded rendering remains available from the retained preview and marks truncated previews explicitly.
+- Built-in processor outputs are now represented internally as explicit image, text, or error variants.
+- Sandbox readiness is now explicit: service sandboxes report `ready-service` with an endpoint, while exec sandboxes report `ready-exec` without endpoint semantics.
+
 ### Changed (CV11.E1.S3 — Managed Kroki loopback binding)
 
 - Managed single-container Kroki startup now publishes `127.0.0.1:8000:8000` and reports the managed endpoint as `http://127.0.0.1:8000`.

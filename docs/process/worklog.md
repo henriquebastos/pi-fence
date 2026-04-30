@@ -6653,3 +6653,43 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 3. **Non-ready states remain state-compatible.** Existing status summaries still expose `state` and `message`, with `kind` added as the discriminant for exhaustive handling.
 
 **Carry-forward.** Close CV11.E3.S2, then run the completion inspection for CV11.E3.
+
+---
+
+### 2026-04-30 — Closed CV11.E3.S2 and CV11.E3
+
+**What closed.** Marked CV11.E3.S2 done and closed the CV11.E3 epic after both stories shipped. CV11.E3 now provides the resolved policy object, explicit fence output variants, bounded source-preview retention, and explicit sandbox readiness variants required before CV11.E4 semi-trusted processor normalization.
+
+**Story implementation commits.**
+
+1. `8561fcd` — step 1: model output messages with source previews
+2. `3281e88` — step 2: return explicit fence output variants
+3. `8e3ab52` — step 3: distinguish sandbox readiness variants
+
+**Docs catch-up commits.**
+
+1. `ed957c1` — docs: record CV11.E3.S2 source preview output
+2. `dcec790` — docs: record CV11.E3.S2 output migration
+3. `2efd105` — docs: record CV11.E3.S2 sandbox status
+
+**Beans.**
+
+1. Closed `task-858f3ffd` — CV11.E3.S2: Explicit fence output and sandbox status variants.
+2. Closed `epic-bf88cf69` — CV11.E3: Explicit Runtime Model.
+
+**Test count.** Fast non-live suite increased from 945 to 947 tests during S2.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed after each implementation step; final pass reported 947 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+2. `env -u SONAR_HOST_URL -u SONAR_TOKEN pnpm run inspect` — passed: 947 non-live tests in the inspection coverage pass, CRAP report generated, Sonar skipped because credentials were unset.
+
+**Design decisions that survived the story.**
+
+1. **Legacy output normalization remains at the message seam.** Built-in processors return `FenceOutput`, while `buildPiFenceOutputMessage()` still accepts old `{ ok, ... }` results for staged third-party normalization in CV11.E4.
+2. **Bounded source retention happens before send.** New output messages carry `sourcePreview`; legacy persisted sessions can still render from old `details.source`.
+3. **Sandbox readiness distinguishes capability.** Only `ready-service` carries an endpoint; `ready-exec` cannot be consumed as a network service.
+
+**Known deviations.** Live tests were not required by the story spec because this was a type/domain refactor over existing seams; the live gates remain available for later acceptance.
+
+**Carry-forward.** CV11.E4 — Semi-trusted Processors — is next.
