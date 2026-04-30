@@ -6562,3 +6562,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 **Known deviations.** The S1 story spec originally said no live tests were required. Inspection identified that Kroki factory/live runtime wiring touched a processor/I/O seam, so the spec's Tests/Verification sections were clarified at close and `pnpm test:live` was run before closing.
 
 **Carry-forward.** CV11.E3.S2 — Explicit fence output and sandbox status variants — is next.
+
+---
+
+### 2026-04-30 — CV11.E3.S2 step 1: output messages retain bounded source previews
+
+**What shipped.** Added the explicit `FenceOutput` union plus normalization from legacy processor results, updated pi-fence output messages to branch on explicit image/text/error variants, and replaced full `details.source` writes with bounded `sourcePreview` metadata. The renderer reads `sourcePreview` for expanded output while retaining read-only compatibility with legacy `details.source` sessions.
+
+**Implementation commit.**
+
+1. `8561fcd` — step 1: model output messages with source previews
+
+**Beans.**
+
+1. Closed `task-6c489a6e` — CV11.E3.S2 step 1: explicit fence output and source preview details.
+
+**Test count.** Fast non-live suite increased from 940 to 945 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/messages.test.ts tests/unit/renderer.test.ts --testNamePattern 'explicit output|source preview|retained source preview'` — passed.
+2. `pnpm vitest run tests/unit/messages.test.ts tests/unit/renderer.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'source|output|error|text|image'` — passed.
+3. `pnpm run feedback` — passed: 945 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Message construction is explicit first.** `buildPiFenceOutputMessage()` normalizes legacy processor results into `FenceOutput` before building content/details.
+2. **Source retention is bounded at send time.** New output messages persist `sourcePreview`, not full `source`, before calling `pi.sendMessage()`.
+3. **Legacy sessions still render.** The renderer can still read old `details.source` payloads but new messages no longer write that field.
+
+**Carry-forward.** Migrate built-in processors and contracts to return explicit output variants directly.
