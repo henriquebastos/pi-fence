@@ -885,6 +885,71 @@ describe("loadPiFenceConfig — file-present paths", () => {
 		expect(result.projectStatus).toBe("not-found");
 	});
 
+	it("reports project Kroki endpoint provenance when project endpoint is active", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const projectPath = writeConfig(projectDir, JSON.stringify({ kroki: { endpoint: "https://project.example/kroki" } }));
+
+		const result = await loadPiFenceConfig({
+			globalConfigPath: join(globalDir, "no-global.json"),
+			projectConfigPath: projectPath,
+		});
+
+		expect(result.config.kroki?.endpoint).toBe("https://project.example/kroki");
+		expect(result.krokiEndpoint).toEqual({
+			source: "project",
+			endpoint: "https://project.example/kroki",
+			path: projectPath,
+		});
+	});
+
+	it("reports global Kroki endpoint provenance when global wins over project", async () => {
+		const globalDir = makeTempDir();
+		const projectDir = makeTempDir();
+		const globalPath = writeConfig(globalDir, JSON.stringify({ kroki: { endpoint: "https://global.example/kroki" } }));
+		const projectPath = writeConfig(projectDir, JSON.stringify({ kroki: { endpoint: "https://project.example/kroki" } }));
+
+		const result = await loadPiFenceConfig({
+			globalConfigPath: globalPath,
+			projectConfigPath: projectPath,
+		});
+
+		expect(result.config.kroki?.endpoint).toBe("https://global.example/kroki");
+		expect(result.krokiEndpoint).toEqual({
+			source: "global",
+			endpoint: "https://global.example/kroki",
+			path: globalPath,
+		});
+	});
+
+	it("reports explicit Kroki endpoint provenance for PI_FENCE_CONFIG-style loads", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(dir, JSON.stringify({ kroki: { endpoint: "https://explicit.example/kroki" } }));
+
+		const result = await loadPiFenceConfig({ configPath: path });
+
+		expect(result.config.kroki?.endpoint).toBe("https://explicit.example/kroki");
+		expect(result.krokiEndpoint).toEqual({
+			source: "explicit",
+			endpoint: "https://explicit.example/kroki",
+			path,
+		});
+	});
+
+	it("does not report Kroki endpoint provenance for invalid endpoints", async () => {
+		const dir = makeTempDir();
+		const path = writeConfig(dir, JSON.stringify({ kroki: { endpoint: "https://example.com/kroki?" } }));
+
+		const result = await loadPiFenceConfig({
+			globalConfigPath: path,
+			projectConfigPath: join(dir, "no-project.json"),
+		});
+
+		expect(result.config.kroki?.endpoint).toBeUndefined();
+		expect(result.config.processorPrecedence).toEqual(["embedded"]);
+		expect(result.krokiEndpoint).toBeUndefined();
+	});
+
 	it("reads the global config when only global is present", async () => {
 		const globalDir = makeTempDir();
 		const globalPath = writeConfig(
