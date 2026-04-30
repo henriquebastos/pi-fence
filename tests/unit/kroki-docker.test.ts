@@ -307,6 +307,19 @@ describe("kroki-docker — start()", () => {
 		expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
 	});
 
+	it("does not run docker run over a running broad-bound managed container", async () => {
+		const shell = makeShell();
+		setRunning(shell);
+		setPortBinding(shell, "0.0.0.0");
+		const mgr = createKrokiDockerManager(shell);
+
+		const result = await mgr.start();
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("running");
+		expect(result.message).toContain("publishes 8000/tcp on 0.0.0.0:8000");
+		expect(shell.calls.some((call) => call.args[0] === "run")).toBe(false);
+	});
+
 	it("runs docker run with ownership labels and returns endpoint on success", async () => {
 		const shell = makeShell();
 		setAbsent(shell);

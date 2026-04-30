@@ -761,6 +761,28 @@ describe("sandbox controller contract — Docker Compose status", () => {
 		expect(shell.calls.some((call) => call.args.join(" ") === `compose -f ${composeFile} -p pi-fence-kroki up -d`)).toBe(true);
 	});
 
+	it("start() reports error when the Compose core comes up with a broad host bind", async () => {
+		const shell = new FakeShellRunner();
+		const composeFile = expectedKrokiComposeFilePath();
+		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
+		setPortBinding(shell, "pi-fence-kroki-core", "0.0.0.0");
+		setRunning(shell, "pi-fence-kroki-mermaid", MERMAID_IMAGE);
+		shell.setResponse(
+			"docker",
+			["compose", "-f", composeFile, "-p", "pi-fence-kroki", "up", "-d"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+
+		const controller = createKrokiDockerComposeSandboxController(shell);
+		const status = await controller.start();
+		expect(status.state).toBe("error");
+		expect(status.components?.[0]).toMatchObject({
+			id: "core",
+			state: "error",
+			message: "Container pi-fence-kroki-core publishes 8000/tcp on 0.0.0.0:8000; expected 127.0.0.1:8000.",
+		});
+	});
+
 	it("builds the fixed Kroki Compose service controller", async () => {
 		const shell = new FakeShellRunner();
 		setRunning(shell, "pi-fence-kroki-core", KROKI_IMAGE);
