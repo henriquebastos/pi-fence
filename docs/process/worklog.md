@@ -5517,3 +5517,34 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 **Known deviations.** None.
 
 **Carry-forward.** Implement CV11.E1.S3 next: bind managed single-container and Compose Kroki runtimes to loopback before closing CV11.E1.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 step 1: single-container Kroki binds to loopback
+
+**What shipped.** Managed single-container Kroki startup now publishes only on loopback with `-p 127.0.0.1:8000:8000`. The endpoint reported to pi-fence remains `http://localhost:8000`, and unmanaged `kroki.endpoint` behavior is unchanged.
+
+**Implementation commit.**
+
+1. `962e9b4` — step 1: bind single-container Kroki to loopback
+
+**Beans.**
+
+1. Closed `task-15188e3f` — CV11.E1.S3 step 1, single-container loopback bind.
+2. Next ready bean: `task-b7f2be6c` — CV11.E1.S3 step 2, Compose loopback bind.
+
+**Test count.** Fast suite remained at 909 tests; this step tightened existing Docker-run expectations.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/kroki-docker.test.ts --testNamePattern 'runs docker run|loopback'` — failed before implementation, then passed after the Docker run argument changed.
+2. `pnpm vitest run tests/unit/sandbox.test.ts tests/unit/fence-command.test.ts --testNamePattern 'normalizes start|kroki start'` — passed with dependent Docker-run fixtures updated.
+3. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'single-container Kroki|Kroki sandbox image|legacy Kroki autoStart|kroki start'` — passed with extension-layer lifecycle fixtures updated.
+4. `pnpm run feedback` — passed: 909 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived implementation.**
+
+1. **Loopback bind, localhost endpoint.** Docker gets the explicit bind address; pi-fence keeps returning `http://localhost:8000` to avoid changing the processor endpoint contract.
+2. **Only managed runtime changed.** The unmanaged `kroki.endpoint` path and endpoint validation from S2 are untouched.
+
+**Carry-forward.** Implement `task-b7f2be6c`: bind the managed Kroki Compose stack to loopback.

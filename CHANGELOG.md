@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E1.S3 — Managed Kroki loopback binding)
+
+- Managed single-container Kroki startup now publishes `127.0.0.1:8000:8000` while keeping the reported endpoint as `http://localhost:8000`.
+
 ### Changed (CV11.E1.S2 — Kroki endpoint normalization)
 
 - `kroki.endpoint` now fails closed unless it is a credential-free `http://` or `https://` URL with an explicit non-empty authority; endpoint paths are preserved, trailing slashes are normalized, and query strings, hash fragments, credentials, unsupported schemes, malformed authority forms, extra-slash repaired forms, dot-segment paths, raw spaces, backslashes, bare query/hash delimiters, credential delimiters, and whitespace/control-wrapped values are rejected.
