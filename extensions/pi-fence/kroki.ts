@@ -198,17 +198,27 @@ function createKrokiRequestContext(
 ): KrokiRequestContext {
 	const krokiTag = KROKI_ALIASES[tag] ?? tag;
 	const appearanceMode = appearance?.();
-	const query = appearanceMode === "dark" ? "?theme=dark" : "";
 	const isSvgOnly = KROKI_SVG_ONLY_TAGS.has(krokiTag);
 	const format = isSvgOnly ? "svg" : "png";
 
 	return {
 		tag,
 		krokiTag,
-		url: `${base}/${krokiTag}/${format}${query}`,
+		url: buildKrokiRequestUrl(base, krokiTag, format, appearanceMode),
 		isSvgOnly,
 		appearance: appearanceMode,
 	};
+}
+
+function buildKrokiRequestUrl(
+	base: string,
+	krokiTag: string,
+	format: "png" | "svg",
+	appearanceMode: "light" | "dark" | undefined,
+): string {
+	const endpoint = new URL(`${krokiTag}/${format}`, base.endsWith("/") ? base : `${base}/`);
+	if (appearanceMode === "dark") endpoint.searchParams.set("theme", "dark");
+	return endpoint.toString();
 }
 
 function logKrokiRequest(

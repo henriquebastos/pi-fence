@@ -447,6 +447,17 @@ describe("createKrokiProcessor", () => {
 		expect(http.requests[0].url).toBe("http://localhost:8000/mermaid/png");
 	});
 
+	it("preserves custom endpoint path prefixes while appending tag, format, and theme", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://example.com/kroki/mermaid/png?theme=dark", pngResponse(Buffer.alloc(8)));
+		const kroki = createKrokiProcessor(http, "https://example.com/kroki/", undefined, () => "dark");
+
+		const result = await kroki.render("mermaid", "flowchart LR");
+
+		expect(result.ok).toBe(true);
+		expect(http.requests[0].url).toBe("https://example.com/kroki/mermaid/png?theme=dark");
+	});
+
 	it("yields ok:false when the caller's signal is already aborted", async () => {
 		const http = new FakeHttpClient();
 		http.setResponse("POST", "https://kroki.io/mermaid/png", pngResponse(Buffer.alloc(8)));
