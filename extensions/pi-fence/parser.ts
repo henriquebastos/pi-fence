@@ -117,7 +117,7 @@ function createBlockParser(tags: string[], options: ExtractFencedBlocksOptions):
 				return;
 			}
 
-			const opener = parseOpener(line.text);
+			const opener = parseLineOpener(line);
 			if (opener) active = openFence(opener, allowlist);
 		},
 		finish(): FencedBlock[] {
@@ -191,6 +191,21 @@ function finishCollector(collector: BodyCollector, maxSourceBytes: number | unde
  *   - followed by an info string whose first whitespace-delimited token is
  *     the tag.
  */
+function parseLineOpener(line: LineRecord): Opener | null {
+	return line.truncated ? parseTruncatedOpener(line.text) : parseOpener(line.text);
+}
+
+function parseTruncatedOpener(line: string): Opener | null {
+	const match = /^( {0,3})(`{3,}|~{3,})/.exec(line);
+	if (!match) return null;
+	const fence = match[2];
+	return {
+		char: fence[0] as "`" | "~",
+		length: Number.MAX_SAFE_INTEGER,
+		tag: "",
+	};
+}
+
 function parseOpener(line: string): Opener | null {
 	const match = /^( {0,3})(`{3,}|~{3,})(.*)$/.exec(line);
 	if (!match) return null;

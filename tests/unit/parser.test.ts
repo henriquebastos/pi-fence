@@ -84,6 +84,34 @@ describe("extractFencedBlocks", () => {
 		]);
 	});
 
+	it("does not render overlong supported openers with hidden backticks", () => {
+		const blocks = extractFencedBlocks(
+			["```mermaid " + "x".repeat(300_000) + "`", "flowchart LR", "```"].join("\n"),
+			["mermaid"],
+			{ maxSourceBytes: 262_144 },
+		);
+
+		expect(blocks).toEqual([]);
+	});
+
+	it("does not close overlong ignored opener delimiters with shorter closers", () => {
+		const fence = (length: number) => "`".repeat(length);
+		const blocks = extractFencedBlocks(
+			[
+				`${fence(300_000)}ignored`,
+				fence(262_144),
+				"```mermaid",
+				"flowchart LR",
+				"```",
+				fence(300_000),
+			].join("\n"),
+			["mermaid"],
+			{ maxSourceBytes: 262_144 },
+		);
+
+		expect(blocks).toEqual([]);
+	});
+
 	it("treats supported fences inside ignored fenced blocks with overlong openers as opaque body text", () => {
 		const blocks = extractFencedBlocks(
 			["```ignored " + "x".repeat(300_000), "```mermaid", "flowchart LR", "```", "```"].join("\n"),
