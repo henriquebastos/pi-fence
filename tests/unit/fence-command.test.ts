@@ -61,6 +61,14 @@ function setKrokiLoopbackPort(shell: FakeShellRunner): void {
 	);
 }
 
+function setKrokiBroadPort(shell: FakeShellRunner): void {
+	shell.setResponse(
+		"docker",
+		["inspect", "--format", "{{json .NetworkSettings.Ports}}", "pi-fence-kroki"],
+		{ stdout: JSON.stringify({ "8000/tcp": [{ HostIp: "0.0.0.0", HostPort: "8000" }] }) + "\n", stderr: "", exitCode: 0 },
+	);
+}
+
 async function setupExtension(
 	processor: FenceProcessor,
 ): Promise<{ api: FakeExtensionAPI; logger: FakeLogger }> {
@@ -184,6 +192,40 @@ describe("/fence kroki — Docker lifecycle subcommands", () => {
 
 		expect(api.ui.notifications).toHaveLength(1);
 		expect(api.ui.notifications[0].message).toContain("running");
+	});
+
+	it("kroki status notifies with non-info severity when the managed container is broadly bound", async () => {
+		const api = new FakeExtensionAPI();
+		const logger = new FakeLogger();
+		const shell = new FakeShellRunner();
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", "{{.State.Running}}", "pi-fence-kroki"],
+			{ stdout: "true\n", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", "{{.Config.Image}}", "pi-fence-kroki"],
+			{ stdout: "yuzutech/kroki\n", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse(
+			"docker",
+			["inspect", "--format", `{{ index .Config.Labels "pi-fence.sandbox" }}`, "pi-fence-kroki"],
+			{ stdout: "kroki\n", stderr: "", exitCode: 0 },
+		);
+		setKrokiBroadPort(shell);
+		await createPiFenceExtension(asExtensionAPI(api), {
+			http: new FakeHttpClient(),
+			shell,
+			logger,
+			processors: [stubProcessor("kroki-remote", ["mermaid"])],
+		});
+
+		await api.invokeCommand("fence", "kroki status");
+
+		expect(api.ui.notifications).toHaveLength(1);
+		expect(api.ui.notifications[0].type).not.toBe("info");
+		expect(api.ui.notifications[0].message).toContain("publishes 8000/tcp on 0.0.0.0:8000");
 	});
 
 	it("kroki start notifies on success", async () => {

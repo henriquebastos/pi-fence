@@ -138,7 +138,7 @@ async function handleKrokiSubcommand(
 	}
 	if (sub === "status") {
 		const result = await mgr.status();
-		ctx.ui.notify(result.message, "info");
+		ctx.ui.notify(result.message, result.ok ? "info" : "error");
 		return;
 	}
 	const available = ["start", "stop", "status"].join(", ");
