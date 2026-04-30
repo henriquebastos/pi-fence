@@ -6812,3 +6812,31 @@ Adjacent docs catch-up commits were recorded immediately after each feature/refa
 2. **Probe callbacks see the snapshot as `this`.** If a callback tries to mutate the frozen shape, the probe becomes an unavailable diagnostic instead of changing registry state.
 
 **Carry-forward.** Close the remaining CV11.E4.S1 inspection findings.
+
+---
+
+### 2026-04-30 — CV11.E4.S1 inspection fix: registration exceptions use register-error
+
+**What shipped.** Closed the inspection finding that validation-time exceptions from semi-trusted registration data could bypass `pi-fence:register-error`. The event-bus listener now catches unexpected errors around validation and registration, logs the same `register rejected` warning, emits `pi-fence:register-error`, and leaves the registry unchanged.
+
+**Implementation commit.**
+
+1. `64aa5cb` — fix CV11.E4.S1: report registration exceptions
+
+**Beans.**
+
+1. Closed `bug-1693e683` — CV11.E4.S1 inspection: catch registration validation exceptions.
+
+**Test count.** Fast non-live suite increased from 961 to 962 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/extension/pi-fence.test.ts --testNamePattern 'register|third-party'` — passed: 6 focused extension tests.
+2. `pnpm run feedback` — passed: 962 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **The registration event has one rejection path.** Shape errors, duplicate ids, and unexpected validation exceptions all surface through `pi-fence:register-error`.
+2. **Validation remains pure.** The listener owns the catch-and-emit boundary rather than coupling `register.ts` to pi's event bus.
+
+**Carry-forward.** Close the remaining CV11.E4.S1 inspection findings.
