@@ -10,7 +10,7 @@ CV11 — Trust Boundaries is in progress. CV11.E1.S2 is active.
 
 ## Next
 
-Next step: run CV11.E1.S2 inspection and remediate findings as beans.
+Next bean: `task-06b7fca5` — CV11.E1.S2 inspection, cover endpoint provenance semantics.
 
 Follow the autonomous implementation loop: every story, task, finding, and dependency lives in beans under the active epic.
 
@@ -5311,3 +5311,33 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Doctor is the user-facing diagnostic.** The endpoint remains valid configuration, but the diagnostic makes the trust boundary visible when it comes from a checkout-local file.
 
 **Carry-forward.** Run CV11.E1.S2 inspection. If it creates no required findings, close S2 and continue to CV11.E1.S3 loopback binding.
+
+---
+
+### 2026-04-29 — CV11.E1.S2 inspection fix: endpoint delimiters and whitespace
+
+**What shipped.** Hardened `kroki.endpoint` validation after inspection. Endpoint strings now reject bare query/hash delimiters (`?`, `#`), empty credential delimiters such as `https://@example.com`, and leading/trailing whitespace or ASCII control characters before `new URL()` can normalize them.
+
+**Implementation commit.**
+
+1. `dfe4aef` — fix CV11.E1.S2: reject surprising endpoint delimiters
+
+**Beans.**
+
+1. Closed `bug-1c47fc72` — CV11.E1.S2 inspection: reject surprising endpoint delimiters.
+2. Next ready bean: `task-06b7fca5` — cover endpoint provenance semantics.
+
+**Test count.** Fast suite increased from 890 to 895 with five endpoint hardening cases.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/config.test.ts --testNamePattern kroki.endpoint` — passed after RED failures for empty credential/query/hash delimiters and whitespace/control-wrapped endpoints.
+2. `pnpm vitest run tests/unit/config.test.ts` — passed: 101 tests.
+3. `pnpm run feedback` — passed: 895 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Validate the raw string before URL parsing.** The guard rejects syntax that WHATWG URL would otherwise trim or normalize away.
+2. **Keep rejection explicit.** Raw `?`, `#`, and credential delimiters are invalid even if their parsed URL fields would be empty.
+
+**Carry-forward.** Close the remaining inspection coverage finding under `task-06b7fca5`, then rerun S2 inspection.
