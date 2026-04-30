@@ -316,7 +316,7 @@ To render through the managed container, allow `sandbox` placement:
 
 `sandboxes` maps replace by layer, so include any default sandbox entries you still want active when overriding this section. Existing configs that use `kroki.docker.autoStart: true` still work as a single-container compatibility alias.
 
-For the Compose-backed Kroki stack, start it manually from a source checkout. The packaged Compose file also publishes only `127.0.0.1:8000:8000`:
+For the Compose-backed Kroki stack, start it manually from a source checkout. The packaged Compose file also publishes only `127.0.0.1:8000:8000`, and pi-fence treats the stack as unavailable if the core service reports a broader `8000/tcp` host binding:
 
 ```bash
 docker compose -f docker/kroki/compose.yaml -p pi-fence-kroki up -d

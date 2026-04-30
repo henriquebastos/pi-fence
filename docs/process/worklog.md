@@ -5607,3 +5607,32 @@ Adjacent docs catch-up commits were recorded immediately after each feature comm
 2. **Stop stays available for owned unsafe state.** A broad-bound but labelled managed container is not ready, but pi-fence can still remove it through the lifecycle command.
 
 **Carry-forward.** Continue S3 inspection remediation with the Compose core port-binding finding.
+
+---
+
+### 2026-04-30 — CV11.E1.S3 inspection fix: Compose core port binding verification
+
+**What shipped.** The fixed Kroki Compose controller now requires the `pi-fence-kroki-core` service to publish `8000/tcp` on `127.0.0.1:8000` before reporting `kroki-sandbox` ready. A pre-S3 Compose stack with a broad core binding now surfaces as a sandbox status error instead of silently satisfying the trust boundary.
+
+**Implementation commit.**
+
+1. `218ec44` — fix CV11.E1.S3: reject broad Compose Kroki binds
+
+**Beans.**
+
+1. Closed `bug-06e55ad8` — CV11.E1.S3 inspection: reject broad Compose core port bindings.
+
+**Test count.** Fast suite increased from 911 to 912 with one Compose core port-binding test.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'Compose core publishes|port binding'` — failed before the Compose core binding check, then passed.
+2. `pnpm vitest run tests/unit/sandbox.test.ts --testNamePattern 'Compose|port binding'` — passed for the broader Compose controller path.
+3. `pnpm run feedback` — passed: 912 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived remediation.**
+
+1. **Bind verification is component-specific.** Only the Kroki core service publishes the HTTP endpoint, so the fixed Compose controller requires loopback for that component instead of applying a generic no-port rule to the Mermaid companion.
+2. **Ready checks account for existing runtimes.** The package asset is loopback-bound, but runtime status also verifies the actual Docker-reported host binding.
+
+**Carry-forward.** Harden the static Compose asset test, then resolve the managed endpoint alignment finding.
