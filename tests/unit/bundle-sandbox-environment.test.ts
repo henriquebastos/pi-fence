@@ -240,6 +240,29 @@ describe("Docker exec sandbox environment", () => {
 		]);
 	});
 
+	it("rejects invalid workspace byte counts before cat", async () => {
+		const shell = new FakeShellRunner();
+		shell.setResponse("docker", ["exec", CONTAINER, "mktemp", "-d", "/tmp/pi-fence-XXXXXX"], {
+			stdout: "/tmp/pi-fence-a1b2c3\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["exec", CONTAINER, "wc", "-c", "/tmp/pi-fence-a1b2c3/output.png"], {
+			stdout: "11oops /tmp/pi-fence-a1b2c3/output.png\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		const env = createDockerExecSandboxEnvironment(shell, { containerName: CONTAINER });
+		const workspace = await env.createWorkspace();
+
+		await expect(workspace.readBuffer("output.png", undefined, 10)).rejects.toThrow("invalid byte count: 11oops");
+
+		expect(shell.calls.map((call) => call.args)).toEqual([
+			["exec", CONTAINER, "mktemp", "-d", "/tmp/pi-fence-XXXXXX"],
+			["exec", CONTAINER, "wc", "-c", "/tmp/pi-fence-a1b2c3/output.png"],
+		]);
+	});
+
 	it("rejects a non-absolute workspace root", () => {
 		expect(() =>
 			createDockerExecSandboxEnvironment(new FakeShellRunner(), {

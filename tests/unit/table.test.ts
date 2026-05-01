@@ -192,6 +192,30 @@ describe("table processor — render CSV", () => {
 		expect(result.kind).toBe("error");
 		if (result.kind === "error") expect(result.error).toContain("csv cell count is too large");
 	});
+
+	it("rejects too many CSV cells implied by missing row values", async () => {
+		const processor = createTableProcessor();
+		const columns = DEFAULT_TABLE_MAX_COLUMNS;
+		const rows = Math.floor(DEFAULT_TABLE_MAX_CELLS / columns);
+		const header = Array.from({ length: columns }, (_, i) => `c${i}`).join(",");
+		const source = [header, ...Array.from({ length: rows }, () => "x")].join("\n");
+		const result = await processor.render("csv", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv cell count is too large");
+	});
+
+	it("rejects too many parsed CSV cells even when headers are narrow", async () => {
+		const processor = createTableProcessor();
+		const columns = DEFAULT_TABLE_MAX_COLUMNS;
+		const rows = Math.floor(DEFAULT_TABLE_MAX_CELLS / columns) + 1;
+		const row = Array.from({ length: columns }, () => "x").join(",");
+		const source = ["a", ...Array.from({ length: rows }, () => row)].join("\n");
+		const result = await processor.render("csv", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv cell count is too large");
+	});
 });
 
 describe("table processor — render JSONL", () => {
@@ -282,6 +306,18 @@ describe("table processor — render JSONL", () => {
 		const rows = Math.floor(DEFAULT_TABLE_MAX_CELLS / columns) + 1;
 		const obj = Object.fromEntries(Array.from({ length: columns }, (_, i) => [`c${i}`, "x"]));
 		const source = Array.from({ length: rows }, () => JSON.stringify(obj)).join("\n");
+		const result = await processor.render("jsonl", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("jsonl cell count is too large");
+	});
+
+	it("rejects too many JSONL cells implied by empty objects", async () => {
+		const processor = createTableProcessor();
+		const columns = DEFAULT_TABLE_MAX_COLUMNS;
+		const rows = Math.floor(DEFAULT_TABLE_MAX_CELLS / columns);
+		const obj = Object.fromEntries(Array.from({ length: columns }, (_, i) => [`c${i}`, "x"]));
+		const source = [JSON.stringify(obj), ...Array.from({ length: rows - 1 }, () => "{}")].join("\n");
 		const result = await processor.render("jsonl", source);
 
 		expect(result.kind).toBe("error");

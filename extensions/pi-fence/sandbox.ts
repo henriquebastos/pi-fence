@@ -104,6 +104,17 @@ export interface ExecSandboxWorkspace {
 	dispose(options?: ExecSandboxRunOptions): Promise<void>;
 }
 
+export class WorkspaceFileLimitError extends Error {
+	constructor(
+		readonly fileName: string,
+		readonly actualBytes: number,
+		readonly maxBytes: number,
+	) {
+		super(formatWorkspaceFileLimitError(fileName, actualBytes, maxBytes));
+		this.name = "WorkspaceFileLimitError";
+	}
+}
+
 export interface GondolinExecOptions {
 	cwd?: string;
 	stdin?: string | Buffer;
@@ -186,7 +197,7 @@ function createGondolinExecSandboxWorkspace(
 			const filePath = path(name);
 			if (maxBytes !== undefined) {
 				const size = await workspaceFileSize(runInVm, filePath, options);
-				if (size > maxBytes) throw new Error(formatWorkspaceFileLimitError(name, size, maxBytes));
+				if (size > maxBytes) throw new WorkspaceFileLimitError(name, size, maxBytes);
 			}
 			return fs.readFile(filePath, { encoding: null, ...signalOption(options) });
 		},
@@ -623,7 +634,7 @@ function createDockerExecSandboxWorkspace(
 			const filePath = path(name);
 			if (maxBytes !== undefined) {
 				const size = await workspaceFileSize(runInContainer, filePath, options);
-				if (size > maxBytes) throw new Error(formatWorkspaceFileLimitError(name, size, maxBytes));
+				if (size > maxBytes) throw new WorkspaceFileLimitError(name, size, maxBytes);
 			}
 			const result = await runInContainer("cat", [filePath], options);
 			assertShellSuccess(`read ${name}`, result);
@@ -646,8 +657,9 @@ async function workspaceFileSize(
 	const result = await runner("wc", ["-c", path], options);
 	assertShellSuccess(`size ${path}`, result);
 	const rawSize = result.stdout.trim().split(/\s+/, 1)[0] ?? "";
+	if (!/^\d+$/.test(rawSize)) throw new Error(`size ${path} returned invalid byte count: ${rawSize}`);
 	const size = Number.parseInt(rawSize, 10);
-	if (!Number.isSafeInteger(size) || size < 0) throw new Error(`size ${path} returned invalid byte count: ${rawSize}`);
+	if (!Number.isSafeInteger(size)) throw new Error(`size ${path} returned invalid byte count: ${rawSize}`);
 	return size;
 }
 

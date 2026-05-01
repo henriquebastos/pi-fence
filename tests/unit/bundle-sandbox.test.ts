@@ -4,12 +4,13 @@ import { createBundleSandboxProcessor } from "../../extensions/pi-fence/bundle-s
 import { DEFAULT_FENCE_SOURCE_MAX_BYTES, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES } from "../../extensions/pi-fence/policy.ts";
 import type { Availability, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 import { resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
-import type {
-	ExecSandboxEnvironment,
-	ExecSandboxRunOptions,
-	ExecSandboxRunResult,
-	ExecSandboxWorkspace,
-	SandboxController,
+import {
+	WorkspaceFileLimitError,
+	type ExecSandboxEnvironment,
+	type ExecSandboxRunOptions,
+	type ExecSandboxRunResult,
+	type ExecSandboxWorkspace,
+	type SandboxController,
 } from "../../extensions/pi-fence/sandbox.ts";
 import { sandboxStatus, type TestSandboxStatus } from "../utilities/sandbox-status.ts";
 
@@ -54,7 +55,7 @@ class FakeExecSandboxWorkspace implements ExecSandboxWorkspace {
 	async readBuffer(name: string, options?: ExecSandboxRunOptions, maxBytes?: number): Promise<Buffer> {
 		this.calls.push({ operation: "readBuffer", name, ...(options ? { options } : {}), ...(maxBytes ? { maxBytes } : {}) });
 		const file = this.files[name] ?? Buffer.alloc(0);
-		if (maxBytes !== undefined && file.length > maxBytes) throw new Error(`workspace file ${name} is too large`);
+		if (maxBytes !== undefined && file.length > maxBytes) throw new WorkspaceFileLimitError(name, file.length, maxBytes);
 		return file;
 	}
 
@@ -426,7 +427,7 @@ describe("bundle-sandbox processor", () => {
 		const result = await processor.render("mermaid", "flowchart LR");
 
 		expect(result.kind).toBe("error");
-		if (result.kind === "error") expect(result.error).toContain("workspace file output.png is too large");
+		if (result.kind === "error") expect(result.error).toContain("Processor output is too large");
 	});
 
 	it("returns a Mermaid workspace creation error as a render result", async () => {

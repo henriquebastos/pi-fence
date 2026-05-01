@@ -9,7 +9,7 @@ import {
 	type FenceOutput,
 	type FenceProcessor,
 } from "./processor.ts";
-import type { ExecSandboxEnvironment, ExecSandboxWorkspace, SandboxController } from "./sandbox.ts";
+import { WorkspaceFileLimitError, type ExecSandboxEnvironment, type ExecSandboxWorkspace, type SandboxController } from "./sandbox.ts";
 
 export const BUNDLE_SANDBOX_PROCESSOR_ID = "bundle-sandbox";
 export const BUNDLE_SANDBOX_CONTAINER_NAME = "pi-fence-bundle";
@@ -146,6 +146,9 @@ async function renderMermaid(
 		}
 		return imageOrOutputLimit(await workspace.readBuffer(outputName, { signal: renderSignal }, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
 	} catch (err) {
+		if (err instanceof WorkspaceFileLimitError) {
+			return errorOutput(formatByteLimitError("Processor output", err.actualBytes, err.maxBytes));
+		}
 		const message = err instanceof Error ? err.message : String(err);
 		return errorOutput(message);
 	} finally {

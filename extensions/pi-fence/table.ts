@@ -82,12 +82,13 @@ function parseCsv(input: string): ParsedTable {
 
 	const headers = parseCsvLine("csv", lines[0]);
 	const rows: string[][] = [];
-	let cellCount = headers.length;
+	let parsedCellCount = headers.length;
 	for (const line of lines.slice(1)) {
 		const row = parseCsvLine("csv", line);
 		rows.push(row);
-		cellCount += row.length;
-		assertCellCount("csv", cellCount);
+		parsedCellCount += row.length;
+		assertCellCount("csv", parsedCellCount);
+		assertCellCount("csv", headers.length * (rows.length + 1));
 	}
 
 	return { headers, rows };
@@ -190,6 +191,7 @@ function parseJsonl(input: string): ParsedTable {
 			assertCellCount("jsonl", headerSet.size * (objects.length + 1));
 			assertCellBytes("jsonl", [key, formatJsonCell(obj[key])]);
 		}
+		assertCellCount("jsonl", headerSet.size * (objects.length + 1));
 	}
 
 	if (objects.length === 0) throw new Error("jsonl: no valid objects");
