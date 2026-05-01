@@ -7814,3 +7814,28 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 2. **Bundle source checks happen before sandbox work.** Oversized bundle inputs fail before exec calls or Mermaid workspace creation.
 
 **Carry-forward.** Run CV11.E5.S2 completion inspection.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: QR cap matches default encoding
+
+**What shipped.** Tightened the QR processor cap to match `qrcode`'s default M error-correction byte-mode capacity, so oversized content fails at pi-fence's pre-generation guard instead of reaching `QRCode.toBuffer()`.
+
+**Implementation commit.**
+
+1. `2607cc1` — fix CV11.E5.S2: align QR cap with default encoding
+
+**Beans.**
+
+1. Closed `bug-f0372898` — CV11.E5.S2 inspection: QR cap matches qrcode defaults.
+
+**Test count.** Fast non-live suite stayed at 1025 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/qr.test.ts` — passed: 12 focused QR tests.
+2. `pnpm run feedback` — passed on rerun: 1025 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint. The first feedback run hit a transient timeout in the existing Mermaid abort test and passed immediately when rerun.
+
+**Design decisions that survived the fix.**
+
+1. **QR uses the library's default capacity.** The processor cap tracks `qrcode`'s default error-correction mode rather than a looser QR theoretical maximum.
+
+**Carry-forward.** Continue CV11.E5.S2 inspection findings for table incremental limits and bounded output reads.
