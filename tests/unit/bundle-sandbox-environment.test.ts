@@ -62,6 +62,7 @@ describe("Gondolin exec sandbox environment", () => {
 			cwd: "/work",
 			input: "digraph { A -> B }",
 			signal,
+			maxStdoutBytes: 1234,
 		});
 
 		expect(result.stdoutBuffer).toEqual(png);
@@ -74,6 +75,7 @@ describe("Gondolin exec sandbox environment", () => {
 					stdout: "buffer",
 					stderr: "buffer",
 					signal,
+					maxStdoutBytes: 1234,
 				},
 			},
 		]);
@@ -161,6 +163,7 @@ describe("Docker exec sandbox environment", () => {
 		const result = await env.run("dot", ["-Tpng"], {
 			cwd: "/work",
 			input: "digraph { A -> B }",
+			maxStdoutBytes: 1234,
 		});
 
 		expect(result.stdoutBuffer).toEqual(png);
@@ -168,7 +171,9 @@ describe("Docker exec sandbox environment", () => {
 			{
 				cmd: "docker",
 				args: ["exec", "-i", "-w", "/work", CONTAINER, "dot", "-Tpng"],
+				cwd: undefined,
 				input: "digraph { A -> B }",
+				maxStdoutBytes: 1234,
 			},
 		]);
 	});
