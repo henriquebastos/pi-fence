@@ -7944,3 +7944,28 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 2. **Workspace byte limits stay structured below processor output normalization.** Sandbox workspaces report file-limit facts; bundle-sandbox maps them to user-facing processor output errors.
 
 **Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: Graphviz stdout capture cap
+
+**What shipped.** Added bounded stdout capture for Graphviz renderers. `ShellRunOptions` now carries `maxStdoutBytes`; `NodeShellRunner` applies it to `execFile`'s `maxBuffer`, `DockerExecShellRunner` propagates it, and both host Graphviz and bundle Graphviz pass the processor output cap into `dot -Tpng` runs.
+
+**Implementation commit.**
+
+1. `5f86d37` — fix CV11.E5.S2: bound Graphviz stdout capture
+
+**Beans.**
+
+1. Closed `bug-0f33f0a2` — CV11.E5.S2 inspection: bound Graphviz stdout capture.
+
+**Test count.** Fast non-live suite stayed at 1035 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/graphviz-local.test.ts tests/unit/bundle-sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts` — passed: 55 focused Graphviz/bundle tests.
+2. `pnpm run feedback` — passed: 1035 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Binary stdout caps belong at the shell seam.** Graphviz PNG output is bounded while child-process stdout is captured, not only after processor return.
+
+**Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
