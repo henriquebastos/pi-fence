@@ -122,6 +122,22 @@ describe("Gondolin exec sandbox environment", () => {
 		]);
 	});
 
+	it("rejects oversized workspace reads before reading from VM fs", async () => {
+		const vm = new FakeGondolinExecVM();
+		vm.setExecResult({ stdout: "/tmp/pi-fence-a1b2c3\n", stdoutBuffer: Buffer.alloc(0), stderr: "", exitCode: 0 });
+		const env = createGondolinExecSandboxEnvironment(vm);
+		const workspace = await env.createWorkspace();
+		vm.setExecResult({ stdout: "11 /tmp/pi-fence-a1b2c3/output.png\n", stdoutBuffer: Buffer.alloc(0), stderr: "", exitCode: 0 });
+
+		await expect(workspace.readBuffer("output.png", undefined, 10)).rejects.toThrow("workspace file output.png is too large");
+
+		expect(vm.fs.calls).toEqual([]);
+		expect(vm.execCalls[1]).toEqual({
+			command: ["/usr/bin/env", "wc", "-c", "/tmp/pi-fence-a1b2c3/output.png"],
+			options: { stdout: "buffer", stderr: "buffer" },
+		});
+	});
+
 	it("rejects a non-absolute workspace root", () => {
 		expect(() =>
 			createGondolinExecSandboxEnvironment(new FakeGondolinExecVM(), {
@@ -198,6 +214,29 @@ describe("Docker exec sandbox environment", () => {
 			["exec", "-i", CONTAINER, "sh", "-c", "cat > \"$1\"", "sh", "/tmp/pi-fence-a1b2c3/input.mmd"],
 			["exec", CONTAINER, "cat", "/tmp/pi-fence-a1b2c3/output.png"],
 			["exec", CONTAINER, "rm", "-rf", "--", "/tmp/pi-fence-a1b2c3"],
+		]);
+	});
+
+	it("rejects oversized workspace reads before cat", async () => {
+		const shell = new FakeShellRunner();
+		shell.setResponse("docker", ["exec", CONTAINER, "mktemp", "-d", "/tmp/pi-fence-XXXXXX"], {
+			stdout: "/tmp/pi-fence-a1b2c3\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["exec", CONTAINER, "wc", "-c", "/tmp/pi-fence-a1b2c3/output.png"], {
+			stdout: "11 /tmp/pi-fence-a1b2c3/output.png\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		const env = createDockerExecSandboxEnvironment(shell, { containerName: CONTAINER });
+		const workspace = await env.createWorkspace();
+
+		await expect(workspace.readBuffer("output.png", undefined, 10)).rejects.toThrow("workspace file output.png is too large");
+
+		expect(shell.calls.map((call) => call.args)).toEqual([
+			["exec", CONTAINER, "mktemp", "-d", "/tmp/pi-fence-XXXXXX"],
+			["exec", CONTAINER, "wc", "-c", "/tmp/pi-fence-a1b2c3/output.png"],
 		]);
 	});
 

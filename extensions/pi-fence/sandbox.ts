@@ -100,7 +100,7 @@ export interface ExecSandboxEnvironment {
 export interface ExecSandboxWorkspace {
 	path(name: string): string;
 	writeText(name: string, contents: string, options?: ExecSandboxRunOptions): Promise<void>;
-	readBuffer(name: string, options?: ExecSandboxRunOptions): Promise<Buffer>;
+	readBuffer(name: string, options?: ExecSandboxRunOptions, maxBytes?: number): Promise<Buffer>;
 	dispose(options?: ExecSandboxRunOptions): Promise<void>;
 }
 
@@ -155,7 +155,7 @@ export function createGondolinExecSandboxEnvironment(
 			if (!isWorkspaceChildPath(workspaceRoot, dir)) {
 				throw new Error(`mktemp returned path outside ${workspaceRoot}: ${dir || "<empty>"}`);
 			}
-			return createGondolinExecSandboxWorkspace(vm.fs, pathPosix.normalize(dir));
+			return createGondolinExecSandboxWorkspace(vm.fs, runInVm, pathPosix.normalize(dir));
 		},
 	};
 }
@@ -172,6 +172,7 @@ function gondolinExecOptions(options: ExecSandboxRunOptions): GondolinExecOption
 
 function createGondolinExecSandboxWorkspace(
 	fs: GondolinExecFileSystem,
+	runInVm: ExecSandboxEnvironment["run"],
 	dir: string,
 ): ExecSandboxWorkspace {
 	let disposed = false;
@@ -181,8 +182,13 @@ function createGondolinExecSandboxWorkspace(
 		async writeText(name, contents, options): Promise<void> {
 			await fs.writeFile(path(name), contents, signalOption(options));
 		},
-		readBuffer(name, options): Promise<Buffer> {
-			return fs.readFile(path(name), { encoding: null, ...signalOption(options) });
+		async readBuffer(name, options, maxBytes): Promise<Buffer> {
+			const filePath = path(name);
+			if (maxBytes !== undefined) {
+				const size = await workspaceFileSize(runInVm, filePath, options);
+				if (size > maxBytes) throw new Error(formatWorkspaceFileLimitError(name, size, maxBytes));
+			}
+			return fs.readFile(filePath, { encoding: null, ...signalOption(options) });
 		},
 		async dispose(options): Promise<void> {
 			if (disposed) return;
@@ -613,8 +619,13 @@ function createDockerExecSandboxWorkspace(
 			);
 			assertShellSuccess(`write ${name}`, result);
 		},
-		async readBuffer(name, options): Promise<Buffer> {
-			const result = await runInContainer("cat", [path(name)], options);
+		async readBuffer(name, options, maxBytes): Promise<Buffer> {
+			const filePath = path(name);
+			if (maxBytes !== undefined) {
+				const size = await workspaceFileSize(runInContainer, filePath, options);
+				if (size > maxBytes) throw new Error(formatWorkspaceFileLimitError(name, size, maxBytes));
+			}
+			const result = await runInContainer("cat", [filePath], options);
 			assertShellSuccess(`read ${name}`, result);
 			return result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
 		},
@@ -625,6 +636,23 @@ function createDockerExecSandboxWorkspace(
 			disposed = true;
 		},
 	};
+}
+
+async function workspaceFileSize(
+	runner: ExecSandboxEnvironment["run"],
+	path: string,
+	options: ExecSandboxRunOptions | undefined,
+): Promise<number> {
+	const result = await runner("wc", ["-c", path], options);
+	assertShellSuccess(`size ${path}`, result);
+	const rawSize = result.stdout.trim().split(/\s+/, 1)[0] ?? "";
+	const size = Number.parseInt(rawSize, 10);
+	if (!Number.isSafeInteger(size) || size < 0) throw new Error(`size ${path} returned invalid byte count: ${rawSize}`);
+	return size;
+}
+
+function formatWorkspaceFileLimitError(name: string, actualBytes: number, maxBytes: number): string {
+	return `workspace file ${name} is too large: ${actualBytes} bytes exceeds limit of ${maxBytes} bytes`;
 }
 
 function workspacePath(dir: string, name: string): string {

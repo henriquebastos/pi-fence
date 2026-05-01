@@ -144,7 +144,7 @@ async function renderMermaid(
 		if (result.exitCode !== 0) {
 			return errorOutput(result.stderr.trim() || `mmdc exited ${result.exitCode}`);
 		}
-		return imageOrOutputLimit(await workspace.readBuffer(outputName, { signal: renderSignal }));
+		return imageOrOutputLimit(await workspace.readBuffer(outputName, { signal: renderSignal }, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		return errorOutput(message);

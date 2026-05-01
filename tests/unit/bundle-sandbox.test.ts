@@ -32,7 +32,7 @@ type RecordedExecCall = {
 
 type RecordedWorkspaceCall =
 	| { operation: "writeText"; name: string; contents: string; options?: ExecSandboxRunOptions }
-	| { operation: "readBuffer"; name: string; options?: ExecSandboxRunOptions }
+	| { operation: "readBuffer"; name: string; options?: ExecSandboxRunOptions; maxBytes?: number }
 	| { operation: "dispose"; options?: ExecSandboxRunOptions };
 
 class FakeExecSandboxWorkspace implements ExecSandboxWorkspace {
@@ -51,9 +51,11 @@ class FakeExecSandboxWorkspace implements ExecSandboxWorkspace {
 		this.calls.push({ operation: "writeText", name, contents, ...(options ? { options } : {}) });
 	}
 
-	async readBuffer(name: string, options?: ExecSandboxRunOptions): Promise<Buffer> {
-		this.calls.push({ operation: "readBuffer", name, ...(options ? { options } : {}) });
-		return this.files[name] ?? Buffer.alloc(0);
+	async readBuffer(name: string, options?: ExecSandboxRunOptions, maxBytes?: number): Promise<Buffer> {
+		this.calls.push({ operation: "readBuffer", name, ...(options ? { options } : {}), ...(maxBytes ? { maxBytes } : {}) });
+		const file = this.files[name] ?? Buffer.alloc(0);
+		if (maxBytes !== undefined && file.length > maxBytes) throw new Error(`workspace file ${name} is too large`);
+		return file;
 	}
 
 	async dispose(options?: ExecSandboxRunOptions): Promise<void> {
@@ -292,6 +294,7 @@ describe("bundle-sandbox processor", () => {
 		expect(env.workspace.calls[1]).toMatchObject({
 			operation: "readBuffer",
 			options: { signal: env.createWorkspaceOptions?.signal },
+			maxBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
 		});
 		expect(env.workspace.calls[2]).toMatchObject({
 			operation: "dispose",
@@ -329,6 +332,10 @@ describe("bundle-sandbox processor", () => {
 			mimeType: "image/png",
 		});
 
+		expect(env.workspace.calls).toContainEqual(expect.objectContaining({
+			operation: "readBuffer",
+			maxBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+		}));
 		expect(env.calls[0]?.options?.signal).toBeDefined();
 		expect(env.calls[0]?.options?.signal).not.toBe(caller.signal);
 		expect(env.calls[0]?.options?.signal?.aborted).toBe(false);
@@ -419,7 +426,7 @@ describe("bundle-sandbox processor", () => {
 		const result = await processor.render("mermaid", "flowchart LR");
 
 		expect(result.kind).toBe("error");
-		if (result.kind === "error") expect(result.error).toContain("Processor output is too large");
+		if (result.kind === "error") expect(result.error).toContain("workspace file output.png is too large");
 	});
 
 	it("returns a Mermaid workspace creation error as a render result", async () => {

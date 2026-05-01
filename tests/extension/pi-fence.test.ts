@@ -3781,6 +3781,11 @@ function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: B
 			],
 			{ stdout: "", stderr: "", exitCode: 0 },
 		);
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "wc", "-c", "/tmp/pi-fence-test/output.png"], {
+			stdout: `${options.mermaidPng.length} /tmp/pi-fence-test/output.png\n`,
+			stderr: "",
+			exitCode: 0,
+		});
 		shell.setResponse("docker", ["exec", "pi-fence-bundle", "cat", "/tmp/pi-fence-test/output.png"], {
 			stdout: options.mermaidPng.toString("binary"),
 			stdoutBuffer: options.mermaidPng,
