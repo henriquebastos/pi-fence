@@ -258,6 +258,36 @@ describe("table processor — render JSONL", () => {
 		expect(result.text).toContain("c");
 	});
 
+	it("rejects too many JSONL rows before formatting", async () => {
+		const processor = createTableProcessor();
+		const source = Array.from({ length: DEFAULT_TABLE_MAX_ROWS + 1 }, (_, i) => JSON.stringify({ value: i })).join("\n");
+		const result = await processor.render("jsonl", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("jsonl row count is too large");
+	});
+
+	it("rejects too many JSONL columns before formatting", async () => {
+		const processor = createTableProcessor();
+		const obj = Object.fromEntries(Array.from({ length: DEFAULT_TABLE_MAX_COLUMNS + 1 }, (_, i) => [`c${i}`, i]));
+		const result = await processor.render("jsonl", JSON.stringify(obj));
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("jsonl column count is too large");
+	});
+
+	it("rejects too many JSONL cells before formatting", async () => {
+		const processor = createTableProcessor();
+		const columns = DEFAULT_TABLE_MAX_COLUMNS;
+		const rows = Math.floor(DEFAULT_TABLE_MAX_CELLS / columns) + 1;
+		const obj = Object.fromEntries(Array.from({ length: columns }, (_, i) => [`c${i}`, "x"]));
+		const source = Array.from({ length: rows }, () => JSON.stringify(obj)).join("\n");
+		const result = await processor.render("jsonl", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("jsonl cell count is too large");
+	});
+
 	it("rejects oversized JSONL cells before formatting", async () => {
 		const processor = createTableProcessor();
 		const source = JSON.stringify({ value: "x".repeat(DEFAULT_TABLE_MAX_CELL_BYTES + 1) });

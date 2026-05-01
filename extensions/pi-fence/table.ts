@@ -78,11 +78,17 @@ interface ParsedTable {
 function parseCsv(input: string): ParsedTable {
 	const lines = splitLines(input);
 	if (lines.length === 0) throw new Error("csv: empty input");
+	assertRowCount("csv", lines.length - 1);
 
-	const allRows = lines.map(parseCsvLine);
-	const headers = allRows[0];
-	const rows = allRows.slice(1);
-	assertTableShape("csv", headers, rows);
+	const headers = parseCsvLine("csv", lines[0]);
+	const rows: string[][] = [];
+	let cellCount = headers.length;
+	for (const line of lines.slice(1)) {
+		const row = parseCsvLine("csv", line);
+		rows.push(row);
+		cellCount += row.length;
+		assertCellCount("csv", cellCount);
+	}
 
 	return { headers, rows };
 }
@@ -92,17 +98,25 @@ interface CsvField {
 	next: number;
 }
 
-function parseCsvLine(line: string): string[] {
-	if (line.length === 0) return [""];
+function parseCsvLine(tag: string, line: string): string[] {
+	if (line.length === 0) return checkedCsvFields(tag, [""]);
 
 	const fields: string[] = [];
 	let i = 0;
 	while (i < line.length) {
 		const field = parseNextCsvField(line, i);
 		fields.push(field.value);
+		assertColumnCount(tag, fields.length);
+		assertCellBytes(tag, [field.value]);
 		i = field.next;
 	}
-	return line.endsWith(",") ? [...fields, ""] : fields;
+	return checkedCsvFields(tag, line.endsWith(",") ? [...fields, ""] : fields);
+}
+
+function checkedCsvFields(tag: string, fields: string[]): string[] {
+	assertColumnCount(tag, fields.length);
+	assertCellBytes(tag, fields);
+	return fields;
 }
 
 function parseNextCsvField(line: string, start: number): CsvField {
@@ -169,7 +183,13 @@ function parseJsonl(input: string): ParsedTable {
 
 		const obj = parsed as Record<string, unknown>;
 		objects.push(obj);
-		for (const key of Object.keys(obj)) headerSet.add(key);
+		assertRowCount("jsonl", objects.length);
+		for (const key of Object.keys(obj)) {
+			headerSet.add(key);
+			assertColumnCount("jsonl", headerSet.size);
+			assertCellCount("jsonl", headerSet.size * (objects.length + 1));
+			assertCellBytes("jsonl", [key, formatJsonCell(obj[key])]);
+		}
 	}
 
 	if (objects.length === 0) throw new Error("jsonl: no valid objects");
@@ -178,27 +198,28 @@ function parseJsonl(input: string): ParsedTable {
 	const rows = objects.map((obj) =>
 		headers.map((h) => formatJsonCell(obj[h])),
 	);
-	assertTableShape("jsonl", headers, rows);
 
 	return { headers, rows };
 }
 
 // ── Table limits ────────────────────────────────────────────────────
 
-function assertTableShape(tag: string, headers: string[], rows: string[][]): void {
-	if (rows.length > DEFAULT_TABLE_MAX_ROWS) {
-		throw new Error(`${tag} row count is too large: ${rows.length} rows exceeds limit of ${DEFAULT_TABLE_MAX_ROWS}`);
+function assertRowCount(tag: string, rows: number): void {
+	if (rows > DEFAULT_TABLE_MAX_ROWS) {
+		throw new Error(`${tag} row count is too large: ${rows} rows exceeds limit of ${DEFAULT_TABLE_MAX_ROWS}`);
 	}
-	const widestRow = Math.max(headers.length, ...rows.map((row) => row.length));
-	if (widestRow > DEFAULT_TABLE_MAX_COLUMNS) {
-		throw new Error(`${tag} column count is too large: ${widestRow} columns exceeds limit of ${DEFAULT_TABLE_MAX_COLUMNS}`);
+}
+
+function assertColumnCount(tag: string, columns: number): void {
+	if (columns > DEFAULT_TABLE_MAX_COLUMNS) {
+		throw new Error(`${tag} column count is too large: ${columns} columns exceeds limit of ${DEFAULT_TABLE_MAX_COLUMNS}`);
 	}
-	const cellCount = headers.length + rows.reduce((sum, row) => sum + row.length, 0);
-	if (cellCount > DEFAULT_TABLE_MAX_CELLS) {
-		throw new Error(`${tag} cell count is too large: ${cellCount} cells exceeds limit of ${DEFAULT_TABLE_MAX_CELLS}`);
+}
+
+function assertCellCount(tag: string, cells: number): void {
+	if (cells > DEFAULT_TABLE_MAX_CELLS) {
+		throw new Error(`${tag} cell count is too large: ${cells} cells exceeds limit of ${DEFAULT_TABLE_MAX_CELLS}`);
 	}
-	assertCellBytes(tag, headers);
-	for (const row of rows) assertCellBytes(tag, row);
 }
 
 function assertCellBytes(tag: string, cells: string[]): void {
