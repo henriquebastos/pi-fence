@@ -7734,3 +7734,30 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 1. **QR owns a tighter input cap than generic fenced source.** The processor fails before QR generation because QR encoding can expand or reject long content before generic output caps apply.
 
 **Carry-forward.** Continue CV11.E5.S2 with table expansion caps.
+
+### 2026-05-01 — CV11.E5.S2 step 2: table expansion caps
+
+**What shipped.** Added table processor expansion caps. CSV and JSONL rendering now enforces bounded rows, columns, total cells, and per-cell bytes before formatting the Unicode table output.
+
+**Implementation commit.**
+
+1. `b41510e` — step 2: bound table expansion
+
+**Beans.**
+
+1. Closed `task-d738b689` — CV11.E5.S2 table processor expansion caps.
+
+**Test count.** Fast non-live suite increased from 1010 to 1016 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/table.test.ts` — passed: 27 focused table tests.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed: 1016 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Tables guard shape before formatting.** The table processor checks parsed row, column, total-cell, and cell-byte dimensions before box-drawing output can expand.
+2. **CSV and JSONL share one table-shape boundary.** Format-specific parsers normalize to headers and rows, then use the same cap enforcement.
+
+**Carry-forward.** Continue CV11.E5.S2 with SVG rasterization input caps.
