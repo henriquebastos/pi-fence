@@ -88,8 +88,14 @@ class FakeGondolinVM implements GondolinVMHandle {
 				exitCode: 0,
 			};
 		}
+		if (parts.includes("mktemp")) {
+			return { stdout: "/tmp/pi-fence-test\n", stdoutBuffer: Buffer.from("/tmp/pi-fence-test\n"), stderr: "", exitCode: 0 };
+		}
+		if (parts.includes("wc") && parts.includes("-c")) {
+			return { stdout: `${TINY_PNG.length} /tmp/pi-fence-test/output.png\n`, stdoutBuffer: Buffer.alloc(0), stderr: "", exitCode: 0 };
+		}
 		if (parts.includes("dot") && parts.includes("-Tpng")) {
-			return { stdout: "", stdoutBuffer: TINY_PNG, stderr: "", exitCode: 0 };
+			return { stdout: "", stdoutBuffer: Buffer.alloc(0), stderr: "", exitCode: 0 };
 		}
 		return { stdout: "ok\n", stdoutBuffer: Buffer.from("ok\n"), stderr: "", exitCode: 0 };
 	}
@@ -3746,9 +3752,34 @@ function programReadyBundleSandbox(shell: FakeShellRunner, options: { dotPng?: B
 		exitCode: 0,
 	});
 	if (options.dotPng) {
-		shell.setResponse("docker", ["exec", "-i", "pi-fence-bundle", "dot", "-Tpng"], {
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "mktemp", "-d", "/tmp/pi-fence-XXXXXX"], {
+			stdout: "/tmp/pi-fence-test\n",
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse(
+			"docker",
+			["exec", "-i", "pi-fence-bundle", "sh", "-c", "cat > \"$1\"", "sh", "/tmp/pi-fence-test/input.dot"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse(
+			"docker",
+			["exec", "pi-fence-bundle", "dot", "-Tpng", "-o", "/tmp/pi-fence-test/output.png", "/tmp/pi-fence-test/input.dot"],
+			{ stdout: "", stderr: "", exitCode: 0 },
+		);
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "wc", "-c", "/tmp/pi-fence-test/output.png"], {
+			stdout: `${options.dotPng.length} /tmp/pi-fence-test/output.png\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "cat", "/tmp/pi-fence-test/output.png"], {
 			stdout: options.dotPng.toString("binary"),
 			stdoutBuffer: options.dotPng,
+			stderr: "",
+			exitCode: 0,
+		});
+		shell.setResponse("docker", ["exec", "pi-fence-bundle", "rm", "-rf", "--", "/tmp/pi-fence-test"], {
+			stdout: "",
 			stderr: "",
 			exitCode: 0,
 		});

@@ -121,7 +121,6 @@ export interface GondolinExecOptions {
 	signal?: AbortSignal;
 	stdout?: "buffer";
 	stderr?: "buffer";
-	maxStdoutBytes?: number;
 }
 
 export interface GondolinExecResult {
@@ -179,7 +178,6 @@ function gondolinExecOptions(options: ExecSandboxRunOptions): GondolinExecOption
 		stdout: "buffer",
 		stderr: "buffer",
 		...(options.signal !== undefined ? { signal: options.signal } : {}),
-		...(options.maxStdoutBytes !== undefined ? { maxStdoutBytes: options.maxStdoutBytes } : {}),
 	};
 }
 

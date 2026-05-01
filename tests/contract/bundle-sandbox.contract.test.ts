@@ -72,10 +72,10 @@ class ContractExecSandboxEnvironment implements ExecSandboxEnvironment {
 		if (command === "mmdc" && args.join(" ") === "--version") {
 			return { stdout: "11.0.0", stderr: "", exitCode: 0 };
 		}
-		if (command === "dot" && args.join(" ") === "-Tpng" && options.input === GOOD_DOT) {
-			return { stdout: PNG.toString("binary"), stdoutBuffer: PNG, stderr: "", exitCode: 0 };
+		if (command === "dot" && this.workspace?.source === GOOD_DOT) {
+			return { stdout: "", stderr: "", exitCode: 0 };
 		}
-		if (command === "dot" && args.join(" ") === "-Tpng") {
+		if (command === "dot") {
 			return { stdout: "", stderr: "syntax error", exitCode: 1 };
 		}
 		if (command === "mmdc" && this.workspace?.source === GOOD_MERMAID) {

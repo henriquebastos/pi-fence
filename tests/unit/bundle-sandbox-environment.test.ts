@@ -62,7 +62,6 @@ describe("Gondolin exec sandbox environment", () => {
 			cwd: "/work",
 			input: "digraph { A -> B }",
 			signal,
-			maxStdoutBytes: 1234,
 		});
 
 		expect(result.stdoutBuffer).toEqual(png);
@@ -75,7 +74,6 @@ describe("Gondolin exec sandbox environment", () => {
 					stdout: "buffer",
 					stderr: "buffer",
 					signal,
-					maxStdoutBytes: 1234,
 				},
 			},
 		]);

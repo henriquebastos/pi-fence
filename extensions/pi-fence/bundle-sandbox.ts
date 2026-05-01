@@ -101,19 +101,30 @@ async function renderGraphviz(
 ): Promise<FenceOutput> {
 	const sourceLimit = sourceLimitOutput(source);
 	if (sourceLimit) return sourceLimit;
+	let workspace: ExecSandboxWorkspace | undefined;
+	const renderSignal = bundleRenderSignal(signal);
 	try {
-		const result = await env.run("dot", ["-Tpng"], {
-			input: source,
-			signal: bundleRenderSignal(signal),
-			maxStdoutBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
-		});
-		if (result.exitCode === 0) {
-			return imageOrOutputLimit(result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8"));
+		workspace = await env.createWorkspace({ signal: renderSignal });
+		const inputName = "input.dot";
+		const outputName = "output.png";
+		await workspace.writeText(inputName, source, { signal: renderSignal });
+		const result = await env.run(
+			"dot",
+			["-Tpng", "-o", workspace.path(outputName), workspace.path(inputName)],
+			{ signal: renderSignal },
+		);
+		if (result.exitCode !== 0) {
+			return errorOutput(result.stderr.trim() || `dot exited ${result.exitCode}`);
 		}
-		return errorOutput(result.stderr.trim() || `dot exited ${result.exitCode}`);
+		return imageOrOutputLimit(await workspace.readBuffer(outputName, { signal: renderSignal }, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
 	} catch (err) {
+		if (err instanceof WorkspaceFileLimitError) {
+			return errorOutput(formatByteLimitError("Processor output", err.actualBytes, err.maxBytes));
+		}
 		const message = err instanceof Error ? err.message : String(err);
 		return errorOutput(message);
+	} finally {
+		await workspace?.dispose({ signal: AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS) }).catch(() => {});
 	}
 }
 

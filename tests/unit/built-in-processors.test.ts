@@ -17,6 +17,7 @@ import {
 	type ExecSandboxEnvironment,
 	type ExecSandboxRunOptions,
 	type ExecSandboxRunResult,
+	type ExecSandboxWorkspace,
 	type SandboxController,
 } from "../../extensions/pi-fence/sandbox.ts";
 import { createSandboxControllers } from "../../extensions/pi-fence/sandbox-context.ts";
@@ -51,8 +52,26 @@ function allAvailable(processors: Awaited<ReturnType<typeof createProcessorsFrom
 	return new Map(processors.map((processor) => [processor.id, { ok: true } as const]));
 }
 
+class CapturingWorkspace implements ExecSandboxWorkspace {
+	readonly calls: string[] = [];
+	path(name: string): string {
+		return `/tmp/pi-fence/${name}`;
+	}
+	async writeText(name: string, contents: string): Promise<void> {
+		this.calls.push(`write:${name}:${contents}`);
+	}
+	async readBuffer(name: string): Promise<Buffer> {
+		this.calls.push(`read:${name}`);
+		return Buffer.from("png");
+	}
+	async dispose(): Promise<void> {
+		this.calls.push("dispose");
+	}
+}
+
 class CapturingExecSandboxEnvironment implements ExecSandboxEnvironment {
 	readonly runs: Array<{ command: string; args: readonly string[]; options?: ExecSandboxRunOptions }> = [];
+	readonly workspace = new CapturingWorkspace();
 
 	async run(
 		command: string,
@@ -60,11 +79,11 @@ class CapturingExecSandboxEnvironment implements ExecSandboxEnvironment {
 		options?: ExecSandboxRunOptions,
 	): Promise<ExecSandboxRunResult> {
 		this.runs.push({ command, args, options });
-		return { stdout: "png", stdoutBuffer: Buffer.from("png"), stderr: "", exitCode: 0 };
+		return { stdout: "", stdoutBuffer: Buffer.alloc(0), stderr: "", exitCode: 0 };
 	}
 
-	async createWorkspace(): Promise<never> {
-		throw new Error("not needed in this test");
+	async createWorkspace(): Promise<ExecSandboxWorkspace> {
+		return this.workspace;
 	}
 }
 
@@ -141,10 +160,12 @@ describe("built-in processor factory manifest", () => {
 		expect(env.runs).toEqual([
 			{
 				command: "dot",
-				args: ["-Tpng"],
-				options: expect.objectContaining({ input: "digraph { A -> B }" }),
+				args: ["-Tpng", "-o", "/tmp/pi-fence/output.png", "/tmp/pi-fence/input.dot"],
+				options: expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			},
 		]);
+		expect(env.workspace.calls).toContain("write:input.dot:digraph { A -> B }");
+		expect(env.workspace.calls).toContain("read:output.png");
 	});
 
 	it("keeps cross-placement selection independent from factory collection order", async () => {

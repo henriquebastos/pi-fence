@@ -162,9 +162,9 @@ describe("bundle-sandbox processor", () => {
 
 	it("passes a timeout-backed signal to Graphviz exec", async () => {
 		const env = new FakeExecSandboxEnvironment();
-		env.setResponse("dot", ["-Tpng"], {
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", { "output.png": Buffer.from([0x89]) });
+		env.setResponse("dot", ["-Tpng", "-o", "/tmp/pi-fence-work/output.png", "/tmp/pi-fence-work/input.dot"], {
 			stdout: "",
-			stdoutBuffer: Buffer.from([0x89]),
 			stderr: "",
 			exitCode: 0,
 		});
@@ -181,6 +181,10 @@ describe("bundle-sandbox processor", () => {
 
 		expect(env.calls[0]?.options?.signal).toBeDefined();
 		expect(env.calls[0]?.options?.signal?.aborted).toBe(false);
+		expect(env.workspace.calls).toContainEqual(expect.objectContaining({
+			operation: "readBuffer",
+			maxBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+		}));
 	});
 
 	it("rejects oversized DOT source before sandbox exec", async () => {
@@ -200,9 +204,9 @@ describe("bundle-sandbox processor", () => {
 	it("renders DOT through the Graphviz bundle handler", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
-		env.setResponse("dot", ["-Tpng"], {
-			stdout: png.toString("binary"),
-			stdoutBuffer: png,
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", { "output.png": png });
+		env.setResponse("dot", ["-Tpng", "-o", "/tmp/pi-fence-work/output.png", "/tmp/pi-fence-work/input.dot"], {
+			stdout: "",
 			stderr: "",
 			exitCode: 0,
 		});
@@ -217,21 +221,24 @@ describe("bundle-sandbox processor", () => {
 		expect(env.calls).toEqual([
 			{
 				command: "dot",
-				args: ["-Tpng"],
-				options: expect.objectContaining({
-					input: "digraph { A -> B }",
-					signal: expect.any(AbortSignal),
-					maxStdoutBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
-				}),
+				args: ["-Tpng", "-o", "/tmp/pi-fence-work/output.png", "/tmp/pi-fence-work/input.dot"],
+				options: expect.objectContaining({ signal: expect.any(AbortSignal) }),
 			},
+		]);
+		expect(env.workspace.calls).toEqual([
+			expect.objectContaining({ operation: "writeText", name: "input.dot", contents: "digraph { A -> B }" }),
+			expect.objectContaining({ operation: "readBuffer", name: "output.png", maxBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES }),
+			expect.objectContaining({ operation: "dispose", options: { signal: expect.any(AbortSignal) } }),
 		]);
 	});
 
 	it("rejects oversized bundle Graphviz output", async () => {
 		const env = new FakeExecSandboxEnvironment();
-		env.setResponse("dot", ["-Tpng"], {
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", {
+			"output.png": Buffer.alloc(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES + 1),
+		});
+		env.setResponse("dot", ["-Tpng", "-o", "/tmp/pi-fence-work/output.png", "/tmp/pi-fence-work/input.dot"], {
 			stdout: "",
-			stdoutBuffer: Buffer.alloc(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES + 1),
 			stderr: "",
 			exitCode: 0,
 		});
