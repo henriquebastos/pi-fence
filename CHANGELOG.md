@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (CV11.E5.S2 — Processor-specific expansion limits)
+
+- QR fenced blocks now reject content above the QR processor's safe input cap before calling QR generation, returning controlled pi-fence error output.
+
 ### Changed (CV11.E5.S1 — Fence source and output limits)
 
 - Render policy now has finite internal defaults: fence source is capped at 262,144 bytes, and processor output / Kroki responses are capped at 10,485,760 bytes.

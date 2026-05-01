@@ -7707,3 +7707,30 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 **Known deviations.** Inspection expanded S1 beyond the initial generic source/output/Kroki caps into parser streaming and opaque ignored-fence edge cases. The CHANGELOG entry for the user-visible CV11.E5.S1 behavior was added with the first inspection docs catch-up rather than immediately after the first user-visible feature commit.
 
 **Carry-forward.** CV11.E5.S2 — Processor-specific expansion limits — is next.
+
+### 2026-05-01 — CV11.E5.S2 step 1: QR input cap
+
+**What shipped.** Started CV11.E5.S2 by adding a QR-specific source cap. Oversized `qr` fenced content now returns controlled pi-fence error output before `QRCode.toBuffer()` runs.
+
+**Implementation commit.**
+
+1. `1cf1241` — step 1: bound QR expansion input
+
+**Beans.**
+
+1. Closed `task-90222a62` — CV11.E5.S2 QR processor input cap.
+2. Created story/task ledger under `task-6fe8f759` for CV11.E5.S2.
+
+**Test count.** Fast non-live suite increased from 1009 to 1010 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/qr.test.ts` — passed: 12 focused QR tests.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed: 1010 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **QR owns a tighter input cap than generic fenced source.** The processor fails before QR generation because QR encoding can expand or reject long content before generic output caps apply.
+
+**Carry-forward.** Continue CV11.E5.S2 with table expansion caps.
