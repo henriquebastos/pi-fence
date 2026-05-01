@@ -35,6 +35,7 @@
 
 import type { ShellRunner } from "./io/shell-runner.ts";
 import { NULL_LOGGER, type Logger } from "./io/logger.ts";
+import { DEFAULT_FENCE_SOURCE_MAX_BYTES, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES, formatByteLimitError } from "./limits.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
 	errorOutput,
@@ -119,6 +120,10 @@ export function createGraphvizLocalProcessor(
 		},
 
 		render: withSignalGuard(async (tag, source, signal): Promise<FenceOutput> => {
+			const sourceBytes = Buffer.byteLength(source, "utf8");
+			if (sourceBytes > DEFAULT_FENCE_SOURCE_MAX_BYTES) {
+				return errorOutput(formatByteLimitError("Fence source", sourceBytes, DEFAULT_FENCE_SOURCE_MAX_BYTES));
+			}
 			const combinedSignal = mergeSignals([
 				signal,
 				AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS),
@@ -146,6 +151,9 @@ export function createGraphvizLocalProcessor(
 				// `stdout` as UTF-8 — lossy for real PNGs but fine for
 				// assertion-style tests that never touch bytes.
 				const png = result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
+				if (png.length > DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES) {
+					return errorOutput(formatByteLimitError("Processor output", png.length, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
+				}
 				logger.info("graphviz-host", "dot ok", { tag, bytes: png.length });
 				return imageOutput(png);
 			}

@@ -1,3 +1,4 @@
+import { DEFAULT_FENCE_SOURCE_MAX_BYTES, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES, formatByteLimitError } from "./limits.ts";
 import {
 	DEFAULT_RENDER_TIMEOUT_MS,
 	errorOutput,
@@ -98,10 +99,12 @@ async function renderGraphviz(
 	source: string,
 	signal?: AbortSignal,
 ): Promise<FenceOutput> {
+	const sourceLimit = sourceLimitOutput(source);
+	if (sourceLimit) return sourceLimit;
 	try {
 		const result = await env.run("dot", ["-Tpng"], { input: source, signal: bundleRenderSignal(signal) });
 		if (result.exitCode === 0) {
-			return imageOutput(result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8"));
+			return imageOrOutputLimit(result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8"));
 		}
 		return errorOutput(result.stderr.trim() || `dot exited ${result.exitCode}`);
 	} catch (err) {
@@ -115,6 +118,8 @@ async function renderMermaid(
 	source: string,
 	signal?: AbortSignal,
 ): Promise<FenceOutput> {
+	const sourceLimit = sourceLimitOutput(source);
+	if (sourceLimit) return sourceLimit;
 	let workspace: ExecSandboxWorkspace | undefined;
 	const renderSignal = bundleRenderSignal(signal);
 	try {
@@ -139,7 +144,7 @@ async function renderMermaid(
 		if (result.exitCode !== 0) {
 			return errorOutput(result.stderr.trim() || `mmdc exited ${result.exitCode}`);
 		}
-		return imageOutput(await workspace.readBuffer(outputName, { signal: renderSignal }));
+		return imageOrOutputLimit(await workspace.readBuffer(outputName, { signal: renderSignal }));
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);
 		return errorOutput(message);
@@ -150,6 +155,19 @@ async function renderMermaid(
 
 function bundleRenderSignal(signal?: AbortSignal): AbortSignal | undefined {
 	return mergeSignals([signal, AbortSignal.timeout(DEFAULT_RENDER_TIMEOUT_MS)]);
+}
+
+function sourceLimitOutput(source: string): FenceOutput | undefined {
+	const sourceBytes = Buffer.byteLength(source, "utf8");
+	return sourceBytes > DEFAULT_FENCE_SOURCE_MAX_BYTES
+		? errorOutput(formatByteLimitError("Fence source", sourceBytes, DEFAULT_FENCE_SOURCE_MAX_BYTES))
+		: undefined;
+}
+
+function imageOrOutputLimit(png: Buffer): FenceOutput {
+	return png.length > DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES
+		? errorOutput(formatByteLimitError("Processor output", png.length, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES))
+		: imageOutput(png);
 }
 
 async function bundleAvailable(

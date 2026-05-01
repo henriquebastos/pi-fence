@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createBundleSandboxProcessor } from "../../extensions/pi-fence/bundle-sandbox.ts";
+import { DEFAULT_FENCE_SOURCE_MAX_BYTES, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES } from "../../extensions/pi-fence/policy.ts";
 import type { Availability, FenceProcessor } from "../../extensions/pi-fence/processor.ts";
 import { resolveProcessor } from "../../extensions/pi-fence/resolve.ts";
 import type {
@@ -179,6 +180,20 @@ describe("bundle-sandbox processor", () => {
 		expect(env.calls[0]?.options?.signal?.aborted).toBe(false);
 	});
 
+	it("rejects oversized DOT source before sandbox exec", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		const result = await processor.render("graphviz", "x".repeat(DEFAULT_FENCE_SOURCE_MAX_BYTES + 1));
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Fence source is too large");
+		expect(env.calls).toHaveLength(0);
+	});
+
 	it("renders DOT through the Graphviz bundle handler", async () => {
 		const env = new FakeExecSandboxEnvironment();
 		const png = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
@@ -203,6 +218,39 @@ describe("bundle-sandbox processor", () => {
 				options: expect.objectContaining({ input: "digraph { A -> B }", signal: expect.any(AbortSignal) }),
 			},
 		]);
+	});
+
+	it("rejects oversized bundle Graphviz output", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		env.setResponse("dot", ["-Tpng"], {
+			stdout: "",
+			stdoutBuffer: Buffer.alloc(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES + 1),
+			stderr: "",
+			exitCode: 0,
+		});
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		const result = await processor.render("graphviz", "digraph{}");
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Processor output is too large");
+	});
+
+	it("rejects oversized Mermaid source before creating a workspace", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		const result = await processor.render("mermaid", "x".repeat(DEFAULT_FENCE_SOURCE_MAX_BYTES + 1));
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Fence source is too large");
+		expect(env.createWorkspaceOptions).toBeUndefined();
 	});
 
 	it("passes timeout-backed signals to Mermaid workspace operations", async () => {
@@ -342,6 +390,36 @@ describe("bundle-sandbox processor", () => {
 			}),
 			expect.objectContaining({ operation: "dispose", options: { signal: expect.any(AbortSignal) } }),
 		]);
+	});
+
+	it("rejects oversized bundle Mermaid output", async () => {
+		const env = new FakeExecSandboxEnvironment();
+		env.workspace = new FakeExecSandboxWorkspace("/tmp/pi-fence-work", {
+			"output.png": Buffer.alloc(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES + 1),
+		});
+		env.setResponse(
+			"mmdc",
+			[
+				"-i",
+				"/tmp/pi-fence-work/input.mmd",
+				"-o",
+				"/tmp/pi-fence-work/output.png",
+				"-b",
+				"transparent",
+				"-p",
+				"/opt/pi-fence-bundle/puppeteer-config.json",
+			],
+			OK,
+		);
+		const processor = createBundleSandboxProcessor(
+			controllerWithStatus({ state: "ready", message: "ready" }),
+			env,
+		);
+
+		const result = await processor.render("mermaid", "flowchart LR");
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Processor output is too large");
 	});
 
 	it("returns a Mermaid workspace creation error as a render result", async () => {

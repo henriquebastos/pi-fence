@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createMermaidLocalProcessor } from "../../extensions/pi-fence/mermaid-local.ts";
+import { DEFAULT_FENCE_SOURCE_MAX_BYTES } from "../../extensions/pi-fence/policy.ts";
 import { DEFAULT_RENDER_TIMEOUT_MS } from "../../extensions/pi-fence/processor.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
@@ -69,6 +70,17 @@ describe("mermaid-local — render()", () => {
 		if (result.kind === "error") {
 			expect(result.error).toMatch(/abort/i);
 		}
+	});
+
+	it("rejects oversized source before writing temp files or shelling out", async () => {
+		const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
+		const proc = createMermaidLocalProcessor(shell);
+
+		const result = await proc.render("mermaid", "x".repeat(DEFAULT_FENCE_SOURCE_MAX_BYTES + 1));
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Fence source is too large");
+		expect(shell.calls).toHaveLength(0);
 	});
 
 	it("returns ok:false when mmdc exits non-zero", async () => {

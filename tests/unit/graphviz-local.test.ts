@@ -34,6 +34,7 @@ import {
 	GRAPHVIZ_LOCAL_ALIASES,
 	GRAPHVIZ_LOCAL_CANONICAL_TAGS,
 } from "../../extensions/pi-fence/graphviz-local.ts";
+import { DEFAULT_FENCE_SOURCE_MAX_BYTES, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES } from "../../extensions/pi-fence/policy.ts";
 import { DEFAULT_RENDER_TIMEOUT_MS } from "../../extensions/pi-fence/processor.ts";
 
 const TINY_PNG = Buffer.from([
@@ -167,6 +168,17 @@ describe("createGraphvizLocalProcessor — render()", () => {
 		expect(shell.calls[0].args).toEqual(["-Tpng"]);
 	});
 
+	it("rejects oversized source before shelling out", async () => {
+		const shell = new FakeShellRunner({ stdout: "", stderr: "", exitCode: 0 });
+		const processor = createGraphvizLocalProcessor(shell);
+
+		const result = await processor.render("graphviz", "x".repeat(DEFAULT_FENCE_SOURCE_MAX_BYTES + 1));
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Fence source is too large");
+		expect(shell.calls).toHaveLength(0);
+	});
+
 	it("returns ok:true with png reading from stdoutBuffer on exit 0", async () => {
 		const shell = new FakeShellRunner({
 			stdout: "",
@@ -182,6 +194,21 @@ describe("createGraphvizLocalProcessor — render()", () => {
 		if (result.kind === "image") {
 			expect(Buffer.compare(result.data, TINY_PNG)).toBe(0);
 		}
+	});
+
+	it("rejects oversized PNG output from dot", async () => {
+		const shell = new FakeShellRunner({
+			stdout: "",
+			stdoutBuffer: Buffer.alloc(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES + 1),
+			stderr: "",
+			exitCode: 0,
+		});
+		const processor = createGraphvizLocalProcessor(shell);
+
+		const result = await processor.render("graphviz", "digraph {}");
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("Processor output is too large");
 	});
 
 	it("falls back to encoding stdout as UTF-8 when stdoutBuffer is absent", async () => {
