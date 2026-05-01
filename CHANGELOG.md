@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - QR fenced blocks now reject content above the QR processor's safe input cap before calling QR generation, returning controlled pi-fence error output.
 - CSV and JSONL table rendering now enforces row, column, cell-count, and per-cell byte caps before formatting expanded table output.
 - SVG-only Kroki responses now reject oversized SVG input before local rasterization, returning controlled pi-fence error output.
+- Host Graphviz, host Mermaid, and bundle-sandbox renderers now enforce source and/or output caps at their processor seams in addition to the generic `agent_end` limits.
 
 ### Changed (CV11.E5.S1 — Fence source and output limits)
 

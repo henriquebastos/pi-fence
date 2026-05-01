@@ -7788,3 +7788,29 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 2. **Kroki keeps visible errors.** SVG-only Kroki responses still normalize rasterization failures into pi-fence error output.
 
 **Carry-forward.** Continue CV11.E5.S2 with Mermaid, Graphviz, and bundle-sandbox host/sandbox limit coverage.
+
+### 2026-05-01 — CV11.E5.S2 step 4: host and sandbox renderer caps
+
+**What shipped.** Added host and sandbox renderer cap coverage. Graphviz-host rejects oversized source before shelling out and oversized PNG output before returning it. Mermaid-host rejects oversized source before temp-file and shell work, and checks PNG output before returning it. Bundle-sandbox rejects oversized Graphviz/Mermaid source before exec/workspace work and rejects oversized image outputs from both handlers.
+
+**Implementation commit.**
+
+1. `f17dd91` — step 4: bound host and sandbox renderers
+
+**Beans.**
+
+1. Closed `task-935e2305` — CV11.E5.S2 host and sandbox limit coverage.
+
+**Test count.** Fast non-live suite increased from 1018 to 1025 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/qr.test.ts tests/unit/table.test.ts tests/unit/kroki.test.ts tests/unit/mermaid-local.test.ts tests/unit/graphviz-local.test.ts tests/unit/bundle-sandbox.test.ts tests/unit/svg-to-png.test.ts` — passed: 135 focused processor tests.
+2. `pnpm run feedback` — passed: 1025 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **Processor seams defend themselves.** Host and bundle processors now enforce the same default source/output caps as the generic `agent_end` path, so direct processor use remains bounded too.
+2. **Bundle source checks happen before sandbox work.** Oversized bundle inputs fail before exec calls or Mermaid workspace creation.
+
+**Carry-forward.** Run CV11.E5.S2 completion inspection.
