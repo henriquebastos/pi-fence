@@ -7839,3 +7839,30 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 1. **QR uses the library's default capacity.** The processor cap tracks `qrcode`'s default error-correction mode rather than a looser QR theoretical maximum.
 
 **Carry-forward.** Continue CV11.E5.S2 inspection findings for table incremental limits and bounded output reads.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: incremental table limits
+
+**What shipped.** Moved table shape limits into the CSV/JSONL parsing paths. CSV now checks row count before parsing data lines and validates column count, cell count, and cell bytes as rows are parsed. JSONL now validates row count, column growth, projected cell count, and formatted cell bytes while objects are read, before building the final rectangular table.
+
+**Implementation commit.**
+
+1. `c8de4d3` — fix CV11.E5.S2: check table limits during parsing
+
+**Beans.**
+
+1. Closed `bug-12bd97f9` — CV11.E5.S2 inspection: table limits apply after expansion.
+
+**Test count.** Fast non-live suite increased from 1025 to 1028 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/table.test.ts` — passed: 30 focused table tests.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed: 1028 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Table limits are parse-time boundaries.** The processor no longer waits for the final formatted table shape before rejecting rows, columns, total cells, or large cell values.
+2. **JSONL projected-cell count is conservative.** As headers grow, the check accounts for the rectangular output implied by existing rows and the header row.
+
+**Carry-forward.** Continue CV11.E5.S2 inspection findings for local Mermaid output coverage and bundle workspace bounded reads.
