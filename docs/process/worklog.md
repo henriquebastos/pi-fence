@@ -7866,3 +7866,28 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 2. **JSONL projected-cell count is conservative.** As headers grow, the check accounts for the rectangular output implied by existing rows and the header row.
 
 **Carry-forward.** Continue CV11.E5.S2 inspection findings for local Mermaid output coverage and bundle workspace bounded reads.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: local Mermaid output pre-read cap
+
+**What shipped.** Strengthened the local Mermaid output cap. `mermaid-host` now checks the generated PNG file size with `fs.stat()` before `fs.readFile()`, so obviously oversized output fails before pi-fence allocates the PNG buffer.
+
+**Implementation commit.**
+
+1. `ca997d7` — fix CV11.E5.S2: check Mermaid output before reading
+
+**Beans.**
+
+1. Closed `task-33cc6342` — CV11.E5.S2 inspection: local Mermaid output cap coverage.
+
+**Test count.** Fast non-live suite increased from 1028 to 1029 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/mermaid-local.test.ts` — passed: 9 focused Mermaid-host tests.
+2. `pnpm run feedback` — passed: 1029 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **File-backed renderers can check size before read.** Local Mermaid uses filesystem metadata for the pre-read boundary while preserving the generic output cap label.
+
+**Carry-forward.** Continue CV11.E5.S2 inspection finding for bundle workspace bounded reads.
