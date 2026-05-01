@@ -7,7 +7,10 @@
  */
 
 import QRCode from "qrcode";
+import { formatByteLimitError } from "./limits.ts";
 import { errorOutput, imageOutput, withRenderGuards, type Availability, type FenceOutput, type FenceProcessor } from "./processor.ts";
+
+export const DEFAULT_QR_SOURCE_MAX_BYTES = 2953;
 
 export function createQrProcessor(): FenceProcessor {
 	return {
@@ -21,6 +24,10 @@ export function createQrProcessor(): FenceProcessor {
 		},
 
 		render: withRenderGuards(async (_tag, source): Promise<FenceOutput> => {
+			const sourceBytes = Buffer.byteLength(source, "utf8");
+			if (sourceBytes > DEFAULT_QR_SOURCE_MAX_BYTES) {
+				return errorOutput(formatByteLimitError("QR content", sourceBytes, DEFAULT_QR_SOURCE_MAX_BYTES));
+			}
 			try {
 				const png = await QRCode.toBuffer(source, {
 					type: "png",

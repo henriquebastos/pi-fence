@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createQrProcessor } from "../../extensions/pi-fence/qr.ts";
+import { DEFAULT_QR_SOURCE_MAX_BYTES, createQrProcessor } from "../../extensions/pi-fence/qr.ts";
 
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
@@ -80,6 +80,14 @@ describe("qr processor — render", () => {
 		const result = await processor.render("qr", "   \n\n  ");
 
 		expect(result.kind).toBe("error");
+	});
+
+	it("rejects oversized content before QR generation", async () => {
+		const processor = createQrProcessor();
+		const result = await processor.render("qr", "x".repeat(DEFAULT_QR_SOURCE_MAX_BYTES + 1));
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("QR content is too large");
 	});
 
 	it("returns ok:false for a pre-aborted signal", async () => {
