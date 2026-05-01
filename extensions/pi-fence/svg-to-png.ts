@@ -6,9 +6,11 @@
  * SVG-only Kroki tag is rendered in a session.
  */
 
-import { formatByteLimitError } from "./limits.ts";
+import { DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES, formatByteLimitError } from "./limits.ts";
 
 export const DEFAULT_SVG_RASTER_INPUT_MAX_BYTES = 1_048_576;
+export const DEFAULT_SVG_RASTER_MAX_DIMENSION_PX = 8192;
+export const DEFAULT_SVG_RASTER_MAX_PIXELS = 16_777_216;
 
 let ResvgClass: typeof import("@resvg/resvg-js").Resvg | undefined;
 
@@ -34,8 +36,37 @@ export async function svgToPng(
 	if (inputBytes > DEFAULT_SVG_RASTER_INPUT_MAX_BYTES) {
 		throw new Error(formatByteLimitError("SVG input", inputBytes, DEFAULT_SVG_RASTER_INPUT_MAX_BYTES));
 	}
-	const Resvg = await loadResvg();
 	const input = Buffer.isBuffer(svg) ? svg.toString("utf8") : svg;
+	assertSvgDimensions(input);
+	const Resvg = await loadResvg();
 	const resvg = new Resvg(input, { fitTo: { mode: "width", value: widthPx } });
-	return Buffer.from(resvg.render().asPng());
+	const png = Buffer.from(resvg.render().asPng());
+	if (png.length > DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES) {
+		throw new Error(formatByteLimitError("SVG raster output", png.length, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
+	}
+	return png;
+}
+
+function assertSvgDimensions(svg: string): void {
+	const openTag = svg.match(/<svg\b[^>]*>/i)?.[0] ?? "";
+	const width = numericSvgAttribute(openTag, "width");
+	const height = numericSvgAttribute(openTag, "height");
+	if (width !== undefined) assertSvgDimension("width", width);
+	if (height !== undefined) assertSvgDimension("height", height);
+	if (width !== undefined && height !== undefined && width * height > DEFAULT_SVG_RASTER_MAX_PIXELS) {
+		throw new Error(`SVG dimensions are too large: ${width * height} pixels exceeds limit of ${DEFAULT_SVG_RASTER_MAX_PIXELS}`);
+	}
+}
+
+function numericSvgAttribute(openTag: string, name: "width" | "height"): number | undefined {
+	const match = openTag.match(new RegExp(`${name}=["']?([0-9]+(?:\\.[0-9]+)?)`, "i"));
+	if (!match) return undefined;
+	const value = Number.parseFloat(match[1]);
+	return Number.isFinite(value) ? value : undefined;
+}
+
+function assertSvgDimension(name: string, value: number): void {
+	if (value > DEFAULT_SVG_RASTER_MAX_DIMENSION_PX) {
+		throw new Error(`SVG ${name} is too large: ${value} px exceeds limit of ${DEFAULT_SVG_RASTER_MAX_DIMENSION_PX}`);
+	}
 }

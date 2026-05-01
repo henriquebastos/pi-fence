@@ -199,7 +199,9 @@ function createGondolinExecSandboxWorkspace(
 				const size = await workspaceFileSize(runInVm, filePath, options);
 				if (size > maxBytes) throw new WorkspaceFileLimitError(name, size, maxBytes);
 			}
-			return fs.readFile(filePath, { encoding: null, ...signalOption(options) });
+			const data = await fs.readFile(filePath, { encoding: null, ...signalOption(options) });
+			if (maxBytes !== undefined && data.length > maxBytes) throw new WorkspaceFileLimitError(name, data.length, maxBytes);
+			return data;
 		},
 		async dispose(options): Promise<void> {
 			if (disposed) return;
@@ -637,9 +639,11 @@ function createDockerExecSandboxWorkspace(
 				const size = await workspaceFileSize(runInContainer, filePath, options);
 				if (size > maxBytes) throw new WorkspaceFileLimitError(name, size, maxBytes);
 			}
-			const result = await runInContainer("cat", [filePath], options);
+			const result = await runInContainer("cat", [filePath], { ...options, maxStdoutBytes: maxBytes });
 			assertShellSuccess(`read ${name}`, result);
-			return result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
+			const data = result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8");
+			if (maxBytes !== undefined && data.length > maxBytes) throw new WorkspaceFileLimitError(name, data.length, maxBytes);
+			return data;
 		},
 		async dispose(options): Promise<void> {
 			if (disposed) return;
