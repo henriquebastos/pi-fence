@@ -7,7 +7,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import { createTableProcessor } from "../../extensions/pi-fence/table.ts";
+import {
+	DEFAULT_TABLE_MAX_CELL_BYTES,
+	DEFAULT_TABLE_MAX_CELLS,
+	DEFAULT_TABLE_MAX_COLUMNS,
+	DEFAULT_TABLE_MAX_ROWS,
+	createTableProcessor,
+} from "../../extensions/pi-fence/table.ts";
 
 describe("table processor — available()", () => {
 	it("always returns ok:true (pure logic, no external deps)", async () => {
@@ -139,6 +145,53 @@ describe("table processor — render CSV", () => {
 		expect(result.text).toContain("…");
 		expect(result.text).not.toContain(longValue);
 	});
+
+	it("rejects too many CSV data rows before formatting", async () => {
+		const processor = createTableProcessor();
+		const source = ["value", ...Array.from({ length: DEFAULT_TABLE_MAX_ROWS + 1 }, (_, i) => String(i))].join("\n");
+		const result = await processor.render("csv", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv row count is too large");
+	});
+
+	it("rejects too many CSV columns before formatting", async () => {
+		const processor = createTableProcessor();
+		const row = Array.from({ length: DEFAULT_TABLE_MAX_COLUMNS + 1 }, (_, i) => `c${i}`).join(",");
+		const result = await processor.render("csv", `${row}\n${row}`);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv column count is too large");
+	});
+
+	it("rejects too many CSV row cells even when headers are narrow", async () => {
+		const processor = createTableProcessor();
+		const row = Array.from({ length: DEFAULT_TABLE_MAX_COLUMNS + 1 }, (_, i) => `c${i}`).join(",");
+		const result = await processor.render("csv", `a\n${row}`);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv column count is too large");
+	});
+
+	it("rejects oversized CSV cells before truncating output", async () => {
+		const processor = createTableProcessor();
+		const result = await processor.render("csv", `value\n${"x".repeat(DEFAULT_TABLE_MAX_CELL_BYTES + 1)}`);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv cell is too large");
+	});
+
+	it("rejects too many CSV cells before formatting", async () => {
+		const processor = createTableProcessor();
+		const columns = DEFAULT_TABLE_MAX_COLUMNS;
+		const rows = Math.floor(DEFAULT_TABLE_MAX_CELLS / columns) + 1;
+		const row = Array.from({ length: columns }, () => "x").join(",");
+		const source = [row, ...Array.from({ length: rows }, () => row)].join("\n");
+		const result = await processor.render("csv", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("csv cell count is too large");
+	});
 });
 
 describe("table processor — render JSONL", () => {
@@ -203,6 +256,15 @@ describe("table processor — render JSONL", () => {
 		expect(result.text).toContain("a");
 		expect(result.text).toContain("b");
 		expect(result.text).toContain("c");
+	});
+
+	it("rejects oversized JSONL cells before formatting", async () => {
+		const processor = createTableProcessor();
+		const source = JSON.stringify({ value: "x".repeat(DEFAULT_TABLE_MAX_CELL_BYTES + 1) });
+		const result = await processor.render("jsonl", source);
+
+		expect(result.kind).toBe("error");
+		if (result.kind === "error") expect(result.error).toContain("jsonl cell is too large");
 	});
 });
 

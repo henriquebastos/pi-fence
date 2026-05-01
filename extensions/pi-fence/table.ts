@@ -21,6 +21,11 @@ import { errorOutput, textOutput, withRenderGuards, type Availability, type Fenc
 
 const MAX_CELL_WIDTH = 40;
 
+export const DEFAULT_TABLE_MAX_ROWS = 1000;
+export const DEFAULT_TABLE_MAX_COLUMNS = 100;
+export const DEFAULT_TABLE_MAX_CELLS = 50_000;
+export const DEFAULT_TABLE_MAX_CELL_BYTES = 8192;
+
 // ── Box-drawing characters ──────────────────────────────────────────
 
 const BOX = {
@@ -77,6 +82,7 @@ function parseCsv(input: string): ParsedTable {
 	const allRows = lines.map(parseCsvLine);
 	const headers = allRows[0];
 	const rows = allRows.slice(1);
+	assertTableShape("csv", headers, rows);
 
 	return { headers, rows };
 }
@@ -172,8 +178,36 @@ function parseJsonl(input: string): ParsedTable {
 	const rows = objects.map((obj) =>
 		headers.map((h) => formatJsonCell(obj[h])),
 	);
+	assertTableShape("jsonl", headers, rows);
 
 	return { headers, rows };
+}
+
+// ── Table limits ────────────────────────────────────────────────────
+
+function assertTableShape(tag: string, headers: string[], rows: string[][]): void {
+	if (rows.length > DEFAULT_TABLE_MAX_ROWS) {
+		throw new Error(`${tag} row count is too large: ${rows.length} rows exceeds limit of ${DEFAULT_TABLE_MAX_ROWS}`);
+	}
+	const widestRow = Math.max(headers.length, ...rows.map((row) => row.length));
+	if (widestRow > DEFAULT_TABLE_MAX_COLUMNS) {
+		throw new Error(`${tag} column count is too large: ${widestRow} columns exceeds limit of ${DEFAULT_TABLE_MAX_COLUMNS}`);
+	}
+	const cellCount = headers.length + rows.reduce((sum, row) => sum + row.length, 0);
+	if (cellCount > DEFAULT_TABLE_MAX_CELLS) {
+		throw new Error(`${tag} cell count is too large: ${cellCount} cells exceeds limit of ${DEFAULT_TABLE_MAX_CELLS}`);
+	}
+	assertCellBytes(tag, headers);
+	for (const row of rows) assertCellBytes(tag, row);
+}
+
+function assertCellBytes(tag: string, cells: string[]): void {
+	for (const cell of cells) {
+		const cellBytes = Buffer.byteLength(cell, "utf8");
+		if (cellBytes > DEFAULT_TABLE_MAX_CELL_BYTES) {
+			throw new Error(`${tag} cell is too large: ${cellBytes} bytes exceeds limit of ${DEFAULT_TABLE_MAX_CELL_BYTES}`);
+		}
+	}
 }
 
 // ── Table formatter ─────────────────────────────────────────────────
