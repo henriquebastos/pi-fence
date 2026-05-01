@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 import { FakeHttpClient, type HttpResponse } from "../utilities/http-client.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { createKrokiProcessor, createKrokiSandboxProcessor, isDarkThemeName } from "../../extensions/pi-fence/kroki.ts";
+import { DEFAULT_SVG_RASTER_INPUT_MAX_BYTES } from "../../extensions/pi-fence/svg-to-png.ts";
 import type { SandboxController } from "../../extensions/pi-fence/sandbox.ts";
 import { sandboxStatus, type TestSandboxStatus } from "../utilities/sandbox-status.ts";
 
@@ -645,5 +646,21 @@ describe("createKrokiProcessor — SVG-only tags", () => {
 		expect(result.kind).toBe("error");
 		if (result.kind !== "error") return;
 		expect(result.error).toContain("SVG rasterization failed");
+	});
+
+	it("returns visible error output when SVG input exceeds the rasterization cap", async () => {
+		const http = new FakeHttpClient();
+		http.setResponse("POST", "https://kroki.io/d2/svg", {
+			status: 200,
+			headers: { "content-type": "image/svg+xml" },
+			body: Buffer.from(`<svg>${"x".repeat(DEFAULT_SVG_RASTER_INPUT_MAX_BYTES + 1)}</svg>`),
+		});
+		const kroki = createKrokiProcessor(http, undefined, new FakeLogger(), undefined, DEFAULT_SVG_RASTER_INPUT_MAX_BYTES + 20);
+
+		const result = await kroki.render("d2", "x -> y");
+
+		expect(result.kind).toBe("error");
+		if (result.kind !== "error") return;
+		expect(result.error).toContain("SVG rasterization failed: SVG input is too large");
 	});
 });
