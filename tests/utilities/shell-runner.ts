@@ -20,6 +20,7 @@ export interface RecordedShellCall {
 	args: string[];
 	cwd?: string;
 	input?: string;
+	maxStdoutBytes?: number;
 }
 
 /**
@@ -43,7 +44,7 @@ export class FakeShellRunner implements ShellRunner {
 			throw new DOMException("The operation was aborted.", "AbortError");
 		}
 
-		this.calls.push({ cmd, args, cwd: opts.cwd, input: opts.input });
+		this.calls.push({ cmd, args, cwd: opts.cwd, input: opts.input, maxStdoutBytes: opts.maxStdoutBytes });
 
 		const programmed = this.programmed.get(keyFor(cmd, args));
 		if (programmed) return programmed;
@@ -78,6 +79,7 @@ export class DockerExecShellRunner implements ShellRunner {
 		return this.inner.run("docker", dockerArgs, {
 			input: opts.input,
 			signal: opts.signal,
+			maxStdoutBytes: opts.maxStdoutBytes,
 		});
 	}
 }

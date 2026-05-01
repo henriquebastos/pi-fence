@@ -18,6 +18,7 @@ export interface ShellRunOptions {
 	cwd?: string;
 	input?: string;
 	signal?: AbortSignal;
+	maxStdoutBytes?: number;
 }
 
 export interface ShellRunner {
@@ -38,7 +39,7 @@ export class NodeShellRunner implements ShellRunner {
 					cwd: opts.cwd,
 					signal: opts.signal,
 					encoding: "buffer",
-					maxBuffer: 50 * 1024 * 1024,
+					maxBuffer: opts.maxStdoutBytes ?? 50 * 1024 * 1024,
 				},
 				(err, stdoutBuf, stderrBuf) => {
 					const stdoutBuffer = toBuffer(stdoutBuf);

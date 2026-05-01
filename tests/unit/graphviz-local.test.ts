@@ -146,6 +146,7 @@ describe("createGraphvizLocalProcessor — render()", () => {
 		expect(shell.calls[0].cmd).toBe("dot");
 		expect(shell.calls[0].args).toEqual(["-Tpng"]);
 		expect(shell.calls[0].input).toBe("digraph { A -> B }");
+		expect(shell.calls[0].maxStdoutBytes).toBe(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES);
 	});
 
 	it("accepts the `dot` alias and shells out the same way", async () => {

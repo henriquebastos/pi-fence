@@ -136,7 +136,11 @@ export function createGraphvizLocalProcessor(
 
 			let result;
 			try {
-				result = await shell.run("dot", ["-Tpng"], { input: source, signal: combinedSignal });
+				result = await shell.run("dot", ["-Tpng"], {
+					input: source,
+					signal: combinedSignal,
+					maxStdoutBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+				});
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
 				logger.error("graphviz-host", message, { tag });

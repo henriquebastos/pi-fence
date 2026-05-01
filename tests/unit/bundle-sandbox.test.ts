@@ -218,7 +218,11 @@ describe("bundle-sandbox processor", () => {
 			{
 				command: "dot",
 				args: ["-Tpng"],
-				options: expect.objectContaining({ input: "digraph { A -> B }", signal: expect.any(AbortSignal) }),
+				options: expect.objectContaining({
+					input: "digraph { A -> B }",
+					signal: expect.any(AbortSignal),
+					maxStdoutBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+				}),
 			},
 		]);
 	});

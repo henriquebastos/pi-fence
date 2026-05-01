@@ -102,7 +102,11 @@ async function renderGraphviz(
 	const sourceLimit = sourceLimitOutput(source);
 	if (sourceLimit) return sourceLimit;
 	try {
-		const result = await env.run("dot", ["-Tpng"], { input: source, signal: bundleRenderSignal(signal) });
+		const result = await env.run("dot", ["-Tpng"], {
+			input: source,
+			signal: bundleRenderSignal(signal),
+			maxStdoutBytes: DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES,
+		});
 		if (result.exitCode === 0) {
 			return imageOrOutputLimit(result.stdoutBuffer ?? Buffer.from(result.stdout, "utf8"));
 		}
