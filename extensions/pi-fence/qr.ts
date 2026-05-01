@@ -10,7 +10,8 @@ import QRCode from "qrcode";
 import { formatByteLimitError } from "./limits.ts";
 import { errorOutput, imageOutput, withRenderGuards, type Availability, type FenceOutput, type FenceProcessor } from "./processor.ts";
 
-export const DEFAULT_QR_SOURCE_MAX_BYTES = 2953;
+// Byte-mode capacity for QR version 40 at qrcode's default M error correction.
+export const DEFAULT_QR_SOURCE_MAX_BYTES = 2331;
 
 export function createQrProcessor(): FenceProcessor {
 	return {
