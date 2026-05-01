@@ -7891,3 +7891,29 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 1. **File-backed renderers can check size before read.** Local Mermaid uses filesystem metadata for the pre-read boundary while preserving the generic output cap label.
 
 **Carry-forward.** Continue CV11.E5.S2 inspection finding for bundle workspace bounded reads.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: bundle workspace bounded reads
+
+**What shipped.** Added bounded workspace reads for bundle-sandbox Mermaid output. `ExecSandboxWorkspace.readBuffer()` now accepts a `maxBytes` cap; Docker and Gondolin workspaces check `wc -c` before reading file bytes. Bundle Mermaid passes the processor output cap into the workspace read, so oversized output fails before `cat`/VM file reads allocate the full PNG.
+
+**Implementation commit.**
+
+1. `9e0bba6` — fix CV11.E5.S2: bound bundle workspace reads
+
+**Beans.**
+
+1. Closed `task-5f43b68e` — CV11.E5.S2 inspection: bundle workspace bounded reads.
+
+**Test count.** Fast non-live suite increased from 1029 to 1031 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-sandbox-environment.test.ts tests/unit/bundle-sandbox.test.ts` — passed: 31 focused bundle workspace tests.
+2. `pnpm run feedback` — passed: 1031 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Workspace reads own file-size preflight.** The cap travels through the sandbox abstraction instead of relying on bundle-sandbox to inspect container/VM files itself.
+2. **Docker and Gondolin share the same bounded-read contract.** Both implementations use a command-level byte count before reading the binary file.
+
+**Carry-forward.** Re-run CV11.E5.S2 inspection.
