@@ -119,10 +119,11 @@ export function createMermaidLocalProcessor(
 					return errorOutput(error);
 				}
 
-				const png = await fs.readFile(outPath);
-				if (png.length > DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES) {
-					return errorOutput(formatByteLimitError("Processor output", png.length, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
+				const outputSize = (await fs.stat(outPath)).size;
+				if (outputSize > DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES) {
+					return errorOutput(formatByteLimitError("Processor output", outputSize, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES));
 				}
+				const png = await fs.readFile(outPath);
 				logger.info("mermaid-host", "mmdc ok", { tag, bytes: png.length });
 				return imageOutput(png);
 			} catch (err) {

@@ -5,10 +5,12 @@
  * Live tests with real mmdc live in tests/integration/.
  */
 
+import { promises as fs } from "node:fs";
+
 import { describe, expect, it, vi } from "vitest";
 
 import { createMermaidLocalProcessor } from "../../extensions/pi-fence/mermaid-local.ts";
-import { DEFAULT_FENCE_SOURCE_MAX_BYTES } from "../../extensions/pi-fence/policy.ts";
+import { DEFAULT_FENCE_SOURCE_MAX_BYTES, DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES } from "../../extensions/pi-fence/policy.ts";
 import { DEFAULT_RENDER_TIMEOUT_MS } from "../../extensions/pi-fence/processor.ts";
 import { FakeLogger } from "../utilities/logger.ts";
 import { FakeShellRunner } from "../utilities/shell-runner.ts";
@@ -102,6 +104,31 @@ describe("mermaid-local — render()", () => {
 		expect(result.kind).toBe("error");
 		if (result.kind === "error") {
 			expect(result.error).toContain("Parse error");
+		}
+	});
+
+	it("rejects oversized PNG output before reading it", async () => {
+		class OutputWritingShellRunner {
+			readonly calls: string[][] = [];
+			async run(_cmd: string, args: string[]) {
+				this.calls.push(args);
+				const outPath = args[args.indexOf("-o") + 1];
+				await fs.writeFile(outPath, Buffer.alloc(DEFAULT_PROCESSOR_OUTPUT_MAX_BYTES + 1));
+				return { stdout: "", stderr: "", exitCode: 0 };
+			}
+		}
+		const shell = new OutputWritingShellRunner();
+		const proc = createMermaidLocalProcessor(shell);
+		const readSpy = vi.spyOn(fs, "readFile");
+		try {
+			const result = await proc.render("mermaid", "flowchart LR\nA --> B");
+
+			expect(result.kind).toBe("error");
+			if (result.kind === "error") expect(result.error).toContain("Processor output is too large");
+			expect(readSpy).not.toHaveBeenCalled();
+			expect(shell.calls).toHaveLength(1);
+		} finally {
+			readSpy.mockRestore();
 		}
 	});
 
