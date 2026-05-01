@@ -8019,3 +8019,29 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 1. **Bundle Graphviz output is file-bounded, not stdout-bounded.** The sandbox workspace abstraction is the reliable cap-enforcement seam for both Docker and Gondolin runtimes.
 
 **Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: SVG and workspace read caps
+
+**What shipped.** Closed the final SVG/workspace cap findings. SVG rasterization now rejects oversized declared dimensions and pixel area before Resvg rendering and rejects oversized rasterized PNG output before returning. Workspace bounded reads now cap Docker `cat` stdout and post-check returned bytes for both Docker and Gondolin workspace reads.
+
+**Implementation commit.**
+
+1. `e00260d` — fix CV11.E5.S2: cap SVG and workspace read outputs
+
+**Beans.**
+
+1. Closed `bug-fa298f0b` — CV11.E5.S2 inspection: cap SVG raster dimensions and output.
+2. Closed `bug-0c3f267d` — CV11.E5.S2 inspection: bounded workspace reads enforce read cap.
+
+**Test count.** Fast non-live suite increased from 1035 to 1037 tests.
+
+**Verification.**
+
+1. `pnpm run feedback` — passed: 1037 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **SVG needs shape and byte caps.** Raw SVG input size alone is not enough; declared raster dimensions and PNG bytes are separate boundaries.
+2. **Workspace read caps are preflight plus read-time checks.** The read path still validates the returned bytes even after a size preflight.
+
+**Carry-forward.** Re-run CV11.E5.S2 final inspection and completion checks.
