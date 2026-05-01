@@ -7761,3 +7761,30 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 2. **CSV and JSONL share one table-shape boundary.** Format-specific parsers normalize to headers and rows, then use the same cap enforcement.
 
 **Carry-forward.** Continue CV11.E5.S2 with SVG rasterization input caps.
+
+### 2026-05-01 — CV11.E5.S2 step 3: SVG rasterization input cap
+
+**What shipped.** Added an SVG rasterization input cap. `svgToPng()` now rejects oversized SVG before loading or invoking `@resvg/resvg-js`, and Kroki SVG-only processors surface the failure as visible pi-fence error output.
+
+**Implementation commit.**
+
+1. `0455b60` — step 3: bound SVG raster input
+
+**Beans.**
+
+1. Closed `task-55a24276` — CV11.E5.S2 SVG rasterization input cap.
+
+**Test count.** Fast non-live suite increased from 1016 to 1018 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/svg-to-png.test.ts tests/unit/kroki.test.ts --testNamePattern 'SVG|svg'` — passed: 5 focused SVG/Kroki tests.
+2. `pnpm run lint:types` — passed.
+3. `pnpm run feedback` — passed: 1018 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the step.**
+
+1. **SVG input is capped at the rasterization seam.** The byte check happens inside `svgToPng()` before lazy-loading Resvg, so every caller inherits the boundary.
+2. **Kroki keeps visible errors.** SVG-only Kroki responses still normalize rasterization failures into pi-fence error output.
+
+**Carry-forward.** Continue CV11.E5.S2 with Mermaid, Graphviz, and bundle-sandbox host/sandbox limit coverage.
