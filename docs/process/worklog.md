@@ -7969,3 +7969,28 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 1. **Binary stdout caps belong at the shell seam.** Graphviz PNG output is bounded while child-process stdout is captured, not only after processor return.
 
 **Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: exec stdout cap propagation
+
+**What shipped.** Completed bounded stdout capture for bundle Graphviz by propagating `maxStdoutBytes` through real exec sandbox adapters. Docker exec forwards the cap to `ShellRunner`, and Gondolin exec options now carry the cap so VM-backed runs receive the same boundary.
+
+**Implementation commit.**
+
+1. `c7c86fb` — fix CV11.E5.S2: propagate exec stdout caps
+
+**Beans.**
+
+1. Closed `bug-e0776ad0` — CV11.E5.S2 inspection: propagate exec stdout caps.
+
+**Test count.** Fast non-live suite stayed at 1035 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-sandbox-environment.test.ts tests/unit/bundle-sandbox.test.ts` — passed: 32 focused bundle environment tests.
+2. `pnpm run feedback` — passed: 1035 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Exec sandbox adapters must preserve resource caps.** Passing a cap into `ExecSandboxEnvironment.run()` is part of the sandbox contract, not just fake-environment metadata.
+
+**Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
