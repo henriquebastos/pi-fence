@@ -7994,3 +7994,28 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 1. **Exec sandbox adapters must preserve resource caps.** Passing a cap into `ExecSandboxEnvironment.run()` is part of the sandbox contract, not just fake-environment metadata.
 
 **Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: bundle Graphviz bounded file output
+
+**What shipped.** Removed the Gondolin stdout-cap gap for bundle Graphviz. Bundle Graphviz now writes DOT input into a sandbox workspace, runs `dot -Tpng -o output.png input.dot`, and reads the generated PNG through the same bounded workspace read path used by bundle Mermaid. This avoids relying on unsupported Gondolin stdout byte caps for Graphviz image output.
+
+**Implementation commit.**
+
+1. `2d6bd3a` — fix CV11.E5.S2: route bundle Graphviz through bounded files
+
+**Beans.**
+
+1. Closed `bug-2bee215c` — CV11.E5.S2 inspection: route bundle Graphviz through bounded file.
+
+**Test count.** Fast non-live suite stayed at 1035 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/bundle-sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts tests/contract/bundle-sandbox.contract.test.ts tests/unit/built-in-processors.test.ts tests/extension/pi-fence.test.ts --testNamePattern 'bundle-sandbox|Gondolin-backed|preserving stdin|uses a Gondolin controller'` — passed: 50 focused tests, 97 skipped by pattern.
+2. `pnpm run feedback` — passed: 1035 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Bundle Graphviz output is file-bounded, not stdout-bounded.** The sandbox workspace abstraction is the reliable cap-enforcement seam for both Docker and Gondolin runtimes.
+
+**Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
