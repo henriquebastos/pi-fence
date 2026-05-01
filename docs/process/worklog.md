@@ -7917,3 +7917,30 @@ Adjacent docs catch-up commits were recorded immediately after each S1 feature o
 2. **Docker and Gondolin share the same bounded-read contract.** Both implementations use a command-level byte count before reading the binary file.
 
 **Carry-forward.** Re-run CV11.E5.S2 inspection.
+
+### 2026-05-01 — CV11.E5.S2 inspection fix: remaining limit gaps
+
+**What shipped.** Closed the second inspection round's remaining limit gaps. Table parsing now checks both parsed-cell and rectangular/projected output cell counts, covering sparse CSV rows and JSONL empty-object rows. Bundle workspace limit failures now use a structured `WorkspaceFileLimitError`, which bundle-sandbox normalizes to the same `Processor output is too large` error users see from other output caps. Workspace byte-count parsing now rejects malformed `wc -c` output instead of accepting partial numeric prefixes.
+
+**Implementation commit.**
+
+1. `4bf9ba9` — fix CV11.E5.S2: close remaining limit gaps
+
+**Beans.**
+
+1. Closed `bug-9d976492` — CV11.E5.S2 inspection: sparse table cell-count gaps.
+2. Closed `task-a06fe6cc` — CV11.E5.S2 inspection: workspace limit error normalization.
+
+**Test count.** Fast non-live suite increased from 1031 to 1035 tests.
+
+**Verification.**
+
+1. `pnpm vitest run tests/unit/table.test.ts tests/unit/bundle-sandbox.test.ts tests/unit/bundle-sandbox-environment.test.ts` — passed: 65 focused tests.
+2. `pnpm run feedback` — passed: 1035 non-live tests, focused CRAP report, markdown lint, type lint, and dependency lint.
+
+**Design decisions that survived the fix.**
+
+1. **Cell caps count what formatting will allocate.** CSV and JSONL track sparse parsed shapes and the rectangular table implied by headers.
+2. **Workspace byte limits stay structured below processor output normalization.** Sandbox workspaces report file-limit facts; bundle-sandbox maps them to user-facing processor output errors.
+
+**Carry-forward.** Re-run CV11.E5.S2 inspection and completion checks.
